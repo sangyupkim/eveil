@@ -13,7 +13,7 @@ import { itemName, itemColor, isBook, makeItem } from '../game/items.js';
 import { seeded, randInt, randRange } from '../game/rng.js';
 import { Actor, makeHero } from '../engine2d/actor.js';
 import { FX } from '../engine2d/fx.js';
-import { resolveCollision, zoneAt, clearLine, findPath } from '../engine2d/stage.js';
+import { resolveCollision, zoneAt, clearLine, findPath, blockedAt } from '../engine2d/stage.js';
 import { DATA, image, animImage, drawRect, frameIndex } from '../engine2d/sprites.js';
 import { MONSTER_LOOK, ITEM_LOOK, LOOT_LOOK } from '../data/flareWorld.js';
 import { PLOTS, BUILDINGS } from '../data/buildings.js';
@@ -179,7 +179,7 @@ export class World {
         do {
           const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * zn.r * 0.95;
           x = zn.x + Math.cos(a) * r; z = zn.z + Math.sin(a) * r;
-        } while (++tries < 20 && Math.hypot(x, z) < TOWN.r + 8);
+        } while (++tries < 30 && (Math.hypot(x, z) < TOWN.r + 8 || blockedAt(this.stage, x, z, 1.2)));
         this.spawners.push({ zone: zn, x, z, level: lv(x, z), tier: 'normal', timer: 0, mon: null });
       }
       // 네임드: 지역 한가운데 / 보스: 마을에서 가장 먼 곳
@@ -703,6 +703,9 @@ export class World {
   cmdMove(x, z) {
     if (this.dead) return;
     this.moveTo = { x, z };
+    // 막혀 있으면 돌아가는 길 (가까운 곳만)
+    const P = this.player.pos;
+    this.movePath = dist2(P, this.moveTo) < 45 && !clearLine(this.stage, P, this.moveTo, 0.5) ? findPath(this.stage, P, this.moveTo, 0.5, 2500) : null;
     this.target = null;
     this.pendingSkill = null;
     this.cancelRecall();
@@ -1337,10 +1340,12 @@ export class World {
         if (r.ok && this.actCd <= 0 && (P.lock <= 0 || this.swing <= 0)) this.castSkill(this.pendingSkill, r.v);
       }
       if (this.moveTo && P.lock <= 0) {
-        const wp = this.goal(this.waypoint(P.pos, this.moveTo));
+        let dest = this.moveTo;
+        if (this.movePath?.length) { dest = this.movePath[0]; if (dist2(P.pos, dest) < 0.6) { this.movePath.shift(); dest = this.movePath[0] || this.moveTo; } }
+        const wp = this.goal(this.waypoint(P.pos, dest));
         const left = this.stepToward(P.pos, wp, speed * dt);
         P.face(wp.x, wp.z);
-        moving = left > 0.15 || wp !== this.moveTo;
+        moving = left > 0.15 || wp !== this.moveTo || !!this.movePath?.length;
         if (!moving) this.moveTo = null;
       }
     }

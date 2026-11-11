@@ -33,10 +33,42 @@ function groundAt(i, j) {
   let zn = null;
   for (const z0 of ZONES) if (Math.hypot(x - z0.x, z - z0.z) < z0.r * (1.05 + (noise(x * 2, z * 2) - 0.5) * 0.3)) { zn = z0; break; }
   const L = ZONE_LOOK[zn ? zn.id : 'wild'];
+  const lake = inLake(x, z);
+  if (lake) return [lake.set, 176 + Math.floor(h * 16), true];
   if (L.water && noise(x * 1.7 + 50, z * 1.7) > 0.72) return [L.set, L.water[0] + Math.floor(h * (L.water[1] - L.water[0] + 1)), true];
   if (L.patch && noise(x * 1.3 + 9, z * 1.3) > 0.68) return [L.set, L.patch[0] + Math.floor(h * (L.patch[1] - L.patch[0] + 1))];
   return [L.set, L.ground[0] + Math.floor(h * (L.ground[1] - L.ground[0] + 1))];
 }
+// ───── 지형: 호수 · 바위 능선 (지역마다 정해진 자리) ─────
+const roadDist = (x, z) => Math.min(Math.hypot(x, z) - TOWN.r, ...ZONES.map((zn) => distToSeg(x, z, 0, 0, zn.x * 0.72, zn.z * 0.72)));
+export const LAKES = [], RIDGES = [];
+{
+  const rng = seeded(4242);
+  for (const zn of ZONES) {
+    const L = ZONE_LOOK[zn.id];
+    const lakes = L.set === 'cave' ? 0 : zn.id === 'swamp' ? 3 : 1 + (rng() < 0.6 ? 1 : 0);
+    for (let k = 0, tries = 0; k < lakes && tries < 60; tries++) {
+      const a = rng() * 6.28, d = rng() * zn.r * 0.75, r = 4.5 + rng() * 4.5;
+      const x = zn.x + Math.cos(a) * d, z = zn.z + Math.sin(a) * d;
+      if (roadDist(x, z) < r + 5 || LAKES.some((q) => Math.hypot(q.x - x, q.z - z) < q.r + r + 6)) continue;
+      LAKES.push({ x, z, r, set: L.set }); k++;
+    }
+    // 바위 능선: 반원 모양으로 늘어선 바위, 가운데에 지나갈 틈
+    for (let k = 0, tries = 0; k < 2 && tries < 60; tries++) {
+      const a = rng() * 6.28, d = zn.r * (0.3 + rng() * 0.5), len = 9 + rng() * 8, dir = rng() * 6.28;
+      const x = zn.x + Math.cos(a) * d, z = zn.z + Math.sin(a) * d;
+      const x2 = x + Math.cos(dir) * len, z2 = z + Math.sin(dir) * len;
+      if (roadDist(x, z) < 5 || roadDist(x2, z2) < 5 || roadDist((x + x2) / 2, (z + z2) / 2) < 5) continue;
+      if (LAKES.some((q) => distToSeg(q.x, q.z, x, z, x2, z2) < q.r + 3)) continue;
+      RIDGES.push({ x, z, x2, z2, gap: 0.35 + rng() * 0.3, set: L.set }); k++;
+    }
+  }
+}
+export function inLake(x, z, pad = 0) {
+  for (const q of LAKES) if (Math.hypot(x - q.x, z - q.z) < q.r * (1 + (noise(x * 1.9, z * 1.9) - 0.5) * 0.35) + pad) return q;
+  return null;
+}
+
 function pick(look, h) { const L = ZONE_LOOK[look]; return [L.set, L.ground[0] + Math.floor(h * (L.ground[1] - L.ground[0] + 1))]; }
 
 export function createStage(canvas) {
@@ -101,12 +133,35 @@ export function buildWorldProps(stage) {
     for (const zn of ZONES) if (distToSeg(x, z, 0, 0, zn.x * 0.72, zn.z * 0.72) < 4.5) return false;
     return true;
   };
+  // 호수: 못 지나가게 판정을 채우고 둘레에 갈대 · 바위
+  for (const q of LAKES) {
+    for (let u = -q.r * 1.3; u <= q.r * 1.3; u += 1.3) for (let v = -q.r * 1.3; v <= q.r * 1.3; v += 1.3) if (inLake(q.x + u, q.z + v, -0.6)) stage.colliders.push({ x: q.x + u, z: q.z + v, r: 1.05 });
+    for (let i = 0; i < 26; i++) {
+      const a = rng() * 6.28, d = q.r * (1.02 + rng() * 0.25), x = q.x + Math.cos(a) * d, z = q.z + Math.sin(a) * d;
+      if (inLake(x, z, 0.3)) continue;
+      const shore = q.set === 'snowplains' ? [[552, 567, 1], [112, 115, 0]] : [[114, 115, 0], [124, 127, 0], [128, 131, 1]];
+      const [a0, a1, rr] = shore[Math.floor(rng() * shore.length)];
+      addProp(stage, q.set, a0 + Math.floor(rng() * (a1 - a0 + 1)), x, z, rr);
+    }
+  }
+  // 바위 능선: 큰 바위 기둥을 줄지어 세우고 가운데를 비운다
+  for (const rd of RIDGES) {
+    const len = Math.hypot(rd.x2 - rd.x, rd.z2 - rd.z), n = Math.ceil(len / 1.5);
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      if (Math.abs(t - rd.gap) < 0.12) continue; // 틈
+      const x = rd.x + (rd.x2 - rd.x) * t + (rng() - 0.5) * 0.5, z = rd.z + (rd.z2 - rd.z) * t + (rng() - 0.5) * 0.5;
+      const ids = rd.set === 'snowplains' ? [132, 133, 134, 135] : rd.set === 'cave' ? [144, 145, 146, 147] : [132, 133, 134, 135];
+      addProp(stage, rd.set === 'cave' ? 'cave' : rd.set, ids[Math.floor(rng() * ids.length)], x, z, 1.05);
+    }
+  }
+  const free = (x, z) => !inLake(x, z, 1.5) && !RIDGES.some((rd) => distToSeg(x, z, rd.x, rd.z, rd.x2, rd.z2) < 1.6);
   for (const zn of ZONES) {
     for (const [set, ids, n, r] of ZONE_PROPS[zn.id] || []) {
       for (let i = 0; i < n; i++) {
         const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * zn.r * 1.05;
         const x = zn.x + Math.cos(a) * d, z = zn.z + Math.sin(a) * d;
-        if (!roadClear(x, z)) continue;
+        if (!roadClear(x, z) || !free(x, z)) continue;
         addProp(stage, set, ids[Math.floor(rng() * ids.length)], x, z, r);
       }
     }
@@ -214,9 +269,15 @@ function render(stage, dt) {
     const x = (i - j) * STEP, z = (i + j) * STEP;
     if (x < c0.x - 4 || x > c1.x + 4 || z < c0.z - 4 || z > c1.z + 4) continue;
     if (Math.hypot(x, z) > WORLD_SIZE + 12) continue;
-    const [set, id] = tileAt(i, j);
+    const [set, id, wet] = tileAt(i, j);
     const p = stage.toScreen(x, z);
     drawTile(stage, ctx, set, id, p.x, p.y, s);
+    if (wet) { // 물: 푸른 빛 + 일렁임
+      const w = 97 * s, h = 48.5 * s, k = 0.5 + 0.5 * Math.sin(stage.time * 1.6 + x * 0.7 + z * 0.9);
+      ctx.fillStyle = set === 'snowplains' ? `rgba(120,170,210,${0.32 + k * 0.08})` : `rgba(40,110,140,${0.36 + k * 0.1})`;
+      ctx.beginPath(); ctx.moveTo(p.x - w, p.y); ctx.lineTo(p.x, p.y - h); ctx.lineTo(p.x + w, p.y); ctx.lineTo(p.x, p.y + h); ctx.fill();
+      if (k > 0.85) { ctx.fillStyle = 'rgba(200,235,255,0.12)'; ctx.fillRect(p.x - w * 0.3, p.y - 2 * s, w * 0.5, 2 * s); }
+    }
   }
   for (const f of stage.flats) {
     if (!stage.onScreen(f.x, f.z, 3)) continue;
