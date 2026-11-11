@@ -126,7 +126,7 @@ export function setupInput(world, stage, windows) {
     if (e.target.tagName === 'INPUT') return;
     const k = e.key.toLowerCase();
     keys.add(e.code);
-    if (k === 'escape') { windows.close(); return; }
+    if (k === 'escape') { if (windows.open) windows.close(); else if (!world.dead) windows.show('menu'); return; }
     if (k === 'i' || k === 'b') windows.toggle('inv');
     if (k === 'k') windows.toggle('skills');
     if (k === 'c') windows.toggle('char');

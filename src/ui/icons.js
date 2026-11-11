@@ -32,7 +32,13 @@ function shoot(obj, { view = [0.35, 0.3, 1], fill = 0.82, focus = null } = {}) {
   if (!R) setup();
   scene.add(obj);
   obj.updateMatrixWorld(true);
-  const box = focus || new THREE.Box3().setFromObject(obj, true);
+  // 숨긴 부위는 빼고 잰다 (부위 아이콘이 점처럼 작아지지 않게)
+  let box = focus;
+  if (!box) {
+    box = new THREE.Box3();
+    obj.traverse((o) => { if (o.isMesh && o.visible) box.expandByObject(o, true); });
+    if (box.isEmpty()) box.setFromObject(obj, true);
+  }
   const c = box.getCenter(new THREE.Vector3());
   const s = box.getSize(new THREE.Vector3());
   const r = Math.max(s.x, s.y, s.z) * 0.5 / fill;

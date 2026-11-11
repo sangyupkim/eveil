@@ -8,6 +8,8 @@ import { Windows, toggleFullscreen } from './ui/windows.js';
 import { setupInput } from './input.js';
 import { newPlayer } from './game/player.js';
 import { CONFIG } from './data/config.js';
+import { audio } from './engine/audio.js';
+import { portrait } from './ui/icons.js';
 
 const SAVE_KEY = 'ashen-save';
 const $ = (s) => document.querySelector(s);
@@ -37,6 +39,11 @@ function loadSave() {
 }
 
 async function boot() {
+  // 브라우저는 첫 입력 뒤에야 소리를 낼 수 있다
+  const unlock = () => audio.unlock();
+  window.addEventListener('pointerdown', unlock, true);
+  window.addEventListener('keydown', unlock, true);
+  audio.setMusic('title');
   const stage = createStage($('#view'));
   // 타이틀 뒤에도 마을 풍경이 보이게 먼저 불러온다
   await loadModels(MODELS, (p) => { $('#loadBar i').style.width = `${Math.round(p * 100)}%`; });
@@ -59,12 +66,13 @@ async function boot() {
   titleLoop();
 
   const saved = loadSave();
+  if (saved) audio.setVolumes(saved.settings.music, saved.settings.sfx);
   let look = saved?.look || 'knight';
   const looks = $('.looks');
-  looks.innerHTML = Object.entries(LOOKS).map(([k, n]) => `<button data-look="${k}" class="${k === look ? 'on' : ''}">${n}</button>`).join('')
-    + '<div class="note" style="width:100%;margin-top:4px">외형만 다르다. 직업은 없다 — 싸우는 방식이 곧 직업이 된다.</div>';
+  looks.innerHTML = Object.entries(LOOKS).map(([k, n]) => `<button data-look="${k}" class="${k === look ? 'on' : ''}"><img src="${portrait(k)}" alt="" />${n}</button>`).join('')
+    + '<div class="note">외형만 다르다. 직업은 없다 — 싸우는 방식이 곧 직업이 된다.</div>';
   looks.querySelectorAll('button').forEach((b) => {
-    b.onclick = () => { look = b.dataset.look; looks.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); };
+    b.onclick = () => { audio.play('click'); look = b.dataset.look; looks.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); };
   });
   $('#titleMenu').hidden = false;
   if (saved) {
@@ -86,6 +94,7 @@ async function boot() {
 
 function startGame(stage, st) {
   stage.zoom = 1;
+  audio.setVolumes(st.settings.music, st.settings.sfx);
   stage.renderer.shadowMap.enabled = st.settings.shadows;
   stage.sun.castShadow = st.settings.shadows;
   const hud = new HUD();

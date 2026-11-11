@@ -229,6 +229,20 @@ h3::before { content: ''; flex: none; width: 1em; height: 1em; background: var(-
 .setRow .opts .btn { flex: 1; min-width: 3.5em; }
 input[type=range] { flex: 1; accent-color: var(--brass); }
 
+h3 .cnt { font-family: var(--f-latin); color: var(--dim); font-size: 0.85em; }
+h3 .goldTxt { margin-left: auto; font-family: var(--f-latin); color: var(--brass-hi); }
+.detail.worn { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line-soft); opacity: 0.85; clear: both; }
+.detail .btns { clear: both; }
+.frame .portrait { width: calc(var(--u) * 4.2); height: calc(var(--u) * 4.2); }
+.shopIco { flex: none; width: calc(var(--u) * 3.2); cursor: default; }
+.qsRow { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.btn.qs { position: relative; aspect-ratio: 1; padding: 0; border-radius: 50%; font-family: var(--f-title); font-weight: 800; font-size: calc(var(--u) * 1.2); }
+.btn.qs small { position: absolute; left: 2px; top: -4px; font-size: 0.55em; color: var(--dim); font-family: var(--f-latin); }
+.volv { width: 2.2em; text-align: right; font-family: var(--f-latin); color: var(--brass-hi); }
+.frame > .plate { margin-bottom: 4px; }
+.cards { grid-template-columns: repeat(4, 1fr); }
+.tab span { font-family: var(--f-title); font-weight: 800; font-size: calc(var(--u) * 0.95); }
+
 /* 각성 연출 */
 #awaken { position: fixed; left: 50%; top: 30%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; z-index: 5; animation: rise 3.2s forwards; }
 #awaken h1 { margin: 0; font-family: var(--f-title); font-weight: 800; font-size: calc(var(--u) * 3.2); color: #ffd860; letter-spacing: 0.4em; text-shadow: 0 0 20px #c08010, 0 2px 4px #000; }

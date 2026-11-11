@@ -89,7 +89,7 @@ export class HUD {
     const el = $('#death');
     el.innerHTML = `<h1>사망</h1>
       <div>${lostName ? `<span style="color:${color}">${lostName}</span>을(를) 쓰러진 자리에 떨어뜨렸습니다.<br><span class="note">${CONFIG.deathItemLifetime / 60}분 안에 돌아가면 되찾을 수 있습니다.</span>` : '잃어버린 물건은 없습니다.'}</div>
-      <button class="big" id="btnRevive">마을에서 부활</button>`;
+      <button class="plate gold" id="btnRevive">마을에서 부활</button>`;
     el.hidden = false;
     $('#btnRevive').onclick = () => { el.hidden = true; this.world.revive(); };
   }
