@@ -10,6 +10,9 @@
     "prep-assets": "node tools/prep-assets.mjs"
   },
   "devDependencies": {
+    "@fontsource/cinzel": "^5.3.0",
+    "@fontsource/gowun-dodum": "^5.3.0",
+    "@fontsource/nanum-myeongjo": "^5.3.0",
     "@gltf-transform/core": "^4.1.0",
     "@gltf-transform/functions": "^4.1.0",
     "three": "0.170.0"

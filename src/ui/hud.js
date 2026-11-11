@@ -6,6 +6,7 @@ import { ZONES, TOWN, WORLD_SIZE } from '../data/world.js';
 import { expNeeded, powerLevel } from '../game/growth.js';
 import { countOf } from '../game/inventory.js';
 import { skillValues } from '../game/skills.js';
+import { portrait, chestIcon, bookIcon, coinIcon, swordIcon, itemIcon } from './icons.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 
@@ -22,7 +23,18 @@ export class HUD {
     this.buildQuick();
   }
 
-  attach(world) { this.world = world; this.dirty(); }
+  attach(world) {
+    this.world = world;
+    // 3D 모델로 찍은 아이콘을 단추에 넣는다
+    const face = portrait(world.st.look);
+    $('#face').src = face;
+    const icons = { chest: chestIcon(), book: bookIcon(), coin: coinIcon(), face, sword: swordIcon(),
+      hpot: itemIcon({ base: 'hp_potion' }), mpot: itemIcon({ base: 'mp_potion' }) };
+    document.querySelectorAll('img[data-ico]').forEach((im) => { im.src = icons[im.dataset.ico] || ''; });
+    $('#menuToggle').onclick = () => $('.menuCol').classList.toggle('closed');
+    $('#qToggle').onclick = () => $('#questBox').classList.toggle('min');
+    this.dirty();
+  }
 
   dirty() { this.isDirty = true; this.onDirty(); }
 
@@ -47,12 +59,11 @@ export class HUD {
   }
 
   zone(z) {
-    $('.zoneName').textContent = z ? z.name : '황야';
+    $('.zoneName').textContent = z ? z.name + (z.levels ? `  ·  위험도 ${z.levels[0]}~${z.levels[1]}` : '') : '황야';
     let info = '안전 지역 · 상점 이용 가능';
     if (z && z.levels) info = `위험도 ${z.levels[0]}~${z.levels[1]} · 권장 각성 ${Math.max(0, (z.levels[0] - 1) * 2)}+`;
     else if (!z) info = '지역 사이의 황야';
     $('.zoneInfo').textContent = info;
-    $('#mapZone').textContent = z ? z.name : '황야';
     $('#shopBtn').hidden = !(z && z.id === 'town');
     this.log(`— ${z ? z.name : '황야'} —`, '#9a917f');
   }
@@ -89,7 +100,7 @@ export class HUD {
     for (let i = 0; i < CONFIG.quickSlots; i++) {
       const s = document.createElement('div');
       s.className = 'slot empty';
-      s.innerHTML = `<span class="key">${i + 1}</span><div class="ico"></div><div class="cd"></div><span class="rank"></span>`;
+      s.innerHTML = `<span class="key">${i + 1}</span><div class="ico"></div><div class="cd"></div><span class="rank"></span><span class="nm"></span>`;
       s.dataset.i = i;
       q.appendChild(s);
     }
@@ -105,6 +116,7 @@ export class HUD {
     $('.bar.mp i').style.transform = `scaleX(${Math.max(0, st.mp / d.maxMp)})`;
     $('.bar.mp span').textContent = `${Math.floor(st.mp)} / ${d.maxMp}`;
     const need = expNeeded(st.awakenings);
+    $('.bar.xp i').style.transform = `scaleX(${st.exp / need})`;
     $('#expBar i').style.transform = `scaleX(${st.exp / need})`;
     $('#expBar span').textContent = `각성 EXP ${((st.exp / need) * 100).toFixed(2)}%${w.auto ? '  (자동 사냥 -20%)' : ''}`;
 
@@ -116,7 +128,7 @@ export class HUD {
       if (!id || !st.skills[id]) continue;
       const v = skillValues(id, st.skills[id].rank);
       const cd = Math.max(0, w.cds[id] || 0);
-      el.querySelector('.cd').style.transform = `scaleY(${cd / v.cd})`;
+      el.querySelector('.cd').style.setProperty('--cd', (cd / v.cd).toFixed(3));
       el.classList.toggle('nomp', st.mp < v.mp);
     }
 
@@ -148,9 +160,10 @@ export class HUD {
     if (this.isDirty) {
       this.isDirty = false;
       $('#gold').textContent = st.gold.toLocaleString();
-      $('#awakeBadge b').textContent = st.awakenings;
-      $('#btnHp span').textContent = countOf(st, 'hp_potion') + countOf(st, 'hp_potion_l');
-      $('#btnMp span').textContent = countOf(st, 'mp_potion') + countOf(st, 'mp_potion_l');
+      $('#awakeBadge').textContent = `각성 ${st.awakenings}`;
+      $('#bagCnt').textContent = `${st.inv.length}/${CONFIG.inventorySize}`;
+      $('#btnHp em').textContent = countOf(st, 'hp_potion') + countOf(st, 'hp_potion_l');
+      $('#btnMp em').textContent = countOf(st, 'mp_potion') + countOf(st, 'mp_potion_l');
       for (let i = 0; i < slots.length; i++) {
         const id = st.quick[i];
         const el = slots[i];
@@ -159,15 +172,17 @@ export class HUD {
           const sk = SKILLS[id];
           el.classList.remove('empty');
           ico.textContent = sk.glyph;
-          ico.style.background = `radial-gradient(circle at 35% 30%, ${sk.color}, #1a120a 90%)`;
+          ico.style.background = `radial-gradient(circle at 35% 30%, ${sk.color}, #1a120a 92%)`;
           el.querySelector('.rank').textContent = st.skills[id].rank;
+          el.querySelector('.nm').textContent = sk.name;
           el.title = sk.name;
         } else {
           el.classList.add('empty');
           ico.textContent = '';
           ico.style.background = 'none';
           el.querySelector('.rank').textContent = '';
-          el.querySelector('.cd').style.transform = 'scaleY(0)';
+          el.querySelector('.nm').textContent = '';
+          el.querySelector('.cd').style.setProperty('--cd', 0);
         }
       }
     }
@@ -229,13 +244,13 @@ export class HUD {
   drawMap() {
     const w = this.world;
     const c = this.mapCtx;
-    const S = 160, R = 55; // 미니맵 반경(월드 단위)
+    const S = 200, R = 55; // 미니맵 반경(월드 단위)
     const P = w.player.pos;
     const k = S / (R * 2);
     const tx = (x) => (x - P.x) * k + S / 2;
     const tz = (z) => (z - P.z) * k + S / 2;
     c.clearRect(0, 0, S, S);
-    c.fillStyle = 'rgba(20,22,18,0.9)';
+    c.fillStyle = 'rgba(14,11,22,0.92)';
     c.fillRect(0, 0, S, S);
     c.lineWidth = 1;
     for (const z of ZONES) {
@@ -258,8 +273,10 @@ export class HUD {
     for (const m of w.monsters) {
       if (m.dead) continue;
       const big = m.tier !== 'normal';
-      c.fillStyle = TIERS[m.tier].color === '#e8e2d4' ? '#d04030' : TIERS[m.tier].color;
-      c.fillRect(tx(m.pos.x) - (big ? 2.5 : 1.5), tz(m.pos.z) - (big ? 2.5 : 1.5), big ? 5 : 3, big ? 5 : 3);
+      c.fillStyle = TIERS[m.tier].color === '#e8e2d4' ? '#e04a38' : TIERS[m.tier].color;
+      c.beginPath();
+      c.arc(tx(m.pos.x), tz(m.pos.z), big ? 3.5 : 2, 0, Math.PI * 2);
+      c.fill();
     }
     for (const g of w.ground) {
       c.fillStyle = g.color;
@@ -269,16 +286,18 @@ export class HUD {
     for (const sp of w.spawners) {
       if (sp.tier !== 'boss') continue;
       c.fillStyle = sp.mon ? '#ff5a4a' : 'rgba(255,90,74,0.3)';
-      c.font = '10px sans-serif';
-      c.fillText('☠', tx(sp.x) - 4, tz(sp.z) + 4);
+      c.font = '13px sans-serif';
+      c.fillText('☠', tx(sp.x) - 5, tz(sp.z) + 5);
     }
     c.save();
     c.translate(S / 2, S / 2);
     c.rotate(-w.player.root.rotation.y + Math.PI);
-    c.fillStyle = '#ffe080';
+    c.fillStyle = '#ffe9a8';
+    c.strokeStyle = '#000';
+    c.lineWidth = 1.5;
     c.beginPath();
-    c.moveTo(0, -5); c.lineTo(4, 4); c.lineTo(-4, 4);
-    c.fill();
+    c.moveTo(0, -7); c.lineTo(5, 5); c.lineTo(0, 2.5); c.lineTo(-5, 5); c.closePath();
+    c.fill(); c.stroke();
     c.restore();
   }
 }

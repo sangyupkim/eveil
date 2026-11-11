@@ -15,6 +15,8 @@ import { Actor } from './actor.js';
 import { FX } from './fx.js';
 import { cloneProp } from '../engine/assets.js';
 import { resolveCollision, zoneAt } from '../engine/scene.js';
+import { audio } from '../engine/audio.js';
+const sfx = (n, k) => audio.play(n, k);
 
 const ACTIVE_RADIUS = 58;
 const dist2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -230,6 +232,7 @@ export class World {
   monsterAttack(m) {
     m.atkT = m.def.interval * randRange(0.9, 1.15);
     const dur = m.actor.act(m.def.anims.attack, 1.15);
+    sfx(m.def.attack === 'melee' ? 'mattack' : 'mshoot', 0.8);
     const windup = Math.min(0.5, dur * 0.45);
     this.later(windup, () => {
       if (m.dead || this.dead) return;
@@ -255,6 +258,7 @@ export class World {
     const head = this.player.pos.clone().setY(2.4);
     if (Math.random() < d.dodge) {
       this.fx.text(head, '회피', 'miss');
+      sfx('dodge');
       addAP(st, 'dex', AP_TABLE.dodge, apMult);
       return;
     }
@@ -262,6 +266,7 @@ export class World {
     if (d.block && Math.random() < d.block) {
       dmg *= 0.3;
       this.fx.text(head, '막기', 'miss');
+      sfx('block');
       addAP(st, 'vit', AP_TABLE.blockVit, apMult);
       addAP(st, 'str', AP_TABLE.blockStr, apMult);
     }
@@ -275,6 +280,7 @@ export class World {
     st.hp -= dmg;
     addAP(st, 'vit', (dmg / d.maxHp) * AP_TABLE.hurtScale, apMult);
     this.player.hitFlash(0xff2000);
+    sfx('hurt');
     this.fx.text(head, `-${dmg}`, 'hurt');
     if (st.hp <= 0) this.die();
   }
@@ -305,6 +311,7 @@ export class World {
     m.actor.hitFlash(crit ? 0xffd040 : 0xffffff);
     const head = m.pos.clone().setY(2.3 * m.actor.scale);
     this.fx.text(head, crit ? `${dmg}!` : String(dmg), crit ? 'crit' : '');
+    sfx(crit ? 'crit' : 'hit');
     this.fx.burst(m.pos.x, 1.2 * m.actor.scale, m.pos.z, crit ? 0xffd040 : 0xffa060, crit ? 10 : 5, 3);
     if (d.lifeSteal) this.healPlayer(dmg * d.lifeSteal, false);
     if (crit) addAP(st, 'dex', AP_TABLE.crit, apMult);
@@ -335,6 +342,7 @@ export class World {
     if (ups) {
       const s = this.st.skills[id];
       this.ui.toast(`${SKILLS[id].name} 숙련 상승! 랭크 ${s.rank}`, '#ffd84a');
+      sfx('rankup');
       this.fx.ring(this.player.pos.x, this.player.pos.z, 3, 0xffd84a, 0.7);
       this.ui.dirty();
     }
@@ -347,6 +355,7 @@ export class World {
     const apMult = rf.ap * this.autoMult;
     const human = m.def.human;
     m.actor.play(human ? 'Death_A' : 'Death_C_Skeletons', { once: true, force: true, fade: 0.1 });
+    sfx(human ? 'hurt' : 'mdie');
     m.actor.lock = 99;
     m.deadT = 3.2;
     m.sp.mon = null;
@@ -383,6 +392,7 @@ export class World {
     this.fx.pillar(this.player.pos.x, this.player.pos.z, 0xffd060, 1.6);
     this.fx.burst(this.player.pos.x, 1.5, this.player.pos.z, 0xffe080, 30, 7, 0.5);
     this.ui.awaken(r);
+    sfx('awaken');
   }
 
   healPlayer(v, show = true) {
@@ -416,6 +426,7 @@ export class World {
     glow.position.y = 0.3;
     obj.add(glow);
     if (beam) {
+      if (!expires) setTimeout(() => sfx('rare'), 250);
       const m = new THREE.Mesh(
         new THREE.CylinderGeometry(0.12, 0.25, 6, 8, 1, true),
         new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }),
@@ -438,12 +449,14 @@ export class World {
     if (g.kind === 'gold') {
       st.gold += g.amount;
       this.fx.text(this.player.pos.clone().setY(2.4), `+${g.amount}G`, 'gold');
+      sfx('coin');
     } else {
       if (!addItem(st, g.item)) {
         if (this.time - (this.fullMsgT || -9) > 3) { this.ui.toast('가방이 가득 찼습니다'); this.fullMsgT = this.time; }
         return false;
       }
       this.ui.log(`획득: ${g.label}`, g.color);
+      sfx('pickup');
       if (isBook(g.item)) this.ui.toast(`스킬북 획득! 가방에서 배울 수 있습니다 — ${SKILLS[g.item.book].name}`, g.color);
     }
     this.removeGround(g);
@@ -474,6 +487,7 @@ export class World {
     this.st.hp = 0;
     this.target = null; this.moveTo = null; this.pendingSkill = null; this.recallT = 0;
     this.player.play('Death_A', { once: true, force: true, fade: 0.1 });
+    sfx('death');
     this.player.lock = 99;
     const lost = rollDeathDrop(this.st);
     if (lost) {
@@ -555,6 +569,7 @@ export class World {
     if (r.hp) this.healPlayer(r.hp);
     if (r.mp) { st.mp = Math.min(this.d.maxMp, st.mp + r.mp); this.fx.text(this.player.pos.clone().setY(2.6), `+${r.mp}`, 'mana'); }
     this.fx.burst(this.player.pos.x, 1.2, this.player.pos.z, r.hp ? 0xff4050 : 0x4080ff, 8, 2);
+    sfx('potion');
     this.potionCd = 0.8;
     this.ui.dirty();
     return true;
@@ -566,6 +581,7 @@ export class World {
     this.recallT = 1.6;
     this.player.play('Spellcast_Long', { force: true });
     this.ui.toast('마을로 귀환합니다…');
+    sfx('recall');
   }
 
   cancelRecall() {
@@ -607,7 +623,7 @@ export class World {
   useSkill(id, silent = false) {
     if (this.dead || !id) return false;
     const r = this.skillReady(id);
-    if (!r.ok) { if (!silent) this.ui.toast(r.why); return false; }
+    if (!r.ok) { if (!silent) { this.ui.toast(r.why); sfx('error'); } return false; }
     if (this.needsTarget(id)) {
       let t = this.target && !this.target.dead ? this.target : this.nearestMonster(this.skillRange(id) + 6);
       if (!t) { if (!silent) this.ui.toast('대상이 없습니다'); return false; }
@@ -642,6 +658,7 @@ export class World {
       case 'melee': {
         const dur = P.act(sk.anim === 'heavy' ? (d.cls.hands === 2 ? '2H_Melee_Attack_Chop' : '1H_Melee_Attack_Chop') : '1H_Melee_Attack_Slice_Diagonal', 1.3);
         this.swing = dur * 0.8;
+        sfx('heavy');
         this.later(dur * 0.4, () => {
           if (t && !t.dead && dist2(t.pos, P.pos) < d.range + 1.5) {
             const w = weaponHit();
@@ -655,6 +672,7 @@ export class World {
         const dur = P.act(d.cls.hands === 2 ? '2H_Melee_Attack_Spin' : '2H_Melee_Attack_Spin', 1.4);
         this.swing = dur * 0.8;
         this.later(dur * 0.35, () => {
+          sfx('spin');
           this.fx.ring(P.pos.x, P.pos.z, sk.radius, color, 0.45);
           for (const m of this.monstersNear(P.pos, sk.radius)) { const w = weaponHit(); this.hitMonster(m, w.v, { crit: w.crit, src: 'skill', ctx }); }
         });
@@ -665,6 +683,7 @@ export class World {
         this.swing = dur * 0.8;
         this.later(dur * 0.45, () => {
           const ang = P.facing;
+          sfx('slam');
           this.fx.cone(P.pos.x, P.pos.z, ang, sk.radius, color);
           this.fx.burst(P.pos.x + Math.sin(ang) * 2, 0.5, P.pos.z + Math.cos(ang) * 2, color, 16, 6, 0.5);
           for (const m of this.monstersNear(P.pos, sk.radius)) {
@@ -677,13 +696,16 @@ export class World {
       case 'bolt': {
         const dur = P.act('Spellcast_Shoot', 1.6);
         this.swing = dur * 0.7;
+        sfx('cast', 0.7);
         this.later(dur * 0.35, () => {
           if (!t) return;
+          sfx('fire', 0.7);
           this.fx.projectile({
             from: { x: P.pos.x, y: 1.6, z: P.pos.z }, target: t, color, size: sk.splash ? 1.5 : 0.9, speed: 20,
             onHit: (tg) => {
               const at = tg.pos || tg;
               if (sk.splash) {
+                sfx('boom', 0.7);
                 this.fx.ring(at.x, at.z, sk.splash, color, 0.4);
                 this.fx.burst(at.x, 1, at.z, color, 18, 6, 0.6);
                 for (const m of this.monstersNear(at, sk.splash)) this.hitMonster(m, spell(), { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 });
@@ -697,6 +719,7 @@ export class World {
         const dur = P.act('2H_Ranged_Shoot', 1.5);
         this.swing = dur * 0.7;
         this.later(dur * 0.35, () => {
+          sfx('shoot', 1.2);
           const targets = sk.count ? [t, ...this.monstersNear(P.pos, sk.range).filter((m) => m !== t)].filter(Boolean).slice(0, sk.count) : [t];
           for (const tg of targets) {
             if (!tg) continue;
@@ -720,6 +743,7 @@ export class World {
             if (!n) break;
             chain.push(n); cur = n;
           }
+          sfx('zap');
           this.fx.lightning([P.pos, ...chain.map((m) => m.pos)], color);
           chain.forEach((m, i) => this.hitMonster(m, spell() * Math.pow(0.85, i), { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 }));
         });
@@ -729,7 +753,9 @@ export class World {
         const dur = P.act('Spellcast_Long', 1.4);
         this.swing = dur * 0.6;
         const at = { x: t.pos.x, z: t.pos.z };
+        sfx('cast');
         this.fx.meteor(at.x, at.z, sk.radius, 1.0, () => {
+          sfx('boom');
           for (const m of this.monstersNear(at, sk.radius)) this.hitMonster(m, spell(), { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 });
         });
         break;
@@ -738,6 +764,7 @@ export class World {
         const dur = P.act('Spellcast_Raise', 1.4);
         this.swing = dur * 0.6;
         this.later(dur * 0.4, () => {
+          sfx('ice');
           this.fx.ring(P.pos.x, P.pos.z, sk.radius, color, 0.7);
           this.fx.burst(P.pos.x, 1, P.pos.z, color, 30, 10, 0.6);
           for (const m of this.monstersNear(P.pos, sk.radius)) { m.slowT = 4; this.hitMonster(m, spell(), { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 }); }
@@ -749,6 +776,7 @@ export class World {
         this.swing = 0.3;
         addAP(st, 'wis', v.mp * AP_TABLE.supportPerMp, this.autoMult);
         this.healPlayer(pw * d.healMult);
+        sfx('heal');
         this.fx.pillar(P.pos.x, P.pos.z, color, 0.9, 4, 1);
         break;
       }
@@ -758,6 +786,7 @@ export class World {
         addAP(st, sk.ap === 'weapon' ? d.cls.ap : sk.ap, v.mp * AP_TABLE.supportPerMp, this.autoMult);
         const val = sk.buff === 'shield' ? pw * d.healMult : pw;
         this.buffs[sk.buff] = { v: val, t: sk.duration, max: sk.duration, id };
+        sfx('buff');
         this.fx.ring(P.pos.x, P.pos.z, 2.5, color, 0.8);
         this.d = derive(st, this.buffValues());
         break;
@@ -784,6 +813,7 @@ export class World {
     const clipDur = P.action(anim)?.getClip().duration || 1;
     const speed = Math.max(0.9, Math.min(2.6, clipDur / (interval * 0.92)));
     P.act(anim, speed, 0.9);
+    sfx(cls.kind === 'ranged' ? 'shoot' : cls.kind === 'magic' ? 'magic' : cls.hands === 2 ? 'heavy' : 'swing', 0.8);
     this.swing = interval * 0.5;
     this.later(interval * 0.42, () => {
       if (this.dead || t.dead) return;
@@ -1034,6 +1064,12 @@ export class World {
       if (zn) st.lastZone = zn.id;
       this.ui.zone(id === 'town' ? TOWN : zn);
     }
+    this.musicT = (this.musicT || 0) - dt;
+    if (this.musicT <= 0) {
+      this.musicT = 0.5;
+      const boss = this.monsters.some((m) => !m.dead && m.tier === 'boss' && m.state === 'chase' && dist2(m.pos, P.pos) < 26);
+      audio.setMusic(boss ? 'boss' : this.zone);
+    }
     st.pos = { x: P.pos.x, z: P.pos.z };
   }
 
@@ -1050,6 +1086,7 @@ export class World {
         learn(st, it.book);
         st.inv.splice(st.inv.indexOf(it), 1);
         this.ui.toast(`새 스킬을 배웠습니다: ${SKILLS[it.book].name}`, '#ffd84a');
+        sfx('learn');
         this.fx.pillar(this.player.pos.x, this.player.pos.z, 0x80c0ff, 1.2);
       } else if (c.known) {
         st.inv.splice(st.inv.indexOf(it), 1);
