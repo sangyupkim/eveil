@@ -1,0 +1,286 @@
+// 화면 위 정보: HP/MP · EXP · 퀵슬롯 · 미니맵 · 이름표 · 알림 · 각성 연출 · 사망 화면
+import * as THREE from 'three';
+import { STAT_NAMES, STAT_COLORS, STATS, TIERS, CONFIG } from '../data/config.js';
+import { SKILLS } from '../data/skills.js';
+import { ZONES, TOWN, WORLD_SIZE } from '../data/world.js';
+import { expNeeded, powerLevel } from '../game/growth.js';
+import { countOf } from '../game/inventory.js';
+import { skillValues } from '../game/skills.js';
+
+const $ = (s, r = document) => r.querySelector(s);
+
+export class HUD {
+  constructor() {
+    this.fxLayer = $('#fx');
+    this.labelLayer = $('#labels');
+    this.labels = new Map();
+    this.isDirty = true;
+    this.v = new THREE.Vector3();
+    this.mapCtx = $('#minimap').getContext('2d');
+    this.mapT = 0;
+    this.onDirty = () => {};
+    this.buildQuick();
+  }
+
+  attach(world) { this.world = world; this.dirty(); }
+
+  dirty() { this.isDirty = true; this.onDirty(); }
+
+  toast(msg, color) {
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    if (color) el.style.color = color;
+    const box = $('#toasts');
+    box.appendChild(el);
+    while (box.children.length > 3) box.firstChild.remove();
+    setTimeout(() => el.remove(), 2200);
+  }
+
+  log(msg, color) {
+    const el = document.createElement('div');
+    el.textContent = msg;
+    if (color) el.style.color = color;
+    const box = $('#log');
+    box.appendChild(el);
+    while (box.children.length > 5) box.firstChild.remove();
+  }
+
+  zone(z) {
+    $('.zoneName').textContent = z ? z.name : '황야';
+    let info = '안전 지역 · 상점 이용 가능';
+    if (z && z.levels) info = `위험도 ${z.levels[0]}~${z.levels[1]} · 권장 각성 ${Math.max(0, (z.levels[0] - 1) * 2)}+`;
+    else if (!z) info = '지역 사이의 황야';
+    $('.zoneInfo').textContent = info;
+    $('#mapZone').textContent = z ? z.name : '황야';
+    $('#shopBtn').hidden = !(z && z.id === 'town');
+    this.log(`— ${z ? z.name : '황야'} —`, '#9a917f');
+  }
+
+  awaken(r) {
+    const el = $('#awaken');
+    const gains = STATS.filter((s) => r.gains[s] > 0)
+      .map((s) => `<span style="color:${STAT_COLORS[s]}">${STAT_NAMES[s]} +${r.gains[s]}</span>`).join('');
+    const top = STATS.filter((s) => r.shares[s] > 0.005).sort((a, b) => r.shares[b] - r.shares[a])
+      .map((s) => `${STAT_NAMES[s]} ${Math.round(r.shares[s] * 100)}%`).join(' · ');
+    el.innerHTML = `<h1>각성</h1><div class="gains">${gains}</div><div class="why">최근 행동: ${top || '없음'}</div>`;
+    el.hidden = false;
+    el.style.animation = 'none';
+    void el.offsetWidth;
+    el.style.animation = '';
+    clearTimeout(this.awT);
+    this.awT = setTimeout(() => { el.hidden = true; }, 3200);
+    this.log(`각성 ${r.n}회: ${STATS.filter((s) => r.gains[s]).map((s) => `${STAT_NAMES[s]}+${r.gains[s]}`).join(' ')}`, '#ffd860');
+    this.dirty();
+  }
+
+  death(lostName, color) {
+    const el = $('#death');
+    el.innerHTML = `<h1>사망</h1>
+      <div>${lostName ? `<span style="color:${color}">${lostName}</span>을(를) 쓰러진 자리에 떨어뜨렸습니다.<br><span class="note">${CONFIG.deathItemLifetime / 60}분 안에 돌아가면 되찾을 수 있습니다.</span>` : '잃어버린 물건은 없습니다.'}</div>
+      <button class="big" id="btnRevive">마을에서 부활</button>`;
+    el.hidden = false;
+    $('#btnRevive').onclick = () => { el.hidden = true; this.world.revive(); };
+  }
+
+  buildQuick() {
+    const q = $('#quick');
+    q.innerHTML = '';
+    for (let i = 0; i < CONFIG.quickSlots; i++) {
+      const s = document.createElement('div');
+      s.className = 'slot empty';
+      s.innerHTML = `<span class="key">${i + 1}</span><div class="ico"></div><div class="cd"></div><span class="rank"></span>`;
+      s.dataset.i = i;
+      q.appendChild(s);
+    }
+  }
+
+  // 매 프레임
+  update(dt) {
+    const w = this.world;
+    if (!w) return;
+    const st = w.st, d = w.d;
+    $('.bar.hp i').style.transform = `scaleX(${Math.max(0, st.hp / d.maxHp)})`;
+    $('.bar.hp span').textContent = `${Math.ceil(Math.max(0, st.hp))} / ${d.maxHp}`;
+    $('.bar.mp i').style.transform = `scaleX(${Math.max(0, st.mp / d.maxMp)})`;
+    $('.bar.mp span').textContent = `${Math.floor(st.mp)} / ${d.maxMp}`;
+    const need = expNeeded(st.awakenings);
+    $('#expBar i').style.transform = `scaleX(${st.exp / need})`;
+    $('#expBar span').textContent = `각성 EXP ${((st.exp / need) * 100).toFixed(2)}%${w.auto ? '  (자동 사냥 -20%)' : ''}`;
+
+    // 퀵슬롯 쿨타임
+    const slots = $('#quick').children;
+    for (let i = 0; i < slots.length; i++) {
+      const id = st.quick[i];
+      const el = slots[i];
+      if (!id || !st.skills[id]) continue;
+      const v = skillValues(id, st.skills[id].rank);
+      const cd = Math.max(0, w.cds[id] || 0);
+      el.querySelector('.cd').style.transform = `scaleY(${cd / v.cd})`;
+      el.classList.toggle('nomp', st.mp < v.mp);
+    }
+
+    // 대상
+    const t = w.target && !w.target.dead ? w.target : null;
+    const tf = $('#targetFrame');
+    tf.hidden = !t;
+    if (t) {
+      const tn = tf.querySelector('.tname');
+      tn.textContent = `${t.name}  ·  위험도 ${t.level}`;
+      tn.style.color = TIERS[t.tier].color;
+      tf.querySelector('i').style.transform = `scaleX(${t.hp / t.maxHp})`;
+      tf.querySelector('i').style.transformOrigin = 'left';
+    }
+    $('#autoText').hidden = !w.auto;
+    $('#btnAuto').classList.toggle('on', w.auto);
+
+    // 버프
+    const bb = $('#buffs');
+    const active = Object.entries(w.buffs).filter(([, b]) => b.t > 0);
+    if (bb.childElementCount !== active.length || this.isDirty) {
+      bb.innerHTML = active.map(([, b]) => `<div class="buff" style="background:${SKILLS[b.id].color}55;border-color:${SKILLS[b.id].color}">${SKILLS[b.id].glyph}</div>`).join('');
+    }
+
+    this.updateLabels();
+    this.mapT -= dt;
+    if (this.mapT <= 0) { this.mapT = 0.15; this.drawMap(); }
+
+    if (this.isDirty) {
+      this.isDirty = false;
+      $('#gold').textContent = st.gold.toLocaleString();
+      $('#awakeBadge b').textContent = st.awakenings;
+      $('#btnHp span').textContent = countOf(st, 'hp_potion') + countOf(st, 'hp_potion_l');
+      $('#btnMp span').textContent = countOf(st, 'mp_potion') + countOf(st, 'mp_potion_l');
+      for (let i = 0; i < slots.length; i++) {
+        const id = st.quick[i];
+        const el = slots[i];
+        const ico = el.querySelector('.ico');
+        if (id && st.skills[id]) {
+          const sk = SKILLS[id];
+          el.classList.remove('empty');
+          ico.textContent = sk.glyph;
+          ico.style.background = `radial-gradient(circle at 35% 30%, ${sk.color}, #1a120a 90%)`;
+          el.querySelector('.rank').textContent = st.skills[id].rank;
+          el.title = sk.name;
+        } else {
+          el.classList.add('empty');
+          ico.textContent = '';
+          ico.style.background = 'none';
+          el.querySelector('.rank').textContent = '';
+          el.querySelector('.cd').style.transform = 'scaleY(0)';
+        }
+      }
+    }
+  }
+
+  // 몬스터 머리 위 이름/HP, 바닥 아이템 이름
+  updateLabels() {
+    const w = this.world;
+    const cam = w.stage.camera;
+    const W = window.innerWidth, H = window.innerHeight;
+    const seen = new Set();
+    const P = w.player.pos;
+    const place = (key, pos, y, make, update) => {
+      this.v.set(pos.x, y, pos.z).project(cam);
+      if (this.v.z > 1 || Math.abs(this.v.x) > 1.1 || Math.abs(this.v.y) > 1.1) return;
+      let el = this.labels.get(key);
+      if (!el) { el = make(); this.labelLayer.appendChild(el); this.labels.set(key, el); }
+      update?.(el);
+      el.style.left = `${(this.v.x * 0.5 + 0.5) * W}px`;
+      el.style.top = `${(-this.v.y * 0.5 + 0.5) * H}px`;
+      seen.add(key);
+    };
+    for (const m of w.monsters) {
+      if (m.dead) continue;
+      const dd = Math.hypot(m.pos.x - P.x, m.pos.z - P.z);
+      const show = m.tier !== 'normal' || m.showHp > 0 || m === w.target;
+      if (dd > 24 || !show) continue;
+      place('m' + m.id, m.pos, 2.6 * m.actor.scale, () => {
+        const el = document.createElement('div');
+        el.className = 'lbl';
+        el.innerHTML = `<div class="n"></div><div class="hpb"><i></i></div>`;
+        el.querySelector('.n').textContent = m.name;
+        el.querySelector('.n').style.color = TIERS[m.tier].color;
+        return el;
+      }, (el) => { el.querySelector('i').style.width = `${(m.hp / m.maxHp) * 100}%`; });
+    }
+    for (const g of w.ground) {
+      if (Math.hypot(g.x - P.x, g.z - P.z) > 20) continue;
+      place('g' + g.gid, g, 0.6, () => {
+        const el = document.createElement('div');
+        el.className = 'lbl item';
+        el.textContent = g.label;
+        el.style.color = g.color;
+        el.onpointerdown = (e) => { e.stopPropagation(); w.cmdMove(g.x, g.z); w.manual(); };
+        return el;
+      });
+    }
+    if (Math.hypot(w.npc.pos.x - P.x, w.npc.pos.z - P.z) < 22) {
+      place('npc', w.npc.pos, 2.9, () => {
+        const el = document.createElement('div');
+        el.className = 'lbl npc';
+        el.textContent = `${w.npc.name} (상점)`;
+        return el;
+      });
+    }
+    for (const [k, el] of this.labels) if (!seen.has(k)) { el.remove(); this.labels.delete(k); }
+  }
+
+  drawMap() {
+    const w = this.world;
+    const c = this.mapCtx;
+    const S = 160, R = 55; // 미니맵 반경(월드 단위)
+    const P = w.player.pos;
+    const k = S / (R * 2);
+    const tx = (x) => (x - P.x) * k + S / 2;
+    const tz = (z) => (z - P.z) * k + S / 2;
+    c.clearRect(0, 0, S, S);
+    c.fillStyle = 'rgba(20,22,18,0.9)';
+    c.fillRect(0, 0, S, S);
+    c.lineWidth = 1;
+    for (const z of ZONES) {
+      c.beginPath();
+      c.arc(tx(z.x), tz(z.z), z.r * k, 0, Math.PI * 2);
+      c.fillStyle = `rgba(${z.ground.map((v) => Math.round(v * 255)).join(',')},0.55)`;
+      c.fill();
+    }
+    c.beginPath();
+    c.arc(tx(TOWN.x), tz(TOWN.z), TOWN.r * k, 0, Math.PI * 2);
+    c.fillStyle = 'rgba(120,90,50,0.55)';
+    c.fill();
+    c.strokeStyle = 'rgba(232,195,106,0.5)';
+    c.stroke();
+    c.beginPath();
+    c.arc(tx(0), tz(0), WORLD_SIZE * k, 0, Math.PI * 2);
+    c.strokeStyle = 'rgba(0,0,0,0.8)';
+    c.lineWidth = 3;
+    c.stroke();
+    for (const m of w.monsters) {
+      if (m.dead) continue;
+      const big = m.tier !== 'normal';
+      c.fillStyle = TIERS[m.tier].color === '#e8e2d4' ? '#d04030' : TIERS[m.tier].color;
+      c.fillRect(tx(m.pos.x) - (big ? 2.5 : 1.5), tz(m.pos.z) - (big ? 2.5 : 1.5), big ? 5 : 3, big ? 5 : 3);
+    }
+    for (const g of w.ground) {
+      c.fillStyle = g.color;
+      c.fillRect(tx(g.x) - 1, tz(g.z) - 1, 2, 2);
+    }
+    // 보스 위치 표시
+    for (const sp of w.spawners) {
+      if (sp.tier !== 'boss') continue;
+      c.fillStyle = sp.mon ? '#ff5a4a' : 'rgba(255,90,74,0.3)';
+      c.font = '10px sans-serif';
+      c.fillText('☠', tx(sp.x) - 4, tz(sp.z) + 4);
+    }
+    c.save();
+    c.translate(S / 2, S / 2);
+    c.rotate(-w.player.root.rotation.y + Math.PI);
+    c.fillStyle = '#ffe080';
+    c.beginPath();
+    c.moveTo(0, -5); c.lineTo(4, 4); c.lineTo(-4, 4);
+    c.fill();
+    c.restore();
+  }
+}
+
+export { powerLevel };

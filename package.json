@@ -1,0 +1,17 @@
+{
+  "name": "ashen-chronicle",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "어두운 판타지 쿼터뷰 웹 RPG — 행동 기반 성장",
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "test": "node tools/test.mjs",
+    "prep-assets": "node tools/prep-assets.mjs"
+  },
+  "devDependencies": {
+    "@gltf-transform/core": "^4.1.0",
+    "@gltf-transform/functions": "^4.1.0",
+    "three": "0.170.0"
+  }
+}

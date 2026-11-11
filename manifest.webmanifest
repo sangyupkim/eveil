@@ -1,0 +1,10 @@
+{
+  "name": "잿빛 연대기",
+  "short_name": "잿빛 연대기",
+  "start_url": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0e1114",
+  "theme_color": "#0e1114",
+  "icons": []
+}
