@@ -11,7 +11,9 @@ import { expNeeded } from '../game/growth.js';
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
-import { itemIcon, skillIcon, portrait, chestIcon, bookIcon, coinIcon, scrollIcon } from './icons.js';
+import { itemIcon, skillIcon, portrait, chestIcon, bookIcon, coinIcon, scrollIcon, townIcon, oreIcon } from './icons.js';
+import { PLOTS, BUILDINGS, EXPEDITIONS, townOf, buildingAt, build, upgrade, collect, enhance, enhanceCap, enhanceCost, hire, mercSlots, dispatch, claim, tick } from '../game/town.js';
+import { mercCost } from '../data/buildings.js';
 import { QUESTS, QUEST_BOOKS } from '../data/quests.js';
 import { ZONES } from '../data/world.js';
 import { nextQuest, questDone, questNeed, goalText, questTurnIn } from '../game/quests.js';
@@ -19,8 +21,8 @@ import { audio } from '../engine/audio.js';
 import { cloud } from '../net/cloud.js';
 import { uiSettings, applyUi, editUi } from './layout.js';
 
-const TITLES = { inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', shop: '상점', menu: '메뉴' };
-const TAB_ORDER = ['inv', 'skills', 'char', 'quest', 'shop', 'menu'];
+const TITLES = { inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', town: '마을', shop: '상점', menu: '메뉴' };
+const TAB_ORDER = ['inv', 'skills', 'char', 'quest', 'town', 'shop', 'menu'];
 const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '');
 const ico = (it) => `<img src="${itemIcon(it)}" alt="" draggable="false" />`;
 const sicon = (id) => `<div class="sicon" style="background:radial-gradient(circle at 35% 30%, ${SKILLS[id].color}, #17111f 90%)"><img src="${skillIcon(id)}" alt="" /></div>`;
@@ -62,7 +64,7 @@ export class Windows {
 
   render() {
     $('h2', this.el).textContent = TITLES[this.kind];
-    const icons = { inv: chestIcon(), skills: bookIcon(), char: portrait(this.w.st.look), shop: coinIcon(), quest: scrollIcon() };
+    const icons = { inv: chestIcon(), skills: bookIcon(), char: portrait(this.w.st.look), shop: coinIcon(), quest: scrollIcon(), town: townIcon() };
     const tabs = $('.tabs', this.el);
     tabs.innerHTML = TAB_ORDER.filter((k) => k !== 'shop' || this.w.inTown).map((k) =>
       `<button class="tab${k === this.kind ? ' on' : ''}" data-tab="${k}">${icons[k] ? `<img src="${icons[k]}" alt="" />` : '<b class="gear" style="width:1.8em;height:1.8em"></b>'}<span>${TITLES[k].split(' ')[0]}</span></button>`).join('');
@@ -266,6 +268,58 @@ export class Windows {
     return `<div class="cols"><div class="frame detail" style="flex:1.1">${det}</div><div class="frame" style="flex:1">${list}</div></div>`;
   }
 
+  town() {
+    const st = this.w.st, t = townOf(st);
+    tick(st);
+    const sel = this.townSel || PLOTS[0].id;
+    const b = buildingAt(st, sel);
+    const left = PLOTS.map((pl) => {
+      const x = t.plots[pl.id];
+      const def = x && BUILDINGS[x.type];
+      const stock = def?.rate ? `<div class="mini"><i style="width:${(x.stock / def.store(x.lv)) * 100}%;background:linear-gradient(#ffe7a0,#c99a3a)"></i></div>` : '';
+      return `<div class="row pick${pl.id === sel ? ' on' : ''}" data-plot="${pl.id}"><div class="grow"><b>${def ? `${def.name} <small>${x.lv}단계</small>` : '빈터'}</b><div class="note">${def ? def.desc : pl.name}</div>${stock}</div>
+        ${def?.rate ? `<span class="note">${Math.floor(x.stock)} / ${def.store(x.lv)}</span>` : ''}</div>`;
+    }).join('');
+    let right = '';
+    if (!b) {
+      right = `<h3>무엇을 지을까</h3>` + Object.entries(BUILDINGS).map(([k, d]) => {
+        const has = Object.values(t.plots).some((q) => q.type === k);
+        return `<div class="row"><div class="grow"><b>${d.name}</b><div class="note">${d.desc}</div></div><button class="btn" data-build="${k}" ${has || st.gold < d.cost(0) ? 'disabled' : ''}>${has ? '지음' : d.cost(0).toLocaleString() + ' G'}</button></div>`;
+      }).join('');
+    } else {
+      const def = BUILDINGS[b.type], up = def.cost(b.lv);
+      right = `<h3>${def.name} · ${b.lv}단계</h3><div class="btns" style="margin:0 0 8px"><button class="btn" data-upgrade="1" ${up == null || st.gold < up ? 'disabled' : ''}>${up == null ? '최고 단계' : `단계 올리기 ${up.toLocaleString()} G`}</button></div>`;
+      if (def.rate) right += `<div class="kv"><span>생산</span><b>시간당 ${def.rate(b.lv)}</b><span>쌓인 양</span><b>${Math.floor(b.stock)} / ${def.store(b.lv)}</b></div>
+        <div class="btns"><button class="btn gold" data-collect="1" ${b.stock < 1 ? 'disabled' : ''}>거두기</button></div>`;
+      if (b.type === 'smithy') {
+        const cap = enhanceCap(st);
+        right += `<div class="note">강화 상한 +${cap} · 실패해도 단계는 떨어지지 않는다</div>`;
+        for (const slot of SLOTS) {
+          const it = st.equip[slot];
+          if (!it) continue;
+          const c = enhanceCost(it), max = (it.plus || 0) >= cap;
+          right += `<div class="row"><div class="cell shopIco${rar(it)}">${ico(it)}</div><div class="grow"><b style="color:${itemColor(it)}">${esc(itemName(it))}</b>
+            <div class="note">${max ? '상한' : `+${(it.plus || 0) + 1} · ${Math.round(c.chance * 100)}% · ${c.gold.toLocaleString()} G · 강화석 ${c.ore}`}</div></div>
+            <button class="btn" data-enh="${slot}" ${max || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>강화</button></div>`;
+        }
+      }
+      if (b.type === 'inn') {
+        const zones = ZONES.filter((z) => z.levels[0] <= 1 + st.awakenings * 1.5);
+        t.mercs.forEach((m, i) => {
+          const left = m.job ? Math.max(0, m.job.until - Date.now()) : 0;
+          right += `<div class="row"><div class="grow"><b>${m.name}</b> <small>Lv ${m.lv}</small><div class="note">${m.job ? (left > 0 ? `${ZONES.find((z) => z.id === m.job.zone).name} · ${Math.ceil(left / 60000)}분 남음` : '돌아옴') : '쉬는 중'}</div></div>
+            ${m.job && left <= 0 ? `<button class="btn gold" data-claim="${i}">전리품</button>` : ''}</div>`;
+          if (!m.job) right += `<div class="btns" style="margin:0 0 8px"><select data-zone="${i}" class="btn">${zones.map((z) => `<option value="${z.id}">${z.name}</option>`).join('')}</select>${EXPEDITIONS.map((e) => `<button class="btn" data-go-exp="${i}|${e.id}">${e.name} ${e.min}분</button>`).join('')}</div>`;
+        });
+        const n = t.mercs.length, slots = mercSlots(st);
+        if (n < slots) right += `<div class="btns"><button class="btn" data-hire="1" ${st.gold < mercCost(n) ? 'disabled' : ''}>용병 고용 ${Math.round(mercCost(n)).toLocaleString()} G</button></div>`;
+        else right += `<div class="note">용병 ${n} / ${slots} · 여관 단계를 올리면 더 고용</div>`;
+      }
+    }
+    return `<div class="cols"><div class="frame" style="flex:0 0 40%"><h3>마을 <span class="goldTxt">${st.gold.toLocaleString()} G</span></h3><div class="note" style="display:flex;gap:6px;align-items:center"><img src="${oreIcon()}" style="width:1.6em" alt="" />강화석 ${t.ore}</div>${left}</div>
+      <div class="frame detail" style="flex:1">${right}</div></div>`;
+  }
+
   shop() {
     const st = this.w.st;
     if (this.sel?.from === 'equip') this.sel = null;
@@ -404,6 +458,29 @@ export class Windows {
     });
     on('[data-uiedit]', () => { this.close(); editUi(st, () => w.ui.toast('UI 위치를 저장했습니다')); });
     on('[data-uireset]', () => { st.settings.ui = undefined; applyUi(st); this.render(); });
+    on('[data-plot]', (el) => { this.townSel = el.dataset.plot; audio.play('click'); this.render(); });
+    const townDone = (r, okMsg) => { if (!r?.ok) { if (r?.why) w.ui.toast(r.why); audio.play('error'); } else { if (okMsg) w.ui.toast(okMsg, '#ffd84a'); w.refreshTown(); w.ui.dirty(); } this.render(); };
+    on('[data-build]', (el) => { const r = build(st, this.townSel || PLOTS[0].id, el.dataset.build); if (r.ok) audio.play('rankup'); townDone(r, `${BUILDINGS[el.dataset.build].name}을(를) 지었습니다`); });
+    on('[data-upgrade]', () => { const r = upgrade(st, this.townSel); if (r.ok) audio.play('rankup'); townDone(r, '단계를 올렸습니다'); });
+    on('[data-collect]', () => { const r = collect(st, this.townSel); if (r?.n) { audio.play('coin'); w.ui.toast(`${r.what} ${r.n}개를 거뒀습니다`, '#ffd84a'); } w.ui.dirty(); this.render(); });
+    on('[data-enh]', (el) => {
+      const it = st.equip[el.dataset.enh], r = enhance(st, it);
+      if (!r.ok) { w.ui.toast(r.why); audio.play('error'); }
+      else if (r.success) { audio.play('awaken'); w.fx.pillar(w.player.pos.x, w.player.pos.z, 0xffd060, 0.8); w.ui.toast(`강화 성공! +${r.plus}`, '#ffd84a'); w.refreshGear(); }
+      else { audio.play('error'); w.ui.toast('강화 실패 (단계는 그대로)'); }
+      w.ui.dirty(); this.render();
+    });
+    on('[data-hire]', () => townDone(hire(st), '용병을 고용했습니다'));
+    on('[data-go-exp]', (el) => {
+      const [i, ex] = el.dataset.goExp.split('|');
+      const zone = body.querySelector(`[data-zone="${i}"]`)?.value;
+      townDone(dispatch(st, Number(i), zone, ex), '용병이 사냥을 떠났습니다');
+    });
+    on('[data-claim]', (el) => {
+      const r = claim(st, Number(el.dataset.claim));
+      if (r) { audio.play('coin'); w.ui.toast(`전리품: ${r.gold.toLocaleString()} G · 강화석 ${r.ore}${r.items.length ? ` · 장비 ${r.items.length}개` : ''}`, '#ffd84a'); }
+      w.ui.dirty(); this.render();
+    });
     on('[data-go]', (el) => this.show(el.dataset.go));
     on('[data-close]', () => { audio.play('click'); this.close(); });
     on('[data-full]', () => toggleFullscreen());

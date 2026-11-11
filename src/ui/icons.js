@@ -40,3 +40,5 @@ export const scrollIcon = () => iconUrl(224);
 export const homeIcon = () => iconUrl(19);
 export const duelIcon = () => iconUrl(1);
 export const swordIcon = () => iconUrl(1);
+export const townIcon = () => iconUrl(103);
+export const oreIcon = () => iconUrl(71);

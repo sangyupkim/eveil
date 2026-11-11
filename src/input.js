@@ -1,5 +1,6 @@
 // 입력: PC(마우스 · 키보드) + 모바일(조이스틱 · 터치 · 버튼)
 import { isTouch } from './engine2d/stage.js';
+import { PLOTS } from './data/buildings.js';
 
 const $ = (s) => document.querySelector(s);
 
@@ -35,6 +36,15 @@ export function setupInput(world, stage, windows) {
     const m = pickMonster(e.clientX, e.clientY);
     world.manual();
     if (m) { world.cmdAttack(m); return; }
+    if (world.inTown) {
+      const w = groundAt(e.clientX, e.clientY);
+      const pl = PLOTS.find((q) => Math.hypot(q.x - w.x, q.z - w.z) < 3.2);
+      if (pl) {
+        if (Math.hypot(pl.x - world.player.pos.x, pl.z - world.player.pos.z) < 6) { windows.townSel = pl.id; windows.show('town'); }
+        else world.cmdMove(pl.x, pl.z + 2.5);
+        return;
+      }
+    }
     if (pickNpc(e.clientX, e.clientY, world.guard)) {
       const n = world.guard.pos;
       if (Math.hypot(n.x - world.player.pos.x, n.z - world.player.pos.z) < 5) windows.show('quest');
@@ -153,6 +163,7 @@ export function setupInput(world, stage, windows) {
     if (k === 'c') windows.toggle('char');
     if (k === 'm') windows.toggle('menu');
     if (k === 'j') windows.toggle('quest');
+    if (k === 't') windows.toggle('town');
     if (k === 'p' && world.inTown) windows.toggle('shop');
     if (windows.open || e.repeat) return;
     if (k >= '1' && k <= '6') { world.manual(); world.useSkill(world.st.quick[Number(k) - 1]); }

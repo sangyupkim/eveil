@@ -38,6 +38,10 @@ export const isBook = (it) => !!it.book;
 export const isEquip = (it) => !it.book && !!BASES[it.base]?.slot;
 
 export function itemName(it) {
+  const n = baseName(it);
+  return it.plus ? `+${it.plus} ${n}` : n;
+}
+function baseName(it) {
   if (it.book) return `스킬북: ${SKILLS[it.book].name}`;
   const base = BASES[it.base];
   if (base.type === 'potion') return base.name;

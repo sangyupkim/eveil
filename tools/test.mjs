@@ -7,6 +7,8 @@ import { learn, addSkillExp, canLearn } from '../src/game/skills.js';
 import { rollLoot, rollDeathDrop } from '../src/game/loot.js';
 import { makeItem, itemName, rollBase } from '../src/game/items.js';
 import * as await_fs from 'node:fs';
+import { townOf, build, tick, collect, enhance, hire, dispatch, claim, buildingAt } from '../src/game/town.js';
+import { BUILDINGS } from '../src/data/buildings.js';
 import { MONSTER_LOOK, ITEM_LOOK, SKILL_ICON } from '../src/data/flareWorld.js';
 import { addItem, equip } from '../src/game/inventory.js';
 import { seeded } from '../src/game/rng.js';
@@ -195,6 +197,33 @@ test('지역 · 몬스터 · 스킬 · 장비 데이터가 서로 맞물린다',
     for (let i = 0; i < 4000; i++) got.add(BASES[rollBase(lv)].slot);
     assert.equal(got.size, 9, String(lv));
   }
+});
+
+test('마을: 짓기 · 생산(꺼 둔 시간) · 강화 · 용병 파견', () => {
+  const p = newPlayer('방랑자', { face: 'm01' }, 'sword');
+  const t0 = 1_000_000_000_000;
+  p.gold = 100000;
+  townOf(p, t0);
+  assert.ok(build(p, 'p1', 'mine').ok);
+  assert.equal(build(p, 'p2', 'mine').ok, false); // 같은 건물은 하나
+  assert.ok(build(p, 'p2', 'smithy').ok && build(p, 'p3', 'inn').ok && build(p, 'p4', 'herb').ok);
+  tick(p, t0 + 2 * 3600000);                       // 2시간 꺼 둠
+  assert.equal(Math.floor(buildingAt(p, 'p1').stock), 12);
+  tick(p, t0 + 100 * 3600000);                     // 오래 꺼 둬도 창고만큼만
+  assert.equal(buildingAt(p, 'p1').stock, BUILDINGS.mine.store(1));
+  assert.equal(collect(p, 'p1').n, 30);
+  assert.equal(townOf(p).ore, 30);
+  const w = p.equip.weapon;
+  const d0 = derive(p).dmg[1];
+  let ok = 0; for (let i = 0; i < 4; i++) if (enhance(p, w, () => 0).success) ok++;
+  assert.equal(w.plus, 4); assert.equal(enhance(p, w, () => 0).ok, false); // 대장간 1단계 상한 +4
+  assert.ok(derive(p).dmg[1] > d0 * 1.2);
+  assert.ok(itemName(w).startsWith('+4 '));
+  assert.ok(hire(p).ok); assert.equal(hire(p).ok, false);               // 여관 1단계 = 1명
+  assert.ok(dispatch(p, 0, 'field', 'short', t0).ok);
+  assert.equal(claim(p, 0, t0 + 5 * 60000), null);                       // 아직
+  const g0 = p.gold, r = claim(p, 0, t0 + 11 * 60000, seeded(3));
+  assert.ok(r && r.gold > 0 && p.gold === g0 + r.gold && townOf(p).mercs[0].job === null);
 });
 
 console.log(`\n${n}개 통과`);

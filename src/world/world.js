@@ -16,6 +16,8 @@ import { FX } from '../engine2d/fx.js';
 import { resolveCollision, zoneAt, clearLine, findPath } from '../engine2d/stage.js';
 import { DATA, image, animImage, drawRect, frameIndex } from '../engine2d/sprites.js';
 import { MONSTER_LOOK, ITEM_LOOK, LOOT_LOOK } from '../data/flareWorld.js';
+import { PLOTS, BUILDINGS } from '../data/buildings.js';
+import { townOf, tick as townTick } from '../game/town.js';
 import { audio, familyOf } from '../engine/audio.js';
 const sfx = (n, k, fam) => audio.play(n, k, fam);
 
@@ -33,6 +35,17 @@ export class World {
     this.st = st;
     this.ui = ui;
     this.fx = new FX(stage, ui.fxLayer);
+    // 마을 빈터 바닥 표시 (아직 안 지은 곳)
+    stage.groundLayers.push((ctx, st) => {
+      const t = townOf(this.st);
+      for (const pl of PLOTS) {
+        if (t.plots[pl.id] || !st.onScreen(pl.x, pl.z, 4)) continue;
+        const p = st.toScreen(pl.x, pl.z), k = st.scale();
+        ctx.strokeStyle = `rgba(230,200,120,${0.35 + Math.sin(this.time * 2) * 0.15})`; ctx.lineWidth = 2; ctx.setLineDash([8, 6]);
+        ctx.beginPath(); ctx.moveTo(p.x, p.y - 64 * k); ctx.lineTo(p.x + 128 * k, p.y); ctx.lineTo(p.x, p.y + 64 * k); ctx.lineTo(p.x - 128 * k, p.y); ctx.closePath(); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    });
     // 고정한 타겟 발밑 표시
     stage.groundLayers.push((ctx, st) => {
       const t = this.target && !this.target.dead ? this.target : this.locked && !this.locked.dead ? this.locked : null;
@@ -69,6 +82,40 @@ export class World {
     this.makeNpc();
     this.makeSpawners();
     this.restoreGround();
+    this.townDraw = [];
+    this.refreshTown();
+    // 자리를 비운 동안 쌓인 것 알려 주기
+    const away = townTick(st);
+    if (away > 0.05 && Object.keys(townOf(st).plots).length) setTimeout(() => this.ui.log(`자리를 비운 ${away >= 1 ? Math.floor(away) + '시간' : Math.round(away * 60) + '분'} 동안 마을이 일했습니다 (마을 창에서 거두기)`, '#ffd84a'), 500);
+  }
+
+  // 마을 건물 그리기 (빈터는 팻말 + 바닥 표시)
+  refreshTown() {
+    for (const d of this.townDraw) this.stage.remove(d);
+    this.townDraw = [];
+    // 건물 부딪힘 판정도 다시 깐다
+    const C = this.stage.colliders;
+    for (const c of this.townCols || []) { const i = C.indexOf(c); if (i >= 0) C.splice(i, 1); }
+    this.townCols = [];
+    const col = (x, z, r) => { const c = { x, z, r }; C.push(c); this.townCols.push(c); };
+    const t = townOf(this.st);
+    const tile = (set, id, x, z) => {
+      const def = DATA.tiles[set], tt = def?.tiles[id];
+      if (!tt) return;
+      image(def.imgs[tt[0]]);
+      const d = { z, draw: (ctx, st) => { const src = image(def.imgs[tt[0]]); if (!src.ok) return; const p = st.toScreen(x, z); drawRect(ctx, src.im, tt.slice(1), p.x, p.y, st.scale()); } };
+      this.stage.add(d); this.townDraw.push(d);
+    };
+    for (const pl of PLOTS) {
+      const b = t.plots[pl.id];
+      if (!b) { tile('grassland', 138, pl.x, pl.z); continue; }
+      for (const [set, id, dx, dz] of BUILDINGS[b.type].look) {
+        tile(set, id, pl.x + dx, pl.z + dz);
+        // 오두막(296)은 기준점 오른쪽 위로 큰 바닥, 그 밖은 작은 원
+        if (id === 296 && set === 'grassland') { for (let u = -6; u <= 6; u += 1.2) for (let v = -6; v <= 6; v += 1.2) if (Math.abs(u) + Math.abs(v) <= 5.8) col(pl.x + dx + 7.3 + u, pl.z + dz - 2.2 + v, 0.9); }
+        else if (b.type !== 'herb') col(pl.x + dx, pl.z + dz, 0.8);
+      }
+    }
   }
 
   // ───────── 플레이어 ─────────
@@ -1225,6 +1272,14 @@ export class World {
       if (g.expires ? g.expires < now : this.time - g.born > 300) this.removeGround(g);
     }
     this.fx.update(dt);
+    // 마을 생산 · 용병: 5초마다 실제 시간으로
+    this.townT = (this.townT || 0) - dt;
+    if (this.townT <= 0) {
+      this.townT = 5;
+      townTick(st);
+      const back = townOf(st).mercs.filter((m) => m.job && Date.now() >= m.job.until && !m.job.told);
+      for (const m of back) { m.job.told = true; this.ui.toast(`용병 ${m.name}이(가) 사냥에서 돌아왔습니다`, '#ffd84a'); }
+    }
   }
 
   updatePlayer(dt) {
