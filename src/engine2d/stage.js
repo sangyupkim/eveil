@@ -75,6 +75,7 @@ export function createStage(canvas) {
   stage.remove = (d) => stage.drawables.delete(d);
   stage.scene = { add: stage.add, remove: stage.remove }; // 예전 코드와 맞춤
   stage.render = (dt) => render(stage, dt);
+  stage.debugColliders = false;
   return stage;
 }
 
@@ -129,8 +130,10 @@ export function buildWorldProps(stage) {
 // 잿빛 초소: 천막 · 모닥불 · 대장간 모루 · 상자 · 울타리 · 귀환 차원문
 function buildTown(stage, rng) {
   addProp(stage, 'grassland', 265, 0, -2, 0);
-  for (const [id, x, z, r] of [[296, -11, -9, 2.4], [296, 12, -10, 2.4], [100, -15, 3, 1.1], [101, 14, 4, 1.1], [76, -6, -13, 0.8], [102, -4, 6, 0.8], [103, 7, -6, 0.9],
+  for (const [id, x, z, r] of [[296, -20, -12, 0], [296, 6, -15, 0], [100, -15, 3, 1.1], [101, 14, 4, 1.1], [76, -6, -13, 0.8], [102, -4, 6, 0.8], [103, 7, -6, 0.9],
     [96, 4, -12, 0.9], [98, 5.5, -12.5, 0.9], [99, -8, -13, 0.9], [100, -16, -6, 1], [76, 2.5, -9.5, 0.8], [77, -2.5, -10, 0.8], [138, 0, 14, 0.3], [139, 14, 0, 0.3]]) addProp(stage, 'grassland', id, x, z, r);
+  // 오두막(296)은 기준점에서 오른쪽 위로 뻗은 큰 그림 → 바닥 자리에 판정을 깐다
+  for (const [x, z] of [[-20, -12], [6, -15]]) for (let a = 0; a < 4; a++) for (let b = 0; b < 3; b++) stage.colliders.push({ x: x + 2.5 + a * 1.6, z: z - 2 - b * 1.6 + a * 0.2, r: 1.1 });
   // 울타리 (길 쪽 네 방향은 비운다)
   for (let i = 0; i < 72; i++) {
     const a = (i / 72) * Math.PI * 2;
@@ -234,6 +237,7 @@ function render(stage, dt) {
     else o.draw(ctx, stage);
   }
   for (const g of stage.topLayers) g(ctx, stage);
+  if (stage.debugColliders) { ctx.strokeStyle = '#f0f'; for (const c of stage.colliders) { if (!stage.onScreen(c.x, c.z, c.r + 2)) continue; const p = stage.toScreen(c.x, c.z); ctx.beginPath(); ctx.ellipse(p.x, p.y, c.r * PX * s, c.r * PZ * s, 0, 0, 7); ctx.stroke(); } }
   // 조명: 지역 색감 + 플레이어 둘레만 밝은 어둠 (디아블로식)
   const zn = zoneAt(stage.cam.x, stage.cam.z);
   const grade = ZONE_LOOK[zn ? zn.id : Math.hypot(stage.cam.x, stage.cam.z) < TOWN.r ? 'town' : 'wild']?.grade;
