@@ -68,7 +68,9 @@ export function rollBase(ilvl, rng = R) {
   const ids = Object.keys(BASES).filter((id) => {
     const b = BASES[id];
     if (!b.slot) return false;
-    return (b.minLvl ?? 1) <= ilvl;
+    const lv = b.minLvl ?? 1;
+    // 너무 낮은 단계는 높은 곳에서 나오지 않는다 (장신구는 제외)
+    return lv <= ilvl && (lv > ilvl - 16 || b.slot === 'amulet' || b.slot === 'ring');
   });
   return pick(ids, rng);
 }

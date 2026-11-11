@@ -238,6 +238,17 @@ const SKILL_ART = {
   berserk: () => group(weapon('w_sword', -0.6, 0xd02030, 0.55), at(weapon('w_sword', 0.6, 0xd02030, 0.55), 0, 0, -0.25)),
   judgement: () => group(weapon('w_greatsword', 0, 0xffd860, 0.55), at(halo(0xfff0a0, 0.5, 0.06), 0, 1.6)),
   absolute_zero: () => group(crystals(0x9fe6ff), at(halo(0xdff6ff, 1.0, 0.05), 0, 0.15)),
+  dash_strike: () => group(weapon('w_sword', -1.1), at(swoosh(0xff8a3a, 0.7, Math.PI * 0.8), -0.6, 0.2, -0.2, 1.6), at(swoosh(0xffc080, 0.5, Math.PI * 0.6), -0.9, -0.2, -0.2, 1.6)),
+  war_cry: () => group(at(halo(0xff8a4a, 0.5, 0.07), 0, 0.2), at(halo(0xffb070, 0.8, 0.05), 0, 0.2), at(weapon('w_sword', 0), 0, -0.3)),
+  blade_storm: () => { const g = group(); for (let i = 0; i < 3; i++) { const w = weapon('w_sword', (i / 3) * Math.PI * 2); g.add(w); } const r = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.07, 6, 40), glowMat(0xffb060, 0.9)); r.rotation.x = 1.3; g.add(r); return g; },
+  piercing_arrow: () => group(at(arrow(0x9ae0c0), 0, 0, 0, -Math.PI / 2), at(halo(0x9ae0c0, 0.35, 0.05), 0.3, 0, 0), at(halo(0x9ae0c0, 0.35, 0.05), -0.3, 0, 0)),
+  arrow_rain: () => { const g = group(); for (let i = 0; i < 5; i++) g.add(at(arrow(), (i - 2) * 0.45, (i % 2) * 0.4, 0, Math.PI)); return g; },
+  eagle_eye: () => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.6, 20, 14), glowMat(0xd0f0a0, 0.4)); e.scale.y = 0.55; const p = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 12), glowMat(0x203010, 0.1)); p.position.z = 0.42; return group(e, p, at(halo(0xd0f0a0, 0.9, 0.04), 0, 0)); },
+  storm_volley: () => { const g = group(); for (let i = 0; i < 7; i++) g.add(at(arrow(0x7af0d0), 0, 0, 0, -0.9 + i * 0.3)); return g; },
+  phantom_arrow: () => group(at(arrow(0xc0a0ff), 0, 0, 0, -Math.PI / 4), at(flame(0xa080ff, 0xe0d0ff, 0.6), -0.4, -0.4, -0.2, Math.PI * 0.75)),
+  frost_bolt: () => at(crystals(0x8fd8ff), 0, -0.6, 0, -0.8),
+  flame_wave: () => group(at(flame(0xff5a1a, 0xffd080, 0.8), -0.5, -0.4, 0, -0.5), at(flame(0xff7a2a, 0xffe0a0, 1), 0, -0.5, 0.1, 0), at(flame(0xff5a1a, 0xffd080, 0.8), 0.5, -0.4, 0, 0.5)),
+  blizzard: () => group(at(crystals(0xb0e8ff), 0, -0.7), at(halo(0xe0f6ff, 1.0, 0.05), 0, 0.6), at(halo(0xe0f6ff, 0.6, 0.04), 0, 1.0)),
 };
 
 export function skillIcon(id) {

@@ -8,6 +8,8 @@
 | 무덤 · 죽은 나무 · 관 등 | KayKit Halloween Bits 1.0 — Kay Lousberg | CC0 1.0 |
 | 마을 건물 · 나무 · 바위 | KayKit Medieval Hexagon Pack 1.0 — Kay Lousberg | CC0 1.0 |
 | 몬스터(슬라임 · 버섯 · 오크 · 늑대 · 혼령 · 악마 · 용 등) | Quaternius — Ultimate Monsters · Animated Animals · Easy Enemies | CC0 1.0 |
+| 동물(뿔사슴 · 늑대 · 들소) · 공룡 몬스터 | Quaternius — Animated Animals · Dinosaurs | CC0 1.0 |
+| 나무 · 덤불 · 꽃 · 바위 등 자연 소품 | Quaternius — Ultimate Nature | CC0 1.0 |
 | 활 · 물약 · 책 · 장신구 그림 | Quaternius — Medieval Weapons · RPG Items | CC0 1.0 |
 | 3D 엔진 | three.js r170 (`vendor/three`) | MIT |
 

@@ -46,6 +46,8 @@ const FLY = { Flying_Idle: 'idle', Fast_Flying: 'run', Headbutt: 'attack', Punch
 const BEAST = { Idle: 'idle', Walk: 'walk', Gallop: 'run', Attack: 'attack', Attack_Headbutt: 'attack', Attack_Kick: 'attack2', Idle_HitReact_Left: 'hit', Death: 'death' };
 const easy = (n) => ({ [`${n}_Idle`]: 'idle', [`${n}_Walk`]: 'walk', [`${n}_Run`]: 'run', [`${n}_Flying`]: 'idle', [`${n}_Attack`]: 'attack', [`${n}_Death`]: 'death', [`${n}_Jump`]: 'jump' });
 const E = (f) => path.join(MF, 'enemies', f), Q = (f) => path.join(QS, 'easy_enemies_pack', f);
+const AN = (f) => path.join(QS, 'animals_pack', f), DI = (f) => path.join(QS, 'dinosaurs_pack', f);
+const dino = (n) => ({ [`${n}_Idle`]: 'idle', [`${n}_Walk`]: 'walk', [`${n}_Run`]: 'run', [`${n}_Attack`]: 'attack', [`${n}_Death`]: 'death', [`${n}_Jump`]: 'jump' });
 const MOBS = {
   m_slime: [E('Green_Blob.glb'), BLOB], m_slime_spiky: [E('Green_Spiky_Blob.glb'), BLOB], m_slime_pink: [E('Pink_Slime.glb'), BLOB],
   m_mushnub: [E('Mushnub.glb'), BLOB], m_mushnub_evo: [E('Mushnub_Evolved.glb'), BLOB], m_mushking: [E('Mushroom_King.glb'), BIPED],
@@ -55,6 +57,10 @@ const MOBS = {
   m_demon: [E('Demon.glb'), FLY], m_blue_demon: [E('Blue_Demon.glb'), BIPED], m_goleling: [E('Goleling.glb'), FLY],
   m_squidle: [E('Squidle.glb'), FLY], m_dragon: [E('Dragon_Evolved.glb'), FLY], m_wizard: [E('Wizard.glb'), BLOB], m_yeti: [E('Yeti.glb'), BLOB],
   m_rat: [Q('Rat.glb'), easy('Rat')], m_spider: [Q('Spider.glb'), easy('Spider')], m_wasp: [Q('Wasp.glb'), easy('Wasp')],
+  m_snake: [Q('Snake_angry.glb'), easy('Snake')],
+  m_stag: [AN('Stag.glb'), BEAST], m_husky: [AN('Husky.glb'), BEAST], m_bison: [AN('Bull.glb'), BEAST],
+  m_raptor: [DI('Velociraptor.glb'), dino('Velociraptor')], m_trex: [DI('Trex.glb'), dino('TRex')], m_tricer: [DI('Triceratops.glb'), dino('Triceratops')],
+  m_stego: [DI('Stegosaurus.glb'), dino('Stegosaurus')], m_paraso: [DI('Parasaurolophus.glb'), dino('Parasaurolophus')], m_apato: [DI('Apatosaurus.glb'), { ...dino('Apatosaurus'), Stegosaurus_Death: 'death' }],
 };
 for (const [name, [file, keep]] of Object.entries(MOBS)) {
   const doc = await io.read(file);
@@ -71,6 +77,21 @@ const PROPS = {
   i_potion_hp: I('Potion1_Filled.glb'), i_potion_mp: I('Potion3_Filled.glb'), i_potion_hp_l: I('Potion5_Filled.glb'), i_potion_mp_l: I('Potion7_Filled.glb'),
   i_book: I('Book1_Closed.glb'), i_book2: I('Book2_Closed.glb'), i_book3: I('Book3_Closed.glb'), i_book4: I('Book4_Closed.glb'),
 };
+// 자연 소품: 지역마다 (들판 · 숲 · 늪 · 설원 · 협곡 · 화염)
+const N = (f) => path.join(QS, 'nature_pack', f);
+const NATURE = {
+  n_tree1: 'CommonTree_1', n_tree2: 'CommonTree_3', n_tree3: 'CommonTree_5', n_tree_au: 'CommonTree_Autumn_2', n_tree_au2: 'CommonTree_Autumn_4',
+  n_pine1: 'PineTree_2', n_pine2: 'PineTree_4', n_pine_au: 'PineTree_Autumn_3',
+  n_birch: 'BirchTree_2', n_birch2: 'BirchTree_4', n_willow: 'Willow_2', n_willow2: 'Willow_4', n_willow_dead: 'Willow_Dead_3',
+  n_dead1: 'CommonTree_Dead_2', n_dead2: 'CommonTree_Dead_4', n_birch_dead: 'BirchTree_Dead_3',
+  n_snow_pine: 'PineTree_Snow_2', n_snow_pine2: 'PineTree_Snow_4', n_snow_tree: 'CommonTree_Snow_3', n_snow_birch: 'BirchTree_Snow_2', n_snow_dead: 'CommonTree_Dead_Snow_2',
+  n_bush: 'Bush_1', n_bush2: 'Bush_2', n_berries: 'BushBerries_1', n_bush_snow: 'Bush_Snow_1',
+  n_flowers: 'Flowers', n_grass: 'Grass', n_grass2: 'Grass_2', n_plant: 'Plant_2', n_plant2: 'Plant_4', n_lily: 'Lilypad', n_wheat: 'Wheat',
+  n_rock1: 'Rock_2', n_rock2: 'Rock_5', n_moss1: 'Rock_Moss_2', n_moss2: 'Rock_Moss_5', n_rock_snow: 'Rock_Snow_3', n_rock_snow2: 'Rock_Snow_6',
+  n_stump: 'TreeStump', n_stump_moss: 'TreeStump_Moss', n_log: 'WoodLog', n_log_moss: 'WoodLog_Moss', n_log_snow: 'WoodLog_Snow',
+  n_cactus: 'Cactus_2', n_cactus2: 'Cactus_4',
+};
+for (const [name, f] of Object.entries(NATURE)) PROPS[name] = N(f + '.glb');
 for (const [name, file] of Object.entries(PROPS)) {
   if (!fs.existsSync(file)) { console.warn('없음:', file); continue; }
   await write(await io.read(file), name);

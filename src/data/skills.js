@@ -2,6 +2,7 @@
 // tier: 1 하급 · 2 중급 · 3 상급 · 4 고대 · 5 전설
 // type: melee(단일) · spin(주변) · cleave(전방 부채꼴) · bolt(투사체 주문) · arrow(투사체 사격)
 //       chain(연쇄) · meteor(지점 낙하) · nova(자신 주변 주문) · buff (회복 주문은 없다 — 혼자 하는 게임)
+//       dash(돌진해 베기) · line(일직선 관통) · rain(지점에 여러 번) · cone(주문 부채꼴)
 // ap: 사용할 때 쌓이는 행동 기록 — weapon(무기 주 스탯) · int · vit (정신은 MP를 회복해야 오른다)
 // power: 랭크 1의 위력, perRank: 랭크당 증가
 //   weapon 계열은 무기 피해 배수, 주문 계열은 기본 피해(지능 배율이 곱해진다)
@@ -84,6 +85,64 @@ export const SKILLS = {
     name: '절대 영도', glyph: '영', color: '#a0e8ff', tier: 5, type: 'nova', ap: 'int',
     req: { int: 55 }, mp: 60, cd: 30, radius: 7.5, power: 200, perRank: 40,
     desc: '주변을 얼려 막대한 피해를 주고 적을 느리게 한다.',
+  },
+  // ───── 검 (힘) ─────
+  dash_strike: {
+    name: '돌진 베기', glyph: '돌', color: '#e07a3a', tier: 2, type: 'dash', ap: 'weapon', needs: 'melee',
+    req: { str: 16 }, mp: 9, cd: 5, range: 9, power: 1.9, perRank: 0.15, anim: 'heavy',
+    desc: '적에게 단숨에 달려들어 벤다.',
+  },
+  war_cry: {
+    name: '전투 함성', glyph: '함', color: '#ff8a4a', tier: 2, type: 'buff', ap: 'weapon', buff: 'might',
+    req: { str: 18 }, mp: 12, cd: 24, duration: 14, power: 20, perRank: 3,
+    desc: '함성을 질러 주는 피해를 높인다.',
+  },
+  blade_storm: {
+    name: '칼날 폭풍', glyph: '폭', color: '#ffb060', tier: 4, type: 'spin', ap: 'weapon', needs: 'melee',
+    req: { str: 38 }, mp: 30, cd: 12, radius: 5.5, power: 2.6, perRank: 0.2, anim: 'spin', hits: 3,
+    desc: '세 번 연달아 돌며 주변을 휩쓴다.',
+  },
+  // ───── 활 (민첩) ─────
+  piercing_arrow: {
+    name: '관통 화살', glyph: '관', color: '#9ae0c0', tier: 2, type: 'line', ap: 'weapon', needs: 'bow',
+    req: { dex: 17 }, mp: 9, cd: 4, range: 14, width: 1.6, power: 1.7, perRank: 0.14,
+    desc: '일직선 위의 적을 모두 꿰뚫는다.',
+  },
+  arrow_rain: {
+    name: '화살비', glyph: '비', color: '#a0f0b0', tier: 3, type: 'rain', ap: 'weapon', needs: 'bow',
+    req: { dex: 26 }, mp: 18, cd: 9, range: 13, radius: 4.2, power: 1.0, perRank: 0.08, waves: 4,
+    desc: '하늘에서 화살을 쏟아 넓은 곳을 여러 번 친다.',
+  },
+  eagle_eye: {
+    name: '매의 눈', glyph: '매', color: '#d0f0a0', tier: 3, type: 'buff', ap: 'weapon', buff: 'focus',
+    req: { dex: 24 }, mp: 14, cd: 28, duration: 14, power: 15, perRank: 2,
+    desc: '눈을 가늘게 떠 치명타 확률을 높인다.',
+  },
+  storm_volley: {
+    name: '폭풍 사격', glyph: '풍', color: '#7af0d0', tier: 4, type: 'arrow', ap: 'weapon', needs: 'bow',
+    req: { dex: 36 }, mp: 28, cd: 8, range: 13, power: 1.1, perRank: 0.08, count: 9,
+    desc: '아홉 발을 한꺼번에 흩뿌린다.',
+  },
+  phantom_arrow: {
+    name: '환영 화살', glyph: '환', color: '#c0a0ff', tier: 5, type: 'line', ap: 'weapon', needs: 'bow',
+    req: { dex: 48 }, mp: 45, cd: 18, range: 18, width: 3.2, power: 5.5, perRank: 0.4,
+    desc: '거대한 빛의 화살이 길 위의 모든 것을 꿰뚫는다.',
+  },
+  // ───── 지팡이 (지능) ─────
+  frost_bolt: {
+    name: '서리 화살', glyph: '서', color: '#8fd8ff', tier: 1, type: 'bolt', ap: 'int', slow: 3,
+    req: { int: 12 }, mp: 6, cd: 2, range: 11, power: 14, perRank: 3.5, fx: 'ice',
+    desc: '얼음 화살로 맞히고 느리게 만든다.',
+  },
+  flame_wave: {
+    name: '화염 파도', glyph: '파', color: '#ff6a2a', tier: 2, type: 'cone', ap: 'int',
+    req: { int: 19 }, mp: 14, cd: 5, radius: 7, power: 26, perRank: 6,
+    desc: '앞쪽 부채꼴로 불길을 내뿜는다.',
+  },
+  blizzard: {
+    name: '눈보라', glyph: '눈', color: '#b0e8ff', tier: 4, type: 'rain', ap: 'int', slow: 3,
+    req: { int: 38 }, mp: 40, cd: 13, range: 13, radius: 5, power: 50, perRank: 10, waves: 5,
+    desc: '눈보라를 불러 넓은 곳을 얼리고 계속 깎는다.',
   },
 };
 

@@ -5,7 +5,8 @@ import { STARTS, START_BONUS } from '../src/data/items.js';
 import { addAP, gainExp, distribute, expNeeded, rewardFactor } from '../src/game/growth.js';
 import { learn, addSkillExp, canLearn } from '../src/game/skills.js';
 import { rollLoot, rollDeathDrop } from '../src/game/loot.js';
-import { makeItem, itemName } from '../src/game/items.js';
+import { makeItem, itemName, rollBase } from '../src/game/items.js';
+import * as await_fs from 'node:fs';
 import { addItem, equip } from '../src/game/inventory.js';
 import { seeded } from '../src/game/rng.js';
 import { CONFIG, STATS, AP_TABLE } from '../src/data/config.js';
@@ -157,6 +158,35 @@ test('정신은 MP를 회복해야 오른다 · 최대 MP는 정신에서', () =
   assert.ok(derive(b).maxMp > derive(a).maxMp);
   assert.ok(derive(a).spellMult > derive(b).spellMult);
   assert.ok(AP_TABLE.mpRecover > 0 && AP_TABLE.mpSpent100 === undefined);
+});
+
+test('지역 · 몬스터 · 스킬 · 장비 데이터가 서로 맞물린다', () => {
+  const fs = await_fs;
+  const TYPES = new Set(['melee', 'spin', 'cleave', 'bolt', 'arrow', 'chain', 'meteor', 'nova', 'buff', 'dash', 'line', 'rain', 'cone']);
+  for (const [id, sk] of Object.entries(SKILLS)) {
+    assert.ok(TYPES.has(sk.type), id);
+    assert.ok(sk.req && Object.keys(sk.req).every((k) => STATS.includes(k)), id);
+    assert.notEqual(sk.type, 'heal', id);
+  }
+  for (const [id, m] of Object.entries(MONSTERS)) {
+    assert.ok(fs.existsSync(`assets/models/${m.model}.glb`), id + ' 모델');
+    if (m.patterns) for (const p of m.patterns) assert.ok(['slam', 'spores', 'summon', 'charge', 'volley'].includes(p), id + ' ' + p);
+    if (m.patterns?.includes('summon')) assert.ok(MONSTERS[m.minion], id + ' 부하');
+  }
+  for (const [id, b] of Object.entries(BASES)) if (b.model) assert.ok(fs.existsSync(`assets/models/${b.model}.glb`), id);
+  // 지역마다 레벨이 이어지고 겹치지 않는다
+  const zs = [...ZONES].sort((a, b) => a.levels[0] - b.levels[0]);
+  for (let i = 1; i < zs.length; i++) assert.equal(zs[i].levels[0], zs[i - 1].levels[1] + 1, zs[i].id);
+  for (let i = 0; i < ZONES.length; i++) for (let j = i + 1; j < ZONES.length; j++) {
+    const a = ZONES[i], b = ZONES[j];
+    assert.ok(Math.hypot(a.x - b.x, a.z - b.z) > a.r + b.r - 1, a.id + '/' + b.id);
+  }
+  // 높은 레벨에서도 모든 부위가 나온다
+  for (const lv of [1, 10, 25, 42]) {
+    const got = new Set();
+    for (let i = 0; i < 4000; i++) got.add(BASES[rollBase(lv)].slot);
+    assert.equal(got.size, 9, String(lv));
+  }
 });
 
 console.log(`\n${n}개 통과`);

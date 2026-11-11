@@ -730,11 +730,11 @@ export class World {
 
   skillRange(id) {
     const sk = SKILLS[id];
-    return sk.type === 'melee' ? this.d.range : sk.range || 0;
+    return sk.type === 'melee' ? this.d.range : sk.type === 'cone' ? sk.radius * 0.8 : sk.range || 0;
   }
 
   needsTarget(id) {
-    return ['melee', 'bolt', 'arrow', 'chain', 'meteor'].includes(SKILLS[id].type);
+    return ['melee', 'bolt', 'arrow', 'chain', 'meteor', 'dash', 'line', 'rain', 'cone'].includes(SKILLS[id].type);
   }
 
   useSkill(id, silent = false) {
@@ -791,6 +791,11 @@ export class World {
           sfx('spin');
           this.fx.ring(P.pos.x, P.pos.z, sk.radius, color, 0.45);
           for (const m of this.monstersNear(P.pos, sk.radius)) { const w = weaponHit(); this.hitMonster(m, w.v, { crit: w.crit, src: 'skill', ctx }); }
+          for (let h = 1; h < (sk.hits || 1); h++) this.later(h * 0.35, () => {
+            sfx('spin');
+            this.fx.ring(P.pos.x, P.pos.z, sk.radius, color, 0.4);
+            for (const m of this.monstersNear(P.pos, sk.radius)) { const w = weaponHit(); this.hitMonster(m, w.v, { crit: w.crit, src: 'skill', ctx }); }
+          });
         });
         break;
       }
@@ -825,7 +830,7 @@ export class World {
                 this.fx.ring(at.x, at.z, sk.splash, color, 0.4);
                 this.fx.burst(at.x, 1, at.z, color, 18, 6, 0.6);
                 for (const m of this.monstersNear(at, sk.splash)) this.hitMonster(m, spell(), { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 });
-              } else if (!tg.dead) this.hitMonster(tg, spell(), { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 });
+              } else if (!tg.dead) { if (sk.slow) tg.slowT = sk.slow; this.hitMonster(tg, spell(), { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 }); }
             },
           });
         });
@@ -884,6 +889,79 @@ export class World {
           this.fx.ring(P.pos.x, P.pos.z, sk.radius, color, 0.7);
           this.fx.burst(P.pos.x, 1, P.pos.z, color, 30, 10, 0.6);
           for (const m of this.monstersNear(P.pos, sk.radius)) { m.slowT = 4; this.hitMonster(m, spell(), { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 }); }
+        });
+        break;
+      }
+      case 'dash': {
+        // 대상 바로 앞까지 미끄러지듯 달려가 벤다
+        if (!t) break;
+        const dx = t.pos.x - P.pos.x, dz = t.pos.z - P.pos.z, l = Math.hypot(dx, dz) || 1;
+        const to = { x: t.pos.x - (dx / l) * 1.4, z: t.pos.z - (dz / l) * 1.4 };
+        const from = { x: P.pos.x, z: P.pos.z };
+        for (let i = 1; i <= 5; i++) this.later(i * 0.03, () => { P.pos.x = from.x + (to.x - from.x) * i / 5; P.pos.z = from.z + (to.z - from.z) * i / 5; this.fx.burst(P.pos.x, 0.6, P.pos.z, color, 2, 1, 0.3); });
+        const dur = P.act('heavy', 1.5);
+        this.swing = dur * 0.8;
+        sfx('heavy');
+        this.later(0.2, () => {
+          if (!t.dead) { const w = weaponHit(); this.fx.burst(t.pos.x, 1, t.pos.z, color, 14, 4, 0.5); this.hitMonster(t, w.v, { crit: w.crit, src: 'skill', ctx }); }
+          for (const m of this.monstersNear(t.pos, 2.2)) if (m !== t) { const w = weaponHit(); this.hitMonster(m, w.v * 0.5, { crit: w.crit, src: 'skill', ctx }); }
+        });
+        break;
+      }
+      case 'line': {
+        const dur = P.act('shoot', 1.5);
+        this.swing = dur * 0.7;
+        this.later(dur * 0.35, () => {
+          if (t) P.face(t.pos.x, t.pos.z);
+          const ang = P.facing, ux = Math.sin(ang), uz = Math.cos(ang);
+          sfx('shoot', 1.3);
+          const end = { x: P.pos.x + ux * sk.range, z: P.pos.z + uz * sk.range };
+          this.fx.projectile({ from: { x: P.pos.x, y: 1.4, z: P.pos.z }, target: { pos: new THREE.Vector3(end.x, 1.4, end.z) }, color, size: sk.width > 2 ? 2 : 1, speed: 40, bolt: true, onHit: () => {} });
+          for (const m of this.monsters) {
+            if (m.dead) continue;
+            const px = m.pos.x - P.pos.x, pz = m.pos.z - P.pos.z;
+            const along = px * ux + pz * uz, side = Math.abs(px * uz - pz * ux);
+            if (along > 0 && along < sk.range && side < sk.width * 0.5 + 0.5 * m.actor.scale) {
+              const w = weaponHit();
+              this.later(along / 40, () => this.hitMonster(m, w.v, { crit: w.crit, src: 'skill', ctx }));
+            }
+          }
+        });
+        break;
+      }
+      case 'rain': {
+        // 정한 자리에 몇 번 나눠 떨어진다
+        const at = { x: t.pos.x, z: t.pos.z };
+        const dur = P.act(sk.ap === 'int' ? 'castUp' : 'shoot', 1.3);
+        this.swing = dur * 0.6;
+        sfx(sk.ap === 'int' ? 'cast' : 'shoot');
+        for (let i = 0; i < sk.waves; i++) {
+          this.later(0.35 + i * 0.45, () => {
+            this.fx.ring(at.x, at.z, sk.radius, color, 0.35);
+            for (let k = 0; k < 6; k++) { const a = Math.random() * 6.28, r = Math.random() * sk.radius; this.fx.burst(at.x + Math.cos(a) * r, 0.4, at.z + Math.sin(a) * r, color, 3, 2, 0.35); }
+            sfx(sk.ap === 'int' ? 'ice' : 'hit', 0.5);
+            for (const m of this.monstersNear(at, sk.radius)) {
+              if (sk.slow) m.slowT = sk.slow;
+              if (sk.ap === 'int') this.hitMonster(m, spell(), { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 });
+              else { const w = weaponHit(); this.hitMonster(m, w.v, { crit: w.crit, src: 'skill', ctx }); }
+            }
+          });
+        }
+        break;
+      }
+      case 'cone': {
+        const dur = P.act('cast', 1.5);
+        this.swing = dur * 0.7;
+        this.later(dur * 0.35, () => {
+          if (t) P.face(t.pos.x, t.pos.z);
+          const ang = P.facing;
+          sfx('fire');
+          this.fx.cone(P.pos.x, P.pos.z, ang, sk.radius, color);
+          for (let k = 0; k < 10; k++) { const a = ang + (Math.random() - 0.5) * 1.4, r = 1 + Math.random() * sk.radius; this.fx.burst(P.pos.x + Math.sin(a) * r, 0.6, P.pos.z + Math.cos(a) * r, color, 3, 2, 0.4); }
+          for (const m of this.monstersNear(P.pos, sk.radius)) {
+            const a = Math.atan2(m.pos.x - P.pos.x, m.pos.z - P.pos.z);
+            if (Math.abs(Math.atan2(Math.sin(a - ang), Math.cos(a - ang))) < 0.75) this.hitMonster(m, spell(), { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 });
+          }
         });
         break;
       }
@@ -1175,7 +1253,7 @@ export class World {
     if (this.musicT <= 0) {
       this.musicT = 0.5;
       const boss = this.monsters.some((m) => !m.dead && m.tier === 'boss' && m.state === 'chase' && dist2(m.pos, P.pos) < 26);
-      audio.setMusic(boss ? 'boss' : this.zone);
+      audio.setMusic(boss ? 'boss' : ZONES.find((z) => z.id === this.zone)?.music || this.zone);
     }
     st.pos = { x: P.pos.x, z: P.pos.z };
   }

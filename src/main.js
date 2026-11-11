@@ -1,6 +1,6 @@
 // 시작점: 타이틀 → 로딩 → 게임 루프 · 자동 저장
 import * as THREE from 'three';
-import { createStage, buildTerrain, buildWorldProps, isTouch } from './engine/scene.js';
+import { createStage, buildTerrain, buildWorldProps, isTouch, NATURE_PROPS } from './engine/scene.js';
 import { loadModels, FACES } from './engine/assets.js';
 import { World } from './world/world.js';
 import { HUD } from './ui/hud.js';
@@ -19,10 +19,13 @@ const $ = (s) => document.querySelector(s);
 const MODELS = [
   // 사람 · 해골 (KayKit) — 주인공은 rogue_plain 몸에 knight · mage · barbarian 조각을 섞는다
   'knight', 'barbarian', 'mage', 'rogue_plain', 'skel_minion', 'skel_warrior', 'skel_rogue', 'skel_mage',
-  'w_sword', 'w_greatsword', 'w_greataxe', 'w_staff', 'w_wand', 'w_shield', 'w_shield_sq', 'ws_blade', 'ws_axe', 'ws_staff', 'ws_crossbow', 'ws_shield',
+  'w_sword', 'w_greatsword', 'w_axe', 'w_greataxe', 'w_staff', 'w_wand', 'w_shield', 'w_shield_sq', 'ws_blade', 'ws_axe', 'ws_staff', 'ws_crossbow', 'ws_shield',
   // 몬스터 (Quaternius)
   'm_slime', 'm_slime_spiky', 'm_rat', 'm_mushnub', 'm_mushking', 'm_wolf', 'm_spider', 'm_wasp', 'm_orc_grunt', 'm_tribal', 'm_orc',
   'm_ghost', 'm_ghost_skull', 'm_demon', 'm_blue_demon', 'm_goleling', 'm_dragon',
+  'm_frog', 'm_slime_pink', 'm_snake', 'm_squidle', 'm_mushnub_evo', 'm_wizard', 'm_yeti', 'm_husky', 'm_fox', 'm_stag',
+  'm_raptor', 'm_tricer', 'm_stego', 'm_paraso', 'm_bison', 'm_apato', 'm_trex',
+  ...NATURE_PROPS,
   // 무기 · 아이템 그림 (Quaternius)
   'q_bow', 'q_bow2', 'q_bow_gold', 'q_bow_evil', 'i_necklace', 'i_ring2', 'i_pouch',
   'i_potion_hp', 'i_potion_mp', 'i_potion_hp_l', 'i_potion_mp_l', 'i_book', 'i_book2', 'i_book3', 'i_book4', 'i_scroll',

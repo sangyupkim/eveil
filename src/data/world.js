@@ -37,6 +37,44 @@ export const MONSTERS = {
   goleling: { name: '돌 골렘', model: 'm_goleling', h: 1.9, attack: 'melee', hp: 120, dmg: [10, 14], speed: 2.2, interval: 2.0, range: 2.1, aggro: 9, exp: 24 },
   dragon: { name: '잿빛 용', model: 'm_dragon', h: 3.0, attack: 'spell', atk: 'attack2', hp: 110, dmg: [13, 18], speed: 3.0, interval: 2.0, range: 9, aggro: 14, exp: 30,
     patterns: ['volley', 'spores', 'charge', 'summon'], minion: 'imp' },
+  // 안개 늪
+  frog: { name: '늪 두꺼비', model: 'm_frog', h: 1.6, attack: 'melee', hp: 110, dmg: [13, 18], speed: 2.8, interval: 1.7, range: 2.0, aggro: 9, exp: 28 },
+  bog_slime: { name: '독 슬라임', model: 'm_slime_pink', h: 1.5, tint: 0xa0d070, attack: 'melee', hp: 95, dmg: [12, 17], speed: 2.5, interval: 1.6, range: 1.9, aggro: 8, exp: 26 },
+  snake: { name: '늪 독사', model: 'm_snake', h: 1.1, attack: 'melee', hp: 85, dmg: [15, 20], speed: 3.6, interval: 1.3, range: 2.0, aggro: 10, exp: 27 },
+  squidle: { name: '안개 촉수', model: 'm_squidle', h: 1.8, attack: 'spell', hp: 90, dmg: [16, 22], speed: 2.6, interval: 2.2, range: 9, aggro: 11, exp: 30 },
+  mushnub_evo: { name: '썩은 버섯', model: 'm_mushnub_evo', h: 1.8, attack: 'melee', hp: 130, dmg: [14, 19], speed: 2.4, interval: 1.8, range: 2.0, aggro: 8, exp: 30 },
+  bog_witch: { name: '늪 마녀', model: 'm_wizard', h: 2.2, attack: 'spell', hp: 120, dmg: [18, 24], speed: 2.4, interval: 2.0, range: 10, aggro: 12, exp: 34,
+    patterns: ['volley', 'spores', 'summon'], minion: 'bog_slime' },
+  bog_king: { name: '늪의 왕', model: 'm_frog', h: 2.0, tint: 0x9ab070, attack: 'melee', atk: 'attack2', hp: 140, dmg: [18, 24], speed: 2.8, interval: 1.8, range: 2.6, aggro: 12, exp: 36,
+    patterns: ['slam', 'spores', 'charge', 'summon'], minion: 'frog' },
+  // 서리 고원
+  yeti: { name: '설인', model: 'm_yeti', h: 1.9, attack: 'melee', hp: 170, dmg: [18, 24], speed: 2.6, interval: 1.8, range: 2.1, aggro: 9, exp: 38 },
+  ice_wolf: { name: '서리 늑대', model: 'm_husky', h: 1.5, tint: 0xc8d8ff, attack: 'melee', hp: 140, dmg: [19, 25], speed: 4.4, interval: 1.3, range: 2.0, aggro: 11, exp: 37 },
+  snow_fox: { name: '눈여우', model: 'm_fox', h: 1.2, tint: 0xf0f4ff, attack: 'melee', hp: 115, dmg: [17, 22], speed: 4.6, interval: 1.2, range: 1.9, aggro: 10, exp: 34 },
+  frost_wraith: { name: '서리 망령', model: 'm_ghost', h: 1.8, tint: 0x9fd0ff, attack: 'spell', hp: 120, dmg: [22, 28], speed: 3.0, interval: 2.1, range: 9, aggro: 12, exp: 40 },
+  ice_golem: { name: '얼음 골렘', model: 'm_goleling', h: 2.0, tint: 0xa8d8ff, attack: 'melee', hp: 240, dmg: [20, 26], speed: 2.1, interval: 2.0, range: 2.2, aggro: 9, exp: 44 },
+  frost_stag: { name: '서리 뿔사슴', model: 'm_stag', h: 2.4, tint: 0xd8e8ff, attack: 'melee', hp: 200, dmg: [24, 30], speed: 4.0, interval: 1.6, range: 2.4, aggro: 12, exp: 46,
+    patterns: ['charge', 'slam'] },
+  yeti_king: { name: '설인 왕', model: 'm_yeti', h: 2.8, tint: 0xe0eaff, attack: 'melee', hp: 220, dmg: [24, 31], speed: 2.8, interval: 1.9, range: 2.8, aggro: 13, exp: 48,
+    patterns: ['slam', 'charge', 'summon', 'spores'], minion: 'yeti' },
+  // 고대 협곡
+  raptor: { name: '랩터', model: 'm_raptor', h: 1.6, attack: 'melee', hp: 190, dmg: [26, 33], speed: 4.8, interval: 1.2, range: 2.0, aggro: 12, exp: 50 },
+  tricer: { name: '세뿔 짐승', model: 'm_tricer', h: 2.0, attack: 'melee', hp: 320, dmg: [28, 36], speed: 2.8, interval: 2.0, range: 2.6, aggro: 9, exp: 56 },
+  stego: { name: '골판 짐승', model: 'm_stego', h: 2.2, attack: 'melee', hp: 360, dmg: [26, 34], speed: 2.4, interval: 2.1, range: 2.6, aggro: 8, exp: 58 },
+  paraso: { name: '볏머리 짐승', model: 'm_paraso', h: 2.4, attack: 'melee', hp: 260, dmg: [27, 34], speed: 3.4, interval: 1.7, range: 2.4, aggro: 10, exp: 54 },
+  bison: { name: '협곡 들소', model: 'm_bison', h: 2.0, tint: 0x9a7a5a, attack: 'melee', hp: 280, dmg: [28, 35], speed: 3.6, interval: 1.8, range: 2.4, aggro: 10, exp: 54 },
+  apato: { name: '긴목 거수', model: 'm_apato', h: 3.4, attack: 'melee', hp: 400, dmg: [32, 40], speed: 2.4, interval: 2.2, range: 3.2, aggro: 12, exp: 62,
+    patterns: ['slam', 'charge'] },
+  trex: { name: '폭군 도마뱀', model: 'm_trex', h: 3.4, attack: 'melee', hp: 380, dmg: [34, 43], speed: 3.4, interval: 1.9, range: 3.2, aggro: 14, exp: 66,
+    patterns: ['charge', 'slam', 'summon', 'charge'], minion: 'raptor' },
+  // 화염 균열
+  flame_imp: { name: '불꽃 임프', model: 'm_demon', h: 1.6, tint: 0xff8a60, attack: 'spell', hp: 230, dmg: [34, 42], speed: 3.4, interval: 2.0, range: 9, aggro: 12, exp: 64 },
+  fiend: { name: '화염 악귀', model: 'm_blue_demon', h: 2.3, tint: 0xff6a4a, attack: 'melee', atk: 'attack2', hp: 420, dmg: [36, 45], speed: 3.0, interval: 1.8, range: 2.4, aggro: 10, exp: 72 },
+  magma_golem: { name: '용암 골렘', model: 'm_goleling', h: 2.2, tint: 0xff7a40, attack: 'melee', hp: 520, dmg: [34, 44], speed: 2.2, interval: 2.0, range: 2.3, aggro: 9, exp: 74 },
+  ember_skull: { name: '잿불 해골', model: 'm_ghost_skull', h: 1.9, tint: 0xff9a50, attack: 'melee', hp: 300, dmg: [38, 46], speed: 3.6, interval: 1.5, range: 2.0, aggro: 11, exp: 70 },
+  drake: { name: '화룡 새끼', model: 'm_dragon', h: 2.4, tint: 0xff7050, attack: 'spell', atk: 'attack2', hp: 340, dmg: [40, 50], speed: 3.2, interval: 2.0, range: 9, aggro: 13, exp: 76 },
+  flame_lord: { name: '화염 군주', model: 'm_blue_demon', h: 3.0, tint: 0xff4a2a, attack: 'melee', atk: 'attack2', hp: 500, dmg: [44, 55], speed: 3.0, interval: 1.8, range: 3.0, aggro: 14, exp: 90,
+    patterns: ['slam', 'volley', 'charge', 'summon', 'spores'], minion: 'flame_imp' },
 };
 
 // 지역: 마을은 원점. levels: 마을에서 가까운 쪽 → 먼 쪽 몬스터 레벨
@@ -48,14 +86,14 @@ export const ZONES = [
     spawns: { slime: 45, rat: 20, mushnub: 35 },
     named: { type: 'slime_spiky', name: '가시 군주 글롭' },
     boss: { type: 'mushking', name: '버섯 왕 무르크' },
-    props: { tree: 30, trees: 22, rock: 30, fence_broken: 6, tree_dead_s: 10, bone: 12 },
+    props: { tree: 16, trees: 12, n_tree1: 16, n_tree2: 12, n_tree3: 10, n_birch: 10, n_bush: 22, n_bush2: 16, n_berries: 10, n_flowers: 36, n_grass: 30, rock: 14, n_moss1: 10, n_stump: 8, n_log: 6, fence_broken: 6, bone: 6 },
   },
   {
     id: 'forest', name: '썩은 숲', x: -72, z: -2, r: 40, levels: [4, 7], count: 28, ground: [0.16, 0.22, 0.13],
     spawns: { wolf: 30, spider: 22, orc_grunt: 22, wasp: 14, tribal: 12 },
     named: { type: 'wolf', name: '잿빛 송곳니' },
     boss: { type: 'orc', name: '오크 족장 그라쉬' },
-    props: { tree_dead_l: 40, tree_dead_m: 40, tree_pine: 30, trees: 25, rock: 25, bone: 10 },
+    props: { tree_dead_l: 20, tree_dead_m: 18, tree_pine: 16, n_pine1: 20, n_pine2: 18, n_birch2: 10, n_dead2: 10, n_moss1: 14, n_moss2: 12, n_stump_moss: 10, n_log_moss: 10, n_plant: 20, n_bush2: 14, bone: 8 },
   },
   {
     id: 'grave', name: '망자의 묘지', x: 0, z: -76, r: 40, levels: [8, 12], count: 30, ground: [0.20, 0.22, 0.19],
@@ -71,6 +109,34 @@ export const ZONES = [
     boss: { type: 'dragon', name: '잿빛 용 베르크' },
     props: { ruin: 14, rubble: 10, pillar: 18, barrel: 14, crates: 10, banner: 8, tree_dead_l: 14, rock: 20 },
   },
+  {
+    id: 'swamp', name: '안개 늪', x: -102, z: 102, r: 40, levels: [19, 24], count: 30, ground: [0.17, 0.22, 0.15], music: 'forest',
+    spawns: { frog: 25, bog_slime: 20, snake: 22, squidle: 15, mushnub_evo: 18 },
+    named: { type: 'bog_witch', name: '늪 마녀 모르가' },
+    boss: { type: 'bog_king', name: '늪의 왕 그루글' },
+    props: { n_willow: 26, n_willow2: 18, n_willow_dead: 14, n_lily: 30, n_moss1: 16, n_moss2: 12, n_log_moss: 10, n_stump_moss: 10, n_plant: 24, n_plant2: 20, n_grass2: 30 },
+  },
+  {
+    id: 'frost', name: '서리 고원', x: -102, z: -102, r: 40, levels: [25, 30], count: 30, ground: [0.62, 0.66, 0.72], music: 'grave',
+    spawns: { yeti: 24, ice_wolf: 22, snow_fox: 18, frost_wraith: 18, ice_golem: 18 },
+    named: { type: 'frost_stag', name: '서리 뿔사슴 하얀서리' },
+    boss: { type: 'yeti_king', name: '설인 왕 우르가' },
+    props: { n_snow_pine: 34, n_snow_pine2: 28, n_snow_tree: 16, n_snow_birch: 16, n_snow_dead: 12, n_rock_snow: 20, n_rock_snow2: 14, n_bush_snow: 20, n_log_snow: 10 },
+  },
+  {
+    id: 'valley', name: '고대 협곡', x: 102, z: -102, r: 40, levels: [31, 36], count: 30, ground: [0.38, 0.3, 0.18], music: 'field',
+    spawns: { raptor: 30, tricer: 18, stego: 16, paraso: 18, bison: 18 },
+    named: { type: 'apato', name: '긴목 거수 브론' },
+    boss: { type: 'trex', name: '폭군 도마뱀 렉스' },
+    props: { n_pine_au: 18, n_tree_au: 16, n_tree_au2: 14, n_rock1: 26, n_rock2: 22, n_cactus: 12, n_cactus2: 10, n_bush: 20, n_wheat: 20, n_dead1: 10 },
+  },
+  {
+    id: 'inferno', name: '화염 균열', x: 102, z: 102, r: 40, levels: [37, 42], count: 32, ground: [0.24, 0.1, 0.07], music: 'ruins',
+    spawns: { flame_imp: 22, fiend: 20, magma_golem: 18, ember_skull: 22, drake: 18 },
+    named: { type: 'drake', name: '불꽃날개 이그니스' },
+    boss: { type: 'flame_lord', name: '화염 군주 바르곤' },
+    props: { n_dead1: 20, n_dead2: 18, n_birch_dead: 14, n_rock1: 26, n_rock2: 22, rubble: 10, pillar: 8, skull_candle: 12, bone: 14 },
+  },
 ];
 
-export const WORLD_SIZE = 125; // 맵 반경
+export const WORLD_SIZE = 185; // 맵 반경

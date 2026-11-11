@@ -125,7 +125,7 @@ function detailTexture() {
 
 export function buildTerrain(stage) {
   const size = WORLD_SIZE * 2 + 40;
-  const seg = 160;
+  const seg = 240;
   const geo = new THREE.PlaneGeometry(size, size, seg, seg);
   geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position;
@@ -164,7 +164,7 @@ function buildGrass(stage) {
   geo.setAttribute('position', new THREE.Float32BufferAttribute(blades, 3));
   geo.computeVertexNormals();
   const mat = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide });
-  const count = isTouch ? 6000 : 12000;
+  const count = isTouch ? 9000 : 20000;
   const mesh = new THREE.InstancedMesh(geo, mat, count);
   const rng = seeded(7);
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
@@ -175,7 +175,8 @@ function buildGrass(stage) {
     if (Math.hypot(x, z) > WORLD_SIZE) continue;
     if (Math.hypot(x, z) < TOWN.r * 0.7) continue;
     const zn = zoneAt(x, z);
-    if (zn?.id === 'grave' && rng() < 0.6) continue;
+    if ((zn?.id === 'grave' || zn?.id === 'inferno') && rng() < 0.6) continue;
+    if (zn?.id === 'frost' && rng() < 0.4) continue;
     q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rng() * Math.PI * 2);
     const k = 0.45 + rng() * 0.6;
     s.set(k, k * (0.6 + rng() * 0.5), k);
@@ -192,7 +193,7 @@ function buildGrass(stage) {
 }
 
 function buildFireflies(stage) {
-  const count = 260;
+  const count = 520;
   const pos = new Float32Array(count * 3);
   const rng = seeded(99);
   for (let i = 0; i < count; i++) {
@@ -231,6 +232,17 @@ const PROP_INFO = {
   skull_candle: [1, 0, 0.2], post: [1, 0.25, 0], ruin: [6, 3.6, 0.2], rubble: [0.9, 2.6, 0.2], pillar: [0.9, 0.7, 0.2],
   barrel: [0.6, 0.6, 0.1], crates: [0.6, 0.8, 0.1], banner: [1, 0.3, 0],
 };
+// 자연 소품(Quaternius): 이름 앞부분 → [크기, 충돌, 크기 폭]. 풀 · 꽃 · 덤불은 부딪치지 않는다
+const NATURE_INFO = [
+  [/^n_(tree|pine|birch|willow|dead|snow_(pine|tree|birch|dead))/, [1.25, 0.55, 0.35]], [/^n_(rock|moss)/, [1.1, 0.9, 0.5]],
+  [/^n_(stump|log)/, [1.1, 0.5, 0.3]], [/^n_cactus/, [1.2, 0.4, 0.3]],
+  [/^n_(bush|berries)/, [1.1, 0, 0.4]], [/^n_(flowers|grass|plant|lily|wheat)/, [1.1, 0, 0.5]],
+];
+for (const name of ['n_tree1', 'n_tree2', 'n_tree3', 'n_tree_au', 'n_tree_au2', 'n_pine1', 'n_pine2', 'n_pine_au', 'n_birch', 'n_birch2', 'n_willow', 'n_willow2', 'n_willow_dead',
+  'n_dead1', 'n_dead2', 'n_birch_dead', 'n_snow_pine', 'n_snow_pine2', 'n_snow_tree', 'n_snow_birch', 'n_snow_dead', 'n_bush', 'n_bush2', 'n_berries', 'n_bush_snow',
+  'n_flowers', 'n_grass', 'n_grass2', 'n_plant', 'n_plant2', 'n_lily', 'n_wheat', 'n_rock1', 'n_rock2', 'n_moss1', 'n_moss2', 'n_rock_snow', 'n_rock_snow2',
+  'n_stump', 'n_stump_moss', 'n_log', 'n_log_moss', 'n_log_snow', 'n_cactus', 'n_cactus2']) PROP_INFO[name] = NATURE_INFO.find(([re]) => re.test(name))[1];
+export const NATURE_PROPS = Object.keys(PROP_INFO).filter((k) => k.startsWith('n_'));
 
 function placeProp(stage, name, x, z, { rot = 0, scale = 1, collide = true } = {}) {
   const info = PROP_INFO[name] || [1, 0.5, 0];
@@ -264,16 +276,16 @@ export function buildWorldProps(stage) {
     }
   }
   // 지역 사이 빈 들판에도 드문드문
-  for (let i = 0; i < 160; i++) {
+  for (let i = 0; i < 420; i++) {
     const x = (rng() * 2 - 1) * WORLD_SIZE, z = (rng() * 2 - 1) * WORLD_SIZE;
     if (Math.hypot(x, z) > WORLD_SIZE - 4 || zoneAt(x, z) || !roadClear(x, z)) continue;
-    const nm = ['tree_dead_l', 'tree_dead_m', 'tree', 'rock_b', 'trees', 'tree_pine'][Math.floor(rng() * 6)];
+    const nm = ['tree_dead_l', 'n_tree2', 'tree', 'n_rock1', 'trees', 'n_pine1', 'n_bush', 'n_grass', 'n_dead1', 'n_stump'][Math.floor(rng() * 10)];
     placeProp(stage, nm, x, z, { rot: rng() * 6.28, scale: 0.9 + rng() * 0.3 });
   }
   // 맵 테두리: 빽빽한 죽은 숲
-  for (let i = 0; i < 220; i++) {
-    const a = (i / 220) * Math.PI * 2 + rng() * 0.02, r = WORLD_SIZE + 1 + rng() * 6;
-    placeProp(stage, rng() < 0.5 ? 'tree_dead_l' : 'tree_pine', Math.cos(a) * r, Math.sin(a) * r, { rot: rng() * 6.28, scale: 1.2 + rng() * 0.5, collide: false });
+  for (let i = 0; i < 340; i++) {
+    const a = (i / 340) * Math.PI * 2 + rng() * 0.02, r = WORLD_SIZE + 1 + rng() * 6;
+    placeProp(stage, ['tree_dead_l', 'n_pine2', 'n_dead2', 'tree_pine'][Math.floor(rng() * 4)], Math.cos(a) * r, Math.sin(a) * r, { rot: rng() * 6.28, scale: 1.2 + rng() * 0.5, collide: false });
   }
   buildTown(stage);
 }
@@ -340,9 +352,26 @@ function buildTown(stage) {
   }
 }
 
-// 충돌: 원형 장애물에서 밀어낸다
-export function resolveCollision(stage, p, radius = 0.5) {
+// 충돌: 원형 장애물에서 밀어낸다. 장애물이 많아 칸(8×8)으로 나눠 가까운 것만 본다
+const CELL = 8;
+function grid(stage) {
+  if (stage.grid && stage.gridN === stage.colliders.length) return stage.grid;
+  const g = new Map();
   for (const c of stage.colliders) {
+    const r = c.r + 1;
+    for (let gx = Math.floor((c.x - r) / CELL); gx <= Math.floor((c.x + r) / CELL); gx++)
+      for (let gz = Math.floor((c.z - r) / CELL); gz <= Math.floor((c.z + r) / CELL); gz++) {
+        const k = gx * 10007 + gz;
+        if (!g.has(k)) g.set(k, []);
+        g.get(k).push(c);
+      }
+  }
+  stage.grid = g; stage.gridN = stage.colliders.length;
+  return g;
+}
+export function resolveCollision(stage, p, radius = 0.5) {
+  const list = grid(stage).get(Math.floor(p.x / CELL) * 10007 + Math.floor(p.z / CELL)) || [];
+  for (const c of list) {
     const dx = p.x - c.x, dz = p.z - c.z;
     const min = c.r + radius;
     const d2 = dx * dx + dz * dz;

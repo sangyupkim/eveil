@@ -77,7 +77,7 @@ export function totalStats(st, g = gearSum(st)) {
   return out;
 }
 
-// buffs: { armorPct, berserk } — 전투 중 일시 효과
+// buffs: { armorPct, berserk, might(피해%), focus(치명%) } — 전투 중 일시 효과
 export function derive(st, buffs = {}) {
   const g = gearSum(st);
   const s = totalStats(st, g);
@@ -87,7 +87,7 @@ export function derive(st, buffs = {}) {
   const speed = weapon ? BASES[weapon.base].speed : 1.2;
   const statMult = 1 + s[cls.ap] * 0.03;
   const berserk = buffs.berserk || 0;
-  const dmgMult = statMult * (1 + (g.dmgPct || 0) / 100) * (1 + berserk / 100);
+  const dmgMult = statMult * (1 + ((g.dmgPct || 0) + (buffs.might || 0)) / 100) * (1 + berserk / 100);
   const armor = (g.armor + s.vit * 0.4) * (1 + ((g.armorPct || 0) + (buffs.armorPct || 0)) / 100);
   return {
     stats: s,
@@ -99,7 +99,7 @@ export function derive(st, buffs = {}) {
     dmg: [wd[0] * dmgMult, wd[1] * dmgMult],
     atkRate: Math.min(2.2, speed * (1 + s.dex * 0.004 + (g.atkSpd || 0) / 100 + berserk / 100)),
     range: cls.range,
-    crit: Math.min(0.6, 0.05 + s.dex * 0.0015 + (g.crit || 0) / 100),
+    crit: Math.min(0.75, 0.05 + s.dex * 0.0015 + ((g.crit || 0) + (buffs.focus || 0)) / 100),
     critMult: 1.6,
     dodge: Math.min(0.3, s.dex * 0.0012),
     block: g.block ? Math.min(0.5, g.block + s.str * 0.0008) : 0,
