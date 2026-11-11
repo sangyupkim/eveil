@@ -11,23 +11,11 @@ import { rollLoot, rollDeathDrop } from '../game/loot.js';
 import { addItem, takeOne, countOf, equip as equipItem, unequip as unequipItem } from '../game/inventory.js';
 import { itemName, itemColor, isBook, makeItem } from '../game/items.js';
 import { seeded, randInt, randRange } from '../game/rng.js';
-import { Actor } from './actor.js';
-import { attachTo } from '../engine/assets.js';
-
-// 손에 쥐는 방향 · 크기 (무기 모델마다 축이 달라 계열별로 맞춘다)
-const GRIP = {
-  sword: { len: 1.35, r: [0, 0, 0], p: [0, 0, 0] },
-  bow: { len: 1.6, r: [0, 0, 0], p: [0, 0, 0], center: true },
-  staff: { s: 1, r: [0, 0, 0], p: [0, 0, 0] },   // KayKit 지팡이 · 완드는 손 자리에 맞게 만들어져 그대로 쥔다
-  shield: { len: 0.95, r: [0, Math.PI / 2, 0], p: [0, 0, 0], center: true },
-};
-// KayKit 무기(w_*)는 손 자리에 맞게 만들어져 그대로, 다른 모델(q_*)은 크기 · 방향을 맞춘다
-export const gripFor = (model, kind) => (model.startsWith('w_') ? { s: 1 } : GRIP[kind]);
-export { GRIP };
-if (typeof window !== 'undefined') window.__GRIP = GRIP; // 개발용: 쥐는 방향 맞추기
-import { FX } from './fx.js';
-import { cloneProp, makeHero } from '../engine/assets.js';
-import { resolveCollision, zoneAt } from '../engine/scene.js';
+import { Actor, makeHero } from '../engine2d/actor.js';
+import { FX } from '../engine2d/fx.js';
+import { resolveCollision, zoneAt } from '../engine2d/stage.js';
+import { DATA, image, animImage, drawRect, frameIndex } from '../engine2d/sprites.js';
+import { MONSTER_LOOK, ITEM_LOOK, LOOT_LOOK } from '../data/flareWorld.js';
 import { audio } from '../engine/audio.js';
 const sfx = (n, k) => audio.play(n, k);
 
@@ -39,12 +27,11 @@ const dist2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 export class World {
   constructor(stage, st, ui) {
     this.stage = stage;
-    this.scene = stage.scene;
+    this.scene = stage;
     this.st = st;
     this.ui = ui;
-    this.fx = new FX(this.scene, stage.camera, ui.fxLayer);
+    this.fx = new FX(stage, ui.fxLayer);
     this.fx.onShake = (k) => { if (this.st.settings.shake !== false) stage.shake(k); };
-    this.fx.renderer = stage.renderer;
     this.timers = [];
     this.monsters = [];
     this.ground = [];
@@ -76,7 +63,7 @@ export class World {
 
   makePlayer() {
     const st = this.st;
-    this.player = new Actor(this.scene, makeHero());
+    this.player = new Actor(this.scene, makeHero(st.look));
     this.player.pos.set(st.pos.x, 0, st.pos.z);
     this.player.play('idle');
     this.refreshGear();
@@ -87,11 +74,7 @@ export class World {
     const st = this.st;
     this.d = derive(st, this.buffValues());
     const e = st.equip;
-    const w = e.weapon ? BASES[e.weapon.base] : null, o = e.offhand ? BASES[e.offhand.base] : null;
-    const P = this.player;
-    attachTo(P.handR, w?.model || null, w?.mtint ?? null, w ? gripFor(w.model, w.cls) : null);
-    attachTo(P.handL, o?.model || null, o?.mtint ?? null, o ? gripFor(o.model, 'shield') : null);
-    P.setLook(heroLook(st));
+    this.player.setLook(heroLook(st));
     st.hp = Math.min(st.hp, this.d.maxHp);
     st.mp = Math.min(st.mp, this.d.maxMp);
     this.ui.dirty();
@@ -104,13 +87,13 @@ export class World {
   }
 
   makeNpc() {
-    this.npc = new Actor(this.scene, 'mage', { tint: 0xb0a090, rig: 'human' });
+    this.npc = new Actor(this.scene, { npc: 'wandering_trader' });
     this.npc.pos.set(3.5, 0, -8.5);
     this.npc.facing = 0.3;
     this.npc.play('idle');
     this.npc.name = '상인 오르텐';
     // 퀘스트를 주는 경비대장
-    this.guard = new Actor(this.scene, 'knight', { rig: 'human', weapon: 'w_sword', offhand: 'w_shield_sq' });
+    this.guard = new Actor(this.scene, { npc: 'knight' });
     this.guard.pos.set(-4.5, 0, 9);
     this.guard.facing = 0.4;
     this.guard.play('idle');
@@ -159,10 +142,8 @@ export class World {
     const def = MONSTERS[type];
     const T = TIERS[tier];
     const L = sp.level;
-    const actor = new Actor(this.scene, def.model, {
-      tint: tint ?? def.tint ?? null, scale: T.scale, weapon: def.weapon, offhand: def.offhand ?? null, rig: def.rig || null, height: def.h || 0,
-    });
-    if (def.fly) actor.model.position.y = def.fly;
+    const look = MONSTER_LOOK[type] || { sprite: 'goblin' };
+    const actor = new Actor(this.scene, { enemy: look.sprite }, { tint: tint ?? look.tint ?? null, scale: T.scale, size: look.size || 1 });
     if (tier === 'elite') actor.setGlow(0x0a1a40);
     if (tier === 'named') actor.setGlow(0x302000);
     if (tier === 'boss') actor.setGlow(0x400800);
@@ -183,8 +164,7 @@ export class World {
     };
     m.hp = m.maxHp;
     m.pos = actor.pos;
-    if (actor.action('spawn')) actor.act('spawn', 1.8, 0.7);
-    else actor.play('idle');
+    actor.play('idle');
     sp.mon = m;
     this.monsters.push(m);
     return m;
@@ -525,38 +505,42 @@ export class World {
 
   dropGround(dr, x, z, expires = null) {
     const g = { gid: this.nextGid++, kind: dr.kind, amount: dr.amount, item: dr.item, x, z, expires, born: this.time };
-    const obj = new THREE.Group();
-    let model = 'coin', s = 0.5, color = 0xffd040, beam = false;
+    let look = LOOT_LOOK.gold, color = 0xffd040, beam = false;
     if (dr.kind === 'item') {
-      const it = dr.item;
+      const it = dr.item, b = BASES[it.base];
       color = new THREE.Color(itemColor(it)).getHex();
-      if (isBook(it)) { model = 'book'; s = 1.3; beam = true; }
-      else if (BASES[it.base].type === 'potion') { model = 'potion'; s = 0.55; }
-      else if (BASES[it.base].slot === 'weapon') { model = BASES[it.base].model; s = BASES[it.base].model.startsWith('q_') ? 1.6 : 0.9; }
-      else if (BASES[it.base].slot === 'offhand') { model = BASES[it.base].model; s = 1.4; }
-      else { model = 'chest'; s = 0.32; }
+      if (isBook(it)) { look = LOOT_LOOK.book; beam = true; }
+      else if (b.type === 'potion') look = b.restore.hp ? LOOT_LOOK.potion_hp : LOOT_LOOK.potion_mp;
+      else if (b.slot === 'weapon') look = LOOT_LOOK.weapon[b.cls] || 'longsword';
+      else look = LOOT_LOOK[b.slot] || 'leather_armor';
       if (it.rarity && RARITY_ORDER.indexOf(it.rarity) >= 2) beam = true;
-    }
-    const p = cloneProp(model, { shadow: false });
-    p.scale.setScalar(s);
-    if (dr.kind === 'item' && ['weapon', 'offhand'].includes(BASES[dr.item.base]?.slot)) { p.rotation.z = Math.PI / 2; p.position.y = 0.15; }
-    obj.add(p);
-    const glow = this.fx.sprite(color, beam ? 2.2 : 1.2, 0.7);
-    glow.position.y = 0.3;
-    obj.add(glow);
-    if (beam) {
-      if (!expires) setTimeout(() => sfx('rare'), 250);
-      const m = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.12, 0.25, 6, 8, 1, true),
-        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }),
-      );
-      m.position.y = 3;
-      obj.add(m);
-    }
-    obj.position.set(x, 0, z);
-    obj.rotation.y = Math.random() * 6;
-    this.scene.add(obj);
-    g.obj = obj;
+    } else if (dr.amount > 60) look = 'coins100';
+    if (beam && !expires) setTimeout(() => sfx('rare'), 250);
+    const def = DATA.loot[look] || DATA.loot.coins25;
+    if (def) image(animImage(def, 'power'));
+    const css = '#' + new THREE.Color(color).getHexString();
+    // 바닥에 떨어지는 Flare 아이템 그림 + 빛 + 좋은 것은 빛기둥
+    g.drawable = { z, draw: (ctx, st) => {
+      const p = st.toScreen(x, z), k = st.scale();
+      const pulse = 0.55 + Math.sin(this.time * 4 + g.gid) * 0.2;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = pulse * 0.55;
+      const gr = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, (beam ? 46 : 30) * k);
+      gr.addColorStop(0, css); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(p.x, p.y, (beam ? 46 : 30) * k, (beam ? 23 : 15) * k, 0, 0, 7); ctx.fill();
+      if (beam) {
+        const h = 150 * k, lg = ctx.createLinearGradient(0, p.y, 0, p.y - h);
+        lg.addColorStop(0, css); lg.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.globalAlpha = pulse * 0.6; ctx.fillStyle = lg; ctx.fillRect(p.x - 5 * k, p.y - h, 10 * k, h);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+      if (!def) return;
+      const a = def.anims.power || Object.values(def.anims)[0];
+      const src = image(animImage(def, 'power'));
+      if (src.ok) drawRect(ctx, src.im, a.f[0]?.[frameIndex(a, this.time - g.born, true)], p.x, p.y, k * 0.75);
+    } };
+    this.scene.add(g.drawable);
     g.label = dr.kind === 'gold' ? `${dr.amount} 골드` : itemName(dr.item) + (dr.item.qty > 1 ? ` ×${dr.item.qty}` : '');
     g.color = dr.kind === 'gold' ? '#ffd040' : itemColor(dr.item);
     this.ground.push(g);
@@ -584,7 +568,7 @@ export class World {
   }
 
   removeGround(g) {
-    this.scene.remove(g.obj);
+    this.scene.remove(g.drawable);
     this.ground.splice(this.ground.indexOf(g), 1);
   }
 
@@ -1160,16 +1144,11 @@ export class World {
     this.updateSpawners(dt);
     const P = this.player.pos;
     // 화면에 보이는 몬스터만 그린다 (뼈대 모델은 스스로 화면 밖을 거르지 못한다)
-    const cam = this.stage.camera;
-    cam.updateMatrixWorld();
-    _pv.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
-    _frustum.setFromProjectionMatrix(_pv);
     for (let i = this.monsters.length - 1; i >= 0; i--) {
       const m = this.monsters[i];
       const near = dist2(m.pos, P) < ACTIVE_RADIUS;
-      _sph.center.set(m.pos.x, 1.2 * m.actor.scale, m.pos.z); _sph.radius = 2.6 * m.actor.scale + 1;
       m.near = near;
-      m.actor.root.visible = near && _frustum.intersectsSphere(_sph);
+      m.actor.root.visible = near && this.stage.onScreen(m.pos.x, m.pos.z, 3 * m.actor.scale);
       if (m.dead) {
         m.deadT -= dt;
         m.actor.update(dt);
@@ -1188,10 +1167,8 @@ export class World {
     const now = Date.now();
     for (const g of [...this.ground]) {
       if (g.expires ? g.expires < now : this.time - g.born > 300) this.removeGround(g);
-      else g.obj.children[1].material.opacity = 0.55 + Math.sin(this.time * 4 + g.gid) * 0.2;
     }
     this.fx.update(dt);
-    this.stage.fireflies?.(this.time);
   }
 
   updatePlayer(dt) {
@@ -1344,21 +1321,18 @@ export class World {
   }
 }
 
-// 입은 장비 → 겉모습 (조각 고르기). 갑옷은 몸통 · 팔 · 다리, 장갑 · 신발은 팔 · 다리만 따로 바꾼다
+// 입은 장비 → 겹그림 (Flare). 안 입은 부위는 기본 옷
 export function heroLook(st) {
-  const b = (slot) => (st.equip[slot] ? BASES[st.equip[slot].base] : null);
-  const ar = b('armor'), gl = b('gloves'), bt = b('boots'), hm = b('helm');
-  const look = { face: st.look?.face, tint: {} };
-  const put = (it, slots) => { if (!it?.wear) return; for (const k of slots) { look[k] = it.wear; if (it.tint) look.tint[k] = it.tint; } };
-  put(ar, ['Body', 'ArmLeft', 'ArmRight', 'LegLeft', 'LegRight']);
-  put(gl, ['ArmLeft', 'ArmRight']);
-  put(bt, ['LegLeft', 'LegRight']);
-  if (ar?.cape) { look.Cape = ar.wear; if (ar.tint) look.tint.Cape = ar.tint; }
-  if (hm?.hat) { look.hat = hm.hat; if (hm.tint) look.tint.hat = hm.tint; }
-  return look;
+  const layers = {}, tints = {};
+  for (const slot of ['weapon', 'offhand', 'helm', 'armor', 'gloves', 'boots']) {
+    const it = st.equip[slot];
+    const L = it && ITEM_LOOK[it.base];
+    if (!L?.layers) continue;
+    for (const [type, layer] of Object.entries(L.layers)) { layers[type] = layer; if (L.tint != null) tints[type] = L.tint; }
+  }
+  return { layers, tints };
 }
 
-const _frustum = new THREE.Frustum(), _pv = new THREE.Matrix4(), _sph = new THREE.Sphere();
 const angDiff = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
 function distToSeg(p, a, b) {
   const dx = b.x - a.x, dz = b.z - a.z;

@@ -2,17 +2,9 @@
 
 | 에셋 | 출처 | 라이선스 |
 |---|---|---|
-| 주인공(조각을 섞어 씀) · 캐릭터 · 애니메이션 (Knight, Barbarian, Mage, Rogue) | KayKit Character Pack: Adventurers 1.0 — Kay Lousberg | CC0 1.0 |
-| 해골 몬스터 · 해골 무기 | KayKit Character Pack: Skeletons 1.0 — Kay Lousberg | CC0 1.0 |
-| 통 · 상자 · 횃불 · 기둥 등 소품 | KayKit Dungeon Remastered 1.0 — Kay Lousberg | CC0 1.0 |
-| 무덤 · 죽은 나무 · 관 등 | KayKit Halloween Bits 1.0 — Kay Lousberg | CC0 1.0 |
-| 마을 건물 · 나무 · 바위 | KayKit Medieval Hexagon Pack 1.0 — Kay Lousberg | CC0 1.0 |
-| 몬스터(슬라임 · 버섯 · 오크 · 늑대 · 혼령 · 악마 · 용 등) | Quaternius — Ultimate Monsters · Animated Animals · Easy Enemies | CC0 1.0 |
-| 동물(뿔사슴 · 늑대 · 들소) · 공룡 몬스터 | Quaternius — Animated Animals · Dinosaurs | CC0 1.0 |
-| 나무 · 덤불 · 꽃 · 바위 등 자연 소품 | Quaternius — Ultimate Nature | CC0 1.0 |
-| 활 · 물약 · 책 · 장신구 그림 | Quaternius — Medieval Weapons · RPG Items | CC0 1.0 |
-| 3D 엔진 | three.js r170 (`vendor/three`) | MIT |
+| 주인공 · 몬스터 · NPC · 땅 타일 · 배경 물건 · 효과 · 아이콘 · 초상화 · UI 그림 (`assets/flare/`) | [Flare: Empyrean Campaign](https://github.com/flareteam/flare-game) — Clint Bellanger 외 (`assets/flare/CREDITS.txt`) | **CC-BY-SA 3.0** (`assets/flare/LICENSE-CC-BY-SA-3.0.txt`) |
+| 글꼴 (Gowun Dodum · Nanum Myeongjo · Cinzel) | Google Fonts | OFL |
+| 수학 계산 (`vendor/three`) | three.js r170 | MIT |
 
-원본: https://github.com/KayKit-Game-Assets — `npm run prep-assets -- <원본 폴더>`로 다시 만든다 (`tools/prep-assets.mjs`).
-
-Quaternius 모델: `node tools/prep-quat.mjs <moorfall-assets> <quaternius-showcase/public/glb>` (`tools/prep-quat.mjs` 머리말 참고).
+- Flare 그림을 고친 것(WebP 변환 · 색 입히기 · 버튼 잘라내기)도 CC-BY-SA 3.0을 따른다. 게임 메뉴에 출처를 표시한다.
+- 다시 만들기: `git clone --depth 1 https://github.com/flareteam/flare-game` → `node tools/prep-flare.mjs <flare-game 폴더>`

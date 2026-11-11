@@ -7,6 +7,7 @@ import { learn, addSkillExp, canLearn } from '../src/game/skills.js';
 import { rollLoot, rollDeathDrop } from '../src/game/loot.js';
 import { makeItem, itemName, rollBase } from '../src/game/items.js';
 import * as await_fs from 'node:fs';
+import { MONSTER_LOOK, ITEM_LOOK, SKILL_ICON } from '../src/data/flareWorld.js';
 import { addItem, equip } from '../src/game/inventory.js';
 import { seeded } from '../src/game/rng.js';
 import { CONFIG, STATS, AP_TABLE } from '../src/data/config.js';
@@ -168,12 +169,19 @@ test('지역 · 몬스터 · 스킬 · 장비 데이터가 서로 맞물린다',
     assert.ok(sk.req && Object.keys(sk.req).every((k) => STATS.includes(k)), id);
     assert.notEqual(sk.type, 'heal', id);
   }
+  const enemies = JSON.parse(fs.readFileSync('assets/flare/enemies.json', 'utf8'));
+  const avatar = JSON.parse(fs.readFileSync('assets/flare/avatar_m.json', 'utf8'));
   for (const [id, m] of Object.entries(MONSTERS)) {
-    assert.ok(fs.existsSync(`assets/models/${m.model}.glb`), id + ' 모델');
+    assert.ok(MONSTER_LOOK[id] && enemies[MONSTER_LOOK[id].sprite], id + ' 그림');
     if (m.patterns) for (const p of m.patterns) assert.ok(['slam', 'spores', 'summon', 'charge', 'volley'].includes(p), id + ' ' + p);
     if (m.patterns?.includes('summon')) assert.ok(MONSTERS[m.minion], id + ' 부하');
   }
-  for (const [id, b] of Object.entries(BASES)) if (b.model) assert.ok(fs.existsSync(`assets/models/${b.model}.glb`), id);
+  // 모든 장비 · 물약에 아이콘, 입는 장비는 겹그림이 실제로 있다
+  for (const [id, b] of Object.entries(BASES)) {
+    assert.ok(ITEM_LOOK[id] && Number.isInteger(ITEM_LOOK[id].icon), id + ' 아이콘');
+    for (const layer of Object.values(ITEM_LOOK[id].layers || {})) assert.ok(avatar[layer], id + ' 겹 ' + layer);
+  }
+  for (const id of Object.keys(SKILLS)) assert.ok(Number.isInteger(SKILL_ICON[id]), id + ' 스킬 아이콘');
   // 지역마다 레벨이 이어지고 겹치지 않는다
   const zs = [...ZONES].sort((a, b) => a.levels[0] - b.levels[0]);
   for (let i = 1; i < zs.length; i++) assert.equal(zs[i].levels[0], zs[i - 1].levels[1] + 1, zs[i].id);

@@ -293,7 +293,7 @@ export class Windows {
         <button class="plate gold" data-close="1">계속하기</button>
         <div class="setRow"><span>배경음</span><div class="opts">${vol('music')}</div></div>
         <div class="setRow"><span>효과음</span><div class="opts">${vol('sfx')}</div></div>
-        <div class="setRow"><span>그림자</span><div class="opts">${onoff('shadows', set.shadows)}</div></div>
+        <div class="setRow"><span>어둠 · 조명</span><div class="opts">${onoff('shadows', set.shadows)}</div></div>
         <div class="setRow"><span>화면 흔들림</span><div class="opts">${onoff('shake', set.shake !== false)}</div></div>
         <div class="setRow"><span>자동 물약</span><div class="opts">${[0.3, 0.4, 0.5, 0.6].map((v) => `<button class="btn${set.autoPotion === v ? ' on' : ''}" data-pot="${v}">${v * 100}%</button>`).join('')}</div></div>
         <div class="setRow"><span>물약 자동 구매</span><div class="opts">${onoff('autoBuy', set.autoBuy !== false)}</div></div>
@@ -310,6 +310,7 @@ export class Windows {
         <div class="kv" style="margin-top:14px"><span>플레이 시간</span><b>${Math.floor(t / 60)}시간 ${t % 60}분</b><span>각성</span><b>${st.awakenings}회</b>
           <span>배운 스킬</span><b>${Object.keys(st.skills).length}개</b><span>자동 사냥 효율</span><b>${Math.round(CONFIG.autoPenalty * 100)}%</b>
           <span>자동 저장</span><b>${CONFIG.autosaveInterval}초</b>
+          <span>그림</span><b>Flare (CC-BY-SA 3.0)</b>
           <span>서버 저장</span><b>${cloud.id ? `${esc(cloud.id)}${cloud.state === 'error' ? ' · 실패' : cloud.savedAt ? ' · 저장됨' : ''}` : '로그인 안 함'}</b></div>
       </div></div>`;
   }
@@ -365,9 +366,7 @@ export class Windows {
       const v = el.dataset.v === '1';
       st.settings[el.dataset.set] = v;
       if (el.dataset.set === 'shadows') {
-        w.stage.renderer.shadowMap.enabled = v;
-        w.stage.sun.castShadow = v;
-        w.stage.scene.traverse((o) => { if (o.material) o.material.needsUpdate = true; });
+        w.stage.light = v;
       }
       audio.play('click');
       this.render();

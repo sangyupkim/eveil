@@ -1,5 +1,4 @@
 // 화면 위 정보: HP/MP · EXP · 퀵슬롯 · 미니맵 · 이름표 · 알림 · 각성 연출 · 사망 화면
-import * as THREE from 'three';
 import { STAT_NAMES, STAT_COLORS, STATS, TIERS, CONFIG } from '../data/config.js';
 import { SKILLS } from '../data/skills.js';
 import { ZONES, TOWN, WORLD_SIZE } from '../data/world.js';
@@ -16,7 +15,6 @@ export class HUD {
     this.labelLayer = $('#labels');
     this.labels = new Map();
     this.isDirty = true;
-    this.v = new THREE.Vector3();
     this.mapCtx = $('#minimap').getContext('2d');
     this.mapT = 0;
     this.onDirty = () => {};
@@ -191,18 +189,17 @@ export class HUD {
   // 몬스터 머리 위 이름/HP, 바닥 아이템 이름
   updateLabels() {
     const w = this.world;
-    const cam = w.stage.camera;
     const W = window.innerWidth, H = window.innerHeight;
     const seen = new Set();
     const P = w.player.pos;
     const place = (key, pos, y, make, update) => {
-      this.v.set(pos.x, y, pos.z).project(cam);
-      if (this.v.z > 1 || Math.abs(this.v.x) > 1.1 || Math.abs(this.v.y) > 1.1) return;
+      const sc = w.stage.toScreen(pos.x, pos.z, y);
+      if (sc.x < -60 || sc.y < -60 || sc.x > W + 60 || sc.y > H + 60) return;
       let el = this.labels.get(key);
       if (!el) { el = make(); this.labelLayer.appendChild(el); this.labels.set(key, el); }
       update?.(el);
-      el.style.left = `${(this.v.x * 0.5 + 0.5) * W}px`;
-      el.style.top = `${(-this.v.y * 0.5 + 0.5) * H}px`;
+      el.style.left = `${sc.x}px`;
+      el.style.top = `${sc.y}px`;
       seen.add(key);
     };
     for (const m of w.monsters) {

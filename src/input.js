@@ -1,41 +1,30 @@
 // 입력: PC(마우스 · 키보드) + 모바일(조이스틱 · 터치 · 버튼)
-import * as THREE from 'three';
-import { isTouch } from './engine/scene.js';
+import { isTouch } from './engine2d/stage.js';
 
 const $ = (s) => document.querySelector(s);
 
 export function setupInput(world, stage, windows) {
-  const canvas = stage.renderer.domElement;
-  const ray = new THREE.Raycaster();
-  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-  const v = new THREE.Vector3();
-  const ndc = new THREE.Vector2();
+  const canvas = stage.canvas;
   if (isTouch) document.body.classList.add('touch');
 
-  const groundAt = (cx, cy) => {
-    ndc.set((cx / window.innerWidth) * 2 - 1, -(cy / window.innerHeight) * 2 + 1);
-    ray.setFromCamera(ndc, stage.camera);
-    return ray.ray.intersectPlane(plane, v) ? v.clone() : null;
-  };
+  const groundAt = (cx, cy) => stage.toWorld(cx, cy);
 
   // 화면 좌표 근처의 몬스터 (클릭/탭 판정을 넉넉하게)
   const pickMonster = (cx, cy) => {
     let best = null, bd = isTouch ? 60 : 45;
     for (const m of world.monsters) {
       if (m.dead || !m.actor.root.visible) continue;
-      for (const h of [0.6, 1.3, 2]) {
-        v.set(m.pos.x, h * m.actor.scale, m.pos.z).project(stage.camera);
-        const sx = (v.x * 0.5 + 0.5) * window.innerWidth, sy = (-v.y * 0.5 + 0.5) * window.innerHeight;
-        const d = Math.hypot(sx - cx, sy - cy);
+      for (const h of [0.3, 0.9, 1.5]) {
+        const s = stage.toScreen(m.pos.x, m.pos.z, h * m.actor.scale);
+        const d = Math.hypot(s.x - cx, s.y - cy);
         if (d < bd) { bd = d; best = m; }
       }
     }
     return best;
   };
   const pickNpc = (cx, cy, npc = world.npc) => {
-    v.set(npc.pos.x, 1.3, npc.pos.z).project(stage.camera);
-    const sx = (v.x * 0.5 + 0.5) * window.innerWidth, sy = (-v.y * 0.5 + 0.5) * window.innerHeight;
-    return Math.hypot(sx - cx, sy - cy) < 50;
+    const s = stage.toScreen(npc.pos.x, npc.pos.z, 1);
+    return Math.hypot(s.x - cx, s.y - cy) < 50;
   };
 
   // ── 화면 클릭/탭: 몬스터면 공격, 땅이면 이동 ──
@@ -77,16 +66,16 @@ export function setupInput(world, stage, windows) {
 
   // ── 휠 · 핀치 줌 ──
   canvas.addEventListener('wheel', (e) => {
-    stage.zoom = Math.max(0.55, Math.min(1.5, stage.zoom * (e.deltaY > 0 ? 1.08 : 0.93)));
+    stage.userZoom = Math.max(0.6, Math.min(1.6, stage.userZoom * (e.deltaY > 0 ? 0.93 : 1.08)));
   }, { passive: true });
   const touches = new Map();
   let pinch0 = 0, zoom0 = 1;
   canvas.addEventListener('touchstart', (e) => {
     for (const t of e.changedTouches) touches.set(t.identifier, t);
-    if (e.touches.length === 2) { pinch0 = dist(e.touches[0], e.touches[1]); zoom0 = stage.zoom; }
+    if (e.touches.length === 2) { pinch0 = dist(e.touches[0], e.touches[1]); zoom0 = stage.userZoom; }
   }, { passive: true });
   canvas.addEventListener('touchmove', (e) => {
-    if (e.touches.length === 2 && pinch0) stage.zoom = Math.max(0.55, Math.min(1.5, zoom0 * (pinch0 / dist(e.touches[0], e.touches[1]))));
+    if (e.touches.length === 2 && pinch0) stage.userZoom = Math.max(0.6, Math.min(1.6, zoom0 * (dist(e.touches[0], e.touches[1]) / pinch0)));
   }, { passive: true });
   canvas.addEventListener('touchend', () => { pinch0 = 0; }, { passive: true });
 

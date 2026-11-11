@@ -38,5 +38,5 @@ npm test         # 성장 · 스킬 · 드랍 · 사망 · 장착 로직 테스�
 | `src/engine/` | three.js 렌더러 · 지형 · 소품 배치 · 모델 로딩 |
 | `src/world/` | 월드 시뮬레이션: 조작 · 몬스터 AI · 전투 · 스킬 효과 · 자동 사냥 · 사망 |
 | `src/ui/` | HUD · 창(가방/스킬/능력/상점/메뉴) |
-| `assets/models/` | KayKit CC0 3D 모델 ([라이선스](assets/LICENSES.md)) |
+| `assets/flare/` | Flare: Empyrean Campaign 2D 그림, CC-BY-SA 3.0 ([라이선스](assets/LICENSES.md)) |
 | `tools/` | 개발 서버 · 테스트 · 에셋 변환 |

@@ -1,0 +1,108 @@
+/* Flare UI (CC-BY-SA 3.0) — styles.css 위에 덮어쓴다. 돌판 창 · 금속 테두리 버튼 · 칸 · 바 */
+:root {
+  --brass: #b39a6e;
+  --brass-hi: #ead6a4;
+  --brass-dk: #5e4c30;
+  --ink: #e6dcc6;
+  --dim: #a49a84;
+  --gold: #e3c27a;
+  --line: rgba(179, 154, 110, 0.4);
+  --line-soft: rgba(179, 154, 110, 0.2);
+  --M: url('assets/flare/menus/');
+}
+html, body { background: #0d0c0b; }
+#vignette { display: none; }
+
+/* 버튼 · 판 */
+.btn, .plate {
+  background: none; border-style: solid; border-color: transparent; border-width: 0 14px; border-radius: 0;
+  border-image: url('assets/flare/menus/button.png') 0 46 fill / 0 14px stretch;
+  color: #e8dcc0; text-shadow: 0 1px 2px #000; box-shadow: none; padding: 0.42em 0.6em; min-height: 2.2em;
+}
+.btn:hover, .plate:hover { border-image-source: url('assets/flare/menus/button_hover.png'); }
+.btn:active, .plate:active { border-image-source: url('assets/flare/menus/button_down.png'); filter: none; transform: none; }
+.btn.on, .btn.gold, .plate.gold { border-image-source: url('assets/flare/menus/button_hover.png'); color: #fff0c8; font-weight: 700; }
+.btn:disabled, .plate:disabled { border-image-source: url('assets/flare/menus/button_off.png'); opacity: 0.7; filter: none; }
+.btn.danger { color: #ff9a86; }
+.plate { padding: 0.6em 1em; font-size: calc(var(--u) * 1.1); }
+.plate.gold { color: #fff2d0; font-family: var(--f-title); }
+
+/* 창 */
+.screen {
+  background: linear-gradient(rgba(10, 9, 8, 0.86), rgba(10, 9, 8, 0.93)), url('assets/flare/menus/bg_dungeon.jpg') center / cover;
+}
+.screen::after { display: none; }
+.fs-head::after { background: linear-gradient(90deg, transparent, var(--brass) 15%, var(--brass-dk) 50%, var(--brass) 85%, transparent) center / 100% 1px no-repeat; height: 2px; bottom: -6px; }
+.fs-head > .gear { display: none; }
+.fs-head h2 { color: var(--brass-hi); }
+.frame {
+  background: none; box-shadow: none; border-radius: 0;
+  border-style: solid; border-color: transparent; border-width: 16px 14px;
+  border-image: url('assets/flare/menus/powers.png') 60 36 36 36 fill / 16px 14px stretch;
+  padding: 4px 8px;
+}
+.tab {
+  background: none; border-radius: 0; border-style: solid; border-color: transparent; border-width: 0 12px;
+  border-image: url('assets/flare/menus/tab_inactive.png') 0 30 fill / 0 12px stretch; color: var(--dim);
+}
+.tab.on { border-image-source: url('assets/flare/menus/tab_active.png'); color: #fff0c8; box-shadow: none; background: none; }
+.screen .close { background: url('assets/flare/menus/close.png') center / 100% 100% no-repeat; width: calc(var(--u) * 3.4); height: calc(var(--u) * 2.1); }
+.screen .close:hover { background-image: url('assets/flare/menus/close_hover.png'); }
+.screen .close span { display: none; }
+h3 { color: var(--brass-hi); }
+h3::before { background: none; width: 0.55em; height: 0.55em; border: 1px solid var(--brass); transform: rotate(45deg); flex: none; }
+
+/* 아이템 칸 */
+.cell { border-radius: 0; border: 0; background: url('assets/flare/menus/slot_empty.png') center / 100% 100%; box-shadow: none; }
+.cell.sel { outline: 0; background-image: url('assets/flare/menus/slot_selected.png'), url('assets/flare/menus/slot_empty.png'); background-size: 100% 100%; }
+.cell.r-magic { box-shadow: inset 0 0 0 2px rgba(108, 140, 255, 0.8), inset 0 0 12px rgba(108, 140, 255, 0.35); }
+.cell.r-rare { box-shadow: inset 0 0 0 2px rgba(255, 216, 74, 0.85), inset 0 0 12px rgba(255, 216, 74, 0.35); }
+.cell.r-hero { box-shadow: inset 0 0 0 2px rgba(255, 154, 60, 0.9), inset 0 0 14px rgba(255, 154, 60, 0.45); }
+.cell.r-legend { box-shadow: inset 0 0 0 2px rgba(65, 224, 122, 0.95), inset 0 0 16px rgba(65, 224, 122, 0.5); }
+.cell img { width: 92%; height: 92%; image-rendering: auto; }
+.card { background: url('assets/flare/menus/slot_empty.png') center / 100% 100%; border: 1px solid var(--brass-dk); border-radius: 2px; }
+.sicon { border-radius: 2px; border: 1px solid var(--brass-dk); background-size: cover !important; }
+.sicon img { width: 100%; height: 100%; }
+
+/* 위쪽 정보 */
+.portrait { border: 0; border-radius: 4px; background: url('assets/flare/menus/portrait_border.png') center / 100% 100%; box-shadow: 0 2px 8px #000; padding: 6%; }
+.portrait img { border-radius: 2px; }
+.lvpill { border-radius: 2px; background: #1a1612; border-color: var(--brass-dk); }
+.bar { border: 0; border-radius: 0; background: url('assets/flare/menus/bar_hp_background.png') center / 100% 100%; box-shadow: none; height: calc(var(--u) * 1.45); }
+.bar i { inset: 12% 3.5% 12% 3%; background: url('assets/flare/menus/bar_hp.png') left / 100% 100%; }
+.bar.mp { background-image: url('assets/flare/menus/bar_mp_background.png'); }
+.bar.mp i { background-image: url('assets/flare/menus/bar_mp.png'); }
+.bar.xp { background: url('assets/flare/menus/bar_xp_background.png') center / 100% 100%; height: calc(var(--u) * 0.55); }
+.bar.xp i { inset: 25% 2%; background: url('assets/flare/menus/bar_xp.png') left / 100% 100%; filter: sepia(1) saturate(3) hue-rotate(5deg); }
+.thp { background-image: url('assets/flare/menus/bar_enemy_hp_background.png'); height: calc(var(--u) * 1.3); }
+.thp i { background-image: url('assets/flare/menus/bar_enemy_hp.png'); inset: 30% 12%; }
+.pill, #questBox, .toast, #tutBox { background: rgba(14, 12, 10, 0.88); border: 1px solid var(--brass-dk); border-radius: 2px; box-shadow: 0 2px 6px #000; }
+#tutBox { border-color: var(--brass); }
+#mapWrap { border: 2px solid var(--brass-dk); border-radius: 2px; box-shadow: 0 0 0 1px #000, 0 4px 10px #000; background: #0c0b0a; }
+.ibtn { border-radius: 2px; border: 1px solid var(--brass-dk); background: url('assets/flare/menus/slot_empty.png') center / 100% 100%; }
+.ibtn img { filter: none; }
+.menu-toggle { background: url('assets/flare/menus/slot_empty.png') center / 100% 100%; }
+
+/* 아래: 행동 단추 · 퀵슬롯 */
+.slot { border-radius: 3px; background: url('assets/flare/menus/slot_empty.png') center / 100% 100%; border: 1px solid var(--brass-dk); }
+.slot .ico { border-radius: 0; box-shadow: none; background: none !important; }
+.slot .ico img { width: 100%; height: 100%; }
+.slot .cd { border-radius: 0; }
+.act { background: url('assets/flare/menus/slot_empty.png') center / 100% 100%; border-color: var(--brass-dk); }
+.act.attack { background: radial-gradient(circle at 40% 30%, #6a2a1e, #2a100c 75%); border-color: var(--brass); }
+#expBar { background: url('assets/flare/menus/bar_xp_background.png') center / 100% 100%; border-top: 0; }
+#expBar i { background: url('assets/flare/menus/bar_xp.png') left / 100% 100%; filter: sepia(1) saturate(3); inset: 22% 1%; }
+body:not(.touch) #quick { bottom: calc(var(--u) * 2.2); padding: 6px 14px; background: url('assets/flare/menus/actionbar_trim.png') center / 100% 100%; }
+
+/* 타이틀 */
+.looks button { background: url('assets/flare/menus/slot_empty.png') center / 100% 100%; border: 1px solid var(--brass-dk); border-radius: 2px; padding: 3px; }
+.looks button img { width: calc(var(--u) * 4.4); height: calc(var(--u) * 4.4); border-radius: 2px; }
+.looks button.on { border-color: var(--brass-hi); box-shadow: 0 0 12px rgba(234, 214, 164, 0.4); }
+.lgroup { background: rgba(10, 9, 8, 0.7); border-color: var(--brass-dk); border-radius: 2px; flex-wrap: wrap; justify-content: center; }
+#nameInput, #account input { background: #0e0c0a; border: 1px solid var(--brass-dk); border-radius: 2px; }
+.pickCard { background: url('assets/flare/menus/slot_empty.png') center / 100% 100%; border: 1px solid var(--brass-dk); border-radius: 2px; }
+.pickCard.on { border-color: var(--brass-hi); }
+.pickCard .wp { image-rendering: auto; max-height: calc(var(--u) * 6); }
+.pickCard .sk img { border-radius: 2px; }
+input[type=range] { accent-color: var(--brass); }
+.lbl .hpb { border-radius: 0; border-color: #3a2e1e; }
