@@ -6,7 +6,9 @@ import { DATA, image, drawRect } from './sprites.js';
 import { seeded } from '../game/rng.js';
 
 export const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
-export const PX = 48, PZ = 24, PY = 48;
+export const PX = 64, PZ = 32, PY = 64;
+// 땅 타일(192×96) 한 칸 = 세계 STEP칸 대각
+const STEP = 96 / PX;
 
 export function zoneAt(x, z) {
   for (const zn of ZONES) if (Math.hypot(x - zn.x, z - zn.z) < zn.r) return zn;
@@ -22,7 +24,7 @@ const noise = (x, z) => (Math.sin(x * 0.11 + Math.cos(z * 0.07) * 2) + Math.sin(
 
 // 이 칸(타일 i, j)의 땅: [타일 묶음, 번호]
 function groundAt(i, j) {
-  const x = (i - j) * 2, z = (i + j) * 2;
+  const x = (i - j) * STEP, z = (i + j) * STEP;
   const h = hash(i, j);
   const dT = Math.hypot(x, z);
   if (dT < TOWN.r * 0.75) return pick('town', h);
@@ -49,7 +51,7 @@ export function createStage(canvas) {
     canvas.width = Math.round(w * stage.pr); canvas.height = Math.round(h * stage.pr);
     canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
     stage.W = w; stage.H = h;
-    stage.baseZoom = Math.max(0.5, Math.min(1, h / 1000)); // 세로 1000px에서 Flare 원래 크기, 휴대폰은 0.5
+    stage.baseZoom = Math.max(0.55, Math.min(1, h / 1000)); // 세로 1000px에서 Flare 원래 크기, 휴대폰은 0.5
   };
   stage.resize();
   window.addEventListener('resize', stage.resize);
@@ -127,7 +129,7 @@ export function buildWorldProps(stage) {
 // 잿빛 초소: 천막 · 모닥불 · 대장간 모루 · 상자 · 울타리 · 귀환 차원문
 function buildTown(stage, rng) {
   addProp(stage, 'grassland', 265, 0, -2, 0);
-  for (const [id, x, z, r] of [[72, -11, -9, 2.4], [74, 9, -11, 2.2], [73, -15, 3, 2.2], [75, 13, 4, 2.2], [102, -4, 6, 0.8], [103, 7, -6, 0.9],
+  for (const [id, x, z, r] of [[296, -11, -9, 2.4], [296, 12, -10, 2.4], [100, -15, 3, 1.1], [101, 14, 4, 1.1], [76, -6, -13, 0.8], [102, -4, 6, 0.8], [103, 7, -6, 0.9],
     [96, 4, -12, 0.9], [98, 5.5, -12.5, 0.9], [99, -8, -13, 0.9], [100, -16, -6, 1], [76, 2.5, -9.5, 0.8], [77, -2.5, -10, 0.8], [138, 0, 14, 0.3], [139, 14, 0, 0.3]]) addProp(stage, 'grassland', id, x, z, r);
   // 울타리 (길 쪽 네 방향은 비운다)
   for (let i = 0; i < 72; i++) {
@@ -200,12 +202,12 @@ function render(stage, dt) {
   ctx.fillRect(-20, -20, W + 40, H + 40);
   // 땅: 화면 네 귀퉁이를 타일 좌표로 바꿔 그 안만
   const c0 = stage.toWorld(-100, -100), c1 = stage.toWorld(W + 100, H + 160);
-  const ti = (x, z) => [(x + z) / 4, (z - x) / 4];
+  const ti = (x, z) => [(x + z) / (2 * STEP), (z - x) / (2 * STEP)];
   const pts = [ti(c0.x, c0.z), ti(c1.x, c0.z), ti(c0.x, c1.z), ti(c1.x, c1.z)];
   const i0 = Math.floor(Math.min(...pts.map((p) => p[0]))), i1 = Math.ceil(Math.max(...pts.map((p) => p[0])));
   const j0 = Math.floor(Math.min(...pts.map((p) => p[1]))), j1 = Math.ceil(Math.max(...pts.map((p) => p[1])));
   for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
-    const x = (i - j) * 2, z = (i + j) * 2;
+    const x = (i - j) * STEP, z = (i + j) * STEP;
     if (x < c0.x - 4 || x > c1.x + 4 || z < c0.z - 4 || z > c1.z + 4) continue;
     if (Math.hypot(x, z) > WORLD_SIZE + 12) continue;
     const [set, id] = tileAt(i, j);

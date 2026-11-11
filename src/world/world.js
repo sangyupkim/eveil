@@ -239,8 +239,8 @@ export class World {
     if (moving) resolveCollision(this.stage, m.pos, 0.5 * m.actor.scale);
     if (a.lock <= 0) {
       const kay = !!m.def.rig;
-      if (moving === 2) a.play('run', { speed: kay ? spd / 4.2 : 1 });
-      else if (moving === 1) a.play('walk', { speed: m.def.rig === 'human' ? 0.5 : 1 });
+      if (moving === 2) a.play('run', { speed: spd / 4.5 });
+      else if (moving === 1) a.play('walk', { speed: Math.max(0.35, spd * 0.35 / 4.5) });
       else a.play('idle');
     }
   }
@@ -1249,7 +1249,8 @@ export class World {
     } else this.stuckT = 0;
     if (this.detourT > 0) this.detourT -= dt;
     this.lastPos = { x: P.pos.x, z: P.pos.z };
-    if (P.lock <= 0) P.play(moving ? 'run' : 'idle', { speed: moving ? speed / 5.2 : 1 });
+    // Flare 달리기 한 바퀴(0.53초)에 약 2.4칸 나아가는 걸음 — 이동 속도에 맞춰 재생
+    if (P.lock <= 0) P.play(moving ? 'run' : 'idle', { speed: moving ? speed / 4.5 : 1 });
 
     // 줍기
     for (const g of [...this.ground]) if (dist2(g, P.pos) < 1.4) this.pickup(g);

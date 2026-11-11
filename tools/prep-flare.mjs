@@ -89,10 +89,10 @@ for (const [sex, dir, heads] of [['m', 'male', ['head_short', 'head_bald']], ['f
 
 // ── 몬스터 ──
 const ENEMIES = {
-  goblin: FC, goblin_elite: FC, antlion: FC, antlion_small: FC, fire_ant: FC, ice_ant: FC,
+  goblin: FC, goblin_elite: FC, hobgoblin: EC, hobgoblin_archer: EC, antlion: FC, antlion_small: FC, fire_ant: FC, ice_ant: FC,
   skeleton: FC, skeleton_weak: FC, skeleton_archer: FC, skeleton_mage: FC, zombie: FC, cursed_grave: FC, minotaur: FC,
-  wyvern: FC, wyvern_air: FC, wyvern_fire: FC,
-  zombie_dark: EC, antlion_armored: EC, skeleton_knight_boss: EC, skeleton_mage_boss: EC, skeleton_mage_high_boss: EC,
+  wyvern: FC, wyvern_air: FC, wyvern_fire: FC, wyvern_water: FC,
+  zombie_dark: EC, antlion_armored: EC, skeleton_knight_boss: EC, skeleton_mage_boss: EC, skeleton_mage_high_boss: EC, wyvern_air_boss: EC,
 };
 const enemies = {};
 for (const [name, root] of Object.entries(ENEMIES)) {
@@ -104,9 +104,14 @@ for (const [name, root] of Object.entries(ENEMIES)) {
   for (const [k, p] of Object.entries(a.images)) {
     const src = [path.join(root, p), path.join(FC, p), path.join(EC, p)].find((f) => fs.existsSync(f));
     const dst = `enemies/${name}${k === 'default' ? '' : '_' + k}.webp`;
-    await webp(src, path.join(OUT, dst), { q: 72 });
+    // 비룡은 그림이 커서 줄여 담고, 그릴 때 다시 키운다 (px)
+    const k2 = name.startsWith('wyvern') ? 0.6 : 1;
+    if (k2 < 1) { const m = await sharp(src).metadata(); await webp(src, path.join(OUT, dst), { q: 72, width: Math.round(m.width * k2) }); }
+    else await webp(src, path.join(OUT, dst), { q: 72 });
     a.images[k] = dst;
+    if (k2 < 1) a.px = 1 / k2;
   }
+  if (a.px) for (const an of Object.values(a.anims)) for (const d in an.f) an.f[d] = an.f[d].map((r) => r && r.map((v) => Math.round(v / a.px)));
   enemies[name] = a;
 }
 writeJson('enemies.json', enemies);
