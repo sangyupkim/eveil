@@ -1,6 +1,7 @@
 // 계정 · 서버 저장. 서버는 영겁의 틈새와 같은 Cloudflare Worker (eonrift 저장소 worker/ashen.ts).
 // 이 게임은 GitHub Pages에서 돌므로 다른 주소로 부른다 (서버가 CORS를 연다).
-const API = 'https://eonrift.weak0416.workers.dev/api';
+// 영겁의 틈새 테스트 서버(dev 브랜치). 같은 D1을 쓴다. 영겁의 틈새가 출시(main)되면 본 주소로 바꿔도 된다
+const API = 'https://dev-eonrift.weak0416.workers.dev/api';
 const KEY = 'ashen-account';
 const GAP = 45; // 서버 저장 사이 최소 간격(초)
 
