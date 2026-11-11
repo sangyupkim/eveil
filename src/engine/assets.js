@@ -48,6 +48,7 @@ export async function loadModels(names, onProgress = () => {}) {
 }
 
 export const clip = (name) => clips.get(name);
+export const sourceModel = (name) => cache.get(name);
 export const hasModel = (name) => cache.has(name);
 
 // 그 모델(rig)에서 게임 동작 이름에 맞는 클립을 찾는다

@@ -165,7 +165,8 @@ function startGame(stage, st) {
 
   const clock = new THREE.Clock();
   let saveT = CONFIG.autosaveInterval;
-  let fpsT = 0, frames = 0;
+  let fpsT = 0, frames = 0, slow = 0, fast = 0;
+  const PR_MAX = stage.renderer.getPixelRatio(), PR_MIN = Math.min(PR_MAX, isTouch ? 0.75 : 1);
   const loop = () => {
     const dt = Math.min(0.05, clock.getDelta());
     if (window.__stop) { requestAnimationFrame(loop); return; } // 개발용: 화면 멈춤
@@ -178,7 +179,14 @@ function startGame(stage, st) {
     saveT -= dt;
     if (saveT <= 0) { saveT = CONFIG.autosaveInterval; save(); }
     frames++; fpsT += dt;
-    if (fpsT > 1) { window.__fps = frames / fpsT; frames = 0; fpsT = 0; }
+    if (fpsT > 1) {
+      window.__fps = frames / fpsT; frames = 0; fpsT = 0;
+      // 자동 화질: 2초 넘게 느리면 해상도를 낮추고, 오래 넉넉하면 조금씩 되돌린다
+      const R = stage.renderer, pr = R.getPixelRatio();
+      if (window.__fps < 40) { slow++; fast = 0; } else if (window.__fps > 57) { fast++; slow = 0; } else { slow = 0; fast = 0; }
+      if (slow >= 2 && pr > PR_MIN) { R.setPixelRatio(Math.max(PR_MIN, pr - 0.25)); stage.resize(); slow = 0; }
+      if (fast >= 8 && pr < PR_MAX) { R.setPixelRatio(Math.min(PR_MAX, pr + 0.25)); stage.resize(); fast = 0; }
+    }
     requestAnimationFrame(loop);
   };
   loop();

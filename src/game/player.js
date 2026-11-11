@@ -23,7 +23,7 @@ export function newPlayer(name = '방랑자', look = { face: 'rogue_plain' }, st
     pos: { x: 0, z: 4 },
     lastZone: 'field',
     ground: [],              // 사망으로 떨어뜨린 아이템 { item, x, z, expires }
-    settings: { autoPotion: 0.4, autoBuy: true, shadows: true, music: 0.6, sfx: 0.8 },
+    settings: { autoPotion: 0.4, autoBuy: true, shadows: true, music: 0.6, sfx: 0.8, shake: true },
     playTime: 0,
     kills: 0,
     tut: start ? 99 : 0,     // 튜토리얼 단계 (0 = 무기 고르기, 99 = 끝)

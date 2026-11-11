@@ -32,6 +32,8 @@ import { audio } from '../engine/audio.js';
 const sfx = (n, k) => audio.play(n, k);
 
 const ACTIVE_RADIUS = 58;
+const SPAWN_NEAR = 72;   // 이 안의 자리에만 몬스터를 만든다
+const DESPAWN_FAR = 92;  // 이보다 멀어진 한가한 몬스터는 치운다 (다시 오면 새로 만든다)
 const dist2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
 export class World {
@@ -41,6 +43,8 @@ export class World {
     this.st = st;
     this.ui = ui;
     this.fx = new FX(this.scene, stage.camera, ui.fxLayer);
+    this.fx.onShake = (k) => { if (this.st.settings.shake !== false) stage.shake(k); };
+    this.fx.renderer = stage.renderer;
     this.timers = [];
     this.monsters = [];
     this.ground = [];
@@ -191,8 +195,9 @@ export class World {
     for (const sp of this.spawners) {
       if (sp.mon) continue;
       sp.timer -= dt;
-      // 플레이어 바로 앞에서 튀어나오지 않게
-      if (sp.timer <= 0 && Math.hypot(sp.x - p.x, sp.z - p.z) > 14) this.spawn(sp);
+      // 플레이어 바로 앞에서 튀어나오지 않게 · 먼 곳은 가까워질 때 만든다 (몬스터 수 · 메모리 절약)
+      const d = Math.hypot(sp.x - p.x, sp.z - p.z);
+      if (sp.timer <= 0 && d > 14 && d < SPAWN_NEAR) this.spawn(sp);
     }
   }
 
@@ -285,12 +290,13 @@ export class World {
 
   // 예고 원 → 시간이 지나면 그 안에 있을 때만 맞는다
   danger(m, x, z, r, delay, mult, color = 0xff4020) {
-    this.fx.ring(x, z, r, color, delay, 0.06);
-    this.fx.ring(x, z, r * 0.5, color, delay, 0.07);
+    this.fx.telegraph(x, z, r, delay, color);
     this.later(delay, () => {
       if (m.dead) return;
-      this.fx.pillar(x, z, color, 0.5, 5, r * 0.7);
-      this.fx.burst(x, 0.6, z, color, 14, 5, 0.5);
+      this.fx.ring(x, z, r * 1.15, color, 0.5);
+      this.fx.pillar(x, z, color, 0.45, 4, r * 0.55);
+      this.fx.burst(x, 0.6, z, color, 18, 6, 0.55);
+      this.fx.shake(Math.min(0.6, r * 0.08));
       sfx('boom', 0.6);
       if (!this.dead && Math.hypot(this.player.pos.x - x, this.player.pos.z - z) < r) this.hurtPlayer(randRange(m.dmg[0], m.dmg[1]) * mult, m);
     });
@@ -328,7 +334,7 @@ export class World {
       a.lock = 0.9;
       const dx = p.x - m.pos.x, dz = p.z - m.pos.z, l = Math.hypot(dx, dz) || 1;
       const to = { x: m.pos.x + (dx / l) * (l + 4), z: m.pos.z + (dz / l) * (l + 4) };
-      for (let i = 1; i <= 4; i++) this.fx.ring(m.pos.x + (to.x - m.pos.x) * i / 4, m.pos.z + (to.z - m.pos.z) * i / 4, 1.6, color, 0.9, 0.06);
+      this.fx.lane(m.pos.x, m.pos.z, to.x, to.z, 3.2, 0.9, color);
       this.later(0.9, () => { if (!m.dead) { m.dash = { to, t: 0.55, hit: false }; a.lock = 0; a.play('run', { force: true, speed: 1.6 }); } });
     } else if (name === 'volley') {
       a.act(m.def.atk || 'attack', 0.9);
@@ -348,7 +354,8 @@ export class World {
     ds.t -= dt;
     this.stepToward(m.pos, ds.to, 26 * dt);
     m.actor.face(ds.to.x, ds.to.z);
-    if (!ds.hit && dist2(m.pos, p) < 2.2) { ds.hit = true; this.hurtPlayer(randRange(m.dmg[0], m.dmg[1]) * 1.7, m); }
+    this.fx.smoke.add({ x: m.pos.x, y: 0.4, z: m.pos.z, vy: 0.6, color: 0x4a3c30, size: 1.6, size1: 3.4, life: 0.8, cell: 'smoke', alpha: 0.4 });
+    if (!ds.hit && dist2(m.pos, p) < 2.2) { ds.hit = true; this.fx.shake(0.45); this.hurtPlayer(randRange(m.dmg[0], m.dmg[1]) * 1.7, m); }
     resolveCollision(this.stage, m.pos, 0.5 * m.actor.scale);
     if (ds.t <= 0 || dist2(m.pos, ds.to) < 0.6) { m.dash = null; m.atkT = 0.8; }
     m.actor.update(0);
@@ -384,6 +391,8 @@ export class World {
     st.hp -= dmg;
     addAP(st, 'vit', (dmg / d.maxHp) * AP_TABLE.hurtScale, apMult);
     this.player.hitFlash(0xff2000);
+    this.fx.burst(this.player.pos.x, 1.2, this.player.pos.z, 0xff3020, 5, 2.5, 0.3);
+    if (dmg > d.maxHp * 0.15) this.fx.shake(0.35);
     sfx('hurt');
     this.fx.text(head, `-${dmg}`, 'hurt');
     if (st.hp <= 0) this.die();
@@ -416,7 +425,7 @@ export class World {
     const head = m.pos.clone().setY(2.3 * m.actor.scale);
     this.fx.text(head, crit ? `${dmg}!` : String(dmg), crit ? 'crit' : '');
     sfx(crit ? 'crit' : 'hit');
-    this.fx.burst(m.pos.x, 1.2 * m.actor.scale, m.pos.z, crit ? 0xffd040 : 0xffa060, crit ? 10 : 5, 3);
+    this.fx.hit(m.pos.x, 1.1 * m.actor.scale, m.pos.z, ctx ? new THREE.Color(SKILLS[ctx.id].color).getHex() : crit ? 0xffd040 : 0xffa060, crit);
     if (d.lifeSteal) this.healPlayer(dmg * d.lifeSteal, false);
     if (crit) addAP(st, 'dex', AP_TABLE.crit, apMult);
 
@@ -466,6 +475,8 @@ export class World {
     if (m.tier === 'boss') for (const x of this.monsters) if (x.owner === m && !x.dead) { x.noLoot = true; x.exp = 0; this.later(0.3, () => { if (!x.dead) this.hitMonster(x, 99999, { src: 'none' }); }); }
     m.actor.lock = 99;
     m.deadT = 3.2;
+    this.fx.burst(m.pos.x, 0.8 * m.actor.scale, m.pos.z, m.tier === 'boss' ? 0xffd060 : 0xb0a0ff, m.tier === 'normal' ? 6 : 24, 3, 0.35);
+    if (m.tier === 'boss') { this.fx.pillar(m.pos.x, m.pos.z, 0xffd060, 1.6, 10, 2); this.fx.shake(0.6); }
     m.sp.mon = null;
     m.sp.timer = m.tier === 'boss' ? CONFIG.bossRespawn : m.tier === 'named' ? CONFIG.namedRespawn : CONFIG.respawnTime;
     if (this.target === m) this.target = null;
@@ -651,7 +662,7 @@ export class World {
   nearestMonster(range, from = this.player.pos, exclude = null) {
     let best = null, bd = range;
     for (const m of this.monsters) {
-      if (m.dead || m === exclude || !m.actor.root.visible || m.ignoreUntil > this.time) continue;
+      if (m.dead || m === exclude || !m.near || m.ignoreUntil > this.time) continue;
       if (dist2(m.pos, TOWN) < TOWN.r) continue;
       const d = dist2(m.pos, from);
       if (d < bd) { bd = d; best = m; }
@@ -769,6 +780,7 @@ export class World {
     const spellCrit = () => Math.random() < d.crit * 0.5;
     const weaponHit = () => { const w = this.rollWeapon(); return { v: w.v * pw, crit: w.crit }; };
     const color = new THREE.Color(sk.color).getHex();
+    if (sk.ap === 'int' || sk.type === 'buff') this.fx.circle(P.pos.x, P.pos.z, sk.type === 'buff' ? 2.6 : 1.8, color, 0.9);
 
     switch (sk.type) {
       case 'melee': {
@@ -778,7 +790,9 @@ export class World {
         this.later(dur * 0.4, () => {
           if (t && !t.dead && dist2(t.pos, P.pos) < d.range + 1.5) {
             const w = weaponHit();
-            this.fx.burst(t.pos.x, 1, t.pos.z, color, 12, 4, 0.5);
+            this.fx.slash(P.pos.x, P.pos.z, P.facing, color, d.range + 1.2, { tilt: 0.6, dur: 0.3 });
+            this.fx.burst(t.pos.x, 1, t.pos.z, color, 16, 5, 0.5);
+            this.fx.shake(0.2);
             this.hitMonster(t, w.v, { crit: w.crit, src: 'skill', ctx });
           }
         });
@@ -789,11 +803,12 @@ export class World {
         this.swing = dur * 0.8;
         this.later(dur * 0.35, () => {
           sfx('spin');
+          this.fx.slash(P.pos.x, P.pos.z, P.facing, color, sk.radius, { all: true, y: 0.9, dur: 0.35, tilt: 0 });
           this.fx.ring(P.pos.x, P.pos.z, sk.radius, color, 0.45);
           for (const m of this.monstersNear(P.pos, sk.radius)) { const w = weaponHit(); this.hitMonster(m, w.v, { crit: w.crit, src: 'skill', ctx }); }
           for (let h = 1; h < (sk.hits || 1); h++) this.later(h * 0.35, () => {
             sfx('spin');
-            this.fx.ring(P.pos.x, P.pos.z, sk.radius, color, 0.4);
+            this.fx.slash(P.pos.x, P.pos.z, P.facing + h * 2, color, sk.radius, { all: true, y: 0.9, dur: 0.3, tilt: 0 });
             for (const m of this.monstersNear(P.pos, sk.radius)) { const w = weaponHit(); this.hitMonster(m, w.v, { crit: w.crit, src: 'skill', ctx }); }
           });
         });
@@ -806,7 +821,9 @@ export class World {
           const ang = P.facing;
           sfx('slam');
           this.fx.cone(P.pos.x, P.pos.z, ang, sk.radius, color);
+          this.fx.ring(P.pos.x + Math.sin(ang) * 2, P.pos.z + Math.cos(ang) * 2, 3, color, 0.4);
           this.fx.burst(P.pos.x + Math.sin(ang) * 2, 0.5, P.pos.z + Math.cos(ang) * 2, color, 16, 6, 0.5);
+          this.fx.shake(0.3);
           for (const m of this.monstersNear(P.pos, sk.radius)) {
             const a = Math.atan2(m.pos.x - P.pos.x, m.pos.z - P.pos.z);
             if (Math.abs(Math.atan2(Math.sin(a - ang), Math.cos(a - ang))) < 0.75) { const w = weaponHit(); this.hitMonster(m, w.v, { crit: w.crit, src: 'skill', ctx }); }
@@ -887,7 +904,9 @@ export class World {
         this.later(dur * 0.4, () => {
           sfx('ice');
           this.fx.ring(P.pos.x, P.pos.z, sk.radius, color, 0.7);
-          this.fx.burst(P.pos.x, 1, P.pos.z, color, 30, 10, 0.6);
+          this.fx.decal(0, P.pos.x, P.pos.z, sk.radius * 1.2, 0xffffff, 0.5, { grow: true });
+          this.fx.burst(P.pos.x, 1, P.pos.z, color, 40, 12, 0.7);
+          this.fx.shake(0.35);
           for (const m of this.monstersNear(P.pos, sk.radius)) { m.slowT = 4; this.hitMonster(m, spell(), { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 }); }
         });
         break;
@@ -903,6 +922,7 @@ export class World {
         this.swing = dur * 0.8;
         sfx('heavy');
         this.later(0.2, () => {
+          this.fx.slash(P.pos.x, P.pos.z, P.facing, color, 3, { tilt: 0.5, dur: 0.3 });
           if (!t.dead) { const w = weaponHit(); this.fx.burst(t.pos.x, 1, t.pos.z, color, 14, 4, 0.5); this.hitMonster(t, w.v, { crit: w.crit, src: 'skill', ctx }); }
           for (const m of this.monstersNear(t.pos, 2.2)) if (m !== t) { const w = weaponHit(); this.hitMonster(m, w.v * 0.5, { crit: w.crit, src: 'skill', ctx }); }
         });
@@ -932,13 +952,17 @@ export class World {
       case 'rain': {
         // 정한 자리에 몇 번 나눠 떨어진다
         const at = { x: t.pos.x, z: t.pos.z };
+        this.fx.circle(at.x, at.z, sk.radius, color, 0.35 + sk.waves * 0.45);
         const dur = P.act(sk.ap === 'int' ? 'castUp' : 'shoot', 1.3);
         this.swing = dur * 0.6;
         sfx(sk.ap === 'int' ? 'cast' : 'shoot');
         for (let i = 0; i < sk.waves; i++) {
           this.later(0.35 + i * 0.45, () => {
             this.fx.ring(at.x, at.z, sk.radius, color, 0.35);
-            for (let k = 0; k < 6; k++) { const a = Math.random() * 6.28, r = Math.random() * sk.radius; this.fx.burst(at.x + Math.cos(a) * r, 0.4, at.z + Math.sin(a) * r, color, 3, 2, 0.35); }
+            for (let k = 0; k < 8; k++) {
+              const a = Math.random() * 6.28, r = Math.random() * sk.radius, x = at.x + Math.cos(a) * r, z = at.z + Math.sin(a) * r;
+              this.fx.projectile({ from: { x: x - 1, y: 9, z: z - 1 }, target: { x, z, pos: new THREE.Vector3(x, -1.1, z) }, color, size: 0.5, speed: 40, bolt: sk.ap !== 'int', trail: true, onHit: () => {} });
+            }
             sfx(sk.ap === 'int' ? 'ice' : 'hit', 0.5);
             for (const m of this.monstersNear(at, sk.radius)) {
               if (sk.slow) m.slowT = sk.slow;
@@ -957,7 +981,6 @@ export class World {
           const ang = P.facing;
           sfx('fire');
           this.fx.cone(P.pos.x, P.pos.z, ang, sk.radius, color);
-          for (let k = 0; k < 10; k++) { const a = ang + (Math.random() - 0.5) * 1.4, r = 1 + Math.random() * sk.radius; this.fx.burst(P.pos.x + Math.sin(a) * r, 0.6, P.pos.z + Math.cos(a) * r, color, 3, 2, 0.4); }
           for (const m of this.monstersNear(P.pos, sk.radius)) {
             const a = Math.atan2(m.pos.x - P.pos.x, m.pos.z - P.pos.z);
             if (Math.abs(Math.atan2(Math.sin(a - ang), Math.cos(a - ang))) < 0.75) this.hitMonster(m, spell(), { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 });
@@ -1004,7 +1027,10 @@ export class World {
       if (this.dead || t.dead) return;
       const w = this.rollWeapon();
       if (cls.kind === 'melee') {
-        if (dist2(t.pos, P.pos) <= d.range + 1.2) this.hitMonster(t, w.v, { crit: w.crit, src: 'melee' });
+        if (dist2(t.pos, P.pos) <= d.range + 1.2) {
+          this.fx.slash(P.pos.x, P.pos.z, P.facing, w.crit ? 0xffe080 : 0xfff4e0, d.range + 0.4, { tilt: (this.combo % 2 ? 0.35 : -0.35) });
+          this.hitMonster(t, w.v, { crit: w.crit, src: 'melee' });
+        }
       } else {
         const magic = cls.kind === 'magic';
         this.fx.projectile({
@@ -1133,10 +1159,17 @@ export class World {
     this.guard.update(dt);
     this.updateSpawners(dt);
     const P = this.player.pos;
+    // 화면에 보이는 몬스터만 그린다 (뼈대 모델은 스스로 화면 밖을 거르지 못한다)
+    const cam = this.stage.camera;
+    cam.updateMatrixWorld();
+    _pv.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+    _frustum.setFromProjectionMatrix(_pv);
     for (let i = this.monsters.length - 1; i >= 0; i--) {
       const m = this.monsters[i];
       const near = dist2(m.pos, P) < ACTIVE_RADIUS;
-      m.actor.root.visible = near;
+      _sph.center.set(m.pos.x, 1.2 * m.actor.scale, m.pos.z); _sph.radius = 2.6 * m.actor.scale + 1;
+      m.near = near;
+      m.actor.root.visible = near && _frustum.intersectsSphere(_sph);
       if (m.dead) {
         m.deadT -= dt;
         m.actor.update(dt);
@@ -1144,7 +1177,10 @@ export class World {
         if (m.deadT <= 0) { m.actor.dispose(); this.monsters.splice(i, 1); }
         continue;
       }
-      if (!near && m.state === 'idle') continue;
+      if (!near && m.state === 'idle') {
+        if (!m.owner && dist2(m.pos, P) > DESPAWN_FAR) { m.actor.dispose(); this.monsters.splice(i, 1); m.sp.mon = null; m.sp.timer = 0; if (this.target === m) this.target = null; }
+        continue;
+      }
       this.monsterAI(m, dt);
       m.actor.update(dt);
     }
@@ -1322,6 +1358,7 @@ export function heroLook(st) {
   return look;
 }
 
+const _frustum = new THREE.Frustum(), _pv = new THREE.Matrix4(), _sph = new THREE.Sphere();
 const angDiff = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
 function distToSeg(p, a, b) {
   const dx = b.x - a.x, dz = b.z - a.z;

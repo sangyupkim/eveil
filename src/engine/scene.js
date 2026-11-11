@@ -1,6 +1,6 @@
 // 렌더러 · 카메라 · 조명 · 지형 · 소품 배치
 import * as THREE from 'three';
-import { cloneProp, glowTexture } from './assets.js';
+import { cloneProp, glowTexture, sourceModel } from './assets.js';
 import { ZONES, TOWN, WORLD_SIZE } from '../data/world.js';
 import { seeded } from '../game/rng.js';
 
@@ -20,7 +20,7 @@ export function createStage(canvas, { shadows = true } = {}) {
   scene.background = fogColor;
   scene.fog = new THREE.Fog(fogColor, 30, 66);
 
-  const camera = new THREE.PerspectiveCamera(38, 1, 0.5, 220);
+  const camera = new THREE.PerspectiveCamera(38, 1, 0.5, 95); // 안개(66) 너머는 그리지 않는다
 
   // 해질녘의 차가운 하늘빛 + 낮게 깔린 따뜻한 햇빛
   const hemi = new THREE.HemisphereLight(0x7d8aa6, 0x231a10, 0.9);
@@ -45,11 +45,19 @@ export function createStage(canvas, { shadows = true } = {}) {
     camera.fov = w / h < 1.5 ? 40 : 34;
     camera.updateProjectionMatrix();
   };
+  stage.shakeK = 0;
+  stage.shake = (k) => { stage.shakeK = Math.min(1, Math.max(stage.shakeK, k)); };
   stage.follow = (x, z, dt = 1) => {
     const off = new THREE.Vector3(0, 23, 21).multiplyScalar(stage.zoom);
     const want = new THREE.Vector3(x, 0, z).add(off);
     camera.position.lerp(want, Math.min(1, dt * 8));
     camera.lookAt(camera.position.x - off.x, 1.2, camera.position.z - off.z);
+    // 화면 흔들림: 큰 타격 · 보스 패턴에서 잠깐
+    if (stage.shakeK > 0.001) {
+      const k = stage.shakeK * stage.shakeK * 0.6;
+      camera.position.x += (Math.random() - 0.5) * k; camera.position.y += (Math.random() - 0.5) * k; camera.position.z += (Math.random() - 0.5) * k;
+      stage.shakeK = Math.max(0, stage.shakeK - dt * 2.5);
+    }
     sun.position.set(x - 18, 34, z + 10);
     sun.target.position.set(x, 0, z);
     lamp.position.set(x, 3.2, z + 0.5);
@@ -165,10 +173,11 @@ function buildGrass(stage) {
   geo.computeVertexNormals();
   const mat = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide });
   const count = isTouch ? 9000 : 20000;
-  const mesh = new THREE.InstancedMesh(geo, mat, count);
   const rng = seeded(7);
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
   const col = new THREE.Color();
+  // 구역마다 따로 모아 화면 밖 구역은 그리지 않게 한다
+  const chunks = new Map();
   let n = 0;
   while (n < count) {
     const x = (rng() * 2 - 1) * WORLD_SIZE, z = (rng() * 2 - 1) * WORLD_SIZE;
@@ -181,15 +190,19 @@ function buildGrass(stage) {
     const k = 0.45 + rng() * 0.6;
     s.set(k, k * (0.6 + rng() * 0.5), k);
     p.set(x, 0, z);
-    m.compose(p, q, s);
-    mesh.setMatrixAt(n, m);
     const gc = groundColor(x, z, noise2(x, z));
-    col.setRGB(gc[0] * 1.15, gc[1] * 1.3 + 0.02, gc[2] * 1.0);
-    mesh.setColorAt(n, col);
+    const key = `${Math.floor(x / CHUNK)},${Math.floor(z / CHUNK)}`;
+    if (!chunks.has(key)) chunks.set(key, []);
+    chunks.get(key).push([m.compose(p, q, s).clone(), col.setRGB(gc[0] * 1.15, gc[1] * 1.3 + 0.02, gc[2] * 1.0).clone()]);
     n++;
   }
-  mesh.receiveShadow = true;
-  stage.scene.add(mesh);
+  for (const list of chunks.values()) {
+    const mesh = new THREE.InstancedMesh(geo, mat, list.length);
+    list.forEach(([mm, cc], i) => { mesh.setMatrixAt(i, mm); mesh.setColorAt(i, cc); });
+    mesh.computeBoundingSphere();
+    mesh.receiveShadow = true;
+    stage.scene.add(mesh);
+  }
 }
 
 function buildFireflies(stage) {
@@ -244,19 +257,55 @@ for (const name of ['n_tree1', 'n_tree2', 'n_tree3', 'n_tree_au', 'n_tree_au2', 
   'n_stump', 'n_stump_moss', 'n_log', 'n_log_moss', 'n_log_snow', 'n_cactus', 'n_cactus2']) PROP_INFO[name] = NATURE_INFO.find(([re]) => re.test(name))[1];
 export const NATURE_PROPS = Object.keys(PROP_INFO).filter((k) => k.startsWith('n_'));
 
+// 움직이지 않는 소품은 바로 그리지 않고 모아 두었다가, 구역(CHUNK)마다 같은 모델끼리 한 번에 그린다 (InstancedMesh)
+let batch = null;
+const CHUNK = 40;
+const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _y = new THREE.Vector3(0, 1, 0);
+
 function placeProp(stage, name, x, z, { rot = 0, scale = 1, collide = true } = {}) {
   const info = PROP_INFO[name] || [1, 0.5, 0];
-  const o = cloneProp(name);
   const s = info[0] * scale;
+  if (collide && info[1] > 0) stage.colliders.push({ x, z, r: info[1] * scale });
+  if (batch) {
+    const key = `${Math.floor(x / CHUNK)},${Math.floor(z / CHUNK)}|${name}`;
+    if (!batch.has(key)) batch.set(key, { name, mats: [] });
+    batch.get(key).mats.push(_m.compose(_p.set(x, 0, z), _q.setFromAxisAngle(_y, rot), _s.setScalar(s)).clone());
+    return null;
+  }
+  const o = cloneProp(name);
   o.scale.setScalar(s);
   o.position.set(x, 0, z);
   o.rotation.y = rot;
   stage.scene.add(o);
-  if (collide && info[1] > 0) stage.colliders.push({ x, z, r: info[1] * scale });
   return o;
 }
 
+function flushProps(stage) {
+  let meshes = 0, count = 0;
+  for (const { name, mats } of batch.values()) {
+    const src = sourceModel(name);
+    if (!src) continue;
+    // 그림자는 부딪치는 큰 소품(나무 · 바위 · 그루터기)만 — 풀 · 꽃 · 덤불은 그림자 패스를 아낀다
+    const shadow = (PROP_INFO[name]?.[1] ?? 0.5) > 0;
+    src.updateMatrixWorld(true);
+    src.traverse((o) => {
+      if (!o.isMesh) return;
+      const im = new THREE.InstancedMesh(o.geometry, o.material, mats.length);
+      for (let i = 0; i < mats.length; i++) im.setMatrixAt(i, _m.multiplyMatrices(mats[i], o.matrixWorld));
+      im.castShadow = shadow;
+      im.receiveShadow = true;
+      im.computeBoundingSphere();
+      stage.scene.add(im);
+      meshes++;
+    });
+    count += mats.length;
+  }
+  batch = null;
+  stage.propStats = { props: count, meshes };
+}
+
 export function buildWorldProps(stage) {
+  batch = new Map();
   const rng = seeded(1234);
   const roadClear = (x, z) => {
     if (Math.hypot(x, z) < TOWN.r + 3) return false;
@@ -287,6 +336,7 @@ export function buildWorldProps(stage) {
     const a = (i / 340) * Math.PI * 2 + rng() * 0.02, r = WORLD_SIZE + 1 + rng() * 6;
     placeProp(stage, ['tree_dead_l', 'n_pine2', 'n_dead2', 'tree_pine'][Math.floor(rng() * 4)], Math.cos(a) * r, Math.sin(a) * r, { rot: rng() * 6.28, scale: 1.2 + rng() * 0.5, collide: false });
   }
+  flushProps(stage);
   buildTown(stage);
 }
 
