@@ -1,6 +1,6 @@
 // 애니메이션되는 캐릭터 (플레이어 · 몬스터 · NPC 공통)
 import * as THREE from 'three';
-import { makeCharacter, attachTo, clipFor } from '../engine/assets.js';
+import { makeCharacter, attachTo, clipFor, dressHero } from '../engine/assets.js';
 
 let nextId = 1;
 
@@ -42,19 +42,7 @@ export class Actor {
     attachTo(this.handL, offhand, tint);
   }
 
-  // 주인공 겉모습. show: 보일 옷 조각 이름들 · tints: { 조각: 색 } · hair: [이름, 색] · helm: 머리에 얹는 투구 모델
-  setLook({ show = [], tints = {}, hair = null, helm = null } = {}) {
-    const c = this.char;
-    if (!c.pieces) return;
-    for (const k in c.pieces) for (const m of c.pieces[k]) {
-      m.visible = show.includes(k);
-      m.material.color.copy(m.userData.base);
-      if (tints[k] != null) m.material.color.multiply(new THREE.Color(tints[k]));
-    }
-    for (const k in c.hairs) c.hairs[k].visible = !!hair && hair[0] === k;
-    if (hair && c.hairs[hair[0]]) c.hairs[hair[0]].material.color.set(hair[1]);
-    attachTo(c.head, helm, null, this.helmGrip || { len: 0.62 });
-  }
+  setLook(look) { if (this.char.pieces) dressHero(this.char, look); }
 
   action(name) {
     let a = this.actions.get(name);

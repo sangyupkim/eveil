@@ -19,7 +19,7 @@ let n = 0;
 const test = (name, fn) => { fn(); n++; console.log('  ✓', name); };
 
 test('새 캐릭터: 스탯 5종 모두 시작값, 레벨 없음', () => {
-  const p = newPlayer('방랑자', { g: 'm' }, null);
+  const p = newPlayer('방랑자', { face: 'knight' }, null);
   assert.deepEqual(Object.keys(p.stats), STATS);
   for (const s of STATS) assert.equal(p.stats[s], CONFIG.startStat);
   assert.equal(p.level, undefined);
@@ -29,7 +29,7 @@ test('새 캐릭터: 스탯 5종 모두 시작값, 레벨 없음', () => {
 
 test('처음 무기 고르기: 무기 + 주 스탯 +2, 첫 스킬북을 바로 배울 수 있다', () => {
   for (const id in STARTS) {
-    const p = newPlayer('방랑자', { g: 'm' }, null);
+    const p = newPlayer('방랑자', { face: 'knight' }, null);
     chooseStart(p, id);
     assert.equal(BASES[p.equip.weapon.base].cls, id);
     assert.equal(p.stats[STARTS[id].stat], CONFIG.startStat + START_BONUS);

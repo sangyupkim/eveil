@@ -4,10 +4,10 @@ import { BASES, WEAPON_CLASSES, SLOTS, STARTS, START_BONUS, isTwoHandedBase } fr
 import { makeItem } from './items.js';
 
 // start: 처음 무기 (null이면 맨손 — 튜토리얼에서 고른다)
-export function newPlayer(name = '방랑자', look = { g: 'm', hair: 0, color: 0 }, start = 'sword') {
+export function newPlayer(name = '방랑자', look = { face: 'rogue_plain' }, start = 'sword') {
   const st = {
     v: 2,
-    name, look: { g: 'm', hair: 0, color: 0, ...(typeof look === 'object' ? look : {}) },
+    name, look: { face: typeof look === 'object' && look.face ? look.face : 'rogue_plain' },
     stats: Object.fromEntries(STATS.map((s) => [s, CONFIG.startStat])),
     ap: Object.fromEntries(STATS.map((s) => [s, 0])),
     apTotal: Object.fromEntries(STATS.map((s) => [s, 0])), // 지금까지의 누적 (기록용)

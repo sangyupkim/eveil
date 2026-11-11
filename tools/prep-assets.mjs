@@ -49,7 +49,7 @@ const characters = {
   knight: `${A}/Characters/gltf/Knight.glb`,
   barbarian: `${A}/Characters/gltf/Barbarian.glb`,
   mage: `${A}/Characters/gltf/Mage.glb`,
-  rogue: `${A}/Characters/gltf/Rogue_Hooded.glb`,
+  rogue_plain: `${A}/Characters/gltf/Rogue.glb`, // 주인공 기본 몸 (후드 없음)
   skel_minion: `${S}/Characters/gltf/Skeleton_Minion.glb`,
   skel_warrior: `${S}/Characters/gltf/Skeleton_Warrior.glb`,
   skel_rogue: `${S}/Characters/gltf/Skeleton_Rogue.glb`,

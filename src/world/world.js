@@ -16,15 +16,17 @@ import { attachTo } from '../engine/assets.js';
 
 // 손에 쥐는 방향 · 크기 (무기 모델마다 축이 달라 계열별로 맞춘다)
 const GRIP = {
-  sword: { len: 1.9, r: [-Math.PI / 2, 0, 0], p: [0, 0, 0] },
-  bow: { len: 2.1, r: [Math.PI / 2, Math.PI / 2, 0], p: [0, 0, 0], center: true },
-  staff: { len: 2.6, r: [0, 0, 0], p: [0, 0.35, 0], center: true },
-  shield: { len: 1.25, r: [0, Math.PI / 2, 0], p: [0, 0, 0], center: true },
-  helm: { len: 0.62, r: [Math.PI / 2, 0, 0], p: [0, 0.08, 0.02], center: true },
+  sword: { len: 1.35, r: [0, 0, 0], p: [0, 0, 0] },
+  bow: { len: 1.6, r: [0, 0, 0], p: [0, 0, 0], center: true },
+  staff: { s: 1, r: [0, 0, 0], p: [0, 0, 0] },   // KayKit 지팡이 · 완드는 손 자리에 맞게 만들어져 그대로 쥔다
+  shield: { len: 0.95, r: [0, Math.PI / 2, 0], p: [0, 0, 0], center: true },
 };
+// KayKit 무기(w_*)는 손 자리에 맞게 만들어져 그대로, 다른 모델(q_*)은 크기 · 방향을 맞춘다
+export const gripFor = (model, kind) => (model.startsWith('w_') ? { s: 1 } : GRIP[kind]);
 export { GRIP };
+if (typeof window !== 'undefined') window.__GRIP = GRIP; // 개발용: 쥐는 방향 맞추기
 import { FX } from './fx.js';
-import { cloneProp, makeHero, HAIRS, HAIR_COLORS } from '../engine/assets.js';
+import { cloneProp, makeHero } from '../engine/assets.js';
 import { resolveCollision, zoneAt } from '../engine/scene.js';
 import { audio } from '../engine/audio.js';
 const sfx = (n, k) => audio.play(n, k);
@@ -70,7 +72,7 @@ export class World {
 
   makePlayer() {
     const st = this.st;
-    this.player = new Actor(this.scene, makeHero(st.look.g));
+    this.player = new Actor(this.scene, makeHero());
     this.player.pos.set(st.pos.x, 0, st.pos.z);
     this.player.play('idle');
     this.refreshGear();
@@ -80,25 +82,12 @@ export class World {
   refreshGear() {
     const st = this.st;
     this.d = derive(st, this.buffValues());
-    const e = st.equip, base = (it) => (it ? BASES[it.base] : null);
-    const w = base(e.weapon), o = base(e.offhand);
+    const e = st.equip;
+    const w = e.weapon ? BASES[e.weapon.base] : null, o = e.offhand ? BASES[e.offhand.base] : null;
     const P = this.player;
-    attachTo(P.handR, w?.model || null, w?.mtint ?? null, w ? { ...GRIP[w.cls], len: w.len || GRIP[w.cls].len * (w.two && w.cls === 'sword' ? 1.3 : 1) } : null);
-    attachTo(P.handL, o?.model || null, null, GRIP.shield);
-    // 옷: 안 입으면 수수한 평상복, 입은 부위만 갑옷 조각으로 바뀐다
-    const ar = base(e.armor), gl = base(e.gloves), bt = base(e.boots), be = base(e.belt), hm = base(e.helm);
-    const show = [ar ? 'Ranger_Body' : 'Peasant_Body', ar ? 'Ranger_Legs' : 'Peasant_Legs', ar || gl ? 'Ranger_Arms' : 'Peasant_Arms', bt ? 'Ranger_Feet' : 'Peasant_Feet'];
-    const tints = {};
-    if (ar?.tint) { tints.Ranger_Body = ar.tint; tints.Ranger_Legs = ar.tint; if (!gl) tints.Ranger_Arms = ar.tint; tints.Ranger_Acc_Pauldron = ar.tint; }
-    if (ar?.pauldron) show.push('Ranger_Acc_Pauldron');
-    if (gl) { show.push('Ranger_Arms_Bracer'); if (gl.tint) tints.Ranger_Arms_Bracer = gl.tint; }
-    if (bt?.tint) tints.Ranger_Feet = bt.tint;
-    if (be) { show.push('Ranger_Body_Belt_1'); if (be.heavy) show.push('Ranger_Body_Belt_2'); }
-    const hood = hm?.look === 'hood';
-    if (hood) { show.push('Ranger_Head_Hood'); if (hm.tint) tints.Ranger_Head_Hood = hm.tint; }
-    const hair = HAIRS[st.look.g][st.look.hair] || HAIRS[st.look.g][0];
-    P.helmGrip = GRIP.helm;
-    P.setLook({ show, tints, hair: hm && hair[0] !== 'hair_beard' ? null : [hair[0], HAIR_COLORS[st.look.color] ?? HAIR_COLORS[0]], helm: hm && !hood ? hm.look : null });
+    attachTo(P.handR, w?.model || null, w?.mtint ?? null, w ? gripFor(w.model, w.cls) : null);
+    attachTo(P.handL, o?.model || null, o?.mtint ?? null, o ? gripFor(o.model, 'shield') : null);
+    P.setLook(heroLook(st));
     st.hp = Math.min(st.hp, this.d.maxHp);
     st.mp = Math.min(st.mp, this.d.maxMp);
     this.ui.dirty();
@@ -761,7 +750,6 @@ export class World {
     }
     if (this.player.lock > 0.15 && this.swing <= 0) { this.pendingSkill = id; return true; }
     this.castSkill(id, r.v);
-    this.skillUsed = true;
     return true;
   }
 
@@ -769,6 +757,7 @@ export class World {
     const st = this.st, d = this.d, sk = SKILLS[id];
     const P = this.player;
     this.pendingSkill = null;
+    this.skillUsed = true;
     st.mp -= v.mp;
     this.cds[id] = v.cd;
     this.skillExp(id, 1);
@@ -926,6 +915,7 @@ export class World {
     if (cls.kind === 'ranged') anim = 'shoot';
     else if (cls.kind === 'magic') anim = 'cast';
     else if (!this.st.equip.weapon) anim = this.combo % 2 ? 'punch' : 'punch2';
+    else if (d.two) anim = this.combo % 2 ? 'heavy' : 'slash2';
     else anim = ['attack', 'attack2', 'attack3'][this.combo % 3];
     const clipDur = P.action(anim)?.getClip().duration || 1;
     const speed = Math.max(0.9, Math.min(2.6, clipDur / (interval * 0.92)));
@@ -1238,6 +1228,20 @@ export class World {
     g.born = this.time + 600; // 직접 버린 건 오래 남긴다
     this.ui.dirty();
   }
+}
+
+// 입은 장비 → 겉모습 (조각 고르기). 갑옷은 몸통 · 팔 · 다리, 장갑 · 신발은 팔 · 다리만 따로 바꾼다
+export function heroLook(st) {
+  const b = (slot) => (st.equip[slot] ? BASES[st.equip[slot].base] : null);
+  const ar = b('armor'), gl = b('gloves'), bt = b('boots'), hm = b('helm');
+  const look = { face: st.look?.face, tint: {} };
+  const put = (it, slots) => { if (!it?.wear) return; for (const k of slots) { look[k] = it.wear; if (it.tint) look.tint[k] = it.tint; } };
+  put(ar, ['Body', 'ArmLeft', 'ArmRight', 'LegLeft', 'LegRight']);
+  put(gl, ['ArmLeft', 'ArmRight']);
+  put(bt, ['LegLeft', 'LegRight']);
+  if (ar?.cape) { look.Cape = ar.wear; if (ar.tint) look.tint.Cape = ar.tint; }
+  if (hm?.hat) { look.hat = hm.hat; if (hm.tint) look.tint.hat = hm.tint; }
+  return look;
 }
 
 const angDiff = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));

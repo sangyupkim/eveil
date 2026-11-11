@@ -1,7 +1,7 @@
 // 시작점: 타이틀 → 로딩 → 게임 루프 · 자동 저장
 import * as THREE from 'three';
 import { createStage, buildTerrain, buildWorldProps, isTouch } from './engine/scene.js';
-import { loadModels, HAIRS, HAIR_COLORS } from './engine/assets.js';
+import { loadModels, FACES } from './engine/assets.js';
 import { World } from './world/world.js';
 import { HUD } from './ui/hud.js';
 import { Windows, toggleFullscreen } from './ui/windows.js';
@@ -17,19 +17,14 @@ const SAVE_KEY = 'ashen-save';
 const $ = (s) => document.querySelector(s);
 
 const MODELS = [
-  // 주인공 (맨몸 · 옷 · 머리카락 · 동작)
-  'hero_m', 'hero_f', 'peasant_m', 'peasant_f', 'ranger_m', 'ranger_f', 'hero_anims', 'hero_anims2',
-  'hair_buzzed', 'hair_parted', 'hair_beard', 'hair_long', 'hair_buns', 'hair_buzzed_f',
-  // 사람 · 해골 (KayKit)
-  'knight', 'barbarian', 'mage', 'skel_minion', 'skel_warrior', 'skel_rogue', 'skel_mage',
-  'w_sword', 'w_greataxe', 'w_staff', 'w_wand', 'w_shield_sq', 'ws_blade', 'ws_axe', 'ws_staff', 'ws_crossbow', 'ws_shield',
+  // 사람 · 해골 (KayKit) — 주인공은 rogue_plain 몸에 knight · mage · barbarian 조각을 섞는다
+  'knight', 'barbarian', 'mage', 'rogue_plain', 'skel_minion', 'skel_warrior', 'skel_rogue', 'skel_mage',
+  'w_sword', 'w_greatsword', 'w_greataxe', 'w_staff', 'w_wand', 'w_shield', 'w_shield_sq', 'ws_blade', 'ws_axe', 'ws_staff', 'ws_crossbow', 'ws_shield',
   // 몬스터 (Quaternius)
   'm_slime', 'm_slime_spiky', 'm_rat', 'm_mushnub', 'm_mushking', 'm_wolf', 'm_spider', 'm_wasp', 'm_orc_grunt', 'm_tribal', 'm_orc',
   'm_ghost', 'm_ghost_skull', 'm_demon', 'm_blue_demon', 'm_goleling', 'm_dragon',
-  // 무기 · 투구 · 아이템 그림
-  'q_sword', 'q_sword2', 'q_sword_big', 'q_sword_gold', 'q_claymore', 'q_bow', 'q_bow2', 'q_bow_gold', 'q_bow_evil',
-  'q_shield', 'q_shield2', 'q_shield3', 'q_helm1', 'q_helm2', 'q_helm3',
-  'i_armor_leather', 'i_armor_metal', 'i_armor_metal2', 'i_armor_black', 'i_glove', 'i_necklace', 'i_ring2',
+  // 무기 · 아이템 그림 (Quaternius)
+  'q_bow', 'q_bow2', 'q_bow_gold', 'q_bow_evil', 'i_necklace', 'i_ring2', 'i_pouch',
   'i_potion_hp', 'i_potion_mp', 'i_potion_hp_l', 'i_potion_mp_l', 'i_book', 'i_book2', 'i_book3', 'i_book4', 'i_scroll',
   'tree_dead_l', 'tree_dead_m', 'tree_dead_s', 'tree_pine', 'grave', 'gravestone', 'gravemarker', 'crypt', 'coffin', 'bone',
   'fence_broken', 'fence_pillar', 'post', 'skull_candle',
@@ -82,16 +77,11 @@ async function boot() {
 
   let saved = loadSave();
   if (saved) audio.setVolumes(saved.settings.music, saved.settings.sfx);
-  const look = { g: 'm', hair: 0, color: 0, ...(saved?.look || {}) };
+  const look = { face: saved?.look?.face || 'rogue_plain' };
   const looks = $('.looks');
   const drawLooks = () => {
-    const btn = (k, v, inner, on) => `<button data-k="${k}" data-v="${v}" class="${on ? 'on' : ''}">${inner}</button>`;
-    looks.innerHTML = `<div class="lgroup">${['m', 'f'].map((g) => btn('g', g, `<img src="${portrait({ ...look, g, hair: Math.min(look.hair, HAIRS[g].length - 1) })}" alt="" />${g === 'm' ? '남' : '여'}`, look.g === g)).join('')}</div>
-      <div class="lgroup">${HAIRS[look.g].map((h, i) => btn('hair', i, `<img src="${portrait({ ...look, hair: i })}" alt="" />${h[1]}`, look.hair === i)).join('')}</div>
-      <div class="lgroup swatches">${HAIR_COLORS.map((c, i) => btn('color', i, `<i style="background:#${c.toString(16).padStart(6, '0')}"></i>`, look.color === i)).join('')}</div>`;
-    looks.querySelectorAll('button').forEach((b) => {
-      b.onclick = () => { audio.play('click'); const k = b.dataset.k; look[k] = k === 'g' ? b.dataset.v : Number(b.dataset.v); if (k === 'g') look.hair = 0; drawLooks(); };
-    });
+    looks.innerHTML = `<div class="lgroup">${FACES.map(([k, n]) => `<button data-face="${k}" class="${look.face === k ? 'on' : ''}"><img src="${portrait({ face: k })}" alt="" />${n}</button>`).join('')}</div>`;
+    looks.querySelectorAll('button').forEach((b) => { b.onclick = () => { audio.play('click'); look.face = b.dataset.face; drawLooks(); }; });
   };
   drawLooks();
   $('#titleMenu').hidden = false;
@@ -108,7 +98,7 @@ async function boot() {
     if (remote && (!saved || (remote.savedAt || 0) > (saved.savedAt || 0))) {
       saved = remote;
       try { localStorage.setItem(SAVE_KEY, JSON.stringify(saved)); } catch { /* 무시 */ }
-      Object.assign(look, saved.look);
+      look.face = saved.look?.face || 'rogue_plain';
       drawLooks();
       showContinue();
       return true;
