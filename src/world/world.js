@@ -11,7 +11,7 @@ import { rollLoot, rollDeathDrop } from '../game/loot.js';
 import { dropMats } from '../game/town.js';
 import { MATERIALS } from '../data/crafting.js';
 import { addItem, takeOne, countOf, equip as equipItem, unequip as unequipItem } from '../game/inventory.js';
-import { itemName, itemColor, isBook, makeItem } from '../game/items.js';
+import { itemName, itemColor, isBook, makeItem, itemValue } from '../game/items.js';
 import { seeded, randInt, randRange } from '../game/rng.js';
 import { Actor, makeHero } from '../engine2d/actor.js';
 import { FX } from '../engine2d/fx.js';
@@ -673,6 +673,7 @@ export class World {
   die() {
     if (this.dead) return;
     this.dead = true;
+    if (this.auto) { const zn = zoneAt(this.player.pos.x, this.player.pos.z); if (zn) (this.autoDeaths ||= []).push({ t: this.time, z: zn.id }); }
     this.st.hp = 0;
     this.target = null; this.moveTo = null; this.pendingSkill = null; this.recallT = 0;
     this.player.play('death', { once: true, force: true, fade: 0.1 });
@@ -799,6 +800,25 @@ export class World {
 
   cancelRecall() {
     if (this.recallT > 0) { this.recallT = 0; this.ui.toast('귀환 취소'); if (this.recallPortal) this.recallPortal.t = this.recallPortal.dur - 0.3; }
+  }
+
+  // 자동 사냥 지역: 권장 각성((최저 위험도 - 1) × 2)을 넘긴 가장 깊은 곳, 최근 10분에 그곳에서 3번 넘게 죽었으면 한 칸 아래
+  autoZone() {
+    const st = this.st, ok = ZONES.filter((z) => st.awakenings >= (z.levels[0] - 1) * 2);
+    let i = Math.max(0, ok.length - 1);
+    this.autoDeaths = (this.autoDeaths || []).filter((x) => this.time - x.t < 600);
+    while (i > 0 && this.autoDeaths.filter((x) => x.z === ZONES[i].id).length >= 3) i--;
+    return ZONES[i];
+  }
+  // 마을에서 가방 정리: 스킬북 · 물약 · 세트 장비 · 착용 장비보다 좋을 수 있는 영웅 이상은 남기고 판다
+  autoSell() {
+    const st = this.st;
+    let g = 0, n = 0;
+    st.inv = st.inv.filter((it) => {
+      if (it.book || !BASES[it.base]?.slot || it.set || it.rarity === 'hero' || it.rarity === 'legend') return true;
+      g += itemValue(it); n++; return false;
+    });
+    if (n) { st.gold += g; this.ui.log(`자동 판매: 장비 ${n}개 +${g.toLocaleString()}G`, '#ffd84a'); sfx('coin'); this.ui.dirty(); }
   }
 
   toggleAuto(on = !this.auto) {
@@ -1159,9 +1179,13 @@ export class World {
           if (addItem(st, makeItem(id, { qty: n }, st))) { st.gold -= n * BASES[id].price; this.ui.log(`자동 구매: ${BASES[id].name} ×${n}`, '#9a917f'); this.ui.dirty(); }
         }
       }
+      if (st.settings.autoSell !== false) this.autoSell();
       if (st.hp / d.maxHp < 0.95) { this.moveTo = null; this.target = null; return; }
     }
     if (st.mp / d.maxMp < 0.2) this.usePotion('mp');
+    if (!this.inTown && st.inv.length >= CONFIG.inventorySize && st.settings.autoSell !== false && this.recallT <= 0) {
+      this.ui.log('가방이 가득 차 귀환합니다', '#9a917f'); this.recall(); return;
+    }
     // 가까운 전리품 먼저 (싸우는 중이 아닐 때)
     const fighting = this.monsters.some((m) => !m.dead && m.state === 'chase' && dist2(m.pos, P) < 6);
     if (!fighting) {
@@ -1174,7 +1198,7 @@ export class World {
       this.target = this.nearestMonster(18);
       if (!this.target) {
         // 사냥터로 이동
-        const zn = ZONES.find((z) => z.id === st.lastZone) || ZONES[0];
+        const zn = this.autoZone();
         if (!this.moveTo || dist2(P, this.moveTo) < 2) {
           const a = Math.random() * Math.PI * 2, r = Math.random() * zn.r * 0.6;
           this.moveTo = { x: zn.x + Math.cos(a) * r, z: zn.z + Math.sin(a) * r };
@@ -1232,6 +1256,8 @@ export class World {
     this.time += dt;
     const st = this.st;
     st.playTime += dt;
+    // 자동 사냥 중 죽으면 잠시 뒤 마을에서 일어나 다시 사냥
+    if (this.dead && this.auto) { this.autoReviveT = (this.autoReviveT ?? 6) - dt; if (this.autoReviveT <= 0) { this.autoReviveT = null; this.revive(); this.ui.closeDeath?.(); this.ui.log('자동 사냥: 마을에서 다시 출발합니다', '#9a917f'); } }
     for (let i = this.timers.length - 1; i >= 0; i--) {
       const t = this.timers[i];
       t.t -= dt;

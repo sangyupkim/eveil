@@ -22,4 +22,5 @@ export const SETS = {
 // 한 부위 제작 비용
 export const craftCost = (zi) => ({ mats: 12 + zi * 4, gold: 300 * (zi + 1) ** 2 });
 // 건물 단계 올리기에 드는 재료: 단계 n → n+1 은 n번째 지역 재료 (n*8개)
-export const upgradeMats = (lv) => (lv >= 1 ? { zone: Object.keys(MATERIALS)[Math.min(7, lv - 1)], n: lv * 8 } : null);
+// 1 → 2단계는 금화만 (방치만 해도 첫 단계는 올라간다)
+export const upgradeMats = (lv) => (lv >= 2 ? { zone: Object.keys(MATERIALS)[Math.min(7, lv - 2)], n: (lv - 1) * 8 } : null);
