@@ -54,13 +54,16 @@ function parseAnim(file) {
 }
 
 // 이미지 경로들을 webp로 옮기고 JSON 안의 경로를 바꾼다
-async function packAnim(animFile, root, dstDir, key) {
+async function packAnim(animFile, root, dstDir, key, k2 = 1) {
   const a = parseAnim(animFile);
   for (const [k, p] of Object.entries(a.images)) {
     const name = `${key}${k === 'default' ? '' : '_' + k}.webp`;
-    await webp(path.join(root, p), path.join(OUT, dstDir, name));
+    const src = path.join(root, p);
+    if (k2 < 1) { const m = await sharp(src).metadata(); await webp(src, path.join(OUT, dstDir, name), { width: Math.round(m.width * k2) }); }
+    else await webp(src, path.join(OUT, dstDir, name));
     a.images[k] = `${dstDir}/${name}`;
   }
+  if (k2 < 1) { a.px = 1 / k2; for (const an of Object.values(a.anims)) for (const d in an.f) an.f[d] = an.f[d].map((r) => r && r.map((v) => Math.round(v / a.px))); }
   return a;
 }
 
@@ -80,7 +83,7 @@ const LAYERS = [
 for (const [sex, dir, heads] of [['m', 'male', ['head_short', 'head_bald']], ['f', 'female', ['head_long']]]) {
   const json = {};
   for (const layer of [...LAYERS, ...heads]) {
-    const a = await packAnim(path.join(FC, `animations/avatar/${dir}/${layer}.txt`), FC, `avatar/${sex}`, layer);
+    const a = await packAnim(path.join(FC, `animations/avatar/${dir}/${layer}.txt`), FC, `avatar/${sex}`, layer, 0.75);
     json[layer] = a;
   }
   writeJson(`avatar_${sex}.json`, json);
@@ -105,7 +108,7 @@ for (const [name, root] of Object.entries(ENEMIES)) {
     const src = [path.join(root, p), path.join(FC, p), path.join(EC, p)].find((f) => fs.existsSync(f));
     const dst = `enemies/${name}${k === 'default' ? '' : '_' + k}.webp`;
     // 비룡은 그림이 커서 줄여 담고, 그릴 때 다시 키운다 (px)
-    const k2 = name.startsWith('wyvern') ? 0.6 : 1;
+    const k2 = name.startsWith('wyvern') ? 0.5 : 0.6; // 화면엔 원래의 0.5~0.9배로 그리니 줄여 담아도 티가 안 난다
     if (k2 < 1) { const m = await sharp(src).metadata(); await webp(src, path.join(OUT, dst), { q: 72, width: Math.round(m.width * k2) }); }
     else await webp(src, path.join(OUT, dst), { q: 72 });
     a.images[k] = dst;
@@ -120,7 +123,7 @@ console.log('몬스터', Object.keys(enemies).length, (bytes / 1e6).toFixed(1) +
 // ── NPC ──
 const npcs = {};
 for (const name of ['wandering_trader', 'knight', 'guild_man', 'peasant_man1', 'peasant_woman1']) {
-  npcs[name] = await packAnim(path.join(FC, `animations/npcs/${name}.txt`), FC, 'npcs', name);
+  npcs[name] = await packAnim(path.join(FC, `animations/npcs/${name}.txt`), FC, 'npcs', name, 0.75);
 }
 writeJson('npcs.json', npcs);
 

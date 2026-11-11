@@ -37,6 +37,8 @@ export class HUD {
   dirty() { this.isDirty = true; this.onDirty(); }
 
   toast(msg, color) {
+    const box0 = $('#toasts');
+    for (const old of box0.children) if (old.textContent === msg) { old.remove(); }
     const el = document.createElement('div');
     el.className = 'toast';
     el.textContent = msg;
@@ -131,7 +133,10 @@ export class HUD {
     }
 
     // 대상
-    const t = w.target && !w.target.dead ? w.target : null;
+    const cur = w.target && !w.target.dead ? w.target : w.lastHit && !w.lastHit.dead && w.lastHit.showHp > 0 ? w.lastHit : null;
+    if (cur) { this.lastT = cur; this.lastTT = 4; }
+    this.lastTT = (this.lastTT || 0) - dt;
+    const t = this.lastT && !this.lastT.dead && this.lastTT > 0 ? this.lastT : null;
     const tf = $('#targetFrame');
     tf.hidden = !t;
     if (t) {
@@ -140,6 +145,7 @@ export class HUD {
       tn.style.color = TIERS[t.tier].color;
       tf.querySelector('i').style.transform = `scaleX(${t.hp / t.maxHp})`;
       tf.querySelector('i').style.transformOrigin = 'left';
+      tf.querySelector('.thp span').textContent = `${Math.ceil(t.hp).toLocaleString()} / ${t.maxHp.toLocaleString()}`;
     }
     $('#autoText').hidden = !w.auto;
     $('#btnAuto').classList.toggle('on', w.auto);
@@ -206,7 +212,7 @@ export class HUD {
       if (m.dead) continue;
       const dd = Math.hypot(m.pos.x - P.x, m.pos.z - P.z);
       const show = m.tier !== 'normal' || m.showHp > 0 || m === w.target;
-      if (dd > 24 || !show) continue;
+      if (dd > 40 || !show) continue;
       place('m' + m.id, m.pos, 2.6 * m.actor.scale, () => {
         const el = document.createElement('div');
         el.className = 'lbl';

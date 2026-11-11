@@ -17,9 +17,12 @@ export function makeHero(look = {}) {
   return { hero: true, sex: f[2], head: f[3] };
 }
 
+let nextId = 1;
+
 export class Actor {
   // model: makeHero() · { enemy: 이름 } · { npc: 이름 }
   constructor(stage, model, { tint = null, scale = 1, size = 1 } = {}) {
+    this.id = nextId++;
     this.stage = stage;
     this.spec = model;
     this.scale = scale * size;          // 이름표 · 타격 높이에 쓰는 몸집
@@ -137,7 +140,7 @@ export class Actor {
         const path = animImage(d, fl);
         const src = this.tints?.[type] != null ? tinted(path, this.tints[type]) : image(path).ok && image(path).im;
         if (!src) continue;
-        drawRect(ctx, src, a.f[this.dir]?.[Math.min(fi, a.frames - 1)], p.x, y, s);
+        drawRect(ctx, src, a.f[this.dir]?.[Math.min(fi, a.frames - 1)], p.x, y, s * (d.px || 1));
       }
     } else {
       const anims = this.def.anims;

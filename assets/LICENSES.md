@@ -3,6 +3,7 @@
 | 에셋 | 출처 | 라이선스 |
 |---|---|---|
 | 주인공 · 몬스터 · NPC · 땅 타일 · 배경 물건 · 효과 · 아이콘 · 초상화 · UI 그림 (`assets/flare/`) | [Flare: Empyrean Campaign](https://github.com/flareteam/flare-game) — Clint Bellanger 외 (`assets/flare/CREDITS.txt`) | **CC-BY-SA 3.0** (`assets/flare/LICENSE-CC-BY-SA-3.0.txt`) |
+| 효과음 · 배경음악 (`assets/sound/`) | Flare: Empyrean Campaign (음악은 다시 압축) | **CC-BY-SA 3.0** |
 | 글꼴 (Gowun Dodum · Nanum Myeongjo · Cinzel) | Google Fonts | OFL |
 | 수학 계산 (`vendor/three`) | three.js r170 | MIT |
 

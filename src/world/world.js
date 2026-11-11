@@ -16,8 +16,8 @@ import { FX } from '../engine2d/fx.js';
 import { resolveCollision, zoneAt } from '../engine2d/stage.js';
 import { DATA, image, animImage, drawRect, frameIndex } from '../engine2d/sprites.js';
 import { MONSTER_LOOK, ITEM_LOOK, LOOT_LOOK } from '../data/flareWorld.js';
-import { audio } from '../engine/audio.js';
-const sfx = (n, k) => audio.play(n, k);
+import { audio, familyOf } from '../engine/audio.js';
+const sfx = (n, k, fam) => audio.play(n, k, fam);
 
 const ACTIVE_RADIUS = 58;
 const SPAWN_NEAR = 72;   // 이 안의 자리에만 몬스터를 만든다
@@ -64,6 +64,7 @@ export class World {
   makePlayer() {
     const st = this.st;
     this.player = new Actor(this.scene, makeHero(st.look));
+    audio.female = this.player.spec.sex === 'f';
     this.player.pos.set(st.pos.x, 0, st.pos.z);
     this.player.play('idle');
     this.refreshGear();
@@ -143,6 +144,7 @@ export class World {
     const T = TIERS[tier];
     const L = sp.level;
     const look = MONSTER_LOOK[type] || { sprite: 'goblin' };
+    const fam = familyOf(look.sprite);
     const actor = new Actor(this.scene, { enemy: look.sprite }, { tint: tint ?? look.tint ?? null, scale: T.scale, size: look.size || 1 });
     if (tier === 'elite') actor.setGlow(0x0a1a40);
     if (tier === 'named') actor.setGlow(0x302000);
@@ -152,7 +154,7 @@ export class World {
     actor.facing = Math.random() * 6.28;
     actor.root.rotation.y = actor.facing;
     const m = {
-      id: actor.id, def, type, tier, level: L, actor, sp,
+      id: actor.id, def, type, tier, level: L, actor, sp, fam,
       name: name || (tier === 'elite' ? `정예 ${def.name}` : def.name),
       maxHp: Math.round(def.hp * (1 + 0.32 * (L - 1)) * T.hp),
       dmg: def.dmg.map((v) => v * (1 + 0.22 * (L - 1)) * T.dmg),
@@ -248,7 +250,7 @@ export class World {
   monsterAttack(m) {
     m.atkT = m.def.interval * randRange(0.9, 1.15);
     const dur = m.actor.act(m.def.atk || 'attack', 1.15) || 0.8;
-    sfx(m.def.attack === 'melee' ? 'mattack' : 'mshoot', 0.8);
+    sfx(m.def.attack === 'melee' ? 'mattack' : 'mshoot', 0.8, m.fam);
     const windup = Math.min(0.5, dur * 0.45);
     this.later(windup, () => {
       if (m.dead || this.dead) return;
@@ -399,12 +401,14 @@ export class World {
     const red = m.armor / (m.armor + 60) * (1 - pierce);
     const dmg = Math.max(1, Math.round(raw * (1 - red)));
     m.hp -= dmg;
-    m.showHp = 4;
+    m.showHp = 6;
+    this.lastHit = m;
     if (m.state !== 'return') m.state = 'chase';
     m.actor.hitFlash(crit ? 0xffd040 : 0xffffff);
     const head = m.pos.clone().setY(2.3 * m.actor.scale);
     this.fx.text(head, crit ? `${dmg}!` : String(dmg), crit ? 'crit' : '');
-    sfx(crit ? 'crit' : 'hit');
+    sfx('hit', 1, m.fam);
+    if (crit) sfx('crit', 0.8);
     this.fx.hit(m.pos.x, 1.1 * m.actor.scale, m.pos.z, ctx ? new THREE.Color(SKILLS[ctx.id].color).getHex() : crit ? 0xffd040 : 0xffa060, crit);
     if (d.lifeSteal) this.healPlayer(dmg * d.lifeSteal, false);
     if (crit) addAP(st, 'dex', AP_TABLE.crit, apMult);
@@ -449,7 +453,7 @@ export class World {
     const apMult = rf.ap * this.autoMult;
     m.dash = null;
     m.actor.play('death', { once: true, force: true, fade: 0.1 });
-    sfx(m.def.rig === 'human' ? 'hurt' : 'mdie');
+    sfx('mdie', 1, m.fam);
     this.onKill?.(m);
     // 보스가 쓰러지면 불러낸 무리도 사라진다
     if (m.tier === 'boss') for (const x of this.monsters) if (x.owner === m && !x.dead) { x.noLoot = true; x.exp = 0; this.later(0.3, () => { if (!x.dead) this.hitMonster(x, 99999, { src: 'none' }); }); }
@@ -1250,6 +1254,7 @@ export class World {
     if (this.detourT > 0) this.detourT -= dt;
     this.lastPos = { x: P.pos.x, z: P.pos.z };
     // Flare 달리기 한 바퀴(0.53초)에 약 2.4칸 나아가는 걸음 — 이동 속도에 맞춰 재생
+    if (moving) { this.stepT = (this.stepT || 0) - dt; if (this.stepT <= 0) { this.stepT = 0.33; sfx('step', 0.35); } }
     if (P.lock <= 0) P.play(moving ? 'run' : 'idle', { speed: moving ? speed / 7 : 1 });
 
     // 줍기
@@ -1267,7 +1272,7 @@ export class World {
     if (this.musicT <= 0) {
       this.musicT = 0.5;
       const boss = this.monsters.some((m) => !m.dead && m.tier === 'boss' && m.state === 'chase' && dist2(m.pos, P.pos) < 26);
-      audio.setMusic(boss ? 'boss' : ZONES.find((z) => z.id === this.zone)?.music || this.zone);
+      audio.setMusic(boss ? 'boss' : this.zone);
     }
     st.pos = { x: P.pos.x, z: P.pos.z };
   }

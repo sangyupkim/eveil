@@ -7,10 +7,17 @@ export function image(path) {
   if (!imgs.has(path)) {
     const im = new Image();
     im.decoding = 'async';
-    const p = new Promise((res) => { im.onload = () => res(im); im.onerror = () => { console.warn('그림 없음', path); res(null); }; });
+    const rec = { im, p: null, ok: false };
+    // 받은 뒤 미리 풀어 둔다 (ImageBitmap) — 처음 그릴 때 멈추지 않고, 휴대폰이 다시 풀지 않게
+    rec.p = new Promise((res) => { im.onload = () => res(im); im.onerror = () => { console.warn('그림 없음', path); res(null); }; })
+      .then(async (x) => {
+        if (!x) return null;
+        try { if (window.createImageBitmap) rec.im = await createImageBitmap(x); } catch { /* 그대로 Image */ }
+        rec.ok = true;
+        return rec.im;
+      });
     im.src = ROOT + path;
-    imgs.set(path, { im, p, ok: false });
-    p.then((x) => { imgs.get(path).ok = !!x; });
+    imgs.set(path, rec);
   }
   return imgs.get(path);
 }
@@ -53,7 +60,7 @@ export function tinted(path, color) {
   const src = image(path);
   if (!src.ok) return null;
   const im = src.im;
-  const c = document.createElement('canvas');
+  const c = document.createElement('canvas'); // 색 입힌 판도 받은 크기(줄인 그림) 그대로
   c.width = im.width; c.height = im.height;
   const g = c.getContext('2d');
   g.drawImage(im, 0, 0);
