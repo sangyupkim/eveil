@@ -44,21 +44,29 @@ export class Audio {
     if (this.ctx) { if (this.ctx.state !== 'running') this.ctx.resume(); this.cur?.el.play().catch(() => {}); return; }
     const C = window.AudioContext || window.webkitAudioContext;
     if (!C) return;
-    this.ctx = new C();
+    this.ctx = new C({ latencyHint: 'interactive' });
     this.out = this.ctx.createGain();
     this.out.gain.value = this.sfxVolume;
     this.out.connect(this.ctx.destination);
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) { this.ctx.suspend(); this.cur?.el.pause(); } else { this.ctx.resume(); this.cur?.el.play().catch(() => {}); }
     });
-    // 자주 쓰는 것은 미리 받는다
-    for (const n of ['swing', 'hit', 'click', 'coin', 'pickup', 'hurt']) for (const f of SFX[n]) if (f[0] !== '@') this.load(f);
+    // 효과음은 모두 미리 받아 둔다 (처음 재생도 늦지 않게)
+    for (const list of Object.values(SFX)) for (const f of list) if (f[0] !== '@') this.load(f);
+    for (const fam of new Set(Object.values(FAM))) for (const k of ['hit', 'die', 'phys']) this.load(famFile(fam, k));
     this.setMusic(this.want, true);
   }
 
   load(file) {
     if (!this.buffers.has(file)) {
-      this.buffers.set(file, fetch(ROOT + file + '.ogg').then((r) => r.arrayBuffer()).then((b) => this.ctx.decodeAudioData(b)).catch(() => null));
+      this.buffers.set(file, fetch(ROOT + file + '.ogg').then((r) => r.arrayBuffer()).then((b) => this.ctx.decodeAudioData(b)).then((buf) => {
+        // Flare 효과음 앞의 무음(0.07~0.45초)을 건너뛸 자리를 찾아 둔다 → 행동과 소리가 같이 난다
+        const d = buf.getChannelData(0);
+        let i = 0;
+        while (i < d.length && Math.abs(d[i]) < 0.015) i++;
+        buf.lead = Math.max(0, i / buf.sampleRate - 0.004);
+        return buf;
+      }).catch(() => null));
     }
     return this.buffers.get(file);
   }
@@ -118,7 +126,7 @@ export class Audio {
       const g = this.ctx.createGain();
       g.gain.value = Math.min(1.5, k);
       src.connect(g).connect(this.out);
-      src.start();
+      src.start(0, buf.lead || 0);
     });
   }
 }

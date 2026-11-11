@@ -314,6 +314,53 @@ export class FX {
     if (it) it.drawable.z = z - 50; // 바닥처럼 인물 뒤에
   }
 
+  // 귀환 포탈: 땅의 차원문 그림(타일 265) + 소용돌이 빛 + 오르는 알갱이. dur 뒤 사라진다
+  portal(x, z, dur = 1.8) {
+    const it = { kind: 'portal', x, z, t: 0, dur };
+    it.drawable = { z: z - 0.5, draw: (ctx, st) => {
+      const q = Math.min(1, it.t / 0.35) * (it.t > dur - 0.3 ? Math.max(0, (dur - it.t) / 0.3) : 1);
+      const p = st.toScreen(x, z), k = st.scale();
+      const def = DATA.tiles.grassland, tt = def.tiles[265], src = image(def.imgs[tt[0]]);
+      ctx.globalAlpha = q;
+      if (src.ok) drawRect(ctx, src.im, tt.slice(1), p.x, p.y, k * (0.6 + 0.4 * q));
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 3; i++) {
+        ctx.strokeStyle = `rgba(120,180,255,${0.5 * q})`; ctx.lineWidth = 3 * k;
+        ctx.beginPath(); ctx.ellipse(p.x, p.y, (40 + i * 14) * k * q, (18 + i * 6) * k * q, 0, this.time * (3 + i) % 6.28, this.time * (3 + i) % 6.28 + 4); ctx.stroke();
+      }
+      const g = ctx.createLinearGradient(0, p.y, 0, p.y - 160 * k);
+      g.addColorStop(0, `rgba(140,200,255,${0.55 * q})`); g.addColorStop(1, 'rgba(140,200,255,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(p.x, p.y - 80 * k, 34 * k * q, 80 * k, 0, 0, 7); ctx.fill();
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    } };
+    this.stage.add(it.drawable);
+    this.items.push(it);
+    return it;
+  }
+
+  // 도착: 하늘에서 빛줄기가 꽂히고 충격파 · 빛 알갱이 · 룬
+  arrive(x, z, color = 0x80b0ff) {
+    this.pillar(x, z, color, 1.1, 8, 1.6);
+    this.decal(0, x, z, 4, color, 0.6);
+    this.decal(0, x, z, 2.4, 0xffffff, 0.35);
+    this.play('channel', x, z, { scale: 1.2, dur: 0.9 });
+    for (let i = 0; i < 26; i++) {
+      const a = (i / 26) * 6.28;
+      this.add.add({ x, y: 0.3, z, vx: Math.cos(a) * 5, vy: 1 + Math.random() * 3, vz: Math.sin(a) * 5, color: i % 3 ? color : 0xffffff, size: 0.5, size1: 0.05, life: 0.7, cell: 'spark', drag: 2.5 });
+    }
+    this.shake(0.25);
+  }
+
+  // 스킬 시전 섬광: 손에서 번쩍 + 둘레로 튀는 빛
+  castFlash(x, z, color) {
+    this.add.add({ x, y: 1.2, z, color: 0xffffff, size: 1.6, size1: 0.4, life: 0.18, cell: 'spark' });
+    this.add.add({ x, y: 1.0, z, color, size: 3, size1: 4.5, life: 0.3, cell: 'glow', alpha: 0.7 });
+    for (let i = 0; i < 12; i++) {
+      const a = Math.random() * 6.28;
+      this.add.add({ x, y: 0.3, z, vx: Math.cos(a) * 3, vy: 2 + Math.random() * 3, vz: Math.sin(a) * 3, color, size: 0.4, size1: 0.05, life: 0.5, cell: i % 2 ? 'spark' : 'dot', drag: 2 });
+    }
+  }
+
   telegraph(x, z, radius, delay, color = 0xff4020) { return this.decal(1, x, z, radius, color, delay); }
   lane(x1, z1, x2, z2, width, delay, color = 0xff4020) {
     return this.decal(6, x1, z1, 1, color, delay, { angle: Math.atan2(x2 - x1, z2 - z1), len: Math.hypot(x2 - x1, z2 - z1), width });
@@ -358,10 +405,11 @@ export class FX {
         const a = it.def.anims.power || Object.values(it.def.anims)[0];
         const path = animImage(it.def, 'power'), src = image(path).ok && image(path).im;
         if (!src) return;
-        const p = st.toScreen(it.x, it.z, it.y);
+        // Flare 투사체 그림은 땅 기준점에서 손 높이만큼 위에 그려져 있다 → 땅 자리에 놓는다
+        const p = st.toScreen(it.x, it.z, Math.max(0, it.y - 1.25));
         const rects = a.f[it.dirI] || a.f[0];
         ctx.globalCompositeOperation = bolt ? 'source-over' : 'lighter';
-        drawRect(ctx, src, rects?.[frameIndex(a, it.t)], p.x, p.y + 30 * st.scale(), st.scale() * (bolt ? 0.9 : Math.max(0.7, size * 0.8)));
+        drawRect(ctx, src, rects?.[frameIndex(a, it.t)], p.x, p.y, st.scale() * (bolt ? 0.9 : Math.max(0.7, size * 0.8)));
         ctx.globalCompositeOperation = 'source-over';
       } };
       this.stage.add(it.drawable);
@@ -388,7 +436,7 @@ export class FX {
         if (it.target.pos && !it.target.dead) it.last.copy(it.target.pos);
         const tx = tp.x - it.x, ty = (tp.y ?? 0) + 1.1 - it.y, tz = tp.z - it.z;
         const d = Math.hypot(tx, ty, tz), step = it.speed * dt;
-        it.dirI = dirIndex(tx * PX, tz * PZ - ty * PY);
+        it.dirI = dirIndex(tx * PX, tz * PZ);
         if (d <= step || it.t > 3) {
           done = true;
           this.hit(it.x, it.y, it.z, it.color, false);

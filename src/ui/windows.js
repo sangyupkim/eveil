@@ -17,6 +17,7 @@ import { ZONES } from '../data/world.js';
 import { nextQuest, questDone, questNeed, goalText, questTurnIn } from '../game/quests.js';
 import { audio } from '../engine/audio.js';
 import { cloud } from '../net/cloud.js';
+import { uiSettings, applyUi, editUi } from './layout.js';
 
 const TITLES = { inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', shop: '상점', menu: '메뉴' };
 const TAB_ORDER = ['inv', 'skills', 'char', 'quest', 'shop', 'menu'];
@@ -286,6 +287,8 @@ export class Windows {
   menu() {
     const st = this.w.st, set = st.settings;
     const t = Math.floor(st.playTime / 60);
+    const ui = uiSettings(st);
+    const uiSlider = (k, a, b) => `<input type="range" min="${a * 100}" max="${b * 100}" step="5" value="${Math.round(ui[k] * 100)}" data-ui="${k}" /><span class="volv">${Math.round(ui[k] * 100)}</span>`;
     const onoff = (key, on) => `<button class="btn${on ? ' on' : ''}" data-set="${key}" data-v="1">켜기</button><button class="btn${on ? '' : ' on'}" data-set="${key}" data-v="0">끄기</button>`;
     const vol = (key) => `<input type="range" min="0" max="100" step="5" value="${Math.round(set[key] * 100)}" data-vol="${key}" /><span class="volv">${Math.round(set[key] * 100)}</span>`;
     const card = (win, img, name, dis) => `<button class="card" data-go="${win}" ${dis ? 'disabled' : ''}>${img}<span>${name}</span></button>`;
@@ -294,6 +297,13 @@ export class Windows {
         <div class="setRow"><span>배경음</span><div class="opts">${vol('music')}</div></div>
         <div class="setRow"><span>효과음</span><div class="opts">${vol('sfx')}</div></div>
         <div class="setRow"><span>어둠 · 조명</span><div class="opts">${onoff('shadows', set.shadows)}</div></div>
+        <div class="setRow"><span>UI 전체 크기</span><div class="opts">${uiSlider('scale', 0.7, 1.4)}</div></div>
+        <div class="setRow"><span>조이스틱 크기</span><div class="opts">${uiSlider('joy', 0.6, 1.6)}</div></div>
+        <div class="setRow"><span>단추 크기</span><div class="opts">${uiSlider('btn', 0.6, 1.6)}</div></div>
+        <div class="setRow"><span>단추 투명도</span><div class="opts">${uiSlider('alpha', 0.3, 1)}</div></div>
+        <div class="setRow"><span>UI 위치</span><div class="opts"><button class="btn" data-uiedit="1">위치 편집</button><button class="btn" data-uireset="1">처음대로</button></div></div>
+        <div class="setRow"><span>타겟 고정</span><div class="opts">${onoff('targetLock', set.targetLock !== false)}</div></div>
+        <div class="setRow"><span>떠다니는 조이스틱</span><div class="opts">${onoff('joyFloat', set.joyFloat !== false)}</div></div>
         <div class="setRow"><span>화면 흔들림</span><div class="opts">${onoff('shake', set.shake !== false)}</div></div>
         <div class="setRow"><span>자동 물약</span><div class="opts">${[0.3, 0.4, 0.5, 0.6].map((v) => `<button class="btn${set.autoPotion === v ? ' on' : ''}" data-pot="${v}">${v * 100}%</button>`).join('')}</div></div>
         <div class="setRow"><span>물약 자동 구매</span><div class="opts">${onoff('autoBuy', set.autoBuy !== false)}</div></div>
@@ -389,6 +399,11 @@ export class Windows {
       w.ui.dirty();
       this.render();
     });
+    body.querySelectorAll('[data-ui]').forEach((el) => {
+      el.oninput = () => { uiSettings(st)[el.dataset.ui] = Number(el.value) / 100; el.nextElementSibling.textContent = el.value; applyUi(st); };
+    });
+    on('[data-uiedit]', () => { this.close(); editUi(st, () => w.ui.toast('UI 위치를 저장했습니다')); });
+    on('[data-uireset]', () => { st.settings.ui = undefined; applyUi(st); this.render(); });
     on('[data-go]', (el) => this.show(el.dataset.go));
     on('[data-close]', () => { audio.play('click'); this.close(); });
     on('[data-full]', () => toggleFullscreen());

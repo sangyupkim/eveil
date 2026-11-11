@@ -79,29 +79,54 @@ export function setupInput(world, stage, windows) {
   }, { passive: true });
   canvas.addEventListener('touchend', () => { pinch0 = 0; }, { passive: true });
 
-  // ── 조이스틱 ──
+  // ── 조이스틱: 왼쪽 화면 어디든 누르면 그 자리에 생긴다 (떠다니는 조이스틱) ──
   const joy = $('#joy'), knob = joy.querySelector('.knob');
-  let joyId = null;
+  const zone = $('#joyZone');
+  let joyId = null, jx = 0, jy = 0, lastJoyMove = 0;
+  const joyRadius = () => joy.offsetWidth * 0.42 || 40;
   const joyMove = (e) => {
-    const r = joy.getBoundingClientRect();
-    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    let dx = e.clientX - cx, dy = e.clientY - cy;
-    const max = r.width * 0.4;
-    const len = Math.hypot(dx, dy);
+    let dx = e.clientX - jx, dy = e.clientY - jy;
+    const max = joyRadius(), len = Math.hypot(dx, dy);
     if (len > max) { dx *= max / len; dy *= max / len; }
     knob.style.transform = `translate(${dx}px, ${dy}px)`;
-    const k = len < max * 0.15 ? 0 : 1;
-    world.setJoy((dx / max) * k, (dy / max) * k);
+    lastJoyMove = performance.now();
+    // 작은 흔들림은 무시 (데드존), 그 밖은 부드럽게 0→1
+    const k = len < max * 0.18 ? 0 : Math.min(1, (len - max * 0.18) / (max * 0.5));
+    const l = Math.hypot(dx, dy) || 1;
+    world.setJoy((dx / l) * k, (dy / l) * k);
   };
-  joy.addEventListener('pointerdown', (e) => { joyId = e.pointerId; joy.setPointerCapture(e.pointerId); joyMove(e); });
-  joy.addEventListener('pointermove', (e) => { if (e.pointerId === joyId) joyMove(e); });
-  const joyEnd = (e) => { if (e.pointerId !== joyId) return; joyId = null; knob.style.transform = ''; world.setJoy(0, 0); };
-  joy.addEventListener('pointerup', joyEnd);
-  joy.addEventListener('pointercancel', joyEnd);
+  const joyEnd = (e) => {
+    if (e && e.pointerId !== joyId) return;
+    joyId = null; knob.style.transform = ''; joy.classList.remove('active'); world.setJoy(0, 0);
+    joy.style.left = ''; joy.style.top = ''; joy.style.bottom = '';
+  };
+  zone.addEventListener('pointerdown', (e) => {
+    if (joyId !== null || windows.open || document.body.classList.contains('ui-edit')) return;
+    e.preventDefault();
+    joyId = e.pointerId;
+    try { zone.setPointerCapture(e.pointerId); } catch { /* 무시 */ }
+    const r = joy.getBoundingClientRect();
+    // 기본 자리 근처면 그 자리 그대로, 아니면 누른 곳으로 옮긴다
+    const home = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    if (world.st.settings.joyFloat !== false && Math.hypot(e.clientX - home.x, e.clientY - home.y) > r.width * 0.5) {
+      joy.style.left = `${e.clientX - r.width / 2}px`; joy.style.top = `${e.clientY - r.height / 2}px`; joy.style.bottom = 'auto';
+      jx = e.clientX; jy = e.clientY;
+    } else { jx = home.x; jy = home.y; }
+    joy.classList.add('active');
+    joyMove(e);
+  });
+  zone.addEventListener('pointermove', (e) => { if (e.pointerId === joyId) joyMove(e); });
+  zone.addEventListener('pointerup', joyEnd);
+  zone.addEventListener('pointercancel', joyEnd);
+  zone.addEventListener('lostpointercapture', joyEnd);
+  // 손을 뗀 신호를 놓쳐도 멈춘다: 손가락이 하나도 없거나, 화면이 바뀌면
+  window.addEventListener('touchend', (e) => { if (joyId !== null && e.touches.length === 0) joyEnd({ pointerId: joyId }); }, { passive: true });
+  window.addEventListener('blur', () => { if (joyId !== null) joyEnd({ pointerId: joyId }); });
+  document.addEventListener('visibilitychange', () => { if (joyId !== null) joyEnd({ pointerId: joyId }); });
 
   // ── 버튼 ──
   const tap = (sel, fn) => $(sel).addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); fn(); });
-  tap('#btnAttack', () => { world.manual(); if (world.target && !world.target.dead) world.cmdAttack(world.target); else world.cmdAttackNearest(); });
+  tap('#btnAttack', () => { world.manual(); world.attackButton(); });
   tap('#btnHp', () => world.usePotion('hp'));
   tap('#btnMp', () => world.usePotion('mp'));
   tap('#btnAuto', () => world.toggleAuto());
@@ -135,7 +160,7 @@ export function setupInput(world, stage, windows) {
     if (k === 'e') world.usePotion('mp');
     if (k === 'f') world.toggleAuto();
     if (k === 'r') world.recall();
-    if (e.code === 'Space') { e.preventDefault(); world.manual(); world.cmdAttackNearest(); }
+    if (e.code === 'Space') { e.preventDefault(); world.manual(); world.attackButton(); }
   });
   window.addEventListener('keyup', (e) => keys.delete(e.code));
   window.addEventListener('blur', () => keys.clear());
@@ -143,6 +168,9 @@ export function setupInput(world, stage, windows) {
   return {
     // WASD 이동 (카메라가 북쪽을 보고 있으므로 W = -z)
     update() {
+      // 1.5초 넘게 움직임 신호가 없는데 손가락도 없으면 (신호 유실) 멈춘다
+      if (joyId !== null && performance.now() - lastJoyMove > 1500 && !(navigator.maxTouchPoints && document.querySelector(':active'))) { /* 누르고 가만히 있는 것일 수 있어 그대로 둔다 */ }
+      if (windows.open && joyId !== null) joyEnd({ pointerId: joyId });
       if (joyId !== null || windows.open) return;
       let x = 0, y = 0;
       if (keys.has('KeyW') || keys.has('ArrowUp')) y -= 1;

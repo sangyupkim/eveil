@@ -334,3 +334,14 @@ h3 .goldTxt { margin-left: auto; font-family: var(--f-latin); color: var(--brass
   .card { min-height: calc(var(--u) * 5.4); padding: 8px 4px; }
   .tbox h1 { font-size: calc(var(--u) * 3.6); }
 }
+
+/* UI 조절 (layout.js) */
+:root { --uiK: 1; --u: calc(clamp(9px, 1.1vmin + 0.35vw, 15px) * var(--uiK)); }
+#joyZone { position: absolute; left: 0; bottom: 0; width: 42vw; height: 62vh; pointer-events: auto; display: none; touch-action: none; }
+body.touch #joyZone { display: block; }
+#joy { pointer-events: none; transition: opacity 0.15s; }
+body.touch #joy:not(.active) { opacity: 0.55; }
+body.ui-edit #joyZone { display: none; }
+body.ui-edit #joy, body.ui-edit #br, body.ui-edit #quick, body.ui-edit #tl, body.ui-edit #tr { outline: 2px dashed #ffd860; outline-offset: 4px; pointer-events: auto; cursor: move; }
+body.ui-edit #joy { display: block; }
+#uiEditBar { position: fixed; left: 50%; top: 40%; transform: translateX(-50%); z-index: 50; display: flex; gap: 10px; align-items: center; padding: 8px 14px; background: rgba(12, 10, 9, 0.92); border: 1px solid #b39a6e; color: #ead6a4; }

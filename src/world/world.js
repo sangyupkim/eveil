@@ -20,6 +20,8 @@ import { audio, familyOf } from '../engine/audio.js';
 const sfx = (n, k, fam) => audio.play(n, k, fam);
 
 const ACTIVE_RADIUS = 58;
+// 후딜(초): 공격 뒤 · 스킬 뒤 다음 행동까지
+const RECOVER = { attack: 0.42, skill: 0.55 };
 const SPAWN_NEAR = 72;   // 이 안의 자리에만 몬스터를 만든다
 const DESPAWN_FAR = 92;  // 이보다 멀어진 한가한 몬스터는 치운다 (다시 오면 새로 만든다)
 const dist2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -31,6 +33,15 @@ export class World {
     this.st = st;
     this.ui = ui;
     this.fx = new FX(stage, ui.fxLayer);
+    // 고정한 타겟 발밑 표시
+    stage.groundLayers.push((ctx, st) => {
+      const t = this.target && !this.target.dead ? this.target : this.locked && !this.locked.dead ? this.locked : null;
+      if (!t || !st.onScreen(t.pos.x, t.pos.z, 3)) return;
+      const p = st.toScreen(t.pos.x, t.pos.z), k = st.scale() * t.actor.scale, a = 0.6 + Math.sin(this.time * 6) * 0.25;
+      ctx.strokeStyle = this.target === t ? `rgba(255,90,60,${a})` : `rgba(255,200,120,${a * 0.7})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.ellipse(p.x, p.y, 34 * k, 15 * k, 0, 0, 7); ctx.stroke();
+    });
     this.fx.onShake = (k) => { if (this.st.settings.shake !== false) stage.shake(k); };
     this.timers = [];
     this.monsters = [];
@@ -45,6 +56,7 @@ export class World {
     this.buffs = {};
     this.potionCd = 0;
     this.atkCd = 0;
+    this.actCd = 0;   // 후딜: 공격 · 스킬 뒤 다음 행동까지
     this.swing = 0;
     this.target = null;
     this.moveTo = null;
@@ -409,7 +421,9 @@ export class World {
     this.fx.text(head, crit ? `${dmg}!` : String(dmg), crit ? 'crit' : '');
     sfx('hit', 1, m.fam);
     if (crit) sfx('crit', 0.8);
-    this.fx.hit(m.pos.x, 1.1 * m.actor.scale, m.pos.z, ctx ? new THREE.Color(SKILLS[ctx.id].color).getHex() : crit ? 0xffd040 : 0xffa060, crit);
+    const hc = ctx ? new THREE.Color(SKILLS[ctx.id].color).getHex() : crit ? 0xffd040 : 0xffa060;
+    this.fx.hit(m.pos.x, 1.1 * m.actor.scale, m.pos.z, hc, crit);
+    if (ctx) { this.fx.burst(m.pos.x, 1.1 * m.actor.scale, m.pos.z, hc, 10, 4, 0.45); this.fx.decal(0, m.pos.x, m.pos.z, 1.6 * m.actor.scale, hc, 0.3); }
     if (d.lifeSteal) this.healPlayer(dmg * d.lifeSteal, false);
     if (crit) addAP(st, 'dex', AP_TABLE.crit, apMult);
 
@@ -509,7 +523,7 @@ export class World {
 
   dropGround(dr, x, z, expires = null) {
     const g = { gid: this.nextGid++, kind: dr.kind, amount: dr.amount, item: dr.item, x, z, expires, born: this.time };
-    let look = LOOT_LOOK.gold, color = 0xffd040, beam = false;
+    let look = LOOT_LOOK.gold, color = 0xffd040, beam = false, rank = 0;
     if (dr.kind === 'item') {
       const it = dr.item, b = BASES[it.base];
       color = new THREE.Color(itemColor(it)).getHex();
@@ -517,7 +531,9 @@ export class World {
       else if (b.type === 'potion') look = b.restore.hp ? LOOT_LOOK.potion_hp : LOOT_LOOK.potion_mp;
       else if (b.slot === 'weapon') look = LOOT_LOOK.weapon[b.cls] || 'longsword';
       else look = LOOT_LOOK[b.slot] || 'leather_armor';
-      if (it.rarity && RARITY_ORDER.indexOf(it.rarity) >= 2) beam = true;
+      rank = it.rarity ? RARITY_ORDER.indexOf(it.rarity) : isBook(it) ? 3 : 0;
+      if (rank >= 2) beam = true;
+      if (rank >= 1) this.fx.decal(0, x, z, 1.2 + rank * 0.6, color, 0.6);
     } else if (dr.amount > 60) look = 'coins100';
     if (beam && !expires) setTimeout(() => sfx('rare'), 250);
     const def = DATA.loot[look] || DATA.loot.coins25;
@@ -528,14 +544,16 @@ export class World {
       const p = st.toScreen(x, z), k = st.scale();
       const pulse = 0.55 + Math.sin(this.time * 4 + g.gid) * 0.2;
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = pulse * 0.55;
-      const gr = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, (beam ? 46 : 30) * k);
+      ctx.globalAlpha = pulse * (0.4 + rank * 0.15);
+      // 좋은 것일수록 크고 밝게 · 전설은 반짝이는 알갱이가 오른다
+      if (rank >= 3 && Math.random() < 0.08 + rank * 0.03) this.fx.add.add({ x: x + (Math.random() - 0.5), y: 0.2, z: z + (Math.random() - 0.5) * 0.5, vy: 1.5 + Math.random(), color, size: 0.35, size1: 0.05, life: 0.9, cell: 'spark' });
+      const gr = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, (30 + rank * 10) * k);
       gr.addColorStop(0, css); gr.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(p.x, p.y, (beam ? 46 : 30) * k, (beam ? 23 : 15) * k, 0, 0, 7); ctx.fill();
       if (beam) {
-        const h = 150 * k, lg = ctx.createLinearGradient(0, p.y, 0, p.y - h);
+        const h = (90 + rank * 45) * k, lg = ctx.createLinearGradient(0, p.y, 0, p.y - h);
         lg.addColorStop(0, css); lg.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.globalAlpha = pulse * 0.6; ctx.fillStyle = lg; ctx.fillRect(p.x - 5 * k, p.y - h, 10 * k, h);
+        ctx.globalAlpha = pulse * 0.7; ctx.fillStyle = lg; ctx.fillRect(p.x - (3 + rank * 2) * k, p.y - h, (6 + rank * 4) * k, h);
       }
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;
@@ -633,7 +651,16 @@ export class World {
   cmdAttack(m) {
     if (this.dead || !m || m.dead) return;
     this.target = m;
+    this.locked = m;
     this.moveTo = null;
+  }
+
+  // 공격 단추: 타겟 고정이 켜져 있으면 이동해도 공격하던 대상을 다시 잡는다
+  attackButton() {
+    const lock = this.st.settings.targetLock !== false;
+    const t = this.target && !this.target.dead ? this.target
+      : lock && this.locked && !this.locked.dead && dist2(this.locked.pos, this.player.pos) < 20 ? this.locked : null;
+    if (t) this.cmdAttack(t); else this.cmdAttackNearest();
   }
 
   cmdAttackNearest() {
@@ -696,12 +723,15 @@ export class World {
     this.target = null; this.moveTo = null; this.pendingSkill = null;
     this.recallT = 1.6;
     this.player.play('channel', { force: true });
+    // 옆에 귀환 포탈이 열린다
+    const P = this.player.pos, a = this.player.facing + Math.PI / 2;
+    this.recallPortal = this.fx.portal(P.x + Math.sin(a) * 1.6, P.z + Math.cos(a) * 1.6, 1.9);
     this.ui.toast('마을로 귀환합니다…');
     sfx('recall');
   }
 
   cancelRecall() {
-    if (this.recallT > 0) { this.recallT = 0; this.ui.toast('귀환 취소'); }
+    if (this.recallT > 0) { this.recallT = 0; this.ui.toast('귀환 취소'); if (this.recallPortal) this.recallPortal.t = this.recallPortal.dur - 0.3; }
   }
 
   toggleAuto(on = !this.auto) {
@@ -747,7 +777,7 @@ export class World {
       this.moveTo = null;
       if (dist2(t.pos, this.player.pos) > this.skillRange(id)) { this.pendingSkill = id; return true; }
     }
-    if (this.player.lock > 0.15 && this.swing <= 0) { this.pendingSkill = id; return true; }
+    if (this.actCd > 0 || (this.player.lock > 0.15 && this.swing <= 0)) { this.pendingSkill = id; return true; }
     this.castSkill(id, r.v);
     return true;
   }
@@ -757,6 +787,7 @@ export class World {
     const P = this.player;
     this.pendingSkill = null;
     this.skillUsed = true;
+    this.actCd = RECOVER.skill;
     st.mp -= v.mp;
     this.cds[id] = v.cd;
     this.skillExp(id, 1);
@@ -768,7 +799,8 @@ export class World {
     const spellCrit = () => Math.random() < d.crit * 0.5;
     const weaponHit = () => { const w = this.rollWeapon(); return { v: w.v * pw, crit: w.crit }; };
     const color = new THREE.Color(sk.color).getHex();
-    if (sk.ap === 'int' || sk.type === 'buff') this.fx.circle(P.pos.x, P.pos.z, sk.type === 'buff' ? 2.6 : 1.8, color, 0.9);
+    this.fx.circle(P.pos.x, P.pos.z, sk.type === 'buff' ? 2.6 : 1.8, color, 0.9);
+    this.fx.castFlash(P.pos.x, P.pos.z, color);
 
     switch (sk.type) {
       case 'melee': {
@@ -827,7 +859,7 @@ export class World {
           if (!t) return;
           sfx('fire', 0.7);
           this.fx.projectile({
-            from: { x: P.pos.x, y: 1.6, z: P.pos.z }, target: t, color, size: sk.splash ? 1.5 : 0.9, speed: 20,
+            from: this.muzzle(), target: t, color, size: sk.splash ? 1.5 : 0.9, speed: 20,
             onHit: (tg) => {
               const at = tg.pos || tg;
               if (sk.splash) {
@@ -850,7 +882,7 @@ export class World {
           for (const tg of targets) {
             if (!tg) continue;
             this.fx.projectile({
-              from: { x: P.pos.x, y: 1.5, z: P.pos.z }, target: tg, color, size: 0.7, speed: 32, bolt: true,
+              from: this.muzzle(), target: tg, color, size: 0.7, speed: 32, bolt: true,
               onHit: (x) => { if (!x.dead) { const w = weaponHit(); this.hitMonster(x, w.v, { crit: w.crit, src: 'skill', ctx }); } },
             });
           }
@@ -924,7 +956,7 @@ export class World {
           const ang = P.facing, ux = Math.sin(ang), uz = Math.cos(ang);
           sfx('shoot', 1.3);
           const end = { x: P.pos.x + ux * sk.range, z: P.pos.z + uz * sk.range };
-          this.fx.projectile({ from: { x: P.pos.x, y: 1.4, z: P.pos.z }, target: { pos: new THREE.Vector3(end.x, 1.4, end.z) }, color, size: sk.width > 2 ? 2 : 1, speed: 40, bolt: true, onHit: () => {} });
+          this.fx.projectile({ from: this.muzzle(), target: { pos: new THREE.Vector3(end.x, 1.4, end.z) }, color, size: sk.width > 2 ? 2 : 1, speed: 40, bolt: true, onHit: () => {} });
           for (const m of this.monsters) {
             if (m.dead) continue;
             const px = m.pos.x - P.pos.x, pz = m.pos.z - P.pos.z;
@@ -991,12 +1023,19 @@ export class World {
     this.ui.dirty();
   }
 
+  // 쏘는 자리: 바라보는 쪽으로 몸 앞 (활 · 지팡이 끝)
+  muzzle() {
+    const P = this.player;
+    return { x: P.pos.x + Math.sin(P.facing) * 0.75, y: 1.25, z: P.pos.z + Math.cos(P.facing) * 0.75 };
+  }
+
   // ───────── 기본 공격 ─────────
 
   basicAttack(t) {
     const d = this.d, P = this.player;
     const interval = 1 / d.atkRate;
     this.atkCd = interval;
+    this.actCd = Math.min(RECOVER.attack, interval * 0.7);
     P.face(t.pos.x, t.pos.z);
     const cls = d.cls;
     let anim;
@@ -1022,7 +1061,7 @@ export class World {
       } else {
         const magic = cls.kind === 'magic';
         this.fx.projectile({
-          from: { x: P.pos.x, y: 1.5, z: P.pos.z }, target: t, color: magic ? 0x80b0ff : 0xe0d0a0, size: magic ? 0.7 : 0.6,
+          from: this.muzzle(), target: t, color: magic ? 0x80b0ff : 0xe0d0a0, size: magic ? 0.7 : 0.6,
           speed: magic ? 22 : 32, bolt: !magic,
           onHit: (x) => { if (!x.dead) this.hitMonster(x, w.v, { crit: w.crit, src: magic ? 'magic' : 'ranged' }); },
         });
@@ -1136,7 +1175,7 @@ export class World {
     for (const k in this.buffs) { const b = this.buffs[k]; if (b.t > 0) { b.t -= dt; if (b.t <= 0) buffChanged = true; } }
     if (buffChanged) this.d = derive(st, this.buffValues());
     for (const k in this.cds) if (this.cds[k] > 0) this.cds[k] -= dt;
-    this.potionCd -= dt; this.atkCd -= dt; this.swing -= dt;
+    this.potionCd -= dt; this.atkCd -= dt; this.swing -= dt; this.actCd -= dt;
     if (!this.dead) {
       st.hp = Math.min(this.d.maxHp, st.hp + this.d.hpRegen * dt * (this.inTown ? 6 : 1));
       this.gainMp(this.d.mpRegen * dt * (this.inTown ? 6 : 1));
@@ -1181,9 +1220,11 @@ export class World {
     if (this.recallT > 0) {
       this.recallT -= dt;
       if (this.recallT <= 0) {
-        this.fx.pillar(P.pos.x, P.pos.z, 0x80a0ff, 0.8);
+        this.fx.burst(P.pos.x, 1, P.pos.z, 0x80b0ff, 18, 4, 0.4);
         P.pos.set(0, 0, 4);
-        this.fx.pillar(0, 4, 0x80a0ff, 0.8);
+        this.stage.cam.x = 0; this.stage.cam.z = 4;
+        this.fx.portal(0, 2.2, 1.2);
+        this.fx.arrive(0, 4);
         P.play('idle', { force: true });
         this.ui.toast('잿빛 초소에 도착했습니다');
       }
@@ -1214,18 +1255,18 @@ export class World {
       if (dd > range) {
         if (P.lock <= 0) { const g = this.goal(t.pos); this.stepToward(P.pos, g, speed * dt); P.face(g.x, g.z); moving = true; }
       } else if (this.pendingSkill) {
-        if (P.lock <= 0 || this.swing <= 0) {
+        if (this.actCd <= 0 && (P.lock <= 0 || this.swing <= 0)) {
           const r = this.skillReady(this.pendingSkill);
           if (r.ok) this.castSkill(this.pendingSkill, r.v); else this.pendingSkill = null;
         }
-      } else if (this.atkCd <= 0 && (P.lock <= 0 || this.swing <= 0)) {
+      } else if (this.atkCd <= 0 && this.actCd <= 0 && (P.lock <= 0 || this.swing <= 0)) {
         this.basicAttack(t);
       }
     } else {
       if (this.target?.dead) this.target = null;
       if (this.pendingSkill && !this.needsTarget(this.pendingSkill)) {
         const r = this.skillReady(this.pendingSkill);
-        if (r.ok && (P.lock <= 0 || this.swing <= 0)) this.castSkill(this.pendingSkill, r.v);
+        if (r.ok && this.actCd <= 0 && (P.lock <= 0 || this.swing <= 0)) this.castSkill(this.pendingSkill, r.v);
       }
       if (this.moveTo && P.lock <= 0) {
         const wp = this.goal(this.waypoint(P.pos, this.moveTo));

@@ -11,6 +11,7 @@ import { CONFIG } from './data/config.js';
 import { audio } from './engine/audio.js';
 import { portrait, iconsReady } from './ui/icons.js';
 import { Tutorial } from './ui/tutorial.js';
+import { applyUi } from './ui/layout.js';
 import { cloud, cloudError } from './net/cloud.js';
 
 const SAVE_KEY = 'ashen-save';
@@ -133,6 +134,7 @@ function startGame(stage, st) {
   audio.setVolumes(st.settings.music, st.settings.sfx);
   stage.light = st.settings.shadows !== false;
   const hud = new HUD();
+  applyUi(st);
   const world = new World(stage, st, hud);
   hud.attach(world);
   const save = (force) => {
