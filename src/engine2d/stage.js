@@ -251,3 +251,49 @@ function render(stage, dt) {
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   }
 }
+
+// 이 자리가 장애물에 막혔나 (반경 r)
+export function blockedAt(stage, x, z, r = 0.5) {
+  const list = grid(stage).get(Math.floor(x / CELL) * 10007 + Math.floor(z / CELL)) || [];
+  for (const c of list) if ((x - c.x) ** 2 + (z - c.z) ** 2 < (c.r + r) ** 2) return true;
+  return Math.hypot(x, z) > WORLD_SIZE;
+}
+// 두 점 사이 직선이 트였나
+export function clearLine(stage, a, b, r = 0.5) {
+  const d = Math.hypot(b.x - a.x, b.z - a.z), n = Math.ceil(d / 0.6);
+  for (let i = 1; i < n; i++) if (blockedAt(stage, a.x + ((b.x - a.x) * i) / n, a.z + ((b.z - a.z) * i) / n, r)) return false;
+  return true;
+}
+// 격자 길찾기 (A*, 칸 1). 막힌 길을 돌아가는 꺾인 점들을 돌려준다 (못 찾으면 null)
+export function findPath(stage, from, to, r = 0.5, maxNodes = 1800) {
+  const S = 1, key = (i, j) => i * 4096 + j;
+  const si = Math.round(from.x / S), sj = Math.round(from.z / S), ti = Math.round(to.x / S), tj = Math.round(to.z / S);
+  const open = [[si, sj, 0, Math.hypot(ti - si, tj - sj)]], came = new Map(), gs = new Map([[key(si, sj), 0]]);
+  let seen = 0;
+  while (open.length && seen++ < maxNodes) {
+    let bi = 0;
+    for (let k = 1; k < open.length; k++) if (open[k][2] + open[k][3] < open[bi][2] + open[bi][3]) bi = k;
+    const [i, j, g] = open.splice(bi, 1)[0];
+    if (Math.abs(i - ti) <= 1 && Math.abs(j - tj) <= 1) {
+      const pts = [{ x: to.x, z: to.z }];
+      let k = key(i, j);
+      while (came.has(k)) { const [a, b] = came.get(k); pts.push({ x: a * S, z: b * S }); k = key(a, b); }
+      pts.reverse();
+      // 직선으로 갈 수 있는 점은 건너뛴다
+      const out = []; let cur = from;
+      for (let n = 0; n < pts.length; n++) {
+        const next = pts[n + 1];
+        if (!next || !clearLine(stage, cur, next, r)) { out.push(pts[n]); cur = pts[n]; }
+      }
+      return out;
+    }
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+      const ni = i + di, nj = j + dj, nk = key(ni, nj), ng = g + (di && dj ? 1.414 : 1);
+      if (ng >= (gs.get(nk) ?? Infinity)) continue;
+      if (blockedAt(stage, ni * S, nj * S, r)) continue;
+      gs.set(nk, ng); came.set(nk, [i, j]);
+      open.push([ni, nj, ng, Math.hypot(ti - ni, tj - nj)]);
+    }
+  }
+  return null;
+}

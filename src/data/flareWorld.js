@@ -19,12 +19,12 @@ export const ZONE_LOOK = {
 const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 export const ZONE_PROPS = {
   field: [['grassland', range(252, 255), 26, 0.9], ['grassland', range(240, 243), 10, 0.8], ['grassland', [112, 113], 30, 0], ['grassland', range(116, 123), 60, 0],
-    ['grassland', range(124, 127), 60, 0], ['grassland', [118, 119], 24, 0], ['grassland', range(128, 131), 16, 1], ['grassland', [136, 137], 8, 0.8], ['grassland', [100, 101], 4, 1], ['grassland', range(104, 111), 10, 0.5]],
+    ['grassland', range(124, 127), 60, 0], ['grassland', [118, 119], 24, 0], ['grassland', range(128, 131), 16, 1], ['grassland', [136, 137], 8, 0.8], ['grassland', [100, 101], 4, 1]],
   forest: [['grassland', range(248, 251), 60, 0.8], ['grassland', range(244, 247), 24, 0.6], ['grassland', range(252, 255), 14, 0.9], ['grassland', [114, 115, 116, 117], 50, 0],
     ['grassland', range(120, 127), 60, 0], ['grassland', range(128, 131), 14, 1], ['grassland', [136, 137], 12, 0.8], ['grassland', [100, 101], 6, 1]],
   grave: [['grassland', range(140, 143), 70, 0.6], ['grassland', range(244, 247), 30, 0.6], ['grassland', range(248, 251), 10, 0.8], ['dungeon', range(176, 183), 20, 0],
-    ['dungeon', range(128, 131), 5, 0.8], ['dungeon', range(194, 201), 8, 1.2], ['grassland', range(124, 127), 30, 0], ['grassland', [138, 139], 4, 0.3]],
-  ruins: [['grassland', range(132, 135), 26, 1], ['dungeon', range(194, 201), 10, 1.2], ['grassland', range(128, 131), 20, 1], ['grassland', range(244, 247), 16, 0.6],
+    ['dungeon', range(128, 131), 5, 0.8], ['dungeon', range(144, 147), 6, 0.8], ['grassland', range(124, 127), 30, 0], ['grassland', [138, 139], 4, 0.3]],
+  ruins: [['grassland', range(132, 135), 26, 1], ['dungeon', range(160, 163), 10, 0.8], ['grassland', range(128, 131), 20, 1], ['grassland', range(244, 247), 16, 0.6],
     ['grassland', range(96, 99), 10, 0.9], ['dungeon', [176, 177, 178, 179], 14, 0], ['dungeon', [128, 129, 130, 131], 6, 0.8], ['grassland', range(124, 127), 24, 0]],
   swamp: [['grassland', range(240, 243), 44, 0.8], ['grassland', range(244, 247), 18, 0.6], ['grassland', [114, 115], 60, 0], ['grassland', [116, 117], 30, 0],
     ['grassland', range(124, 127), 40, 0], ['grassland', [136, 137], 10, 0.8], ['cave', range(132, 135), 14, 0]],

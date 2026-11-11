@@ -13,7 +13,7 @@ import { itemName, itemColor, isBook, makeItem } from '../game/items.js';
 import { seeded, randInt, randRange } from '../game/rng.js';
 import { Actor, makeHero } from '../engine2d/actor.js';
 import { FX } from '../engine2d/fx.js';
-import { resolveCollision, zoneAt } from '../engine2d/stage.js';
+import { resolveCollision, zoneAt, clearLine, findPath } from '../engine2d/stage.js';
 import { DATA, image, animImage, drawRect, frameIndex } from '../engine2d/sprites.js';
 import { MONSTER_LOOK, ITEM_LOOK, LOOT_LOOK } from '../data/flareWorld.js';
 import { audio, familyOf } from '../engine/audio.js';
@@ -223,7 +223,20 @@ export class World {
     } else if (m.state === 'chase') {
       if (!valid || fromHome > 32) { m.state = 'return'; }
       else if (d > m.def.range) {
-        if (a.lock <= 0) { this.stepToward(m.pos, p, spd * dt); a.face(p.x, p.z); moving = 2; }
+        if (a.lock <= 0) {
+          // 앞이 막혔으면 길을 찾아 돌아온다 (0.6초마다 다시 본다)
+          m.pathT = (m.pathT || 0) - dt;
+          if (m.pathT <= 0) {
+            m.pathT = 0.6 + Math.random() * 0.3;
+            m.path = clearLine(this.stage, m.pos, p, 0.45) ? null : findPath(this.stage, m.pos, p, 0.45);
+          }
+          let goal = p;
+          if (m.path?.length) {
+            goal = m.path[0];
+            if (dist2(m.pos, goal) < 0.6) { m.path.shift(); goal = m.path[0] || p; }
+          }
+          this.stepToward(m.pos, goal, spd * dt); a.face(goal.x, goal.z); moving = 2;
+        }
       } else {
         a.face(p.x, p.z);
         if (m.atkT <= 0 && a.lock <= 0) this.monsterAttack(m);
