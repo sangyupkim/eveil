@@ -39,7 +39,7 @@
         <div class="pill gold"><span id="gold">0</span> G</div>
       </div>
       <div id="questBox">
-        <button class="qhead" id="qToggle">기록 <small>▴</small></button>
+        <button class="qhead" id="qToggle">기록 <small class="chev"></small></button>
         <div class="qbody">
           <div class="zoneInfo"></div>
           <div id="log"></div>
@@ -51,7 +51,7 @@
     <div id="tr">
       <div id="mapWrap"><canvas id="minimap" width="200" height="200"></canvas></div>
       <div class="menuCol">
-        <button class="ibtn menu-toggle" id="menuToggle" title="메뉴 펼치기"><b class="chev">⌄</b></button>
+        <button class="ibtn menu-toggle" id="menuToggle" title="메뉴 펼치기"><b class="chev"></b></button>
         <div class="menuItems" id="menuItems">
           <button data-win="menu" class="ibtn" title="메뉴 (Esc)"><b class="gear"></b></button>
           <button data-win="inv" class="ibtn" title="가방 (I)"><img data-ico="chest" alt="" /><span class="cnt" id="bagCnt">0/40</span></button>
@@ -64,14 +64,15 @@
 
     <div id="targetFrame" hidden><div class="tname"></div><div class="bar thp"><i></i></div></div>
     <div id="autoText" hidden>자동 사냥 중</div>
+    <div id="tutBox" hidden><b class="gear"></b><span></span></div>
     <div id="toasts"></div>
 
     <!-- 하단 -->
     <div id="joy"><div class="knob"></div></div>
     <div id="quick"></div>
     <div id="br">
-      <button id="btnRecall" class="act small" title="귀환 (R)"><b>⌂</b><span>귀환</span></button>
-      <button id="btnAuto" class="act small" title="자동 사냥 (F)"><b>AUTO</b><span>자동</span></button>
+      <button id="btnRecall" class="act small" title="귀환 (R)"><img data-ico="home" alt="" /><span>귀환</span></button>
+      <button id="btnAuto" class="act small" title="자동 사냥 (F)"><img data-ico="duel" alt="" /><span>자동</span></button>
       <button id="btnMp" class="act pot mp" title="마나 물약 (E)"><img data-ico="mpot" alt="" /><em>0</em></button>
       <button id="btnHp" class="act pot" title="체력 물약 (Q)"><img data-ico="hpot" alt="" /><em>0</em></button>
       <button id="btnAttack" class="act attack" title="공격 (Space)"><img data-ico="sword" alt="" /><span>공격</span></button>
@@ -80,8 +81,12 @@
   </div>
 
   <div id="window" class="screen" hidden>
-    <div class="fs-head"><b class="gear"></b><h2></h2><div class="tabs"></div><button class="close" title="닫기 (Esc)"><span>✕</span></button></div>
+    <div class="fs-head"><b class="gear"></b><h2></h2><div class="tabs"></div><button class="close" title="닫기 (Esc)"><span class="xmark"></span></button></div>
     <div class="body"></div>
+  </div>
+  <div id="startPick" class="screen" hidden>
+    <div class="fs-head"><b class="gear"></b><h2>첫 무기</h2></div>
+    <div class="body"><div class="cards4"></div><button id="btnStartPick" class="plate gold" disabled>이 무기로 시작</button></div>
   </div>
   <div id="awaken" hidden></div>
   <div id="death" hidden></div>

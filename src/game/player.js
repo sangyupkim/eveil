@@ -1,9 +1,10 @@
 // 플레이어 상태(저장되는 값)와 거기서 계산되는 능력치.
 import { CONFIG, STATS } from '../data/config.js';
-import { BASES, WEAPON_CLASSES, SLOTS } from '../data/items.js';
+import { BASES, WEAPON_CLASSES, SLOTS, STARTS, START_BONUS } from '../data/items.js';
 import { makeItem } from './items.js';
 
-export function newPlayer(name = '방랑자', look = 'knight') {
+// start: 처음 무기 (null이면 맨손 — 튜토리얼에서 고른다)
+export function newPlayer(name = '방랑자', look = 'knight', start = 'sword') {
   const st = {
     v: 1,
     name, look,
@@ -25,15 +26,24 @@ export function newPlayer(name = '방랑자', look = 'knight') {
     ground: [],              // 사망으로 떨어뜨린 아이템 { item, x, z, expires }
     settings: { autoPotion: 0.4, autoBuy: true, shadows: true, music: 0.6, sfx: 0.8 },
     playTime: 0,
+    kills: 0,
+    tut: start ? 99 : 0,     // 튜토리얼 단계 (0 = 무기 고르기, 99 = 끝)
+    start: null,
   };
-  const weapon = makeItem('rusty_sword', { rarity: 'common', ilvl: 1 }, st);
-  st.equip.weapon = weapon;
   st.inv.push(makeItem('hp_potion', { qty: 10 }, st));
   st.inv.push(makeItem('mp_potion', { qty: 5 }, st));
+  if (start) chooseStart(st, start);
   const d = derive(st);
   st.hp = d.maxHp;
   st.mp = d.maxMp;
   return st;
+}
+
+export function chooseStart(st, id) {
+  const k = STARTS[id];
+  st.start = id;
+  st.equip.weapon = makeItem(k.base, { rarity: 'common', ilvl: 1 }, st);
+  st.stats[k.stat] += START_BONUS;
 }
 
 // 장비 옵션 합계

@@ -22,6 +22,9 @@ export const WEAPON_CLASSES = {
 // minLvl: 이 아이템 레벨부터 드랍된다. shop: 상점 판매 여부
 export const BASES = {
   rusty_sword: { name: '낡은 장검', slot: 'weapon', cls: 'sword', dmg: [4, 7], speed: 1.1, price: 5, minLvl: 99 },
+  old_crossbow: { name: '낡은 석궁', slot: 'weapon', cls: 'crossbow', dmg: [4, 7], speed: 0.95, price: 5, minLvl: 99 },
+  old_wand: { name: '낡은 완드', slot: 'weapon', cls: 'wand', dmg: [3, 6], speed: 1.0, price: 5, minLvl: 99, mods: { maxMp: 5 } },
+  novice_staff: { name: '견습 지팡이', slot: 'weapon', cls: 'staff', dmg: [4, 7], speed: 0.9, price: 5, minLvl: 99, mods: { maxMp: 10 } },
   dagger: { name: '단검', slot: 'weapon', cls: 'dagger', dmg: [4, 7], speed: 1.45, price: 60, shop: true },
   short_sword: { name: '장검', slot: 'weapon', cls: 'sword', dmg: [6, 10], speed: 1.15, price: 90, shop: true },
   hand_axe: { name: '손도끼', slot: 'weapon', cls: 'axe', dmg: [7, 12], speed: 1.0, price: 100, shop: true },
@@ -97,3 +100,12 @@ export const AFFIX_PREFIX = {
   magicFind: '행운의', allStats: '고대의',
 };
 export const LEGEND_NAMES = ['잿빛 왕의', '망자의', '서리 군주의', '타락한 성기사의', '피의 서약', '그림자 군단의', '잊힌 신의'];
+
+// 처음 고르는 무기 — 무기 + 주 스탯 +2 + 첫 스킬북(튜토리얼 보상)
+export const STARTS = {
+  sword: { base: 'rusty_sword', stat: 'str', book: 'power_strike', line: '가까이서 묵직하게' },
+  crossbow: { base: 'old_crossbow', stat: 'dex', book: 'aimed_shot', line: '멀리서 정확하게' },
+  wand: { base: 'old_wand', stat: 'int', book: 'fire_bolt', line: '주문으로 태운다' },
+  staff: { base: 'novice_staff', stat: 'wis', book: 'first_aid', line: '버티며 회복한다' },
+};
+export const START_BONUS = 2;

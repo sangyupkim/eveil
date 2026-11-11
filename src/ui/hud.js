@@ -6,7 +6,7 @@ import { ZONES, TOWN, WORLD_SIZE } from '../data/world.js';
 import { expNeeded, powerLevel } from '../game/growth.js';
 import { countOf } from '../game/inventory.js';
 import { skillValues } from '../game/skills.js';
-import { portrait, chestIcon, bookIcon, coinIcon, swordIcon, itemIcon } from './icons.js';
+import { portrait, chestIcon, bookIcon, coinIcon, swordIcon, itemIcon, skillIcon, homeIcon, duelIcon } from './icons.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 
@@ -28,7 +28,7 @@ export class HUD {
     // 3D 모델로 찍은 아이콘을 단추에 넣는다
     const face = portrait(world.st.look);
     $('#face').src = face;
-    const icons = { chest: chestIcon(), book: bookIcon(), coin: coinIcon(), face, sword: swordIcon(),
+    const icons = { chest: chestIcon(), book: bookIcon(), coin: coinIcon(), face, sword: swordIcon(), home: homeIcon(), duel: duelIcon(),
       hpot: itemIcon({ base: 'hp_potion' }), mpot: itemIcon({ base: 'mp_potion' }) };
     document.querySelectorAll('img[data-ico]').forEach((im) => { im.src = icons[im.dataset.ico] || ''; });
     $('#menuToggle').onclick = () => $('.menuCol').classList.toggle('closed');
@@ -150,7 +150,7 @@ export class HUD {
     const bb = $('#buffs');
     const active = Object.entries(w.buffs).filter(([, b]) => b.t > 0);
     if (bb.childElementCount !== active.length || this.isDirty) {
-      bb.innerHTML = active.map(([, b]) => `<div class="buff" style="background:${SKILLS[b.id].color}55;border-color:${SKILLS[b.id].color}">${SKILLS[b.id].glyph}</div>`).join('');
+      bb.innerHTML = active.map(([, b]) => `<div class="buff" style="background:${SKILLS[b.id].color}55;border-color:${SKILLS[b.id].color}"><img src="${skillIcon(b.id)}" alt="" /></div>`).join('');
     }
 
     this.updateLabels();
@@ -171,14 +171,14 @@ export class HUD {
         if (id && st.skills[id]) {
           const sk = SKILLS[id];
           el.classList.remove('empty');
-          ico.textContent = sk.glyph;
+          ico.innerHTML = `<img src="${skillIcon(id)}" alt="" draggable="false" />`;
           ico.style.background = `radial-gradient(circle at 35% 30%, ${sk.color}, #1a120a 92%)`;
           el.querySelector('.rank').textContent = st.skills[id].rank;
           el.querySelector('.nm').textContent = sk.name;
           el.title = sk.name;
         } else {
           el.classList.add('empty');
-          ico.textContent = '';
+          ico.innerHTML = '';
           ico.style.background = 'none';
           el.querySelector('.rank').textContent = '';
           el.querySelector('.nm').textContent = '';

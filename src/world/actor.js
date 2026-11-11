@@ -38,6 +38,19 @@ export class Actor {
     attachTo(this.handL, offhand, tint);
   }
 
+  // 겉옷: 투구 · 망토는 입었을 때만 보이고, 갑옷이 없으면 몸을 수수한 천 색으로 누른다
+  setOutfit({ helm = true, armor = true, gloves = true, boots = true } = {}) {
+    const plain = new THREE.Color(0xb49a72), white = new THREE.Color(0xffffff);
+    this.model.traverse((o) => {
+      if (!o.isMesh) return;
+      if (/Helmet|Hat/.test(o.name)) o.visible = helm;
+      else if (/Cape/.test(o.name)) o.visible = armor;
+      else if (/Body/.test(o.name)) o.material.color.copy(armor ? white : plain);
+      else if (/Arm/.test(o.name)) o.material.color.copy(armor || gloves ? white : plain);
+      else if (/Leg/.test(o.name)) o.material.color.copy(armor || boots ? white : plain);
+    });
+  }
+
   action(name) {
     let a = this.actions.get(name);
     if (!a) {

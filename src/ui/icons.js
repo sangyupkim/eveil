@@ -155,6 +155,7 @@ export const swordIcon = () => cached('menusword', () => { const o = cloneProp('
 export function portrait(look) {
   return cached('face' + look, () => {
     const c = makeCharacter(look);
+    c.model.traverse((o) => { if (/Helmet|Hat|Cape/.test(o.name)) o.visible = false; });
     const g = new THREE.Group();
     g.add(c.model);
     g.updateMatrixWorld(true);
@@ -165,3 +166,78 @@ export function portrait(look) {
     return shoot(g, { view: [0.25, 0.08, 1], focus, fill: 0.95 });
   });
 }
+
+// ───────── 스킬 아이콘: 물건 모양 3D 조각으로 ─────────
+const glowMat = (color, k = 0.7) => new THREE.MeshStandardMaterial({ color, emissive: new THREE.Color(color).multiplyScalar(k), roughness: 0.45, metalness: 0.1 });
+const at = (o, x = 0, y = 0, z = 0, rz = 0) => { o.position.set(x, y, z); o.rotation.z = rz; return o; };
+const group = (...xs) => { const g = new THREE.Group(); for (const x of xs) g.add(x); return g; };
+
+function flame(color = 0xff6a1a, core = 0xffe08a, s = 1) {
+  const prof = (w) => {
+    const pts = [];
+    for (let i = 0; i <= 14; i++) { const t = i / 14; pts.push(new THREE.Vector2(Math.pow(Math.sin(Math.PI * Math.pow(t, 0.62)), 0.9) * w, t * 1.7)); }
+    return new THREE.LatheGeometry(pts, 16);
+  };
+  const g = group(new THREE.Mesh(prof(0.52), glowMat(color, 0.8)), at(new THREE.Mesh(prof(0.28), glowMat(core, 1)), 0, 0.12, 0.3));
+  g.children[1].scale.y = 0.7;
+  g.scale.setScalar(s);
+  return g;
+}
+function arrow(color = 0xd8d2c4) {
+  const wood = new THREE.MeshStandardMaterial({ color: 0x8a6a42, roughness: 0.8 });
+  const g = group(new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 1.9, 8), wood),
+    at(new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.36, 4), glowMat(color, 0.25)), 0, 1.1));
+  for (const r of [0, Math.PI / 2]) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.36, 0.02), glowMat(0xc04030, 0.2)); f.position.y = -0.8; f.rotation.y = r; g.add(f); }
+  return g;
+}
+function cross(color) {
+  const m = glowMat(color, 0.75);
+  return group(new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.6, 0.36), m), new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 0.36), m));
+}
+function bolt(color) {
+  const s = new THREE.Shape();
+  [[0.25, 1.1], [-0.5, 0.05], [-0.05, 0.05], [-0.4, -1.1], [0.55, 0.25], [0.08, 0.25], [0.6, 1.1]].forEach(([x, y], i) => (i ? s.lineTo(x, y) : s.moveTo(x, y)));
+  const g = new THREE.ExtrudeGeometry(s, { depth: 0.22, bevelEnabled: true, bevelSize: 0.04, bevelThickness: 0.04, bevelSegments: 1 });
+  return new THREE.Mesh(g, glowMat(color, 0.9));
+}
+function crystals(color) {
+  const g = new THREE.Group();
+  const m = new THREE.MeshStandardMaterial({ color, emissive: new THREE.Color(color).multiplyScalar(0.45), roughness: 0.15, metalness: 0.3, flatShading: true });
+  for (const [x, h, rz, r] of [[0, 1.5, 0, 0.36], [-0.5, 1.0, 0.45, 0.27], [0.5, 1.1, -0.4, 0.28], [-0.25, 0.7, 0.2, 0.2], [0.28, 0.65, -0.15, 0.2]]) {
+    const c = new THREE.Mesh(new THREE.OctahedronGeometry(r), m);
+    c.scale.y = h / r / 1.6; c.position.set(x, h * 0.45, x ? 0.25 * Math.sign(x) * (h < 0.8 ? 1.6 : 0) : 0); c.rotation.z = rz;
+    g.add(c);
+  }
+  return g;
+}
+const halo = (color, r = 0.6, tube = 0.07) => { const t = new THREE.Mesh(new THREE.TorusGeometry(r, tube, 10, 36), glowMat(color, 0.9)); t.rotation.x = 1.25; return t; };
+const swoosh = (color, r = 1, arc = Math.PI * 1.1) => { const t = new THREE.Mesh(new THREE.TorusGeometry(r, 0.09, 6, 28, arc), glowMat(color, 0.9)); t.scale.z = 0.3; return t; };
+const weapon = (name, rz = -Math.PI / 4, tint = null, k = 0.5) => { const o = cloneProp(name); if (tint !== null) tinted(o, tint, k); const g = group(o); g.rotation.z = rz; return g; };
+function rock(color = 0x4a2a22) {
+  return new THREE.Mesh(new THREE.IcosahedronGeometry(0.62, 0), new THREE.MeshStandardMaterial({ color, emissive: 0x551400, roughness: 0.9, flatShading: true }));
+}
+
+const SKILL_ART = {
+  power_strike: () => group(weapon('w_sword'), at(swoosh(0xff5a3a, 0.95), -0.15, 0.75, -0.2, 0.3)),
+  fire_bolt: () => at(flame(0xff7a2a, 0xffe08a), 0, 0, 0, -0.9),
+  first_aid: () => cross(0x4fd87a),
+  aimed_shot: () => group(at(arrow(), 0, 0, 0, -Math.PI / 4), at(new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.05, 8, 32), glowMat(0xff5a4a, 0.8)), 0.7, 0.7, 0), at(new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.05, 8, 24), glowMat(0xff5a4a, 0.8)), 0.7, 0.7, 0)),
+  whirlwind: () => { const r = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.08, 6, 40, Math.PI * 1.7), glowMat(0xffb060, 0.9)); r.rotation.x = 1.2; r.position.y = 0.7; return group(weapon('w_axe', -0.5), r); },
+  fireball: () => group(new THREE.Mesh(new THREE.SphereGeometry(0.6, 20, 14), glowMat(0xff4a12, 0.85)), at(flame(0xff8a2a, 0xfff0a0, 1.0), 0.15, 0.1, -0.1, -0.5), at(new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 10), glowMat(0xffe08a, 1)), -0.12, 0.12, 0.42)),
+  holy_light: () => group(cross(0xffe680), at(halo(0xfff4c0, 0.62), 0, 1.25)),
+  multishot: () => group(at(arrow(), -0.55, 0, 0, 0.45), arrow(), at(arrow(), 0.55, 0, 0, -0.45)),
+  iron_skin: () => { const g = weapon('w_shield', 0, 0xaab4c8, 0.75); g.rotation.y = 0.25; return g; },
+  earth_cleave: () => group(weapon('w_greataxe', -0.6), at(cloneProp('rock_a'), 0.5, -0.2, 0.3), at(cloneProp('rock_b'), -0.6, -0.2, 0.2)),
+  chain_lightning: () => group(bolt(0x8fd0ff), at(bolt(0xd8f0ff), 0.75, -0.25, -0.3, -0.5)),
+  divine_shield: () => { const s = new THREE.Mesh(new THREE.SphereGeometry(1.15, 24, 16), new THREE.MeshStandardMaterial({ color: 0xfff0b0, emissive: 0x806020, transparent: true, opacity: 0.3, roughness: 0.2, depthWrite: false })); const w = weapon('w_shield_sq', 0, 0xffd860, 0.6); s.position.y = 0.1; return group(w, s); },
+  meteor: () => group(rock(), at(flame(0xff4a1a, 0xffc060, 1.15), 0.2, 0.2, -0.3, -0.8), at(new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 0), glowMat(0xff8a2a, 1)), -0.3, -0.75, 0.3)),
+  berserk: () => group(weapon('w_axe', -0.6, 0xd02030, 0.55), at(weapon('w_axe', 0.6, 0xd02030, 0.55), 0, 0, -0.25)),
+  judgement: () => group(weapon('w_greatsword', 0, 0xffd860, 0.55), at(halo(0xfff0a0, 0.75, 0.08), 0, 2.3)),
+  absolute_zero: () => group(crystals(0x9fe6ff), at(halo(0xdff6ff, 1.0, 0.05), 0, 0.15)),
+};
+
+export function skillIcon(id) {
+  return cached('skill' + id, () => (SKILL_ART[id] ? shoot(SKILL_ART[id](), { view: [0.12, 0.18, 1], fill: 0.9 }) : ''));
+}
+export const homeIcon = () => cached('home', () => shoot(cloneProp('home_a'), { view: [0.7, 0.5, 1], fill: 0.95 }));
+export const duelIcon = () => cached('duel', () => shoot(group(weapon('w_sword', -0.6), at(weapon('w_sword', 0.6), 0, 0, -0.2)), { view: [0, 0.1, 1], fill: 0.95 }));

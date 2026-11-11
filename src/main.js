@@ -10,6 +10,7 @@ import { newPlayer } from './game/player.js';
 import { CONFIG } from './data/config.js';
 import { audio } from './engine/audio.js';
 import { portrait } from './ui/icons.js';
+import { Tutorial } from './ui/tutorial.js';
 
 const SAVE_KEY = 'ashen-save';
 const $ = (s) => document.querySelector(s);
@@ -31,6 +32,7 @@ function loadSave() {
     const s = JSON.parse(localStorage.getItem(SAVE_KEY));
     if (!s || s.v !== 1) return null;
     // 새로 생긴 필드는 기본값으로 채운다
+    if (s.tut === undefined) s.tut = 99; // 예전 저장은 안내를 건너뛴다
     const base = newPlayer(s.name, s.look);
     for (const k in base) if (s[k] === undefined) s[k] = base[k];
     s.settings = { ...base.settings, ...s.settings };
@@ -87,7 +89,7 @@ async function boot() {
   };
   $('#btnNew').onclick = () => {
     if (saved && !confirm('저장된 캐릭터가 있습니다. 새로 시작하면 지워집니다. 계속할까요?')) return;
-    start(newPlayer($('#nameInput').value.trim() || '방랑자', look));
+    start(newPlayer($('#nameInput').value.trim() || '방랑자', look, null));
   };
   $('#btnContinue').onclick = () => start(saved);
 }
@@ -108,13 +110,10 @@ function startGame(stage, st) {
   const windows = new Windows(world, save);
   hud.onDirty = () => { clearTimeout(hud.winT); hud.winT = setTimeout(() => windows.refresh(), 0); };
   const input = setupInput(world, stage, windows);
+  const tut = new Tutorial(world, windows);
   $('#hud').hidden = false;
   stage.follow(world.player.pos.x, world.player.pos.z, 1);
   hud.log(`${st.name}, 잿빛 초소에 왔다.`, '#e8c36a');
-  if (!st.awakenings && !st.playTime) {
-    hud.log('남쪽 들판(아래)의 해골부터 사냥하자.', '#9a917f');
-    hud.log('스킬은 몬스터가 떨어뜨리는 스킬북으로 배운다.', '#9a917f');
-  }
 
   const clock = new THREE.Clock();
   let saveT = CONFIG.autosaveInterval;
@@ -122,7 +121,8 @@ function startGame(stage, st) {
   const loop = () => {
     const dt = Math.min(0.05, clock.getDelta());
     input.update();
-    world.update(dt);
+    if (!tut.blocking) world.update(dt);
+    tut.update();
     stage.follow(world.player.pos.x, world.player.pos.z, dt);
     hud.update(dt);
     stage.renderer.render(stage.scene, stage.camera);
@@ -135,7 +135,7 @@ function startGame(stage, st) {
   loop();
   window.addEventListener('beforeunload', save);
   document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
-  window.__game = { world, stage, st, save };
+  window.__game = { world, stage, st, save, tut };
 }
 
 boot().catch((e) => {

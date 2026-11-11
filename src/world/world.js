@@ -71,6 +71,7 @@ export class World {
     this.d = derive(st, this.buffValues());
     const w = st.equip.weapon, o = st.equip.offhand;
     this.player.setGear(w ? WEAPON_CLASSES[BASES[w.base].cls].model : null, o ? BASES[o.base].model : null);
+    this.player.setOutfit({ helm: !!st.equip.helm, armor: !!st.equip.armor, gloves: !!st.equip.gloves, boots: !!st.equip.boots });
     st.hp = Math.min(st.hp, this.d.maxHp);
     st.mp = Math.min(st.mp, this.d.maxMp);
     this.ui.dirty();
@@ -352,6 +353,7 @@ export class World {
     m.dead = true;
     m.hp = 0;
     const st = this.st, d = this.d;
+    st.kills = (st.kills || 0) + 1;
     const apMult = rf.ap * this.autoMult;
     const human = m.def.human;
     m.actor.play(human ? 'Death_A' : 'Death_C_Skeletons', { once: true, force: true, fade: 0.1 });
@@ -633,6 +635,7 @@ export class World {
     }
     if (this.player.lock > 0.15 && this.swing <= 0) { this.pendingSkill = id; return true; }
     this.castSkill(id, r.v);
+    this.skillUsed = true;
     return true;
   }
 

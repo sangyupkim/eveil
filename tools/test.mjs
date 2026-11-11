@@ -1,6 +1,7 @@
 // 게임 로직 점검 (화면 없이). npm test
 import assert from 'node:assert/strict';
-import { newPlayer, derive } from '../src/game/player.js';
+import { newPlayer, derive, chooseStart } from '../src/game/player.js';
+import { STARTS, START_BONUS } from '../src/data/items.js';
 import { addAP, gainExp, distribute, expNeeded, rewardFactor } from '../src/game/growth.js';
 import { learn, addSkillExp, canLearn } from '../src/game/skills.js';
 import { rollLoot, rollDeathDrop } from '../src/game/loot.js';
@@ -16,11 +17,22 @@ let n = 0;
 const test = (name, fn) => { fn(); n++; console.log('  ✓', name); };
 
 test('새 캐릭터: 스탯 5종 모두 시작값, 레벨 없음', () => {
-  const p = newPlayer();
+  const p = newPlayer('방랑자', 'knight', null);
   assert.deepEqual(Object.keys(p.stats), STATS);
   for (const s of STATS) assert.equal(p.stats[s], CONFIG.startStat);
   assert.equal(p.level, undefined);
-  assert.ok(p.equip.weapon);
+  assert.equal(p.equip.weapon, null);
+  assert.equal(p.tut, 0);
+});
+
+test('처음 무기 고르기: 무기 + 주 스탯 +2, 첫 스킬북을 바로 배울 수 있다', () => {
+  for (const id in STARTS) {
+    const p = newPlayer('방랑자', 'knight', null);
+    chooseStart(p, id);
+    assert.equal(BASES[p.equip.weapon.base].cls, id);
+    assert.equal(p.stats[STARTS[id].stat], CONFIG.startStat + START_BONUS);
+    assert.ok(canLearn(p, STARTS[id].book).ok, id);
+  }
 });
 
 test('검만 휘두르면 힘이 주로 오른다', () => {

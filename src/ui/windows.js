@@ -11,14 +11,14 @@ import { expNeeded } from '../game/growth.js';
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
-import { itemIcon, portrait, chestIcon, bookIcon, coinIcon } from './icons.js';
+import { itemIcon, skillIcon, portrait, chestIcon, bookIcon, coinIcon } from './icons.js';
 import { audio } from '../engine/audio.js';
 
 const TITLES = { inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', shop: '상점', menu: '메뉴' };
 const TAB_ORDER = ['inv', 'skills', 'char', 'shop', 'menu'];
 const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '');
 const ico = (it) => `<img src="${itemIcon(it)}" alt="" draggable="false" />`;
-const sicon = (sk) => `<div class="sicon" style="background:radial-gradient(circle at 35% 30%, ${sk.color}, #17111f 90%)">${sk.glyph}</div>`;
+const sicon = (id) => `<div class="sicon" style="background:radial-gradient(circle at 35% 30%, ${SKILLS[id].color}, #17111f 90%)"><img src="${skillIcon(id)}" alt="" /></div>`;
 
 export class Windows {
   constructor(world, save) {
@@ -82,7 +82,7 @@ export class Windows {
     const st = this.w.st;
     if (!it) return '<div class="note">고른 아이템이 없습니다</div>';
     const b = BASES[it.base];
-    let h = `<img class="bigico" src="${itemIcon(it)}" alt="" /><div class="nm" style="color:${itemColor(it)}">${esc(itemName(it))}</div>`;
+    let h = `<img class="bigico" src="${isBook(it) ? skillIcon(it.book) : itemIcon(it)}" alt="" /><div class="nm" style="color:${itemColor(it)}">${esc(itemName(it))}</div>`;
     if (isBook(it)) {
       const sk = SKILLS[it.book];
       h += `<div class="sub">${BOOK_TIERS[sk.tier].name} 스킬북 · MP ${sk.mp} · 재사용 ${sk.cd}초</div><div>${sk.desc}</div>`;
@@ -166,7 +166,7 @@ export class Windows {
       const sk = SKILLS[id], s = st.skills[id];
       const max = s.rank >= CONFIG.skillMaxRank;
       const slot = st.quick.indexOf(id);
-      list += `<div class="row pick${this.skillSel === id ? ' on' : ''}" data-skill="${id}">${sicon(sk)}
+      list += `<div class="row pick${this.skillSel === id ? ' on' : ''}" data-skill="${id}">${sicon(id)}
         <div class="grow"><b>${sk.name}</b> <span style="color:${BOOK_TIERS[sk.tier].color};font-size:.8em">${BOOK_TIERS[sk.tier].name}</span>
           <div class="mini"><i style="width:${max ? 100 : (s.exp / skillExpNeeded(s.rank)) * 100}%;background:${sk.color}"></i></div></div>
         <div class="note">랭크 ${s.rank}${slot >= 0 ? ` · ${slot + 1}번` : ''}</div></div>`;
@@ -177,7 +177,7 @@ export class Windows {
       const v = skillValues(id, s.rank);
       const max = s.rank >= CONFIG.skillMaxRank;
       const need = skillExpNeeded(s.rank);
-      det = `<div class="row" style="border:0">${sicon(sk)}<div class="grow"><div class="nm" style="color:${BOOK_TIERS[sk.tier].color}">${sk.name}</div>
+      det = `<div class="row" style="border:0">${sicon(id)}<div class="grow"><div class="nm" style="color:${BOOK_TIERS[sk.tier].color}">${sk.name}</div>
           <div class="sub">${BOOK_TIERS[sk.tier].name} · 랭크 ${s.rank}${max ? ' (최대)' : ` / ${CONFIG.skillMaxRank}`}</div></div></div>
         <div>${sk.desc}</div>
         <div class="kv" style="margin-top:8px"><span>MP</span><b>${v.mp}</b><span>재사용</span><b>${v.cd.toFixed(1)}초</b><span>숙련</span><b>${max ? '최대' : `${Math.floor(s.exp)} / ${need}`}</b></div>
@@ -185,7 +185,7 @@ export class Windows {
         <h3 style="margin-top:14px">퀵슬롯</h3><div class="qsRow">`;
       for (let i = 0; i < CONFIG.quickSlots; i++) {
         const q = st.quick[i];
-        det += `<button class="btn qs${q === id ? ' on' : ''}" data-qs="${i}"><small>${i + 1}</small>${q ? SKILLS[q].glyph : ''}</button>`;
+        det += `<button class="btn qs${q === id ? ' on' : ''}" data-qs="${i}"><small>${i + 1}</small>${q ? `<img src="${skillIcon(q)}" alt="" />` : ''}</button>`;
       }
       det += `</div>${st.quick.includes(id) ? '<div class="btns"><button class="btn" data-qs="-1">빼기</button></div>' : ''}`;
     }
