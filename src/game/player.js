@@ -1,19 +1,18 @@
 // 플레이어 상태(저장되는 값)와 거기서 계산되는 능력치.
 import { CONFIG, STATS } from '../data/config.js';
-import { BASES, WEAPON_CLASSES, SLOTS, STARTS, START_BONUS } from '../data/items.js';
+import { BASES, WEAPON_CLASSES, SLOTS, STARTS, START_BONUS, isTwoHandedBase } from '../data/items.js';
 import { makeItem } from './items.js';
 
 // start: 처음 무기 (null이면 맨손 — 튜토리얼에서 고른다)
-export function newPlayer(name = '방랑자', look = 'knight', start = 'sword') {
+export function newPlayer(name = '방랑자', look = { g: 'm', hair: 0, color: 0 }, start = 'sword') {
   const st = {
-    v: 1,
-    name, look,
+    v: 2,
+    name, look: { g: 'm', hair: 0, color: 0, ...(typeof look === 'object' ? look : {}) },
     stats: Object.fromEntries(STATS.map((s) => [s, CONFIG.startStat])),
     ap: Object.fromEntries(STATS.map((s) => [s, 0])),
     apTotal: Object.fromEntries(STATS.map((s) => [s, 0])), // 지금까지의 누적 (기록용)
     exp: 0,
     awakenings: 0,
-    mpSpentAcc: 0,
     hp: 0, mp: 0,
     gold: 50,
     skills: {},              // id → { rank, exp }
@@ -29,6 +28,9 @@ export function newPlayer(name = '방랑자', look = 'knight', start = 'sword') 
     kills: 0,
     tut: start ? 99 : 0,     // 튜토리얼 단계 (0 = 무기 고르기, 99 = 끝)
     start: null,
+    quest: null,             // 진행 중인 퀘스트 { id, n }
+    questsDone: [],
+    savedAt: 0,
   };
   st.inv.push(makeItem('hp_potion', { qty: 10 }, st));
   st.inv.push(makeItem('mp_potion', { qty: 5 }, st));
@@ -91,8 +93,9 @@ export function derive(st, buffs = {}) {
     stats: s,
     gear: g,
     cls,
+    two: weapon ? isTwoHandedBase(BASES[weapon.base]) : false,
     maxHp: Math.round(60 + s.vit * 6 + (g.maxHp || 0)),
-    maxMp: Math.round(15 + s.int * 2.5 + s.wis * 2 + (g.maxMp || 0)),
+    maxMp: Math.round(15 + s.wis * 4.5 + (g.maxMp || 0)),
     dmg: [wd[0] * dmgMult, wd[1] * dmgMult],
     atkRate: Math.min(2.2, speed * (1 + s.dex * 0.004 + (g.atkSpd || 0) / 100 + berserk / 100)),
     range: cls.range,

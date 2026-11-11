@@ -7,6 +7,7 @@ import { makeBook } from '../game/items.js';
 import { addItem } from '../game/inventory.js';
 import { itemIcon, skillIcon } from './icons.js';
 import { audio } from '../engine/audio.js';
+import { nextQuest, currentQuest, questKill, questDone, questNeed, goalText } from '../game/quests.js';
 
 const $ = (s) => document.querySelector(s);
 const KILLS = 3;
@@ -19,6 +20,14 @@ export class Tutorial {
     this.box = $('#tutBox');
     this.pick = null;
     if (world.st.tut === 0) this.choose();
+    this.box.onpointerdown = (e) => { e.preventDefault(); if (world.st.tut >= TUT_DONE) windows.show('quest'); };
+    world.onKill = (m) => {
+      const st = world.st;
+      if (st.tut < TUT_DONE || !questKill(st, { type: m.type, tier: m.tier, zone: m.sp.zone?.id })) return;
+      if (questDone(st)) { world.ui.toast(`퀘스트 완료 — ${currentQuest(st).name}`, '#ffd84a'); audio.play('rankup'); }
+      this.show();
+      world.ui.dirty();
+    };
     this.show();
   }
 
@@ -60,9 +69,14 @@ export class Tutorial {
     const st = this.w.st;
     switch (st.tut) {
       case 1: return '남쪽 문을 지나 푸리에 들판으로';
-      case 2: return `해골 처치  ${Math.min(KILLS, st.kills - (st.tutK || 0))} / ${KILLS}`;
+      case 2: return `몬스터 처치  ${Math.min(KILLS, st.kills - (st.tutK || 0))} / ${KILLS}`;
       case 3: return '가방에서 스킬북 배우기';
       case 4: return '배운 스킬 쓰기';
+      case TUT_DONE: {
+        const q = nextQuest(st);
+        if (!q) return '';
+        return questDone(st) ? `${q.name} — 경비대장 하겐에게 보고` : `${goalText(q)}  ${st.quest.n} / ${questNeed(q)}`;
+      }
       default: return '';
     }
   }
@@ -81,7 +95,8 @@ export class Tutorial {
 
   update() {
     const w = this.w, st = w.st;
-    if (st.tut >= TUT_DONE || st.tut === 0) return;
+    if (st.tut >= TUT_DONE) { this.show(); return; }
+    if (st.tut === 0) return;
     if (st.tut === 1 && w.zone === 'field') { st.tutK = st.kills; this.next(2); }
     else if (st.tut === 2) {
       if (st.kills - st.tutK >= KILLS) {

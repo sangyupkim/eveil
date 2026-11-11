@@ -107,7 +107,7 @@ button { cursor: pointer; }
 .tname { font-family: var(--f-title); font-weight: 800; text-shadow: 0 1px 3px #000; font-size: calc(var(--u) * 0.95); }
 .thp { height: calc(var(--u) * 0.75); margin-top: 2px; }
 #autoText { position: absolute; left: 50%; top: 60%; transform: translateX(-50%); color: #ffd860; font-family: var(--f-title); font-weight: 800; font-size: calc(var(--u) * 1.25); text-shadow: 0 0 8px rgba(0, 0, 0, 0.9), 0 1px 2px #000; animation: pulse 1.6s infinite; white-space: nowrap; letter-spacing: 0.1em; }
-#toasts { position: absolute; left: 50%; top: 20%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+#toasts { position: absolute; left: 50%; top: 27%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .toast { background: rgba(16, 12, 26, 0.9); padding: 5px 16px; border: 1px solid var(--line); border-radius: 8px; animation: fadein 0.2s; white-space: nowrap; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5); }
 
 /* ───────── 오른쪽 아래: 둥근 행동 단추 ───────── */
@@ -240,7 +240,7 @@ h3 .goldTxt { margin-left: auto; font-family: var(--f-latin); color: var(--brass
 .btn.qs small { position: absolute; left: 2px; top: -4px; font-size: 0.55em; color: var(--dim); font-family: var(--f-latin); }
 .volv { width: 2.2em; text-align: right; font-family: var(--f-latin); color: var(--brass-hi); }
 .frame > .plate { margin-bottom: 4px; }
-.cards { grid-template-columns: repeat(4, 1fr); }
+.cards { grid-template-columns: repeat(5, 1fr); }
 .tab span { font-family: var(--f-title); font-weight: 800; font-size: calc(var(--u) * 0.95); }
 
 /* 글자 대신 그린 표시 */
@@ -255,13 +255,24 @@ h3 .goldTxt { margin-left: auto; font-family: var(--f-latin); color: var(--brass
 .btn.qs { display: flex; align-items: center; justify-content: center; }
 .act.small img { width: 58%; height: 58%; }
 
+/* 퀘스트 */
+.rws { display: flex; gap: 8px; flex-wrap: wrap; }
+.rw { display: flex; align-items: center; gap: 4px; padding: 3px 10px; border: 1px solid var(--line-soft); border-radius: 999px; background: rgba(0, 0, 0, 0.35); }
+.rw img { width: calc(var(--u) * 1.9); height: calc(var(--u) * 1.9); object-fit: contain; }
+.rw.gold { color: var(--brass-hi); font-family: var(--f-latin); font-weight: 700; }
+.qrow.fin { opacity: 0.5; }
+.qrow.on { background: rgba(232, 195, 106, 0.1); border-radius: 6px; color: var(--brass-hi); }
+.detail .plate:disabled { filter: grayscale(0.8) brightness(0.6); }
+.lbl.npc.quest { color: #ffd860; }
+#tutBox { pointer-events: auto; cursor: pointer; }
+
 /* 안내 목표 */
 #tutBox { position: absolute; left: 50%; top: calc(var(--u) * 4.2); transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 0.35em 1.1em; background: rgba(16, 12, 26, 0.88); border: 1px solid var(--brass); border-radius: 999px; font-family: var(--f-title); font-weight: 800; color: var(--brass-hi); white-space: nowrap; box-shadow: 0 0 14px rgba(232, 195, 106, 0.3); }
 #tutBox .gear { width: 1.2em; height: 1.2em; animation: gearSpin 8s linear infinite; }
 /* 첫 무기 고르기 */
 #startPick { z-index: 25; }
 #startPick .body { display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
-.cards4 { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.cards4 { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .pickCard { background: var(--corners), var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--ink); min-height: 0; }
 .pickCard .wp { flex: 1; min-height: 0; max-height: calc(var(--u) * 9); width: 100%; object-fit: contain; filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.7)); }
 .pickCard b { font-family: var(--f-title); font-size: calc(var(--u) * 1.25); }
@@ -290,13 +301,21 @@ h3 .goldTxt { margin-left: auto; font-family: var(--f-latin); color: var(--brass
 .tbox .sub { color: var(--dim); margin: 2px 0 14px; }
 #loadBar { height: 5px; background: rgba(255, 255, 255, 0.1); width: 60%; margin: 0 auto; border-radius: 3px; overflow: hidden; }
 #loadBar i { display: block; height: 100%; width: 0; background: var(--plate-gold); transition: width 0.2s; }
-.looks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
-.looks button { background: var(--corners), var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 4px 4px 6px; display: flex; flex-direction: column; align-items: center; color: var(--dim); }
-.looks button img { width: calc(var(--u) * 4.6); height: calc(var(--u) * 4.6); }
+.looks { display: flex; gap: 10px; justify-content: center; align-items: stretch; margin-bottom: 10px; }
+.lgroup { display: flex; gap: 6px; padding: 5px; background: rgba(14, 11, 22, 0.6); border: 1px solid var(--line-soft); border-radius: 10px; }
+.looks button { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 3px 6px 4px; display: flex; flex-direction: column; align-items: center; color: var(--dim); font-size: calc(var(--u) * 0.85); }
+.looks button img { width: calc(var(--u) * 4.2); height: calc(var(--u) * 4.2); }
 .looks button.on { border-color: var(--brass-hi); color: var(--brass-hi); box-shadow: 0 0 14px rgba(232, 195, 106, 0.35); }
-.looks .note { grid-column: 1 / -1; }
+.swatches { align-items: center; }
+.swatches button { padding: 4px; border-radius: 50%; }
+.swatches i { display: block; width: calc(var(--u) * 2); height: calc(var(--u) * 2); border-radius: 50%; box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.25), inset 0 -3px 5px rgba(0, 0, 0, 0.5); }
 #nameInput { background: rgba(10, 8, 16, 0.8); border: 1px solid var(--line); border-radius: 6px; color: var(--ink); padding: 6px 10px; text-align: center; width: 12em; margin-bottom: 4px; }
 #titleMenu .plate { margin-top: 8px; }
+#account { display: flex; gap: 6px; justify-content: center; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+#account input { background: rgba(10, 8, 16, 0.8); border: 1px solid var(--line); border-radius: 6px; color: var(--ink); padding: 5px 8px; width: 9em; user-select: text; -webkit-user-select: text; }
+#account .who b { color: var(--brass-hi); }
+#account .msg { color: #ffb08a; font-size: calc(var(--u) * 0.8); min-width: 1em; }
+#nameInput { user-select: text; -webkit-user-select: text; }
 .hint { color: var(--dim); font-size: calc(var(--u) * 0.75); line-height: 1.6; margin-top: 12px; }
 .ver { position: absolute; right: 14px; bottom: 10px; color: var(--dim); font-size: calc(var(--u) * 0.75); }
 

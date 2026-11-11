@@ -11,11 +11,15 @@ import { expNeeded } from '../game/growth.js';
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
-import { itemIcon, skillIcon, portrait, chestIcon, bookIcon, coinIcon } from './icons.js';
+import { itemIcon, skillIcon, portrait, chestIcon, bookIcon, coinIcon, scrollIcon } from './icons.js';
+import { QUESTS, QUEST_BOOKS } from '../data/quests.js';
+import { ZONES } from '../data/world.js';
+import { nextQuest, questDone, questNeed, goalText, questTurnIn } from '../game/quests.js';
 import { audio } from '../engine/audio.js';
+import { cloud } from '../net/cloud.js';
 
-const TITLES = { inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', shop: '상점', menu: '메뉴' };
-const TAB_ORDER = ['inv', 'skills', 'char', 'shop', 'menu'];
+const TITLES = { inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', shop: '상점', menu: '메뉴' };
+const TAB_ORDER = ['inv', 'skills', 'char', 'quest', 'shop', 'menu'];
 const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '');
 const ico = (it) => `<img src="${itemIcon(it)}" alt="" draggable="false" />`;
 const sicon = (id) => `<div class="sicon" style="background:radial-gradient(circle at 35% 30%, ${SKILLS[id].color}, #17111f 90%)"><img src="${skillIcon(id)}" alt="" /></div>`;
@@ -57,7 +61,7 @@ export class Windows {
 
   render() {
     $('h2', this.el).textContent = TITLES[this.kind];
-    const icons = { inv: chestIcon(), skills: bookIcon(), char: portrait(this.w.st.look), shop: coinIcon() };
+    const icons = { inv: chestIcon(), skills: bookIcon(), char: portrait(this.w.st.look), shop: coinIcon(), quest: scrollIcon() };
     const tabs = $('.tabs', this.el);
     tabs.innerHTML = TAB_ORDER.filter((k) => k !== 'shop' || this.w.inTown).map((k) =>
       `<button class="tab${k === this.kind ? ' on' : ''}" data-tab="${k}">${icons[k] ? `<img src="${icons[k]}" alt="" />` : '<b class="gear" style="width:1.8em;height:1.8em"></b>'}<span>${TITLES[k].split(' ')[0]}</span></button>`).join('');
@@ -210,7 +214,7 @@ export class Windows {
     const kv = [
       ['피해', `${Math.round(d.dmg[0])}~${Math.round(d.dmg[1])}`], ['공격 속도', `${d.atkRate.toFixed(2)}/초`],
       ['치명타', pct(d.crit)], ['회피', pct(d.dodge)], ['막기', pct(d.block)], ['방어력', Math.round(d.armor)],
-      ['주문 배율', `×${d.spellMult.toFixed(2)}`], ['회복 배율', `×${d.healMult.toFixed(2)}`],
+      ['주문 배율', `×${d.spellMult.toFixed(2)}`], ['보호막 배율', `×${d.healMult.toFixed(2)}`],
       ['HP 회복', `${d.hpRegen.toFixed(1)}/초`], ['MP 회복', `${d.mpRegen.toFixed(1)}/초`], ['이동 속도', d.moveSpeed.toFixed(1)],
       ['좋은 아이템 발견', `+${d.magicFind}%`],
     ].map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('');
@@ -225,10 +229,40 @@ export class Windows {
       </div><div class="frame" style="flex:1">
         <h3>세부 능력치</h3><div class="kv">${kv}</div>
         <h3 style="margin-top:12px">성장</h3>
-        <div class="kv"><span>근접 공격 (단검은 민첩)</span><b style="color:${STAT_COLORS.str}">힘</b><span>사격 · 치명타 · 회피</span><b style="color:${STAT_COLORS.dex}">민첩</b>
-          <span>공격 주문</span><b style="color:${STAT_COLORS.int}">지능</b><span>회복 · 보조 주문 · MP 소모</span><b style="color:${STAT_COLORS.wis}">정신</b>
+        <div class="kv"><span>검 공격 · 막기</span><b style="color:${STAT_COLORS.str}">힘</b><span>활 공격 · 치명타 · 회피</span><b style="color:${STAT_COLORS.dex}">민첩</b>
+          <span>지팡이 공격 · 주문</span><b style="color:${STAT_COLORS.int}">지능</b><span>MP 회복 (마을 밖 · 물약)</span><b style="color:${STAT_COLORS.wis}">정신</b>
           <span>피격 · 막기 · 위기 처치</span><b style="color:${STAT_COLORS.vit}">체력</b></div>
       </div></div>`;
+  }
+
+  quest() {
+    const st = this.w.st;
+    const q = st.tut >= 99 ? nextQuest(st) : null;
+    const RN = { magic: '마법', rare: '희귀', hero: '영웅', legend: '전설' };
+    const rewards = (r) => {
+      const out = [`<span class="rw gold">${r.gold} G</span>`];
+      for (const [id, n] of r.items || []) out.push(`<span class="rw"><img src="${itemIcon({ base: id })}" alt="" />×${n}</span>`);
+      if (r.gear) out.push(`<span class="rw" style="color:${RARITY[r.gear[1]].color}">${RN[r.gear[1]]} ${r.gear[0] === 'weapon' ? '무기' : SLOT_NAMES[r.gear[0]]}</span>`);
+      if (r.book) { const id = (QUEST_BOOKS[st.start] || QUEST_BOOKS.sword)[r.book]; out.push(`<span class="rw"><img src="${skillIcon(id)}" alt="" />${SKILLS[id].name}</span>`); }
+      return out.join('');
+    };
+    let det = '<div class="note">받을 퀘스트가 없습니다</div>';
+    if (q) {
+      const need = questNeed(q), done = questDone(st);
+      det = `<div class="nm">${q.name}</div><div class="sub">${ZONES.find((z) => z.id === q.zone).name}</div><div>${q.text}</div>
+        <h3 style="margin-top:12px">목표</h3><div class="row" style="border:0"><div class="grow">${goalText(q)}<div class="mini" style="height:8px"><i style="width:${Math.min(100, (st.quest.n / need) * 100)}%;background:linear-gradient(#ffe7a0,#c99a3a)"></i></div></div><b>${Math.min(need, st.quest.n)} / ${need}</b></div>
+        <h3 style="margin-top:12px">보상</h3><div class="rws">${rewards(q.reward)}</div>
+        <div class="btns"><button class="plate gold" data-turnin="1" ${done && this.w.inTown ? '' : 'disabled'}>${done ? (this.w.inTown ? '보상 받기' : '경비대장 하겐에게 보고') : '진행 중'}</button></div>`;
+    }
+    let list = '';
+    for (const z of ZONES) {
+      list += `<h3>${z.name}</h3>`;
+      for (const x of QUESTS.filter((y) => y.zone === z.id)) {
+        const fin = st.questsDone.includes(x.id), cur = q && q.id === x.id;
+        list += `<div class="row qrow${fin ? ' fin' : ''}${cur ? ' on' : ''}"><div class="grow">${fin || cur ? x.name : '???'}</div><span class="note">${fin ? '완료' : cur ? '진행 중' : ''}</span></div>`;
+      }
+    }
+    return `<div class="cols"><div class="frame detail" style="flex:1.1">${det}</div><div class="frame" style="flex:1">${list}</div></div>`;
   }
 
   shop() {
@@ -269,11 +303,13 @@ export class Windows {
           ${card('inv', `<img src="${chestIcon()}" alt="" />`, '가방')}
           ${card('skills', `<img src="${bookIcon()}" alt="" />`, '스킬')}
           ${card('char', `<img src="${portrait(st.look)}" alt="" />`, '능력')}
+          ${card('quest', `<img src="${scrollIcon()}" alt="" />`, '퀘스트')}
           ${card('shop', `<img src="${coinIcon()}" alt="" />`, '상점', !this.w.inTown)}
         </div>
         <div class="kv" style="margin-top:14px"><span>플레이 시간</span><b>${Math.floor(t / 60)}시간 ${t % 60}분</b><span>각성</span><b>${st.awakenings}회</b>
           <span>배운 스킬</span><b>${Object.keys(st.skills).length}개</b><span>자동 사냥 효율</span><b>${Math.round(CONFIG.autoPenalty * 100)}%</b>
-          <span>자동 저장</span><b>${CONFIG.autosaveInterval}초</b></div>
+          <span>자동 저장</span><b>${CONFIG.autosaveInterval}초</b>
+          <span>서버 저장</span><b>${cloud.id ? `${esc(cloud.id)}${cloud.state === 'error' ? ' · 실패' : cloud.savedAt ? ' · 저장됨' : ''}` : '로그인 안 함'}</b></div>
       </div></div>`;
   }
 
@@ -343,10 +379,20 @@ export class Windows {
       };
       el.onchange = () => { if (el.dataset.vol === 'sfx') audio.play('coin'); };
     });
+    on('[data-turnin]', () => {
+      const r = questTurnIn(st, CONFIG.inventorySize);
+      if (!r.ok) { if (r.why) w.ui.toast(r.why); audio.play('error'); return; }
+      audio.play('awaken');
+      w.fx.pillar(w.player.pos.x, w.player.pos.z, 0xffd860, 1.2);
+      w.ui.toast(`보상: ${r.q.reward.gold} G${r.items.length ? ` · ${r.items.map((it) => itemName(it)).join(' · ')}` : ''}`, '#ffd84a');
+      w.ui.log(`퀘스트 완료: ${r.q.name}`, '#ffd84a');
+      w.ui.dirty();
+      this.render();
+    });
     on('[data-go]', (el) => this.show(el.dataset.go));
     on('[data-close]', () => { audio.play('click'); this.close(); });
     on('[data-full]', () => toggleFullscreen());
-    on('[data-save]', () => { this.save(); w.ui.toast('저장했습니다'); });
+    on('[data-save]', () => { this.save(true); w.ui.toast('저장했습니다'); });
     on('[data-reset]', () => {
       if (confirm('정말 캐릭터를 지우고 처음부터 시작할까요? 되돌릴 수 없습니다.')) {
         localStorage.removeItem('ashen-save');

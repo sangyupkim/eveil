@@ -6,7 +6,7 @@ import { ZONES, TOWN, WORLD_SIZE } from '../data/world.js';
 import { expNeeded, powerLevel } from '../game/growth.js';
 import { countOf } from '../game/inventory.js';
 import { skillValues } from '../game/skills.js';
-import { portrait, chestIcon, bookIcon, coinIcon, swordIcon, itemIcon, skillIcon, homeIcon, duelIcon } from './icons.js';
+import { portrait, chestIcon, bookIcon, coinIcon, swordIcon, itemIcon, skillIcon, homeIcon, duelIcon, scrollIcon } from './icons.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 
@@ -29,7 +29,7 @@ export class HUD {
     const face = portrait(world.st.look);
     $('#face').src = face;
     const icons = { chest: chestIcon(), book: bookIcon(), coin: coinIcon(), face, sword: swordIcon(), home: homeIcon(), duel: duelIcon(),
-      hpot: itemIcon({ base: 'hp_potion' }), mpot: itemIcon({ base: 'mp_potion' }) };
+      hpot: itemIcon({ base: 'hp_potion' }), mpot: itemIcon({ base: 'mp_potion' }), scroll: scrollIcon() };
     document.querySelectorAll('img[data-ico]').forEach((im) => { im.src = icons[im.dataset.ico] || ''; });
     $('#menuToggle').onclick = () => $('.menuCol').classList.toggle('closed');
     $('#qToggle').onclick = () => $('#questBox').classList.toggle('min');
@@ -235,6 +235,14 @@ export class HUD {
         const el = document.createElement('div');
         el.className = 'lbl npc';
         el.textContent = `${w.npc.name} (상점)`;
+        return el;
+      });
+    }
+    if (Math.hypot(w.guard.pos.x - P.x, w.guard.pos.z - P.z) < 22) {
+      place('guard', w.guard.pos, 2.9, () => {
+        const el = document.createElement('div');
+        el.className = 'lbl npc quest';
+        el.textContent = w.guard.name;
         return el;
       });
     }

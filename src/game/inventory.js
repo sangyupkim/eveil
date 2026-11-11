@@ -1,6 +1,6 @@
 // 가방 · 장착
 import { CONFIG } from '../data/config.js';
-import { BASES } from '../data/items.js';
+import { BASES, isTwoHandedBase } from '../data/items.js';
 import { isStack } from './items.js';
 import { meetsReq } from './skills.js';
 import { totalStats } from './player.js';
@@ -72,5 +72,4 @@ export function unequip(st, slot) {
   return { ok: true };
 }
 
-const TWO_HANDED = new Set(['greatsword', 'greataxe', 'crossbow', 'staff']);
-export const isTwoHanded = (it) => TWO_HANDED.has(BASES[it.base].cls);
+export const isTwoHanded = (it) => isTwoHandedBase(BASES[it.base]);

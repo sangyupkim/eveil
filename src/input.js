@@ -32,8 +32,8 @@ export function setupInput(world, stage, windows) {
     }
     return best;
   };
-  const pickNpc = (cx, cy) => {
-    v.set(world.npc.pos.x, 1.3, world.npc.pos.z).project(stage.camera);
+  const pickNpc = (cx, cy, npc = world.npc) => {
+    v.set(npc.pos.x, 1.3, npc.pos.z).project(stage.camera);
     const sx = (v.x * 0.5 + 0.5) * window.innerWidth, sy = (-v.y * 0.5 + 0.5) * window.innerHeight;
     return Math.hypot(sx - cx, sy - cy) < 50;
   };
@@ -46,6 +46,12 @@ export function setupInput(world, stage, windows) {
     const m = pickMonster(e.clientX, e.clientY);
     world.manual();
     if (m) { world.cmdAttack(m); return; }
+    if (pickNpc(e.clientX, e.clientY, world.guard)) {
+      const n = world.guard.pos;
+      if (Math.hypot(n.x - world.player.pos.x, n.z - world.player.pos.z) < 5) windows.show('quest');
+      else world.cmdMove(n.x + 1.2, n.z - 1.5);
+      return;
+    }
     if (pickNpc(e.clientX, e.clientY)) {
       const n = world.npc.pos;
       if (Math.hypot(n.x - world.player.pos.x, n.z - world.player.pos.z) < 5) windows.show('shop');
@@ -132,6 +138,7 @@ export function setupInput(world, stage, windows) {
     if (k === 'k') windows.toggle('skills');
     if (k === 'c') windows.toggle('char');
     if (k === 'm') windows.toggle('menu');
+    if (k === 'j') windows.toggle('quest');
     if (k === 'p' && world.inTown) windows.toggle('shop');
     if (windows.open || e.repeat) return;
     if (k >= '1' && k <= '6') { world.manual(); world.useSkill(world.st.quick[Number(k) - 1]); }

@@ -6,56 +6,59 @@ export const SLOT_NAMES = {
   boots: '신발', belt: '허리띠', amulet: '목걸이', ring1: '반지', ring2: '반지', ring: '반지',
 };
 
-// 무기 계열: 공격 방식 · 어떤 스탯이 피해를 키우고 AP가 쌓이는지 · 모델
+// 무기 계열은 셋: 검(힘) · 활(민첩) · 지팡이(지능). 계열이 곧 성장 방향이다.
 export const WEAPON_CLASSES = {
-  unarmed: { name: '맨손', kind: 'melee', ap: 'str', side: 'dex', range: 1.9, hands: 1, model: null },
-  dagger: { name: '단검', kind: 'melee', ap: 'dex', side: 'str', range: 1.9, hands: 1, model: 'w_dagger' },
-  sword: { name: '한손검', kind: 'melee', ap: 'str', side: 'dex', range: 2.1, hands: 1, model: 'w_sword' },
-  axe: { name: '한손도끼', kind: 'melee', ap: 'str', side: 'dex', range: 2.1, hands: 1, model: 'w_axe' },
-  greatsword: { name: '양손검', kind: 'melee', ap: 'str', side: 'dex', range: 2.5, hands: 2, model: 'w_greatsword' },
-  greataxe: { name: '양손도끼', kind: 'melee', ap: 'str', side: 'dex', range: 2.5, hands: 2, model: 'w_greataxe' },
-  crossbow: { name: '석궁', kind: 'ranged', ap: 'dex', side: 'str', range: 12, hands: 2, model: 'w_crossbow' },
-  wand: { name: '완드', kind: 'magic', ap: 'int', side: null, range: 10, hands: 1, model: 'w_wand' },
-  staff: { name: '지팡이', kind: 'magic', ap: 'int', side: null, range: 10, hands: 2, model: 'w_staff' },
+  unarmed: { name: '맨손', kind: 'melee', ap: 'str', side: 'dex', range: 1.9 },
+  sword: { name: '검', kind: 'melee', ap: 'str', side: 'dex', range: 2.2 },
+  bow: { name: '활', kind: 'ranged', ap: 'dex', side: 'str', range: 12, two: true },
+  staff: { name: '지팡이', kind: 'magic', ap: 'int', side: null, range: 10, two: true },
 };
 
 // minLvl: 이 아이템 레벨부터 드랍된다. shop: 상점 판매 여부
+// model: 손에 드는 모델 · icon: 가방 그림(없으면 model) · look: 입었을 때 겉모습 · tint: 옷 색
 export const BASES = {
-  rusty_sword: { name: '낡은 장검', slot: 'weapon', cls: 'sword', dmg: [4, 7], speed: 1.1, price: 5, minLvl: 99 },
-  old_crossbow: { name: '낡은 석궁', slot: 'weapon', cls: 'crossbow', dmg: [4, 7], speed: 0.95, price: 5, minLvl: 99 },
-  old_wand: { name: '낡은 완드', slot: 'weapon', cls: 'wand', dmg: [3, 6], speed: 1.0, price: 5, minLvl: 99, mods: { maxMp: 5 } },
-  novice_staff: { name: '견습 지팡이', slot: 'weapon', cls: 'staff', dmg: [4, 7], speed: 0.9, price: 5, minLvl: 99, mods: { maxMp: 10 } },
-  dagger: { name: '단검', slot: 'weapon', cls: 'dagger', dmg: [4, 7], speed: 1.45, price: 60, shop: true },
-  short_sword: { name: '장검', slot: 'weapon', cls: 'sword', dmg: [6, 10], speed: 1.15, price: 90, shop: true },
-  hand_axe: { name: '손도끼', slot: 'weapon', cls: 'axe', dmg: [7, 12], speed: 1.0, price: 100, shop: true },
-  greatsword: { name: '대검', slot: 'weapon', cls: 'greatsword', dmg: [13, 21], speed: 0.82, req: { str: 20 }, minLvl: 3 },
-  greataxe: { name: '전투 대도끼', slot: 'weapon', cls: 'greataxe', dmg: [15, 25], speed: 0.75, req: { str: 26 }, minLvl: 6 },
-  crossbow: { name: '석궁', slot: 'weapon', cls: 'crossbow', dmg: [7, 12], speed: 0.95, price: 110, shop: true },
-  heavy_crossbow: { name: '중석궁', slot: 'weapon', cls: 'crossbow', dmg: [12, 20], speed: 0.8, req: { dex: 22 }, minLvl: 5 },
-  wand: { name: '완드', slot: 'weapon', cls: 'wand', dmg: [5, 8], speed: 1.0, price: 100, shop: true, mods: { maxMp: 5 } },
-  staff: { name: '참나무 지팡이', slot: 'weapon', cls: 'staff', dmg: [9, 15], speed: 0.85, req: { int: 18 }, minLvl: 3, mods: { maxMp: 20 } },
-  round_shield: { name: '원형 방패', slot: 'offhand', armor: 5, block: 0.12, model: 'w_shield', price: 80, shop: true },
-  tower_shield: { name: '사각 방패', slot: 'offhand', armor: 11, block: 0.18, req: { str: 22 }, model: 'w_shield_sq', minLvl: 5 },
-  leather_cap: { name: '가죽 모자', slot: 'helm', armor: 3, price: 40, shop: true },
-  iron_helm: { name: '철 투구', slot: 'helm', armor: 7, req: { str: 16 }, minLvl: 4 },
-  cloth_robe: { name: '천 로브', slot: 'armor', armor: 4, price: 60, shop: true, mods: { maxMp: 10 } },
-  leather_armor: { name: '가죽 갑옷', slot: 'armor', armor: 9, price: 90, shop: true },
-  chain_mail: { name: '사슬 갑옷', slot: 'armor', armor: 17, req: { str: 20 }, minLvl: 4 },
-  plate_armor: { name: '판금 갑옷', slot: 'armor', armor: 28, req: { str: 30, vit: 20 }, minLvl: 10 },
-  leather_gloves: { name: '가죽 장갑', slot: 'gloves', armor: 2, price: 35, shop: true },
-  gauntlets: { name: '강철 건틀릿', slot: 'gloves', armor: 5, req: { str: 16 }, minLvl: 4 },
+  rusty_sword: { name: '낡은 검', slot: 'weapon', cls: 'sword', model: 'q_sword', dmg: [4, 7], speed: 1.1, price: 5, minLvl: 99 },
+  short_sword: { name: '장검', slot: 'weapon', cls: 'sword', model: 'q_sword', dmg: [6, 10], speed: 1.15, price: 90, shop: true },
+  broad_sword: { name: '넓은날 검', slot: 'weapon', cls: 'sword', model: 'q_sword2', dmg: [9, 14], speed: 1.1, req: { str: 16 }, minLvl: 3 },
+  greatsword: { name: '대검', slot: 'weapon', cls: 'sword', model: 'q_sword_big', two: true, dmg: [13, 21], speed: 0.82, req: { str: 20 }, minLvl: 4 },
+  claymore: { name: '클레이모어', slot: 'weapon', cls: 'sword', model: 'q_claymore', two: true, dmg: [17, 27], speed: 0.78, req: { str: 28 }, minLvl: 8 },
+  golden_sword: { name: '금빛 검', slot: 'weapon', cls: 'sword', model: 'q_sword_gold', dmg: [14, 22], speed: 1.15, req: { str: 34 }, minLvl: 12 },
+  old_bow: { name: '낡은 활', slot: 'weapon', cls: 'bow', model: 'q_bow', dmg: [4, 7], speed: 0.95, price: 5, minLvl: 99 },
+  short_bow: { name: '단궁', slot: 'weapon', cls: 'bow', model: 'q_bow', dmg: [7, 11], speed: 1.0, price: 110, shop: true },
+  long_bow: { name: '장궁', slot: 'weapon', cls: 'bow', model: 'q_bow2', dmg: [11, 17], speed: 0.9, req: { dex: 18 }, minLvl: 4 },
+  gilded_bow: { name: '금장 활', slot: 'weapon', cls: 'bow', model: 'q_bow_gold', dmg: [15, 23], speed: 0.95, req: { dex: 26 }, minLvl: 8 },
+  fiend_bow: { name: '마궁', slot: 'weapon', cls: 'bow', model: 'q_bow_evil', dmg: [20, 30], speed: 0.9, req: { dex: 36 }, minLvl: 12 },
+  novice_staff: { name: '견습 지팡이', slot: 'weapon', cls: 'staff', model: 'w_wand', len: 1.2, dmg: [4, 7], speed: 0.95, price: 5, minLvl: 99, mods: { maxMp: 5 } },
+  oak_staff: { name: '참나무 지팡이', slot: 'weapon', cls: 'staff', model: 'w_staff', dmg: [7, 11], speed: 0.9, price: 100, shop: true, mods: { maxMp: 10 } },
+  bone_staff: { name: '뼈 지팡이', slot: 'weapon', cls: 'staff', model: 'ws_staff', dmg: [11, 17], speed: 0.88, req: { int: 18 }, minLvl: 4, mods: { maxMp: 20 } },
+  sage_staff: { name: '현자의 지팡이', slot: 'weapon', cls: 'staff', model: 'w_staff', mtint: 0x8fb0ff, dmg: [16, 25], speed: 0.9, req: { int: 28 }, minLvl: 9, mods: { maxMp: 35 } },
+  round_shield: { name: '원형 방패', slot: 'offhand', armor: 5, block: 0.12, model: 'q_shield', price: 80, shop: true },
+  heater_shield: { name: '연 방패', slot: 'offhand', armor: 11, block: 0.18, req: { str: 22 }, model: 'q_shield2', minLvl: 5 },
+  golden_shield: { name: '금장 방패', slot: 'offhand', armor: 17, block: 0.22, req: { str: 32 }, model: 'q_shield3', minLvl: 11 },
+  leather_cap: { name: '가죽 두건', slot: 'helm', armor: 3, price: 40, shop: true, look: 'hood', tint: 0xb89a78 },
+  iron_helm: { name: '철 투구', slot: 'helm', armor: 7, req: { str: 16 }, minLvl: 4, look: 'q_helm1', icon: 'q_helm1' },
+  knight_helm: { name: '기사 투구', slot: 'helm', armor: 12, req: { str: 26 }, minLvl: 9, look: 'q_helm2', icon: 'q_helm2' },
+  great_helm: { name: '뿔 투구', slot: 'helm', armor: 16, req: { str: 34 }, minLvl: 13, look: 'q_helm3', icon: 'q_helm3' },
+  cloth_robe: { name: '천 로브', slot: 'armor', armor: 4, price: 60, shop: true, mods: { maxMp: 10 }, tint: 0x9aa4d8, icon: 'i_armor_leather', itint: 0x8a94d0 },
+  leather_armor: { name: '가죽 갑옷', slot: 'armor', armor: 9, price: 90, shop: true, tint: 0xffffff, icon: 'i_armor_leather' },
+  chain_mail: { name: '사슬 갑옷', slot: 'armor', armor: 17, req: { str: 20 }, minLvl: 4, tint: 0xb4bcc8, pauldron: true, icon: 'i_armor_metal' },
+  plate_armor: { name: '판금 갑옷', slot: 'armor', armor: 28, req: { str: 30, vit: 20 }, minLvl: 10, tint: 0xd8dce6, pauldron: true, icon: 'i_armor_metal2' },
+  dark_plate: { name: '흑철 갑옷', slot: 'armor', armor: 36, req: { str: 38, vit: 26 }, minLvl: 14, tint: 0x6a6478, pauldron: true, icon: 'i_armor_black' },
+  leather_gloves: { name: '가죽 장갑', slot: 'gloves', armor: 2, price: 35, shop: true, icon: 'i_glove' },
+  gauntlets: { name: '강철 건틀릿', slot: 'gloves', armor: 5, req: { str: 16 }, minLvl: 4, icon: 'i_glove', itint: 0xb4bcc8, tint: 0xb4bcc8 },
   leather_boots: { name: '가죽 장화', slot: 'boots', armor: 2, price: 35, shop: true },
-  war_boots: { name: '전투 장화', slot: 'boots', armor: 5, req: { str: 15 }, minLvl: 4 },
+  war_boots: { name: '전투 장화', slot: 'boots', armor: 5, req: { str: 15 }, minLvl: 4, tint: 0xb4bcc8 },
   leather_belt: { name: '가죽 허리띠', slot: 'belt', armor: 2, price: 30, shop: true },
-  heavy_belt: { name: '두꺼운 허리띠', slot: 'belt', armor: 5, req: { str: 18 }, minLvl: 5 },
-  amulet: { name: '목걸이', slot: 'amulet', minLvl: 1 },
-  ring: { name: '반지', slot: 'ring', minLvl: 1 },
+  heavy_belt: { name: '두꺼운 허리띠', slot: 'belt', armor: 5, req: { str: 18 }, minLvl: 5, heavy: true },
+  amulet: { name: '목걸이', slot: 'amulet', minLvl: 1, icon: 'i_necklace' },
+  ring: { name: '반지', slot: 'ring', minLvl: 1, icon: 'i_ring' },
 
-  hp_potion: { name: '체력 물약', type: 'potion', restore: { hp: 70 }, price: 15, shop: true, stack: true },
-  mp_potion: { name: '마나 물약', type: 'potion', restore: { mp: 45 }, price: 15, shop: true, stack: true },
-  hp_potion_l: { name: '큰 체력 물약', type: 'potion', restore: { hp: 220 }, price: 50, shop: true, stack: true },
-  mp_potion_l: { name: '큰 마나 물약', type: 'potion', restore: { mp: 140 }, price: 50, shop: true, stack: true },
+  hp_potion: { name: '체력 물약', type: 'potion', restore: { hp: 70 }, price: 15, shop: true, stack: true, icon: 'i_potion_hp', itint: 0xff3040 },
+  mp_potion: { name: '마나 물약', type: 'potion', restore: { mp: 45 }, price: 15, shop: true, stack: true, icon: 'i_potion_mp', itint: 0x3a78ff },
+  hp_potion_l: { name: '큰 체력 물약', type: 'potion', restore: { hp: 220 }, price: 50, shop: true, stack: true, icon: 'i_potion_hp_l', itint: 0xff3040 },
+  mp_potion_l: { name: '큰 마나 물약', type: 'potion', restore: { mp: 140 }, price: 50, shop: true, stack: true, icon: 'i_potion_mp_l', itint: 0x3a78ff },
 };
+export const isTwoHandedBase = (b) => !!(b.two ?? WEAPON_CLASSES[b.cls]?.two);
 
 export const RARITY = {
   common: { name: '일반', color: '#d8d2c4', affix: [0, 0], mult: 1, value: 1 },
@@ -101,11 +104,10 @@ export const AFFIX_PREFIX = {
 };
 export const LEGEND_NAMES = ['잿빛 왕의', '망자의', '서리 군주의', '타락한 성기사의', '피의 서약', '그림자 군단의', '잊힌 신의'];
 
-// 처음 고르는 무기 — 무기 + 주 스탯 +2 + 첫 스킬북(튜토리얼 보상)
+// 처음 고르는 무기 — 무기 + 주 스탯 +2 + 첫 스킬북(안내 보상)
 export const STARTS = {
   sword: { base: 'rusty_sword', stat: 'str', book: 'power_strike', line: '가까이서 묵직하게' },
-  crossbow: { base: 'old_crossbow', stat: 'dex', book: 'aimed_shot', line: '멀리서 정확하게' },
-  wand: { base: 'old_wand', stat: 'int', book: 'fire_bolt', line: '주문으로 태운다' },
-  staff: { base: 'novice_staff', stat: 'wis', book: 'first_aid', line: '버티며 회복한다' },
+  bow: { base: 'old_bow', stat: 'dex', book: 'aimed_shot', line: '멀리서 정확하게' },
+  staff: { base: 'novice_staff', stat: 'int', book: 'fire_bolt', line: '주문으로 태운다' },
 };
 export const START_BONUS = 2;

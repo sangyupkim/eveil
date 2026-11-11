@@ -1,13 +1,17 @@
 // 애니메이션되는 캐릭터 (플레이어 · 몬스터 · NPC 공통)
 import * as THREE from 'three';
-import { makeCharacter, attachTo, clip } from '../engine/assets.js';
+import { makeCharacter, attachTo, clipFor } from '../engine/assets.js';
 
 let nextId = 1;
 
 export class Actor {
-  constructor(scene, model, { tint = null, scale = 1, weapon = null, offhand = null, weaponTint = null } = {}) {
+  // model: 모델 이름, 또는 makeHero()가 만든 것 · rig: skel · human · hero · 없으면 모델 자기 동작
+  constructor(scene, model, { tint = null, scale = 1, weapon = null, offhand = null, weaponTint = null, rig = null, height = 0 } = {}) {
     this.id = nextId++;
-    const c = makeCharacter(model, { tint });
+    const c = typeof model === 'string' ? makeCharacter(model, { tint, height }) : model;
+    this.modelName = typeof model === 'string' ? model : null;
+    this.rig = c.hero ? 'hero' : rig;
+    this.char = c;
     this.root = new THREE.Group();
     this.root.add(c.model);
     this.root.scale.setScalar(scale);
@@ -15,7 +19,7 @@ export class Actor {
     this.mats = c.mats;
     this.handR = c.handR;
     this.handL = c.handL;
-    this.scale = scale;
+    this.scale = scale * (height ? height / 2.3 : 1); // 이름표 · 타격 높이에 쓰는 몸집
     scene.add(this.root);
     this.scene = scene;
     this.mixer = new THREE.AnimationMixer(c.model);
@@ -38,25 +42,25 @@ export class Actor {
     attachTo(this.handL, offhand, tint);
   }
 
-  // 겉옷: 투구 · 망토는 입었을 때만 보이고, 갑옷이 없으면 몸을 수수한 천 색으로 누른다
-  setOutfit({ helm = true, armor = true, gloves = true, boots = true } = {}) {
-    const plain = new THREE.Color(0xb49a72), white = new THREE.Color(0xffffff);
-    this.model.traverse((o) => {
-      if (!o.isMesh) return;
-      if (/Helmet|Hat/.test(o.name)) o.visible = helm;
-      else if (/Cape/.test(o.name)) o.visible = armor;
-      else if (/Body/.test(o.name)) o.material.color.copy(armor ? white : plain);
-      else if (/Arm/.test(o.name)) o.material.color.copy(armor || gloves ? white : plain);
-      else if (/Leg/.test(o.name)) o.material.color.copy(armor || boots ? white : plain);
-    });
+  // 주인공 겉모습. show: 보일 옷 조각 이름들 · tints: { 조각: 색 } · hair: [이름, 색] · helm: 머리에 얹는 투구 모델
+  setLook({ show = [], tints = {}, hair = null, helm = null } = {}) {
+    const c = this.char;
+    if (!c.pieces) return;
+    for (const k in c.pieces) for (const m of c.pieces[k]) {
+      m.visible = show.includes(k);
+      m.material.color.copy(m.userData.base);
+      if (tints[k] != null) m.material.color.multiply(new THREE.Color(tints[k]));
+    }
+    for (const k in c.hairs) c.hairs[k].visible = !!hair && hair[0] === k;
+    if (hair && c.hairs[hair[0]]) c.hairs[hair[0]].material.color.set(hair[1]);
+    attachTo(c.head, helm, null, this.helmGrip || { len: 0.62 });
   }
 
   action(name) {
     let a = this.actions.get(name);
-    if (!a) {
-      const c = clip(name);
-      if (!c) return null;
-      a = this.mixer.clipAction(c);
+    if (a === undefined) {
+      const c = clipFor(this.modelName, this.rig, name);
+      a = c ? this.mixer.clipAction(c) : null;
       this.actions.set(name, a);
     }
     return a;

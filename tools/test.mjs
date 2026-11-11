@@ -8,7 +8,9 @@ import { rollLoot, rollDeathDrop } from '../src/game/loot.js';
 import { makeItem, itemName } from '../src/game/items.js';
 import { addItem, equip } from '../src/game/inventory.js';
 import { seeded } from '../src/game/rng.js';
-import { CONFIG, STATS } from '../src/data/config.js';
+import { CONFIG, STATS, AP_TABLE } from '../src/data/config.js';
+import { QUESTS } from '../src/data/quests.js';
+import { nextQuest, currentQuest, questKill, questDone, questNeed, questTurnIn } from '../src/game/quests.js';
 import { SKILLS } from '../src/data/skills.js';
 import { BASES } from '../src/data/items.js';
 import { MONSTERS, ZONES } from '../src/data/world.js';
@@ -17,7 +19,7 @@ let n = 0;
 const test = (name, fn) => { fn(); n++; console.log('  ✓', name); };
 
 test('새 캐릭터: 스탯 5종 모두 시작값, 레벨 없음', () => {
-  const p = newPlayer('방랑자', 'knight', null);
+  const p = newPlayer('방랑자', { g: 'm' }, null);
   assert.deepEqual(Object.keys(p.stats), STATS);
   for (const s of STATS) assert.equal(p.stats[s], CONFIG.startStat);
   assert.equal(p.level, undefined);
@@ -27,7 +29,7 @@ test('새 캐릭터: 스탯 5종 모두 시작값, 레벨 없음', () => {
 
 test('처음 무기 고르기: 무기 + 주 스탯 +2, 첫 스킬북을 바로 배울 수 있다', () => {
   for (const id in STARTS) {
-    const p = newPlayer('방랑자', 'knight', null);
+    const p = newPlayer('방랑자', { g: 'm' }, null);
     chooseStart(p, id);
     assert.equal(BASES[p.equip.weapon.base].cls, id);
     assert.equal(p.stats[STARTS[id].stat], CONFIG.startStat + START_BONUS);
@@ -125,6 +127,36 @@ test('데이터 참조 무결성', () => {
     for (const t of Object.keys(z.spawns)) assert.ok(MONSTERS[t], t);
     assert.ok(MONSTERS[z.named.type] && MONSTERS[z.boss.type]);
   }
+});
+
+test('퀘스트: 처치 → 보고 → 보상 → 다음 퀘스트, 끝까지 이어진다', () => {
+  for (const start of Object.keys(STARTS)) {
+    const p = newPlayer('방랑자', { g: 'm' }, start);
+    p.stats = { str: 99, dex: 99, int: 99, wis: 99, vit: 99 };
+    let steps = 0;
+    while (nextQuest(p)) {
+      const q = currentQuest(p), g = q.goal;
+      assert.equal(questKill(p, { type: 'nothing', tier: 'normal', zone: q.zone }), false);
+      for (let i = 0; i < questNeed(q); i++) assert.ok(questKill(p, g.kill ? { type: g.kill, tier: 'normal', zone: q.zone } : { type: 'x', tier: g.named ? 'named' : 'boss', zone: q.zone }));
+      assert.ok(questDone(p));
+      p.inv.length = 0;
+      const r = questTurnIn(p, CONFIG.inventorySize);
+      assert.ok(r.ok, q.id);
+      if (q.reward.gear?.[0] === 'weapon') assert.equal(BASES[r.items.find((it) => BASES[it.base]?.slot === 'weapon').base].cls, start);
+      if (q.reward.book) assert.ok(SKILLS[r.items.find((it) => it.book).book], q.id);
+      steps++;
+    }
+    assert.equal(steps, QUESTS.length);
+    for (const q of QUESTS) { if (q.goal.kill) assert.ok(ZONES.find((z) => z.id === q.zone).spawns[q.goal.kill], q.id); }
+  }
+});
+
+test('정신은 MP를 회복해야 오른다 · 최대 MP는 정신에서', () => {
+  const a = newPlayer(), b = newPlayer();
+  b.stats.wis += 10; a.stats.int += 10;
+  assert.ok(derive(b).maxMp > derive(a).maxMp);
+  assert.ok(derive(a).spellMult > derive(b).spellMult);
+  assert.ok(AP_TABLE.mpRecover > 0 && AP_TABLE.mpSpent100 === undefined);
 });
 
 console.log(`\n${n}개 통과`);

@@ -4,10 +4,10 @@ export const STATS = ['str', 'dex', 'int', 'wis', 'vit'];
 export const STAT_NAMES = { str: '힘', dex: '민첩', int: '지능', wis: '정신', vit: '체력' };
 export const STAT_COLORS = { str: '#e0644a', dex: '#5fd08a', int: '#5f9bff', wis: '#c58cff', vit: '#f0b552' };
 export const STAT_DESC = {
-  str: '근접 피해 · 무거운 장비 · 막기',
-  dex: '원거리 피해 · 공격 속도 · 치명타 · 회피',
-  int: '주문 피해 · 최대 MP',
-  wis: 'MP 회복 · 회복/보조 주문 효과',
+  str: '검 피해 · 무거운 장비 · 막기',
+  dex: '활 피해 · 공격 속도 · 치명타 · 회피',
+  int: '주문 피해',
+  wis: '최대 MP · MP 회복 · 보호막',
   vit: '최대 HP · HP 회복 · 방어',
 };
 
@@ -44,17 +44,17 @@ export const CONFIG = {
 
 // 행동 → 행동 포인트(AP). "어떤 행동이 어떤 스탯을 키우는가"
 export const AP_TABLE = {
-  meleeHit: 1.0,      // + 무기 주 스탯 (단검은 민첩, 그 외 근접은 힘)
+  meleeHit: 1.0,      // + 무기 주 스탯 (검 · 맨손은 힘)
   meleeHitSide: 0.2,  // 보조로 민첩(또는 힘)
   meleeKill: 2.0,
   rangedHit: 1.0,     // 민첩
   rangedHitSide: 0.2, // 힘
-  magicBasicHit: 0.6, // 완드·지팡이 기본 공격 → 지능
+  magicBasicHit: 0.6, // 지팡이 기본 공격 → 지능
   crit: 0.5,          // 민첩
   dodge: 0.8,         // 민첩
   spellPerMp: 0.2,    // 공격 주문: 소모 MP ÷ 5 → 지능
-  supportPerMp: 0.2,  // 회복·보조 주문: 소모 MP ÷ 5 → 정신 (철벽은 체력)
-  mpSpent100: 1.0,    // MP 100 소모마다 정신
+  supportPerMp: 0.2,  // 보조 주문: 소모 MP ÷ 5 → 그 스킬의 스탯
+  mpRecover: 0.06,    // 회복한 MP 1마다 정신 (마을 밖 자연 회복 · 마나 물약)
   hurtScale: 10,      // 받은 피해 ÷ 최대 HP × 10 → 체력
   lowHpKill: 1.5,     // HP 30% 이하에서 처치 → 체력
   blockVit: 0.5,

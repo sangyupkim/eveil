@@ -1,7 +1,7 @@
 // 시작점: 타이틀 → 로딩 → 게임 루프 · 자동 저장
 import * as THREE from 'three';
 import { createStage, buildTerrain, buildWorldProps, isTouch } from './engine/scene.js';
-import { loadModels } from './engine/assets.js';
+import { loadModels, HAIRS, HAIR_COLORS } from './engine/assets.js';
 import { World } from './world/world.js';
 import { HUD } from './ui/hud.js';
 import { Windows, toggleFullscreen } from './ui/windows.js';
@@ -11,28 +11,41 @@ import { CONFIG } from './data/config.js';
 import { audio } from './engine/audio.js';
 import { portrait } from './ui/icons.js';
 import { Tutorial } from './ui/tutorial.js';
+import { cloud, cloudError } from './net/cloud.js';
 
 const SAVE_KEY = 'ashen-save';
 const $ = (s) => document.querySelector(s);
 
 const MODELS = [
-  'knight', 'barbarian', 'mage', 'rogue', 'skel_minion', 'skel_warrior', 'skel_rogue', 'skel_mage',
-  'w_sword', 'w_greatsword', 'w_axe', 'w_greataxe', 'w_dagger', 'w_staff', 'w_wand', 'w_crossbow', 'w_shield', 'w_shield_sq',
-  'ws_blade', 'ws_axe', 'ws_staff', 'ws_crossbow', 'ws_shield',
+  // 주인공 (맨몸 · 옷 · 머리카락 · 동작)
+  'hero_m', 'hero_f', 'peasant_m', 'peasant_f', 'ranger_m', 'ranger_f', 'hero_anims', 'hero_anims2',
+  'hair_buzzed', 'hair_parted', 'hair_beard', 'hair_long', 'hair_buns', 'hair_buzzed_f',
+  // 사람 · 해골 (KayKit)
+  'knight', 'barbarian', 'mage', 'skel_minion', 'skel_warrior', 'skel_rogue', 'skel_mage',
+  'w_sword', 'w_greataxe', 'w_staff', 'w_wand', 'w_shield_sq', 'ws_blade', 'ws_axe', 'ws_staff', 'ws_crossbow', 'ws_shield',
+  // 몬스터 (Quaternius)
+  'm_slime', 'm_slime_spiky', 'm_rat', 'm_mushnub', 'm_mushking', 'm_wolf', 'm_spider', 'm_wasp', 'm_orc_grunt', 'm_tribal', 'm_orc',
+  'm_ghost', 'm_ghost_skull', 'm_demon', 'm_blue_demon', 'm_goleling', 'm_dragon',
+  // 무기 · 투구 · 아이템 그림
+  'q_sword', 'q_sword2', 'q_sword_big', 'q_sword_gold', 'q_claymore', 'q_bow', 'q_bow2', 'q_bow_gold', 'q_bow_evil',
+  'q_shield', 'q_shield2', 'q_shield3', 'q_helm1', 'q_helm2', 'q_helm3',
+  'i_armor_leather', 'i_armor_metal', 'i_armor_metal2', 'i_armor_black', 'i_glove', 'i_necklace', 'i_ring2',
+  'i_potion_hp', 'i_potion_mp', 'i_potion_hp_l', 'i_potion_mp_l', 'i_book', 'i_book2', 'i_book3', 'i_book4', 'i_scroll',
   'tree_dead_l', 'tree_dead_m', 'tree_dead_s', 'tree_pine', 'grave', 'gravestone', 'gravemarker', 'crypt', 'coffin', 'bone',
   'fence_broken', 'fence_pillar', 'post', 'skull_candle',
   'tavern', 'blacksmith', 'home_a', 'home_b', 'market', 'well', 'church', 'ruin', 'fence_wood', 'tree', 'trees', 'rock_a', 'rock_b', 'rock_c',
   'barrel', 'crates', 'box', 'chest', 'torch', 'banner', 'coin', 'rubble', 'pillar', 'table', 'potion', 'book',
 ];
 
-const LOOKS = { knight: '기사', barbarian: '야만전사', mage: '마법사', rogue: '도적' };
-
 function loadSave() {
+  try { return fixSave(JSON.parse(localStorage.getItem(SAVE_KEY))); } catch { return null; }
+}
+
+// 저장(기기 · 서버)을 지금 판에 맞춘다
+function fixSave(s) {
   try {
-    const s = JSON.parse(localStorage.getItem(SAVE_KEY));
-    if (!s || s.v !== 1) return null;
+    if (!s || s.v !== 2) return null; // 예전 판(v1) 저장은 무기 · 스킬 구성이 달라 이어 쓰지 않는다
     // 새로 생긴 필드는 기본값으로 채운다
-    if (s.tut === undefined) s.tut = 99; // 예전 저장은 안내를 건너뛴다
     const base = newPlayer(s.name, s.look);
     for (const k in base) if (s[k] === undefined) s[k] = base[k];
     s.settings = { ...base.settings, ...s.settings };
@@ -67,20 +80,60 @@ async function boot() {
   };
   titleLoop();
 
-  const saved = loadSave();
+  let saved = loadSave();
   if (saved) audio.setVolumes(saved.settings.music, saved.settings.sfx);
-  let look = saved?.look || 'knight';
+  const look = { g: 'm', hair: 0, color: 0, ...(saved?.look || {}) };
   const looks = $('.looks');
-  looks.innerHTML = Object.entries(LOOKS).map(([k, n]) => `<button data-look="${k}" class="${k === look ? 'on' : ''}"><img src="${portrait(k)}" alt="" />${n}</button>`).join('')
-    + '<div class="note">외형만 다르다. 직업은 없다 — 싸우는 방식이 곧 직업이 된다.</div>';
-  looks.querySelectorAll('button').forEach((b) => {
-    b.onclick = () => { audio.play('click'); look = b.dataset.look; looks.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); };
-  });
+  const drawLooks = () => {
+    const btn = (k, v, inner, on) => `<button data-k="${k}" data-v="${v}" class="${on ? 'on' : ''}">${inner}</button>`;
+    looks.innerHTML = `<div class="lgroup">${['m', 'f'].map((g) => btn('g', g, `<img src="${portrait({ ...look, g, hair: Math.min(look.hair, HAIRS[g].length - 1) })}" alt="" />${g === 'm' ? '남' : '여'}`, look.g === g)).join('')}</div>
+      <div class="lgroup">${HAIRS[look.g].map((h, i) => btn('hair', i, `<img src="${portrait({ ...look, hair: i })}" alt="" />${h[1]}`, look.hair === i)).join('')}</div>
+      <div class="lgroup swatches">${HAIR_COLORS.map((c, i) => btn('color', i, `<i style="background:#${c.toString(16).padStart(6, '0')}"></i>`, look.color === i)).join('')}</div>`;
+    looks.querySelectorAll('button').forEach((b) => {
+      b.onclick = () => { audio.play('click'); const k = b.dataset.k; look[k] = k === 'g' ? b.dataset.v : Number(b.dataset.v); if (k === 'g') look.hair = 0; drawLooks(); };
+    });
+  };
+  drawLooks();
   $('#titleMenu').hidden = false;
-  if (saved) {
-    $('#btnContinue').hidden = false;
-    $('#btnContinue').textContent = `이어하기 (${saved.name} · 각성 ${saved.awakenings})`;
-  }
+  const showContinue = () => {
+    $('#btnContinue').hidden = !saved;
+    if (saved) $('#btnContinue').textContent = `이어하기 (${saved.name} · 각성 ${saved.awakenings})`;
+  };
+  showContinue();
+
+  // 계정: 로그인하면 서버 저장과 기기 저장 중 더 새 것으로 이어 한다
+  const acc = $('#account');
+  const pull = async () => {
+    const remote = fixSave(await cloud.load());
+    if (remote && (!saved || (remote.savedAt || 0) > (saved.savedAt || 0))) {
+      saved = remote;
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify(saved)); } catch { /* 무시 */ }
+      Object.assign(look, saved.look);
+      drawLooks();
+      showContinue();
+      return true;
+    }
+    return false;
+  };
+  const drawAccount = (msg = '') => {
+    acc.innerHTML = cloud.id
+      ? `<span class="who"><b>${cloud.id}</b> 서버 저장</span><button class="btn" data-acc="out">로그아웃</button><span class="msg">${msg}</span>`
+      : `<input id="accId" maxlength="20" placeholder="아이디" autocomplete="username" autocapitalize="off" /><input id="accPw" type="password" maxlength="64" placeholder="비밀번호" autocomplete="current-password" />
+         <button class="btn" data-acc="login">로그인</button><button class="btn" data-acc="register">가입</button><span class="msg">${msg}</span>`;
+    acc.querySelectorAll('[data-acc]').forEach((b) => {
+      b.onclick = async () => {
+        audio.play('click');
+        if (b.dataset.acc === 'out') { cloud.logout(); drawAccount(); return; }
+        const id = $('#accId').value.trim(), pw = $('#accPw').value;
+        drawAccount('…');
+        const r = await cloud.sign(b.dataset.acc, id, pw);
+        if (!r.ok) { drawAccount(cloudError(r.error)); $('#accId').value = id; return; }
+        drawAccount((await pull()) ? '서버 저장을 불러왔습니다' : '');
+      };
+    });
+  };
+  drawAccount();
+  if (cloud.id) pull().then((got) => { if (got) drawAccount('서버 저장을 불러왔습니다'); });
   const start = (st) => {
     titleOn = false;
     $('#title').hidden = true;
@@ -89,7 +142,7 @@ async function boot() {
   };
   $('#btnNew').onclick = () => {
     if (saved && !confirm('저장된 캐릭터가 있습니다. 새로 시작하면 지워집니다. 계속할까요?')) return;
-    start(newPlayer($('#nameInput').value.trim() || '방랑자', look, null));
+    start(newPlayer($('#nameInput').value.trim() || '방랑자', { ...look }, null));
   };
   $('#btnContinue').onclick = () => start(saved);
 }
@@ -102,10 +155,12 @@ function startGame(stage, st) {
   const hud = new HUD();
   const world = new World(stage, st, hud);
   hud.attach(world);
-  const save = () => {
+  const save = (force) => {
     if (window.__noSave) return;
     world.saveGround();
+    st.savedAt = Date.now();
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(st)); } catch (e) { console.warn('저장 실패', e); }
+    cloud.save(st, force === true);
   };
   const windows = new Windows(world, save);
   hud.onDirty = () => { clearTimeout(hud.winT); hud.winT = setTimeout(() => windows.refresh(), 0); };
@@ -120,6 +175,7 @@ function startGame(stage, st) {
   let fpsT = 0, frames = 0;
   const loop = () => {
     const dt = Math.min(0.05, clock.getDelta());
+    if (window.__stop) { requestAnimationFrame(loop); return; } // 개발용: 화면 멈춤
     input.update();
     if (!tut.blocking) world.update(dt);
     tut.update();
@@ -133,8 +189,8 @@ function startGame(stage, st) {
     requestAnimationFrame(loop);
   };
   loop();
-  window.addEventListener('beforeunload', save);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+  window.addEventListener('beforeunload', () => save(true));
+  document.addEventListener('visibilitychange', () => { if (document.hidden) save(true); });
   window.__game = { world, stage, st, save, tut };
 }
 
