@@ -1,3 +1,4 @@
+import { setBonus } from './town.js';
 // 플레이어 상태(저장되는 값)와 거기서 계산되는 능력치.
 import { CONFIG, STATS } from '../data/config.js';
 import { BASES, WEAPON_CLASSES, SLOTS, STARTS, START_BONUS, isTwoHandedBase } from '../data/items.js';
@@ -60,6 +61,8 @@ export function gearSum(st) {
     if (base.mods) for (const k in base.mods) g[k] = (g[k] || 0) + base.mods[k];
     for (const a of it.affixes || []) g[a.id] = (g[a.id] || 0) + a.v;
   }
+  const sb = setBonus(st.equip);
+  for (const k in sb) g[k] = (g[k] || 0) + sb[k];
   return g;
 }
 

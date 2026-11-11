@@ -12,6 +12,9 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
 import { itemIcon, skillIcon, portrait, chestIcon, bookIcon, coinIcon, scrollIcon, townIcon, oreIcon } from './icons.js';
+import { MATERIALS, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
+import { craft, craftZones, setCounts, setBase } from '../game/town.js';
+import { AFFIXES } from '../data/items.js';
 import { PLOTS, BUILDINGS, EXPEDITIONS, townOf, buildingAt, build, upgrade, collect, enhance, enhanceCap, enhanceCost, hire, mercSlots, dispatch, claim, tick } from '../game/town.js';
 import { mercCost } from '../data/buildings.js';
 import { QUESTS, QUEST_BOOKS } from '../data/quests.js';
@@ -104,6 +107,11 @@ export class Windows {
       if (b.block) h += `<div>막기 확률 ${Math.round(b.block * 100)}%</div>`;
       if (b.mods) for (const k in b.mods) h += `<div>${k === 'maxMp' ? '최대 MP' : k} +${b.mods[k]}</div>`;
       for (const a of it.affixes) h += `<div class="aff">${affixText(a)}</div>`;
+      if (it.set) {
+        const s = SETS[it.set], n = setCounts(this.w.st.equip)[it.set] || 0;
+        const fx = (b) => Object.entries(b).map(([k, v]) => AFFIXES[k].text.replace('{v}', v)).join(' · ');
+        h += `<div class="aff" style="color:#7fe07a">${s.name} 세트 (${n}/4)</div><div class="note" style="color:${n >= 2 ? '#7fe07a' : '#888'}">2: ${fx(s.b2)}</div><div class="note" style="color:${n >= 4 ? '#7fe07a' : '#888'}">4: ${fx(s.b4)}</div>`;
+      }
       h += reqLine(b.req, totalStats(st));
     }
     h += `<div class="sub">판매가 ${itemValue(it)} G</div>`;
@@ -288,7 +296,15 @@ export class Windows {
       }).join('');
     } else {
       const def = BUILDINGS[b.type], up = def.cost(b.lv);
-      right = `<h3>${def.name} · ${b.lv}단계</h3><div class="btns" style="margin:0 0 8px"><button class="btn" data-upgrade="1" ${up == null || st.gold < up ? 'disabled' : ''}>${up == null ? '최고 단계' : `단계 올리기 ${up.toLocaleString()} G`}</button></div>`;
+      const um = up == null ? null : upgradeMats(b.lv), umOk = !um || (t.mats[um.zone] || 0) >= um.n;
+      right = `<h3>${def.name} · ${b.lv}단계</h3><div class="btns" style="margin:0 0 8px"><button class="btn" data-upgrade="1" ${up == null || st.gold < up || !umOk ? 'disabled' : ''}>${up == null ? '최고 단계' : `단계 올리기 ${up.toLocaleString()} G${um ? ` · ${MATERIALS[um.zone].name} ${um.n}` : ''}`}</button></div>`;
+      if (b.type === 'workshop') {
+        for (const zn of craftZones(st)) {
+          const zi = ZONES.indexOf(zn), c = craftCost(zi), have = t.mats[zn.id] || 0, s = SETS[zn.id];
+          right += `<div class="row"><div class="grow"><b style="color:#7fe07a">${s.name}</b><div class="note">${MATERIALS[zn.id].name} ${have} / ${c.mats} · ${c.gold.toLocaleString()} G</div></div>
+            ${SET_SLOTS.map((sl) => `<button class="btn" data-craft="${zn.id}|${sl}" ${have < c.mats || st.gold < c.gold ? 'disabled' : ''}>${BASES[setBase(zi, sl)].name}</button>`).join('')}</div>`;
+        }
+      }
       if (def.rate) right += `<div class="kv"><span>생산</span><b>시간당 ${def.rate(b.lv)}</b><span>쌓인 양</span><b>${Math.floor(b.stock)} / ${def.store(b.lv)}</b></div>
         <div class="btns"><button class="btn gold" data-collect="1" ${b.stock < 1 ? 'disabled' : ''}>거두기</button></div>`;
       if (b.type === 'smithy') {
@@ -316,7 +332,7 @@ export class Windows {
         else right += `<div class="note">용병 ${n} / ${slots} · 여관 단계를 올리면 더 고용</div>`;
       }
     }
-    return `<div class="cols"><div class="frame" style="flex:0 0 40%"><h3>마을 <span class="goldTxt">${st.gold.toLocaleString()} G</span></h3><div class="note" style="display:flex;gap:6px;align-items:center"><img src="${oreIcon()}" style="width:1.6em" alt="" />강화석 ${t.ore}</div>${left}</div>
+    return `<div class="cols"><div class="frame" style="flex:0 0 40%"><h3>마을 <span class="goldTxt">${st.gold.toLocaleString()} G</span></h3><div class="note" style="display:flex;gap:6px;align-items:center"><img src="${oreIcon()}" style="width:1.6em" alt="" />강화석 ${t.ore}</div><div class="note">${Object.entries(t.mats).filter(([, n]) => n > 0).map(([k, n]) => `${MATERIALS[k].name} ${n}`).join(' · ')}</div>${left}</div>
       <div class="frame detail" style="flex:1">${right}</div></div>`;
   }
 
@@ -471,6 +487,11 @@ export class Windows {
       w.ui.dirty(); this.render();
     });
     on('[data-hire]', () => townDone(hire(st), '용병을 고용했습니다'));
+    on('[data-craft]', (el) => {
+      const [z, sl] = el.dataset.craft.split('|'), r = craft(st, z, sl);
+      if (r.ok) { audio.play('rankup'); w.ui.toast(`${itemName(r.item)} 제작!`, '#7fe07a'); }
+      townDone(r);
+    });
     on('[data-go-exp]', (el) => {
       const [i, ex] = el.dataset.goExp.split('|');
       const zone = body.querySelector(`[data-zone="${i}"]`)?.value;

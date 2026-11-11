@@ -4,6 +4,7 @@ export const PLOTS = [
   { id: 'p2', x: 14, z: 8, name: '동쪽 빈터' },
   { id: 'p3', x: -8, z: 16, name: '남서 빈터' },
   { id: 'p4', x: 9, z: 16, name: '남동 빈터' },
+  { id: 'p5', x: 0, z: -16, name: '북쪽 빈터' },
 ];
 
 // cost(lv): 다음 단계 금화 · max: 최고 단계
@@ -25,6 +26,11 @@ export const BUILDINGS = {
     rate: (lv) => [0, 4, 7, 11, 16, 24][lv],
     store: (lv) => [0, 20, 40, 70, 110, 160][lv],
     look: [['grassland', 120, -1, 0], ['grassland', 121, 0.4, 0.6], ['grassland', 122, 1.4, -0.2], ['grassland', 123, -0.2, -0.9]],
+  },
+  workshop: {
+    name: '제작소', desc: '지역 재료로 세트 장비 제작', max: 5, cost: (lv) => [400, 1500, 5000, 14000, 35000][lv] ?? null,
+    zones: (lv) => [0, 2, 4, 5, 6, 8][lv], // 만들 수 있는 지역 수
+    look: [['grassland', 100, 0, 0], ['grassland', 120, 1.4, 0.6]],
   },
   inn: {
     name: '여관', desc: '용병 고용 · 사냥 파견', max: 5, cost: (lv) => [500, 2000, 6000, 16000, 40000][lv] ?? null,

@@ -7,7 +7,7 @@ import { learn, addSkillExp, canLearn } from '../src/game/skills.js';
 import { rollLoot, rollDeathDrop } from '../src/game/loot.js';
 import { makeItem, itemName, rollBase } from '../src/game/items.js';
 import * as await_fs from 'node:fs';
-import { townOf, build, tick, collect, enhance, hire, dispatch, claim, buildingAt } from '../src/game/town.js';
+import { townOf, build, tick, collect, enhance, hire, dispatch, claim, buildingAt, dropMats, craft, craftZones, upgrade, setBase } from '../src/game/town.js';
 import { BUILDINGS } from '../src/data/buildings.js';
 import { MONSTER_LOOK, ITEM_LOOK, SKILL_ICON } from '../src/data/flareWorld.js';
 import { addItem, equip } from '../src/game/inventory.js';
@@ -197,6 +197,26 @@ test('지역 · 몬스터 · 스킬 · 장비 데이터가 서로 맞물린다',
     for (let i = 0; i < 4000; i++) got.add(BASES[rollBase(lv)].slot);
     assert.equal(got.size, 9, String(lv));
   }
+});
+
+test('재료 · 제작소 · 세트 효과', () => {
+  const p = newPlayer('방랑자', { face: 'm01' }, 'sword');
+  p.gold = 1e6;
+  assert.equal(dropMats(p, 'field', 'boss'), 8);
+  assert.equal(dropMats(p, 'field', 'normal', () => 0.9), 0);
+  assert.equal(craft(p, 'field', 'helm').ok, false); // 제작소 없음
+  assert.ok(build(p, 'p5', 'workshop').ok);
+  assert.equal(craftZones(p).length, 2);
+  for (const z of ZONES) for (const sl of ['helm', 'armor', 'gloves', 'boots']) assert.ok(setBase(ZONES.indexOf(z), sl), z.id + sl);
+  townOf(p).mats.field = 100;
+  const hp0 = derive(p).maxHp;
+  for (const sl of ['helm', 'armor']) { const r = craft(p, 'field', sl); assert.ok(r.ok, r.why); equip(p, r.item.uid); }
+  assert.ok(derive(p).maxHp >= hp0 + 30, '2세트 효과');
+  // 단계 올리기는 재료가 든다
+  townOf(p).mats.field = 0;
+  assert.equal(upgrade(p, 'p5').ok, false);
+  townOf(p).mats.field = 8;
+  assert.ok(upgrade(p, 'p5').ok);
 });
 
 test('마을: 짓기 · 생산(꺼 둔 시간) · 강화 · 용병 파견', () => {

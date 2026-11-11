@@ -8,6 +8,8 @@ import { derive, damageReduction } from '../game/player.js';
 import { addAP, gainExp, rewardFactor } from '../game/growth.js';
 import { addSkillExp, skillValues, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
 import { rollLoot, rollDeathDrop } from '../game/loot.js';
+import { dropMats } from '../game/town.js';
+import { MATERIALS } from '../data/crafting.js';
 import { addItem, takeOne, countOf, equip as equipItem, unequip as unequipItem } from '../game/inventory.js';
 import { itemName, itemColor, isBook, makeItem } from '../game/items.js';
 import { seeded, randInt, randRange } from '../game/rng.js';
@@ -557,6 +559,8 @@ export class World {
       this.dropGround(dr, m.pos.x + Math.cos(a) * r, m.pos.z + Math.sin(a) * r);
     });
     if (m.tier !== 'normal') this.ui.log(`${m.name} 처치!`, TIERS[m.tier].color);
+    const zid = m.sp?.zone?.id, got = zid && !m.noLoot ? dropMats(st, zid, m.tier) : 0;
+    if (got) { this.matLog = (this.matLog || 0) + got; this.fx.text(m.pos.clone().setY(2.2), `+${got} ${MATERIALS[zid].name}`, 'heal'); if (m.tier !== 'normal') this.ui.log(`${MATERIALS[zid].name} +${got}`, '#c8e08a'); }
     this.ui.dirty();
   }
 

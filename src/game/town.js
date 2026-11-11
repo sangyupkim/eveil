@@ -4,9 +4,12 @@ import { ZONES } from '../data/world.js';
 import { rollLoot } from './loot.js';
 import { addItem } from './inventory.js';
 import { makeItem } from './items.js';
+import { MATERIALS, MAT_DROP, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
+import { BASES } from '../data/items.js';
 
 export function townOf(st, now = Date.now()) {
   st.town ||= { plots: {}, ore: 0, mercs: [], last: now };
+  st.town.mats ||= {};
   return st.town;
 }
 export const buildingAt = (st, plot) => townOf(st).plots[plot] || null;
@@ -28,7 +31,10 @@ export function upgrade(st, plot) {
   const def = BUILDINGS[b.type], cost = def.cost(b.lv);
   if (b.lv >= def.max || cost == null) return { ok: false, why: '최고 단계입니다' };
   if (st.gold < cost) return { ok: false, why: '금화가 모자랍니다' };
+  const um = upgradeMats(b.lv), mats = townOf(st).mats;
+  if (um && (mats[um.zone] || 0) < um.n) return { ok: false, why: `${MATERIALS[um.zone].name} ${um.n}개가 필요합니다` };
   st.gold -= cost;
+  if (um) mats[um.zone] -= um.n;
   b.lv++;
   return { ok: true };
 }
@@ -115,5 +121,47 @@ export function claim(st, i, now = Date.now(), rng = Math.random) {
   while (m.exp >= m.lv * 20) { m.exp -= m.lv * 20; m.lv++; }
   m.job = null;
   return out;
+}
+// ── 재료 · 제작 ──
+// 몬스터를 잡으면 재료가 마을 창고로 바로 (가방을 쓰지 않는다)
+export function dropMats(st, zoneId, tier, rng = Math.random) {
+  const d = MAT_DROP[tier] || MAT_DROP.normal;
+  if (!MATERIALS[zoneId] || rng() >= d[0]) return 0;
+  const m = townOf(st).mats;
+  m[zoneId] = (m[zoneId] || 0) + d[1];
+  return d[1];
+}
+export const craftZones = (st) => { const w = findBuilding(st, 'workshop'); return w ? ZONES.slice(0, BUILDINGS.workshop.zones(w.lv)) : []; };
+// 그 지역 레벨에 맞는 가장 좋은 부위 기본 아이템
+export function setBase(zi, slot) {
+  const lvl = ZONES[zi].levels[1];
+  const ids = Object.keys(BASES).filter((id) => BASES[id].slot === slot && (BASES[id].minLvl ?? 1) <= lvl && (BASES[id].minLvl ?? 1) < 99);
+  return ids.sort((a, b) => (BASES[b].minLvl ?? 1) - (BASES[a].minLvl ?? 1) || (BASES[b].armor || 0) - (BASES[a].armor || 0))[0];
+}
+export function craft(st, zoneId, slot, rng = Math.random) {
+  const zi = ZONES.findIndex((z) => z.id === zoneId);
+  if (!craftZones(st).some((z) => z.id === zoneId) || !SET_SLOTS.includes(slot)) return { ok: false, why: '제작소 단계를 올려야 합니다' };
+  const c = craftCost(zi), m = townOf(st).mats;
+  if ((m[zoneId] || 0) < c.mats) return { ok: false, why: `${MATERIALS[zoneId].name}이(가) 모자랍니다` };
+  if (st.gold < c.gold) return { ok: false, why: '금화가 모자랍니다' };
+  const it = makeItem(setBase(zi, slot), { rarity: 'rare', ilvl: ZONES[zi].levels[1] }, st, rng);
+  it.set = zoneId;
+  if (!addItem(st, it)) return { ok: false, why: '가방이 가득 찼습니다' };
+  m[zoneId] -= c.mats; st.gold -= c.gold;
+  return { ok: true, item: it };
+}
+// 입은 세트 부위 수 → 효과
+export function setCounts(equip) {
+  const n = {};
+  for (const it of Object.values(equip || {})) if (it?.set) n[it.set] = (n[it.set] || 0) + 1;
+  return n;
+}
+export function setBonus(equip) {
+  const g = {};
+  for (const [id, n] of Object.entries(setCounts(equip))) {
+    const s = SETS[id];
+    for (const b of [n >= 2 && s.b2, n >= 4 && s.b4]) if (b) for (const k in b) g[k] = (g[k] || 0) + b[k];
+  }
+  return g;
 }
 export { PLOTS, BUILDINGS, EXPEDITIONS };

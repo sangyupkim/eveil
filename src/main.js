@@ -180,7 +180,7 @@ function startGame(stage, st) {
   loop();
   window.addEventListener('beforeunload', () => save(true));
   document.addEventListener('visibilitychange', () => { if (document.hidden) save(true); });
-  window.__game = { world, stage, st, save, tut };
+  window.__game = { world, stage, st, save, tut, windows };
 }
 
 boot().catch((e) => {
