@@ -63,6 +63,7 @@ export function showNotes() {
 const repickCost = (t) => 2000 * (t.tier + 1) ** 2;
 const nextTitle = (st) => { const i = TITLE_AT.findIndex((n) => st.awakenings < n); return i < 0 ? '' : ` · ${titleName(titleKey(st.stats), i)}까지 각성 ${TITLE_AT[i] - st.awakenings}`; };
 const TITLES = { map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '메뉴' };
+const NPC_ONLY = ['shop', 'town', 'vault'];
 const TAB_ORDER = ['map', 'inv', 'vault', 'skills', 'char', 'quest', 'dex', 'town', 'shop', 'guide', 'menu'];
 const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '');
 const ico = (it) => `<img src="${itemIcon(it)}" alt="" draggable="false" />`;
@@ -93,8 +94,8 @@ export class Windows {
 
   show(kind) {
     if (kind === 'map' && this.kind !== 'map') this.mapCenter = true;
-    if (kind === 'vault' && !this.w.inTown) { this.w.ui.toast('창고는 마을에서만 이용할 수 있습니다'); audio.play('error'); return; }
-    if (kind === 'shop' && !this.w.canShop) { this.w.ui.toast('상점은 마을에서만 이용할 수 있습니다'); audio.play('error'); return; }
+    // 상점 · 건물 · 창고는 마을 NPC나 건물 앞에서만 (talk로 열어 준 것만)
+    if (NPC_ONLY.includes(kind) && !this.talk?.includes(kind)) { this.w.ui.toast(kind === 'town' ? '경비대장이나 건물 앞에서 이용할 수 있습니다' : kind === 'vault' ? '창고는 마을 상인에게서 이용할 수 있습니다' : '상인에게 가서 이용할 수 있습니다'); audio.play('error'); return; }
     if (this.kind !== kind) this.sel = null;
     this.kind = kind;
     this.el.hidden = false;
@@ -102,7 +103,11 @@ export class Windows {
     this.render();
   }
 
+  // NPC · 건물에서 열기: kinds = 이번에 쓸 수 있는 창, mode = 'build'(경비대장) | 'one'(건물 앞)
+  talkTo(kinds, first, mode = null) { this.talk = kinds; this.townMode = mode; this.show(first); }
+
   close() {
+    this.talk = null; this.townMode = null;
     this.waitKey = null;
     this.portalAt = null; this.mapZoom = null; this.mapCenter = true;
     this.el.hidden = true;
@@ -116,7 +121,7 @@ export class Windows {
     $('h2', this.el).textContent = TITLES[this.kind];
     const icons = { inv: chestIcon(), skills: bookIcon(), char: portrait(this.w.st.look), shop: coinIcon(), quest: scrollIcon(), town: townIcon(), dex: bookIcon(), map: scrollIcon(), guide: bookIcon(), vault: homeIcon() };
     const tabs = $('.tabs', this.el);
-    tabs.innerHTML = TAB_ORDER.filter((k) => (k !== 'shop' || this.w.canShop) && (k !== 'vault' || this.w.inTown)).map((k) =>
+    tabs.innerHTML = TAB_ORDER.filter((k) => !NPC_ONLY.includes(k) || this.talk?.includes(k)).map((k) =>
       `<button class="tab${k === this.kind ? ' on' : ''}" data-tab="${k}">${icons[k] ? `<img src="${icons[k]}" alt="" />` : '<b class="gear" style="width:1.8em;height:1.8em"></b>'}<span>${TITLES[k].split(' ')[0]}</span></button>`).join('');
     tabs.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => this.show(b.dataset.tab); });
     const body = $('.body', this.el);
@@ -536,6 +541,7 @@ export class Windows {
     tick(st);
     const sel = this.townSel || PLOTS[0].id;
     const b = buildingAt(st, sel);
+    const one = this.townMode === 'one', bmode = this.townMode === 'build';
     const left = PLOTS.map((pl) => {
       const x = t.plots[pl.id];
       const def = x && BUILDINGS[x.type];
@@ -554,7 +560,8 @@ export class Windows {
       const def = BUILDINGS[b.type], up = def.cost(b.lv);
       const um = up == null ? null : upgradeMats(b.lv), umOk = !um || (t.mats[um.zone] || 0) >= um.n;
       const an = def.up?.[b.lv - 1] ?? 0, anOk = (st.awakenings || 0) >= an;
-      right = `<h3>${def.name} · ${b.lv}단계</h3><div class="btns" style="margin:0 0 8px"><button class="btn" data-upgrade="1" ${up == null || st.gold < up || !umOk || !anOk ? 'disabled' : ''}>${up == null ? '최고 단계' : !anOk ? `각성 ${an} 필요` : `단계 올리기 ${up.toLocaleString()} G${um ? ` · ${MATERIALS[um.zone].name} ${um.n}` : ''}`}</button></div>`;
+      right = `<h3>${def.name} · ${b.lv}단계</h3>` + (one ? '' : `<div class="btns" style="margin:0 0 8px"><button class="btn" data-upgrade="1" ${up == null || st.gold < up || !umOk || !anOk ? 'disabled' : ''}>${up == null ? '최고 단계' : !anOk ? `각성 ${an} 필요` : `단계 올리기 ${up.toLocaleString()} G${um ? ` · ${MATERIALS[um.zone].name} ${um.n}` : ''}`}</button></div><div class="note">${def.desc}</div>`);
+      if (!bmode) {
       if (b.type === 'workshop') {
         right += `<div class="herbBar">${HERB_IDS.map((h) => `<span class="hb" title="${HERBS[h].name}"><img src="${herbIcon(h)}" alt="" />${t.herbs[h] || 0}</span>`).join('')}</div>`;
         for (const rc of RECIPES) {
@@ -616,7 +623,9 @@ export class Windows {
             ${!m.job ? `<button class="btn" data-mgear="${m.id}">장비</button><button class="btn danger" data-mfire="${m.id}">내보내기</button>` : ''}</div>`;
         });
       }
+      }
     }
+    if (one) return `<div class="cols"><div class="frame detail" style="flex:1">${right}</div></div>`;
     return `<div class="cols"><div class="frame" style="flex:0 0 40%"><h3>마을 <span class="goldTxt">${st.gold.toLocaleString()} G</span></h3><div class="note" style="display:flex;gap:6px;align-items:center"><img src="${oreIcon()}" style="width:1.6em" alt="" />강화석 ${t.ore}</div><div class="note">용병 ${t.mercs.length} / ${mercSlots(st)} · 쉬는 ${t.mercs.filter((m) => !m.work && !m.job).length}</div><div class="note">${Object.entries(t.mats).filter(([, n]) => n > 0).map(([k, n]) => `${MATERIALS[k].name} ${n}`).join(' · ')}</div>${left}</div>
       <div class="frame detail" style="flex:1">${right}</div></div>`;
   }
@@ -674,7 +683,6 @@ export class Windows {
           ${card('skills', `<img src="${bookIcon()}" alt="" />`, '스킬')}
           ${card('char', `<img src="${portrait(st.look)}" alt="" />`, '능력')}
           ${card('quest', `<img src="${scrollIcon()}" alt="" />`, '퀘스트')}
-          ${card('shop', `<img src="${coinIcon()}" alt="" />`, '상점', !this.w.canShop)}
         </div>
         <div class="kv" style="margin-top:14px"><span>플레이 시간</span><b>${Math.floor(t / 60)}시간 ${t % 60}분</b><span>각성</span><b>${st.awakenings}회</b>
           <span>배운 스킬</span><b>${Object.keys(st.skills).length}개</b><span>자동 사냥 효율</span><b>${Math.round(CONFIG.autoPenalty * 100)}%</b>

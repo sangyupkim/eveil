@@ -71,7 +71,7 @@ export class HUD {
     if (z && z.levels) info = `위험도 ${z.levels[0] + off}~${z.levels[1] + off} · 권장 각성 ${Math.max(0, (z.levels[0] + off - 1) * 2)}+${z.id ? ` · 해방 ${Math.floor(((this.world.st.liberate?.[z.id] || 0) / 400) * 100)}%` : ''}`;
     else if (!z) info = '지역 사이의 황야';
     $('.zoneInfo').textContent = info;
-    $('#shopBtn').hidden = !(z && z.id === 'town');
+    $('#shopBtn').hidden = true;
     this.log(`— ${z ? z.name : '황야'} —`, '#9a917f');
   }
 

@@ -1,6 +1,6 @@
 // 입력: PC(마우스 · 키보드) + 모바일(조이스틱 · 터치 · 버튼)
 import { isTouch, CAMPS } from './engine2d/stage.js';
-import { PLOTS } from './data/buildings.js';
+import { PLOTS, BUILDINGS } from './data/buildings.js';
 import { actionOf, keyMap, bindKey } from './data/keys.js';
 
 const $ = (s) => document.querySelector(s);
@@ -31,17 +31,25 @@ export function setupInput(world, stage, windows) {
 
   // ── 가까운 상호작용 대상 (NPC · 건물 터) → { name, go } ──
   const near = (n, r = 4) => n && Math.hypot(n.x - world.player.pos.x, n.z - world.player.pos.z) < r;
+  // NPC와 대화: 상인 = 상점 · 창고, 경비대장 = 퀘스트 · 건물 짓기, 건물 앞 = 그 건물만
+  const talk = (npc) => {
+    if (npc === world.npc) windows.talkTo(['shop', 'vault'], 'shop');
+    else if (npc === world.guard) windows.talkTo(['town'], 'quest', 'build');
+    else if (npc === world.sage) windows.show('dex');
+    else windows.talkTo(['shop'], 'shop');
+  };
+  const useBuilding = (id) => { windows.townSel = id; windows.talkTo(['town'], 'town', 'one'); };
   const interactTarget = () => {
     if (world.dead) return null;
-    const list = [[world.npc, 'shop', '상인'], [world.guard, 'quest', '경비대장'], [world.gemNpc, 'shop', '보석상'], [world.sage, 'dex', '현자'],
-      ...(world.campNpcs || []).map((a) => [a, 'shop', '야영지 상인']), ...(world.eventNpc ? [[world.eventNpc, 'shop', '떠돌이 상인']] : [])];
-    for (const [npc, win, nm] of list) if (npc && near(npc.pos)) return { name: nm, go: () => windows.show(win) };
+    for (const [npc, nm] of [[world.npc, '상인'], [world.guard, '경비대장'], [world.gemNpc, '보석상'], [world.sage, '현자'], ...(world.campNpcs || []).map((a) => [a, '야영지 상인']), ...(world.eventNpc ? [[world.eventNpc, '떠돌이 상인']] : [])])
+      if (npc && near(npc.pos)) return { name: nm, go: () => talk(npc) };
     // 포탈 (마을 차원문 · 발견한 야영지): 공격 버튼으로 탄다
     const pt = [{ x: 0, z: -2, zone: 'town' }, ...CAMPS.filter((c) => world.st.camps?.[c.zone])].find((q) => near(q, 3));
     if (pt) return { name: '포탈', go: () => { windows.portalAt = pt.zone; windows.show('map'); } };
     if (world.inTown) {
       const pl = PLOTS.filter((q) => near(q, 3.6)).sort((a, b) => Math.hypot(a.x - world.player.pos.x, a.z - world.player.pos.z) - Math.hypot(b.x - world.player.pos.x, b.z - world.player.pos.z))[0];
-      if (pl) return { name: '건물', go: () => { windows.townSel = pl.id; windows.show('town'); } };
+      const b = pl && world.st.town?.plots?.[pl.id];
+      if (b) return { name: BUILDINGS[b.type]?.name || '건물', go: () => useBuilding(pl.id) };
     }
     return null;
   };
@@ -69,27 +77,27 @@ export function setupInput(world, stage, windows) {
       const w = groundAt(e.clientX, e.clientY);
       const pl = PLOTS.find((q) => Math.hypot(q.x - w.x, q.z - w.z) < 3.2);
       if (pl) {
-        if (Math.hypot(pl.x - world.player.pos.x, pl.z - world.player.pos.z) < 6) { windows.townSel = pl.id; windows.show('town'); }
+        if (Math.hypot(pl.x - world.player.pos.x, pl.z - world.player.pos.z) < 6) { if (world.st.town?.plots?.[pl.id]) useBuilding(pl.id); }
         else world.cmdMove(pl.x, pl.z + 2.5);
         return;
       }
     }
-    for (const [npc, win] of [[world.gemNpc, 'shop'], [world.sage, 'dex'], ...(world.campNpcs || []).map((a) => [a, 'shop']), ...(world.eventNpc ? [[world.eventNpc, 'shop']] : [])]) {
+    for (const npc of [world.gemNpc, world.sage, ...(world.campNpcs || []), ...(world.eventNpc ? [world.eventNpc] : [])]) {
       if (!npc || !pickNpc(e.clientX, e.clientY, npc)) continue;
       const n = npc.pos;
-      if (Math.hypot(n.x - world.player.pos.x, n.z - world.player.pos.z) < 5) windows.show(win);
+      if (Math.hypot(n.x - world.player.pos.x, n.z - world.player.pos.z) < 5) talk(npc);
       else world.cmdMove(n.x + 1, n.z + 1.2);
       return;
     }
     if (pickNpc(e.clientX, e.clientY, world.guard)) {
       const n = world.guard.pos;
-      if (Math.hypot(n.x - world.player.pos.x, n.z - world.player.pos.z) < 5) windows.show('quest');
+      if (Math.hypot(n.x - world.player.pos.x, n.z - world.player.pos.z) < 5) talk(world.guard);
       else world.cmdMove(n.x + 1.2, n.z - 1.5);
       return;
     }
     if (pickNpc(e.clientX, e.clientY)) {
       const n = world.npc.pos;
-      if (Math.hypot(n.x - world.player.pos.x, n.z - world.player.pos.z) < 5) windows.show('shop');
+      if (Math.hypot(n.x - world.player.pos.x, n.z - world.player.pos.z) < 5) talk(world.npc);
       else world.cmdMove(n.x, n.z + 1.5);
       return;
     }
@@ -197,7 +205,7 @@ export function setupInput(world, stage, windows) {
     if (e.code === 'Escape') { if (windows.open) windows.close(); else if (!world.dead) windows.show('menu'); return; }
     const a = actionOf(world.st, e.code);
     if (!a) return;
-    if (['inv', 'skills', 'char', 'quest', 'map', 'town', 'guide', 'menu'].includes(a)) { windows.toggle(a); return; }
+    if (['inv', 'skills', 'char', 'quest', 'map', 'guide', 'menu'].includes(a)) { windows.toggle(a); return; }
     if (a === 'shop') { if (world.canShop) windows.toggle('shop'); return; }
     if (windows.open || e.repeat) return;
     if (/^s[1-6]$/.test(a)) { world.manual(); world.useSkill(world.st.quick[Number(a[1]) - 1]); }
