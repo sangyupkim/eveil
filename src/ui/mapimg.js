@@ -26,6 +26,8 @@ function step() {
   if (row < MAP_W) setTimeout(step, 0);
 }
 setTimeout(step, 500);
+// 새 세상이면 지형 그림을 처음부터 다시
+export function rebuildTerrain() { const go = row >= MAP_W; row = 0; tctx.clearRect(0, 0, MAP_W, MAP_W); if (go) setTimeout(step, 0); }
 
 // 안개: 1 = 밝힘. 저장은 문자열 (8칸씩 묶어 한 글자)
 export function loadFog(st) {

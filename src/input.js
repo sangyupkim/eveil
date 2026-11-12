@@ -45,7 +45,7 @@ export function setupInput(world, stage, windows) {
         return;
       }
     }
-    for (const [npc, win] of [[world.gemNpc, 'shop'], [world.sage, 'dex'], ...(world.campNpcs || []).map((a) => [a, 'shop'])]) {
+    for (const [npc, win] of [[world.gemNpc, 'shop'], [world.sage, 'dex'], ...(world.campNpcs || []).map((a) => [a, 'shop']), ...(world.eventNpc ? [[world.eventNpc, 'shop']] : [])]) {
       if (!npc || !pickNpc(e.clientX, e.clientY, npc)) continue;
       const n = npc.pos;
       if (Math.hypot(n.x - world.player.pos.x, n.z - world.player.pos.z) < 5) windows.show(win);

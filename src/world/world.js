@@ -3,6 +3,7 @@ import { ZONES as ALL_ZONES } from '../data/world.js';
 import { entranceOf, MAX_STAGE, stageMods, layout as dungeonLayout, cellPos, N } from '../data/dungeons.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { gemGradeFor } from '../data/legends.js';
+export const TIER_NAMES = ['평온', '악몽', '지옥'];
 import { TITLE_AT, titleKey, titleName, perkChoices, UNIQUES } from '../data/titles.js';
 // 게임 월드: 플레이어 조작 · 몬스터 AI · 전투 · 스킬 · 드랍 · 사망 · 자동 사냥
 import * as THREE from 'three';
@@ -352,6 +353,23 @@ export class World {
     }
   }
 
+  // ───────── 떠돌이 상인 (사냥터에 가끔 나타나 4분 머문다) ─────────
+  merchantStep(dt) {
+    const P = this.player.pos;
+    if (this.eventNpc) {
+      this.eventNpc.update(dt);
+      if ((this.eventT -= dt) <= 0 || this.dungeon) { this.stage.remove(this.eventNpc); this.eventNpc = null; this.ui.log('떠돌이 상인이 떠났다', '#9a917f'); }
+      return;
+    }
+    this.merchT = (this.merchT ?? 300 + Math.random() * 240) - dt;
+    if (this.merchT > 0 || this.dungeon || this.inTown || !zoneAt(P.x, P.z)) return;
+    this.merchT = 420 + Math.random() * 300;
+    const a = Math.random() * 6.28, sp = this.freeSpot(P.x + Math.cos(a) * 10, P.z + Math.sin(a) * 10, 1);
+    const n = new Actor(this.scene, { npc: 'wandering_trader' }); n.pos.set(sp.x, 0, sp.z); n.play('idle'); n.name = '떠돌이 상인';
+    this.eventNpc = n; this.eventT = 240;
+    this.fx.pillar(sp.x, sp.z, 0xffd060, 1.2, 5, 1); this.ui.toast('떠돌이 상인이 나타났습니다! (4분)', '#ffd84a'); sfx('coin');
+  }
+
   // ───────── 지역 습격 ─────────
   // 사냥터에 10~15분마다 무리가 몰려온다. 90초 안에 다 잡으면 보상
   raidStep(dt) {
@@ -405,7 +423,7 @@ export class World {
     this.player.pos.set(sp0.x, 0, sp0.z); this.moveTo = null; this.target = null;
     this.stage.cam.x = sp0.x; this.stage.cam.z = sp0.z;
     this.fx.arrive(sp0.x, sp0.z);
-    const mod = stageMods(stage), L = zn.levels[1] + mod.level;
+    const mod = stageMods(stage), L = zn.levels[1] + mod.level + this.tierOffset;
     // 몬스터: 시작에서 먼 칸일수록 많이 · 정예는 깊은 곳, 우두머리는 가장 먼 방
     const cells = [];
     for (let k = 0; k < Ld.g.length; k++) if (Ld.g[k] && Ld.dist[k] > 5 && Ld.dist[k] < Ld.far - 2) cells.push(k);
@@ -479,7 +497,19 @@ export class World {
     this.sage = new Actor(this.scene, { npc: 'peasant_woman1' }); this.sage.pos.set(-10, 0, -3); this.sage.facing = 0.6; this.sage.play('idle'); this.sage.name = '현자 에라';
   }
 
-  get canShop() { const c = inCamp(this.player.pos.x, this.player.pos.z); return this.inTown || !!(c && this.st.camps?.[c.zone]?.merchant); }
+  get canShop() { const P = this.player.pos, c = inCamp(P.x, P.z); return this.inTown || !!(c && this.st.camps?.[c.zone]?.merchant) || !!(this.eventNpc && dist2(this.eventNpc.pos, P) < 6); }
+  // 세계 단계: 마지막 보스를 잡으면 다음 단계가 열린다. 단계마다 모든 몬스터 레벨 +66 (드랍 장비 · 보석 등급도 따라 오른다)
+  get tierOffset() { return ((this.st.worldTier || 1) - 1) * 66; }
+  setTier(t) {
+    const st = this.st;
+    if (t < 1 || t > (st.maxTier || 1) || t === (st.worldTier || 1) || this.dungeon) return;
+    st.worldTier = t;
+    for (const m of this.monsters) { m.dead = true; this.stage.remove(m.actor); }
+    this.monsters = []; this.raid = null;
+    for (const sp of this.spawners) { sp.mon = null; sp.timer = 0; }
+    this.zone = null;
+    this.ui.toast(`세계 ${TIER_NAMES[t - 1]} — 모든 몬스터가 강해졌습니다`, '#ff9a6a'); sfx('awaken'); this.ui.dirty();
+  }
   get inTown() {
     return dist2(this.player.pos, TOWN) < TOWN.r;
   }
@@ -487,20 +517,26 @@ export class World {
   // ───────── 몬스터 ─────────
 
   makeSpawners() {
-    const rng = seeded(777);
+    const rng = seeded(777 + (this.st.worldSeed || 0));
     for (const zn of ZONES) {
       const near = Math.hypot(zn.x, zn.z) - zn.r;
       const lv = (x, z) => {
         const t = Math.max(0, Math.min(1, (Math.hypot(x, z) - near) / (zn.r * 2)));
         return Math.round(zn.levels[0] + (zn.levels[1] - zn.levels[0]) * t);
       };
-      for (let i = 0; i < zn.count; i++) {
-        let x, z, tries = 0;
-        do {
-          const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * zn.r * 0.95;
-          x = zn.x + Math.cos(a) * r; z = zn.z + Math.sin(a) * r;
-        } while (++tries < 30 && (Math.hypot(x, z) < TOWN.r + 8 || blockedAt(this.stage, x, z, 1.2)));
-        this.spawners.push({ zone: zn, x, z, level: lv(x, z), tier: 'normal', timer: 0, mon: null });
+      // 무리: 넓은 땅에 띄엄띄엄 무리 지어 (무리마다 3~7마리, 무리 사이는 비어 있다)
+      const packs = [], total = Math.round(zn.count * 1.4);
+      for (let n = 0, tries = 0; n < total && tries < 400; tries++) {
+        const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * zn.r * 0.88;
+        const cx = zn.x + Math.cos(a) * r, cz = zn.z + Math.sin(a) * r;
+        if (Math.hypot(cx, cz) < TOWN.r + 10 || blockedAt(this.stage, cx, cz, 2) || packs.some((q) => Math.hypot(q[0] - cx, q[1] - cz) < 16)) continue;
+        packs.push([cx, cz]);
+        const k = Math.min(total - n, 3 + Math.floor(rng() * 5));
+        for (let i = 0; i < k; i++) {
+          const x = cx + (rng() - 0.5) * 7, z = cz + (rng() - 0.5) * 7;
+          if (blockedAt(this.stage, x, z, 1)) continue;
+          this.spawners.push({ zone: zn, x, z, level: lv(x, z), tier: 'normal', timer: 0, mon: null }); n++;
+        }
       }
       // 네임드: 지역 한가운데 / 보스: 마을에서 가장 먼 곳
       const ux = zn.x / Math.hypot(zn.x, zn.z), uz = zn.z / Math.hypot(zn.x, zn.z);
@@ -522,7 +558,7 @@ export class World {
     }
     const def = MONSTERS[type];
     const T = TIERS[tier];
-    const L = sp.level;
+    const L = sp.level + this.tierOffset;
     const look = MONSTER_LOOK[type] || { sprite: 'goblin' };
     const fam = familyOf(look.sprite);
     const actor = new Actor(this.scene, { enemy: look.sprite }, { tint: tint ?? look.tint ?? null, scale: T.scale, size: look.size || 1 });
@@ -936,6 +972,9 @@ export class World {
     else if (best === 'hero') { sfx('rare', 0.8); this.fx.pillar(m.pos.x, m.pos.z, 0xff9a3c, 1.2, 4, 1); }
     if (m.tier !== 'normal') this.ui.log(`${m.name} 처치!`, TIERS[m.tier].color);
     if (!m.dungeon && m.tier === 'boss') (st.rec ||= {}).bosses = (st.rec.bosses || 0) + 1;
+    if (!m.dungeon && m.tier === 'boss' && m.sp?.zone?.id === 'demongate' && (st.worldTier || 1) < 3 && (st.maxTier || 1) <= (st.worldTier || 1)) {
+      st.maxTier = (st.worldTier || 1) + 1; this.ui.toast(`세계 ${TIER_NAMES[st.maxTier - 1]} 단계가 열렸습니다! (메뉴에서 바꿀 수 있습니다)`, '#ff9a6a'); sfx('awaken');
+    }
     if (!m.dungeon && !m.noLoot && (m.tier === 'boss' || (m.tier === 'named' && Math.random() < 0.5))) {
       if (addItem(st, makeItem('dungeon_key', { qty: 1 }, st))) { this.ui.toast('던전 열쇠를 얻었습니다', '#ffd84a'); sfx('rare', 0.7); }
     }
@@ -1196,7 +1235,7 @@ export class World {
 
   // 자동 사냥 지역: 권장 각성((최저 위험도 - 1) × 2)을 넘긴 가장 깊은 곳, 최근 10분에 그곳에서 3번 넘게 죽었으면 한 칸 아래
   autoZone() {
-    const st = this.st, ok = ZONES.filter((z) => st.awakenings >= (z.levels[0] - 1) * 2);
+    const st = this.st, ok = ZONES.filter((z) => st.awakenings >= (z.levels[0] + this.tierOffset - 1) * 2);
     let i = Math.max(0, ok.length - 1);
     this.autoDeaths = (this.autoDeaths || []).filter((x) => this.time - x.t < 600);
     while (i > 0 && this.autoDeaths.filter((x) => x.z === ZONES[i].id).length >= 3) i--;
@@ -1656,6 +1695,7 @@ export class World {
     this.checkDungeonGate(dt);
     this.checkChests();
     this.raidStep(dt);
+    this.merchantStep(dt);
     this.petStep(dt);
     this.skyStep(dt);
     this.campStep(dt);

@@ -9,10 +9,12 @@ const STYLE = { field: 'halls', forest: 'caves', grave: 'maze', ruins: 'halls', 
 export const styleOf = (zi) => STYLE[ZONES[zi]?.id] || 'maze';
 
 const cache = new Map();
+let DSEED = 0;
+export const setDungeonSeed = (s) => { DSEED = s; cache.clear(); };
 // 격자: 1 = 바닥. start · boss = 칸 좌표, dist = 시작에서 걸음 수
 export function layout(zi) {
   if (cache.has(zi)) return cache.get(zi);
-  const rng = seeded(5000 + zi * 17), style = styleOf(zi);
+  const rng = seeded(5000 + zi * 17 + DSEED * 131), style = styleOf(zi);
   const g = new Uint8Array(N * N), at = (i, j) => i >= 0 && j >= 0 && i < N && j < N ? g[j * N + i] : 0, set = (i, j, v = 1) => { if (i > 0 && j > 0 && i < N - 1 && j < N - 1) g[j * N + i] = v; };
   if (style === 'caves') {
     for (let j = 1; j < N - 1; j++) for (let i = 1; i < N - 1; i++) g[j * N + i] = rng() < 0.56 ? 1 : 0;

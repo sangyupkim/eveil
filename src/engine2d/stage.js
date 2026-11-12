@@ -1,7 +1,7 @@
 // 2D 쿼터뷰 화면: 카메라 · 땅 타일 · 배경 물건 · 앞뒤 정렬 · 조명. 게임 규칙의 좌표(x, z)는 그대로 쓴다
 // 투영: 화면 x = x·48, 화면 y = z·24 − 높이·48 (Flare 타일 192×96 하나 = 세계 (2, 2) 대각)
 import { ZONES, TOWN, WORLD_SIZE } from '../data/world.js';
-import { dungeonAt, DUNGEON_X, entranceOf, layout, cellPos, N, T } from '../data/dungeons.js';
+import { setDungeonSeed, dungeonAt, DUNGEON_X, entranceOf, layout, cellPos, N, T } from '../data/dungeons.js';
 const farSide = (x) => x > DUNGEON_X - 80;
 import { ZONE_LOOK, ZONE_PROPS, FLAT } from '../data/flareWorld.js';
 import { DATA, image, drawRect } from './sprites.js';
@@ -52,12 +52,12 @@ function groundAt(i, j) {
 const roadDist = (x, z) => Math.min(Math.hypot(x, z) - TOWN.r, ...ZONES.map((zn) => distToSeg(x, z, 0, 0, zn.x * 0.72, zn.z * 0.72)));
 export const LAKES = [], MESAS = [];
 // 야영지(포탈): 지역마다 하나, 마을 쪽 안쪽. 둘레 7은 지형 · 몬스터가 없는 안전지대
-export const CAMPS = ZONES.map((zn) => { const a = Math.atan2(-zn.z, -zn.x), d = zoneRadius(zn, a) * 0.55; return { zone: zn.id, x: zn.x + Math.cos(a) * d, z: zn.z + Math.sin(a) * d }; });
+export const CAMPS = [];
 export const inCamp = (x, z, pad = 0) => CAMPS.find((c) => Math.hypot(x - c.x, z - c.z) < 7 + pad) || null;
 const HAS_BANKS = new Set(['grassland', 'snowplains', 'desert']);
 const LAVA_ZONES = new Set(['inferno', 'demongate']);
-{
-  const rng = seeded(4242);
+function genTerrain(rng) {
+  LAKES.length = 0; MESAS.length = 0;
   const clear = (x, z, r) => roadDist(x, z) > r + 5 && !inCamp(x, z, r + 3) && !ZONES.some((zn) => { const e = entranceOf(zn); return Math.hypot(e.x - x, e.z - z) < r + 4; }) && ![...LAKES, ...MESAS].some((q) => Math.hypot(q.x - x, q.z - z) < q.r + r + (q.ring ? 3 : 6));
   // ① 지역 경계: 언덕(물 많은 지역은 물)을 고리처럼 두르고, 길목(마을 쪽 길) · 샛길 두세 군데만 뚫는다
   const nearGate = (x, z, r) => roadDist(x, z) < r + 3.5 || !!inCamp(x, z, r + 2) || ZONES.some((zn) => { const e = entranceOf(zn); return Math.hypot(e.x - x, e.z - z) < r + 5; }) || Math.hypot(x, z) < TOWN.r + r + 3;
@@ -110,7 +110,7 @@ const LAVA_ZONES = new Set(['inferno', 'demongate']);
   }
 }
 const BK = 16, buckets = new Map();
-for (const list of [LAKES, MESAS]) { const m = new Map(); buckets.set(list, m); for (const q of list) { const R2 = q.r * 1.3 + 3; for (let bx = Math.floor((q.x - R2) / BK); bx <= Math.floor((q.x + R2) / BK); bx++) for (let bz = Math.floor((q.z - R2) / BK); bz <= Math.floor((q.z + R2) / BK); bz++) { const key = bx * 1000 + bz; if (!m.has(key)) m.set(key, []); m.get(key).push(q); } } }
+function makeBuckets() { buckets.clear(); for (const list of [LAKES, MESAS]) { const m = new Map(); buckets.set(list, m); for (const q of list) { const R2 = q.r * 1.3 + 3; for (let bx = Math.floor((q.x - R2) / BK); bx <= Math.floor((q.x + R2) / BK); bx++) for (let bz = Math.floor((q.z - R2) / BK); bz <= Math.floor((q.z + R2) / BK); bz++) { const key = bx * 1000 + bz; if (!m.has(key)) m.set(key, []); m.get(key).push(q); } } } }
 const blob = (list, x, z, k, pad = 0) => { const b = buckets.get(list).get(Math.floor(x / BK) * 1000 + Math.floor(z / BK)); if (b) for (const q of b) if (Math.hypot(x - q.x, z - q.z) < q.r * (1 + (noise(x * k, z * k + 31) - 0.5) * 0.45) + pad) return q; return null; };
 // 칸(i, j) 단위로 판정해야 물가 · 절벽 타일이 맞물린다
 const cellXZ = (i, j) => [(i - j) * STEP, (i + j) * STEP];
@@ -118,6 +118,23 @@ const lakeRaw = (i, j) => blob(LAKES, ...cellXZ(i, j), 0.9);
 // 물가 타일로 못 그리는 모양(가는 목 · 마주 보는 땅)은 땅으로 메운다 — 두 번 다듬기
 const lakeTrim1 = (i, j) => { const q = lakeRaw(i, j); return q && edgeKind((a, b) => !!lakeRaw(a, b), i, j) !== 'bad' ? q : null; };
 const lakeMemo = new Map();
+// 새 세상 만들기 (캐릭터마다 씨앗이 달라 지역 자리 · 크기 · 호수 · 언덕이 매번 다르다)
+export let WORLD_SEED = 1;
+export function generateWorld(seed) {
+  WORLD_SEED = seed;
+  const rng = seeded(seed);
+  for (const zn of ZONES) {
+    zn.bx ??= zn.x; zn.bz ??= zn.z;
+    const a = Math.atan2(zn.bz, zn.bx) + (rng() - 0.5) * 0.32, d = Math.hypot(zn.bx, zn.bz) * 1.55 * (1 + (rng() - 0.5) * 0.08);
+    zn.x = Math.cos(a) * d; zn.z = Math.sin(a) * d; zn.r = 55 + rng() * 8;
+  }
+  CAMPS.length = 0;
+  for (const zn of ZONES) { const a = Math.atan2(-zn.z, -zn.x), d = zoneRadius(zn, a) * 0.55; CAMPS.push({ zone: zn.id, x: zn.x + Math.cos(a) * d, z: zn.z + Math.sin(a) * d }); }
+  genTerrain(rng);
+  makeBuckets();
+  lakeMemo.clear(); mesaMemo.clear(); tileCache.clear();
+  setDungeonSeed(seed);
+}
 const lakeCell = (i, j) => {
   const key = i * 100003 + j;
   if (lakeMemo.has(key)) return lakeMemo.get(key);
@@ -642,3 +659,6 @@ export function findPath(stage, from, to, r = 0.5, maxNodes = 1800) {
   }
   return null;
 }
+
+// 처음(시작 화면)은 정해진 세상
+generateWorld(1);

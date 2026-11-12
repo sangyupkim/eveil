@@ -1,5 +1,6 @@
 // 시작점: 타이틀 → 로딩 → 게임 루프 · 자동 저장
-import { createStage, buildWorldProps, isTouch } from './engine2d/stage.js';
+import { createStage, buildWorldProps, isTouch, generateWorld } from './engine2d/stage.js';
+import { rebuildTerrain } from './ui/mapimg.js';
 import { loadAllJson, waitImage, DATA } from './engine2d/sprites.js';
 import { warmTerrain } from './engine2d/stage.js';
 import { FACES } from './data/flareWorld.js';
@@ -145,6 +146,12 @@ async function boot() {
 }
 
 function startGame(stage, st) {
+  // 캐릭터마다 다른 세상: 씨앗으로 지역 자리 · 지형을 새로 만든다
+  if (!st.worldSeed) { st.worldSeed = 1 + Math.floor(Math.random() * 1e9); st.fog = ''; st.camps = {}; }
+  generateWorld(st.worldSeed);
+  stage.props.clear(); stage.flats.length = 0; stage.colliders.length = 0; stage.grid = null;
+  buildWorldProps(stage);
+  rebuildTerrain();
   audio.setVolumes(st.settings.music, st.settings.sfx);
   stage.light = st.settings.shadows !== false;
   const hud = new HUD();

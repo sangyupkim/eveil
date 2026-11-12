@@ -195,4 +195,4 @@ export const ZONES = [
   },
 ];
 
-export const WORLD_SIZE = 218; // 맵 반경 (지역 9~12가 바깥 고리)
+export const WORLD_SIZE = 340; // 맵 반경 (지역 9~12가 바깥 고리)
