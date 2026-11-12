@@ -85,6 +85,37 @@ export function enhance(st, it, rng = Math.random) {
   return { ok: true, success: false, plus: n };
 }
 
+// ── 분해 · 재련 ──
+// 분해: 가방의 장비 → 강화석(등급 · 아이템 레벨만큼) + 그 레벨 지역 재료
+const RK = { common: 1, magic: 2, rare: 4, hero: 8, legend: 16 };
+export function salvageValue(it) {
+  const ore = Math.max(1, Math.round((RK[it.rarity] || 1) * (1 + it.ilvl / 10)));
+  const zn = ZONES.find((z) => it.ilvl <= z.levels[1]) || ZONES[ZONES.length - 1];
+  return { ore, mat: zn.id, matN: Math.max(1, Math.round((RK[it.rarity] || 1) / 2)) };
+}
+export function salvage(st, uid) {
+  const i = st.inv.findIndex((x) => x.uid === uid);
+  const it = st.inv[i];
+  if (!it || it.book || !BASES[it.base]?.slot || it.named) return { ok: false, why: '분해할 수 없습니다' };
+  const v = salvageValue(it), t = townOf(st);
+  st.inv.splice(i, 1); t.ore += v.ore; t.mats[v.mat] = (t.mats[v.mat] || 0) + v.matN;
+  return { ok: true, ...v };
+}
+// 재련: 옵션 하나(가장 약한 것)를 다시 굴린다
+export const reforgeCost = (it) => ({ gold: Math.round(200 * (1 + it.ilvl / 5) * (RK[it.rarity] || 1)), ore: 4 + Math.round(it.ilvl / 4) });
+export function reforge(st, it, rng = Math.random) {
+  if (!it?.affixes?.length || !findBuilding(st, 'smithy')) return { ok: false, why: '다시 굴릴 옵션이 없습니다' };
+  const c = reforgeCost(it), t = townOf(st);
+  if (st.gold < c.gold) return { ok: false, why: '금화가 모자랍니다' };
+  if (t.ore < c.ore) return { ok: false, why: '강화석이 모자랍니다' };
+  st.gold -= c.gold; t.ore -= c.ore;
+  const fresh = makeItem(it.base, { rarity: it.rarity === 'common' ? 'magic' : it.rarity, ilvl: it.ilvl }, null, rng);
+  const k = it.affixes.reduce((m, a, i, arr) => (a.v < arr[m].v ? i : m), 0), old = it.affixes[k];
+  const pick = fresh.affixes.find((a) => !it.affixes.some((b) => b.id === a.id)) || fresh.affixes[0];
+  if (pick) it.affixes[k] = pick;
+  return { ok: true, old, now: it.affixes[k] };
+}
+
 // ── 용병 ──
 export const mercSlots = (st) => { const inn = findBuilding(st, 'inn'); return inn ? BUILDINGS.inn.slots(inn.lv) : 0; };
 export function hire(st) {

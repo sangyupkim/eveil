@@ -93,6 +93,7 @@ export class World {
     this.townDraw = [];
     this.refreshTown();
     this.makeChests();
+    this.makePet();
     // 자리를 비운 동안 쌓인 것 알려 주기
     const away = townTick(st);
     if (away > 0.05 && Object.keys(townOf(st).plots).length) setTimeout(() => this.ui.log(`자리를 비운 ${away >= 1 ? Math.floor(away) + '시간' : Math.round(away * 60) + '분'} 동안 마을이 일했습니다 (마을 창에서 거두기)`, '#ffd84a'), 500);
@@ -227,6 +228,40 @@ export class World {
       if (!blockedAt(this.stage, nx, nz, r)) return { x: nx, z: nz };
     }
     return { x, z };
+  }
+
+  // ───────── 펫: 따라다니며 물건을 줍고, 가끔 함께 문다 ─────────
+  makePet() {
+    if (this.pet) { this.stage.remove(this.pet); this.pet = null; }
+    if (!this.st.pet) return;
+    this.pet = new Actor(this.scene, { enemy: this.st.pet.kind }, { size: 0.5 });
+    this.pet.pos.set(this.player.pos.x + 1, 0, this.player.pos.z + 1);
+    this.pet.name = this.st.pet.name;
+  }
+  petStep(dt) {
+    const pet = this.pet; if (!pet) return;
+    const P = this.player.pos, st = this.st;
+    this.petT = (this.petT || 0) - dt;
+    let goal = { x: P.x - 1.2, z: P.z + 0.8 };
+    const g = this.ground.filter((x) => dist2(x, P) < 9 && !(x.kind === 'item' && st.inv.length >= CONFIG.inventorySize && !BASES[x.item.base]?.stack)).sort((a, b) => dist2(a, pet.pos) - dist2(b, pet.pos))[0];
+    if (g) { goal = g; if (dist2(pet.pos, g) < 0.8) this.pickup(g); }
+    const d = dist2(pet.pos, goal);
+    if (d > 0.4) { this.stepToward(pet.pos, goal, Math.min(14, 5 + d) * dt); pet.face(goal.x, goal.z); pet.play('run', { speed: 1.4 }); } else pet.play('idle');
+    if (d > 25) pet.pos.set(P.x - 1, 0, P.z + 1);
+    const t = this.target;
+    if (t && !t.dead && this.petT <= 0 && dist2(t.pos, pet.pos) < 36) { this.petT = 2.5; const wd = (this.d.dmg[0] + this.d.dmg[1]) / 2; pet.act?.('attack', 1); this.hitMonster(t, wd * 0.15, { src: 'perk' }); }
+    pet.update(dt);
+  }
+  // 낮 · 밤 (20분에 한 바퀴, 마지막 4분이 밤) · 비 (풀밭 · 숲 · 늪 · 항구에서 가끔)
+  skyStep(dt) {
+    const c = (this.st.playTime % 1200) / 1200;
+    const target = c > 0.8 ? 1 : 0;
+    this.night = (this.night || 0) + (target - (this.night || 0)) * Math.min(1, dt * 0.3);
+    this.stage.night = this.inTown || this.dungeon ? this.night * 0.4 : this.night;
+    this.rainT = (this.rainT ?? 120) - dt;
+    if (this.rainT <= 0) { this.rainT = 120 + Math.random() * 240; this.raining = Math.random() < 0.3; }
+    const wet = ['field', 'forest', 'swamp', 'harbor', 'webwood'].includes(zoneAt(this.player.pos.x, this.player.pos.z)?.id);
+    this.stage.rain = (this.stage.rain || 0) + (((this.raining && wet && !this.dungeon) ? 1 : 0) - (this.stage.rain || 0)) * Math.min(1, dt * 0.5);
   }
 
   // ───────── 숨은 보물 상자 ─────────
@@ -441,6 +476,9 @@ export class World {
       state: 'idle', atkT: 1, wanderT: Math.random() * 4, deadT: 0, slowT: 0, showHp: 0,
       home: { x: sp.x, z: sp.z },
     };
+    if (tier === 'normal' && !sp.forceType && Math.random() < (this.night > 0.5 ? 1 / 120 : 1 / 250)) {
+      m.golden = true; m.name = '황금 ' + m.name; m.maxHp *= 3; m.exp *= 3; actor.setGlow(0x5a4400);
+    }
     m.hp = m.maxHp;
     m.pos = actor.pos;
     actor.play('idle');
@@ -710,6 +748,8 @@ export class World {
     const st = this.st, d = this.d;
     const rf = rewardFactor(st, m.level);
     const apMult = rf.ap * this.autoMult;
+    if (m.tier === 'boss' && m.fightStart == null) m.fightStart = this.time;
+    const dexN = st.dex?.[m.type] || 0; raw *= 1 + (dexN >= 500 ? 0.06 : dexN >= 200 ? 0.04 : dexN >= 50 ? 0.02 : 0);
     let red = m.armor / (m.armor + 60) * (1 - pierce);
     if (m.def.behave === 'shield' && !ctx?.spell) {
       const P = this.player.pos, f = m.actor.facing, ang = Math.atan2(P.x - m.pos.x, P.z - m.pos.z);
@@ -792,11 +832,24 @@ export class World {
     // EXP → 각성
     // 처치 연쇄: 2.5초 안에 이어 잡으면 쌓이고, 쌓일수록 경험 +2% (최대 +40%), 10연쇄마다 잠깐 빨라진다
     this.chain = this.time - (this.lastKillT ?? -9) < 2.5 ? (this.chain || 0) + 1 : 1;
+    (st.dex ||= {})[m.type] = (st.dex[m.type] || 0) + 1;
+    if (m.golden) {
+      const lv = m.level;
+      for (let i = 0; i < 3; i++) this.dropGround({ kind: 'item', item: makeItem(`gem_${['ruby', 'emerald', 'sapphire', 'amethyst', 'diamond'][Math.floor(Math.random() * 5)]}_${lv >= 30 ? 1 : 0}`, { qty: 1 }, st) }, m.pos.x + i - 1, m.pos.z + 1);
+      this.dropGround({ kind: 'gold', amount: lv * 120 }, m.pos.x, m.pos.z - 1);
+      this.dropGround({ kind: 'item', item: makeItem(rollBase(lv), { rarity: 'rare', ilvl: lv }, st) }, m.pos.x + 1, m.pos.z - 1);
+      this.fx.pillar(m.pos.x, m.pos.z, 0xffd040, 1.8, 6, 1.5); this.ui.toast(`${m.name} 처치!`, '#ffd040');
+    }
+    if (m.tier === 'boss' && m.fightStart != null && !m.dungeon && m.sp?.zone) {
+      const secs = Math.max(1, Math.round(this.time - m.fightStart)), br = ((st.bossRec ||= {})[m.sp.zone.id] ||= { first: Date.now(), best: null, kills: 0 });
+      br.kills++;
+      if (!br.best || secs < br.best) { br.best = secs; this.ui.toast(`${m.name} 최단 기록 ${secs}초!`, '#ffd84a'); }
+    }
     const rec = (st.rec ||= {}); rec.kills = (rec.kills || 0) + 1; rec.chain = Math.max(rec.chain || 0, this.chain);
     this.lastKillT = this.time;
     if (this.chain >= 3) this.fx.text(this.player.pos.clone().setY(3.2), `연쇄 ${this.chain}`, this.chain >= 10 ? 'crit' : 'heal');
     if (this.chain % 10 === 0) { this.chainSpdT = 5; sfx('buff', 0.6); }
-    const exp = m.exp * rf.exp * this.autoMult * (1 + Math.min(20, this.chain) * 0.02);
+    const exp = m.exp * rf.exp * this.autoMult * (1 + Math.min(20, this.chain) * 0.02) * (this.night > 0.5 ? 1.2 : 1);
     const results = gainExp(st, exp);
     for (const r of results) this.onAwaken(r);
 
@@ -1534,6 +1587,8 @@ export class World {
     this.checkDungeonGate(dt);
     this.checkChests();
     this.raidStep(dt);
+    this.petStep(dt);
+    this.skyStep(dt);
     // 자동 사냥 중 죽으면 잠시 뒤 마을에서 일어나 다시 사냥
     if (this.dead && this.auto) { this.autoReviveT = (this.autoReviveT ?? 6) - dt; if (this.autoReviveT <= 0) { this.autoReviveT = null; this.revive(); this.ui.closeDeath?.(); this.ui.log('자동 사냥: 마을에서 다시 출발합니다', '#9a917f'); } }
     for (let i = this.timers.length - 1; i >= 0; i--) {
@@ -1713,6 +1768,7 @@ export class World {
     const it = st.inv.find((x) => x.uid === uid);
     if (!it) return;
     this.d = derive(st, this.buffValues());
+    if (BASES[it.base]?.type === 'pet') { takeOne(st, it.base); st.pet = { kind: 'antlion_small', name: '개미귀신' }; this.makePet(); this.ui.toast('펫이 태어났습니다! 물건을 주워 오고 함께 싸웁니다', '#7fe07a'); sfx('learn'); this.ui.dirty(); return; }
     if (isBook(it)) {
       const c = canLearn(st, it.book, this.d.stats);
       if (c.ok) {

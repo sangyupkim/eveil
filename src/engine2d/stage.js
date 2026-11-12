@@ -515,6 +515,16 @@ function render(stage, dt) {
   const zn = zoneAt(stage.cam.x, stage.cam.z);
   const grade = ZONE_LOOK[zn ? zn.id : Math.hypot(stage.cam.x, stage.cam.z) < TOWN.r ? 'town' : 'wild']?.grade;
   if (grade) { ctx.fillStyle = grade; ctx.fillRect(0, 0, W, H); }
+  // 밤: 푸르스름하게 어둡게
+  if (stage.night > 0.02) { ctx.fillStyle = `rgba(4,8,30,${0.42 * stage.night})`; ctx.fillRect(0, 0, W, H); }
+  // 비: 빗줄기 (화면 좌표, 가볍게)
+  if (stage.rain > 0.02) {
+    ctx.strokeStyle = `rgba(170,190,220,${0.35 * stage.rain})`; ctx.lineWidth = 1; ctx.beginPath();
+    const n = Math.round(140 * stage.rain), t = stage.time;
+    for (let i = 0; i < n; i++) { const x = ((i * 97.3 + t * 260) % (W + 60)) - 30, y = ((i * 57.1 + t * 900 + i * i * 0.3) % (H + 40)) - 20; ctx.moveTo(x, y); ctx.lineTo(x - 5, y + 16); }
+    ctx.stroke();
+    ctx.fillStyle = `rgba(30,40,60,${0.15 * stage.rain})`; ctx.fillRect(0, 0, W, H);
+  }
   if (stage.light) {
     const p = stage.toScreen(stage.cam.x, stage.cam.z, 1);
     const r = Math.max(W, H) * 0.62;

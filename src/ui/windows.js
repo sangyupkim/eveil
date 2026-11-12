@@ -13,13 +13,13 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 
 import { itemIcon, skillIcon, portrait, chestIcon, bookIcon, coinIcon, scrollIcon, townIcon, oreIcon } from './icons.js';
 import { MATERIALS, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
-import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear } from '../game/town.js';
+import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, salvage, salvageValue, reforge, reforgeCost } from '../game/town.js';
 import { RESEARCH, researchCost } from '../data/buildings.js';
 import { AFFIXES } from '../data/items.js';
 import { PLOTS, BUILDINGS, EXPEDITIONS, townOf, buildingAt, build, upgrade, collect, enhance, enhanceCap, enhanceCost, hire, mercSlots, dispatch, claim, tick } from '../game/town.js';
 import { mercCost } from '../data/buildings.js';
 import { QUESTS, QUEST_BOOKS } from '../data/quests.js';
-import { ZONES } from '../data/world.js';
+import { ZONES, MONSTERS } from '../data/world.js';
 import { nextQuest, questDone, questNeed, goalText, questTurnIn } from '../game/quests.js';
 import { audio } from '../engine/audio.js';
 import { cloud } from '../net/cloud.js';
@@ -51,8 +51,8 @@ export function showNotes() {
 }
 const repickCost = (t) => 2000 * (t.tier + 1) ** 2;
 const nextTitle = (st) => { const i = TITLE_AT.findIndex((n) => st.awakenings < n); return i < 0 ? '' : ` · ${titleName(titleKey(st.stats), i)}까지 각성 ${TITLE_AT[i] - st.awakenings}`; };
-const TITLES = { inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', town: '마을', shop: '상점', menu: '메뉴' };
-const TAB_ORDER = ['inv', 'skills', 'char', 'quest', 'town', 'shop', 'menu'];
+const TITLES = { inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', shop: '상점', menu: '메뉴' };
+const TAB_ORDER = ['inv', 'skills', 'char', 'quest', 'dex', 'town', 'shop', 'menu'];
 const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '');
 const ico = (it) => `<img src="${itemIcon(it)}" alt="" draggable="false" />`;
 const sicon = (id) => `<div class="sicon" style="background:radial-gradient(circle at 35% 30%, ${SKILLS[id].color}, #17111f 90%)"><img src="${skillIcon(id)}" alt="" /></div>`;
@@ -94,7 +94,7 @@ export class Windows {
 
   render() {
     $('h2', this.el).textContent = TITLES[this.kind];
-    const icons = { inv: chestIcon(), skills: bookIcon(), char: portrait(this.w.st.look), shop: coinIcon(), quest: scrollIcon(), town: townIcon() };
+    const icons = { inv: chestIcon(), skills: bookIcon(), char: portrait(this.w.st.look), shop: coinIcon(), quest: scrollIcon(), town: townIcon(), dex: bookIcon() };
     const tabs = $('.tabs', this.el);
     tabs.innerHTML = TAB_ORDER.filter((k) => k !== 'shop' || this.w.inTown).map((k) =>
       `<button class="tab${k === this.kind ? ' on' : ''}" data-tab="${k}">${icons[k] ? `<img src="${icons[k]}" alt="" />` : '<b class="gear" style="width:1.8em;height:1.8em"></b>'}<span>${TITLES[k].split(' ')[0]}</span></button>`).join('');
@@ -350,6 +350,22 @@ export class Windows {
     return `<div class="cols"><div class="frame detail" style="flex:1.1">${det}</div><div class="frame" style="flex:1">${list}</div></div>`;
   }
 
+  // 몬스터 도감 (잡은 수 50 · 200 · 500마다 그 몬스터에게 피해 +2 · 4 · 6%) · 보스 기록
+  dex() {
+    const st = this.w.st, dx = st.dex || {};
+    const tier = (n) => (n >= 500 ? 3 : n >= 200 ? 2 : n >= 50 ? 1 : 0);
+    let left = '', seen = 0, total = 0;
+    for (const z of ZONES) {
+      const types = [...new Set([...Object.keys(z.spawns), z.named.type, z.boss.type])];
+      total += types.length; seen += types.filter((t) => dx[t]).length;
+      left += `<h3>${z.name}</h3><div class="achs">${types.map((t) => { const n = dx[t] || 0, k = tier(n);
+        return `<span class="ach${n ? ' on' : ''}">${n ? MONSTERS[t].name : '???'}<small>${n ? `${n}마리${k ? ` · 피해 +${k * 2}%` : ` · ${50 - n}마리 더`}` : ''}</small></span>`; }).join('')}</div>`;
+    }
+    const br = st.bossRec || {};
+    const right = `<h3>보스 기록</h3>` + ZONES.map((z) => { const r = br[z.id]; return `<div class="row"><div class="grow"><b>${z.boss.name}</b><div class="note">${z.name}</div></div><span class="note">${r ? `${r.kills}번 · 최단 ${r.best}초` : '아직'}</span></div>`; }).join('');
+    return `<div class="cols"><div class="frame" style="flex:1.4"><h3>몬스터 도감 <span class="cnt">${seen} / ${total}</span></h3>${left}</div><div class="frame" style="flex:1">${right}</div></div>`;
+  }
+
   town() {
     const st = this.w.st, t = townOf(st);
     tick(st);
@@ -387,11 +403,13 @@ export class Windows {
         for (const slot of SLOTS) {
           const it = st.equip[slot];
           if (!it) continue;
-          const c = enhanceCost(it), max = (it.plus || 0) >= cap;
+          const c = enhanceCost(it), max = (it.plus || 0) >= cap, rc = reforgeCost(it);
           right += `<div class="row"><div class="cell shopIco${rar(it)}">${ico(it)}</div><div class="grow"><b style="color:${itemColor(it)}">${esc(itemName(it))}</b>
             <div class="note">${max ? '상한' : `+${(it.plus || 0) + 1} · ${Math.round(c.chance * 100)}% · ${c.gold.toLocaleString()} G · 강화석 ${c.ore}`}</div></div>
-            <button class="btn" data-enh="${slot}" ${max || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>강화</button></div>`;
+            <button class="btn" data-enh="${slot}" ${max || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>강화</button>${it.affixes?.length ? `<button class="btn" data-reforge="${slot}" title="가장 약한 옵션 다시 굴리기 · ${rc.gold.toLocaleString()}G · 강화석 ${rc.ore}" ${st.gold < rc.gold || t.ore < rc.ore ? 'disabled' : ''}>재련</button>` : ''}</div>`;
         }
+        const junk = st.inv.filter((x) => !x.book && BASES[x.base]?.slot && !x.named);
+        if (junk.length) right += `<h3 style="margin-top:8px">분해 <button class="btn" data-salvageall="1">일반 · 마법 모두</button></h3>` + junk.map((x) => { const v = salvageValue(x); return `<div class="row"><div class="cell shopIco${rar(x)}">${ico(x)}</div><div class="grow"><b style="color:${itemColor(x)}">${esc(itemName(x))}</b><div class="note">강화석 ${v.ore} · ${MATERIALS[v.mat].name} ${v.matN}</div></div><button class="btn" data-salvage="${x.uid}">분해</button></div>`; }).join('');
       }
       if (b.type === 'lab') {
         const cap = BUILDINGS.lab.slots(b.lv);
@@ -575,6 +593,9 @@ export class Windows {
       w.ui.dirty(); this.render();
     });
     on('[data-hire]', () => townDone(hire(st), '용병을 고용했습니다'));
+    on('[data-salvage]', (el) => { const r = salvage(st, Number(el.dataset.salvage)); if (r.ok) { audio.play('coin'); w.ui.toast(`분해: 강화석 ${r.ore} · ${MATERIALS[r.mat].name} ${r.matN}`, '#ffd84a'); } townDone(r); });
+    on('[data-salvageall]', () => { let n = 0; for (const x of [...st.inv]) if (!x.book && BASES[x.base]?.slot && ['common', 'magic'].includes(x.rarity) && salvage(st, x.uid).ok) n++; audio.play('coin'); w.ui.toast(`장비 ${n}개 분해`, '#ffd84a'); townDone({ ok: true }); });
+    on('[data-reforge]', (el) => { const it = st.equip[el.dataset.reforge], r = reforge(st, it); if (r.ok) { audio.play('rankup'); w.ui.toast(`재련: ${affixText(r.old)} → ${affixText(r.now)}`, '#ffd84a'); w.refreshGear(); } townDone(r); });
     on('[data-notes]', () => showNotes());
     on('[data-restore]', async () => {
       const b = await cloud.restore();
