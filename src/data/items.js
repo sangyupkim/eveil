@@ -187,3 +187,26 @@ export const STARTS = {
   staff: { base: 'novice_staff', stat: 'int', book: 'fire_bolt', line: '주문으로 태운다' },
 };
 export const START_BONUS = 2;
+
+// ───── 높은 단계 장비 (레벨 70 ~ 200, 세계 단계 악몽 · 지옥용) ─────
+// 종류마다 본보기 장비를 단계별 이름 · 수치로 늘린다. 그림(ITEM_LOOK)은 flareWorld.js에서 본보기 그림에 단계 색을 입힌다
+export const HIGH_TIERS = [
+  [70, '강철'], [83, '미스릴'], [96, '룬'], [109, '용린'], [122, '성흔'], [135, '공허'], [148, '천공'], [161, '태초'], [174, '영겁'], [187, '신화'], [200, '초월'],
+];
+export const HIGH_TEMPLATES = {
+  sword: ['inferno_sword', '검'], greatsword: ['rune_blade', '대검'], axe: ['dragon_cleaver', '도끼'], bow: ['dragon_bow', '활'], staff: ['archmage_staff', '지팡이'],
+  shield: ['dragon_shield', '방패'], plate: ['dragon_plate', '판금'], leather: ['shadow_leather', '가죽 갑옷'], robe: ['inferno_robe', '로브'],
+  helm: ['dragon_helm', '투구'], hood: ['shadow_hood', '두건'], hat: ['archmage_hat', '모자'],
+  gaunt: ['dragon_gauntlets', '건틀릿'], lglove: ['shadow_gloves', '장갑'], sleeve: ['ember_sleeves', '소매'],
+  boot: ['dragon_boots', '장화'], lboot: ['shadow_boots', '가죽 장화'], mboot: ['ember_boots', '신'],
+  belt: ['dragon_belt', '허리띠'], sash: ['rune_sash', '띠'], amulet: ['star_amulet', '목걸이'], ring: ['ruby_ring', '반지'],
+};
+for (const [lv, tn] of HIGH_TIERS) for (const [k, [tpl, nm]] of Object.entries(HIGH_TEMPLATES)) {
+  const b = BASES[tpl], g = 1 + (lv - (b.minLvl || 36)) / 90;
+  const o = { ...b, name: `${tn} ${nm}`, minLvl: lv, tpl, shop: false };
+  if (b.dmg) o.dmg = b.dmg.map((v) => Math.round(v * g));
+  if (b.armor) o.armor = Math.round(b.armor * g);
+  if (b.mods) o.mods = Object.fromEntries(Object.entries(b.mods).map(([a, v]) => [a, Math.round(v * g)]));
+  if (b.req) o.req = Object.fromEntries(Object.entries(b.req).map(([a, v]) => [a, Math.round(v * (1 + (lv - (b.minLvl || 36)) / 55))]));
+  BASES[`h${lv}_${k}`] = o;
+}

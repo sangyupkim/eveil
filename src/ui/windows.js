@@ -56,8 +56,8 @@ export function showNotes() {
 }
 const repickCost = (t) => 2000 * (t.tier + 1) ** 2;
 const nextTitle = (st) => { const i = TITLE_AT.findIndex((n) => st.awakenings < n); return i < 0 ? '' : ` · ${titleName(titleKey(st.stats), i)}까지 각성 ${TITLE_AT[i] - st.awakenings}`; };
-const TITLES = { map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', shop: '상점', menu: '메뉴' };
-const TAB_ORDER = ['map', 'inv', 'skills', 'char', 'quest', 'dex', 'town', 'shop', 'menu'];
+const TITLES = { map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', shop: '상점', guide: '가이드북', menu: '메뉴' };
+const TAB_ORDER = ['map', 'inv', 'skills', 'char', 'quest', 'dex', 'town', 'shop', 'guide', 'menu'];
 const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '');
 const ico = (it) => `<img src="${itemIcon(it)}" alt="" draggable="false" />`;
 const sicon = (id) => `<div class="sicon" style="background:radial-gradient(circle at 35% 30%, ${SKILLS[id].color}, #17111f 90%)"><img src="${skillIcon(id)}" alt="" /></div>`;
@@ -100,7 +100,7 @@ export class Windows {
 
   render() {
     $('h2', this.el).textContent = TITLES[this.kind];
-    const icons = { inv: chestIcon(), skills: bookIcon(), char: portrait(this.w.st.look), shop: coinIcon(), quest: scrollIcon(), town: townIcon(), dex: bookIcon(), map: scrollIcon() };
+    const icons = { inv: chestIcon(), skills: bookIcon(), char: portrait(this.w.st.look), shop: coinIcon(), quest: scrollIcon(), town: townIcon(), dex: bookIcon(), map: scrollIcon(), guide: bookIcon() };
     const tabs = $('.tabs', this.el);
     tabs.innerHTML = TAB_ORDER.filter((k) => k !== 'shop' || this.w.canShop).map((k) =>
       `<button class="tab${k === this.kind ? ' on' : ''}" data-tab="${k}">${icons[k] ? `<img src="${icons[k]}" alt="" />` : '<b class="gear" style="width:1.8em;height:1.8em"></b>'}<span>${TITLES[k].split(' ')[0]}</span></button>`).join('');
@@ -113,6 +113,7 @@ export class Windows {
     if (wc) { const g = wc.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(terrain, 0, 0, wc.width, wc.height); g.imageSmoothingEnabled = true; g.drawImage(fogCan, 0, 0, wc.width, wc.height); }
     body.querySelectorAll('.frame').forEach((f, i) => { f.scrollTop = keep[i] || 0; });
     this.bind(body);
+    body.querySelectorAll('[data-gsec]').forEach((b) => { b.onclick = () => { this.gsec = +b.dataset.gsec; audio.play('click'); this.render(); }; });
   }
 
   cur() {
@@ -172,17 +173,14 @@ export class Windows {
     return h;
   }
 
-  // 장비창: 사람 실루엣 위에 부위별 칸 (머리 · 목 · 몸 · 손 · 허리 · 발 · 양손 · 반지)
+  // 장비창: 가운데 캐릭터 초상화, 왼쪽 · 오른쪽 줄에 부위별 칸 (겹치지 않게 칸을 줄로)
   equipGrid() {
     const st = this.w.st;
-    const POS = { helm: [50, 9], amulet: [73, 21], weapon: [15, 40], armor: [50, 33], offhand: [85, 40], gloves: [20, 63], belt: [50, 56], ring1: [80, 63], ring2: [80, 80], boots: [50, 84] };
-    let h = `<div class="doll"><svg class="sil" viewBox="0 0 100 110" preserveAspectRatio="none"><path d="M50 6c7 0 12 5 12 12s-5 13-12 13-12-6-12-13 5-12 12-12zM33 34h34c6 0 10 4 11 10l5 27c1 4-5 6-7 2l-6-22v26l3 30c0 4-6 5-7 1l-6-28h-2l-6 28c-1 4-7 3-7-1l3-30V51l-6 22c-2 4-8 2-7-2l5-27c1-6 5-10 11-10z"/></svg>`;
-    for (const s of SLOTS) {
-      const it = st.equip[s], [x, y] = POS[s];
-      const sel = this.sel?.from === 'equip' && this.sel.slot === s ? ' sel' : '';
-      h += `<div class="cell dslot${sel}${it ? rar(it) : ''}" data-eq="${s}" style="left:${x}%;top:${y}%"><span class="lab">${SLOT_NAMES[s]}</span>${it ? ico(it) : ''}</div>`;
-    }
-    return h + '</div>';
+    const cell = (s) => { const it = st.equip[s], sel = this.sel?.from === 'equip' && this.sel.slot === s ? ' sel' : '';
+      return `<div class="cell${sel}${it ? rar(it) : ''}" data-eq="${s}"><span class="lab">${SLOT_NAMES[s]}</span>${it ? ico(it) : ''}</div>`; };
+    return `<div class="doll2"><div class="dcol">${['helm', 'amulet', 'armor', 'gloves', 'belt'].map(cell).join('')}</div>
+      <div class="dmid"><img src="${portrait(st.look)}" alt="" /><div class="note">${esc(st.name)}</div></div>
+      <div class="dcol">${['weapon', 'offhand', 'ring1', 'ring2', 'boots'].map(cell).join('')}</div></div>`;
   }
 
   // 고른 장비를 끼면(낀 것을 고르면 빼면) 전체 능력치가 어떻게 바뀌나
@@ -359,6 +357,31 @@ export class Windows {
   }
 
   // 월드맵: 지형 + 안개 + 마을 · 야영지(포탈) · 던전 입구 · 나. 포탈 위에서 열면 발견한 곳으로 이동
+  // ───── 가이드북: 왼쪽 목차 | 오른쪽 그림 + 설명 ─────
+  guide() {
+    const st = this.w.st, k = this.gsec || 0;
+    const pic = (src, cap) => `<figure class="gpic"><img src="${src}" alt="" /><figcaption>${cap}</figcaption></figure>`;
+    const sample = (base, rarity, cap) => { const b = BASES[base]; if (!b) return ''; const it = { base, rarity, uid: 0, mods: [] }; try { return pic(itemIcon(it), cap); } catch { return ''; } };
+    const eq = Object.values(st.equip).filter(Boolean)[0];
+    const sk = Object.keys(st.skills)[0] || 'power_strike';
+    const S = [
+      ['조작', [pic(portrait(st.look), '내 캐릭터')], ['이동: 땅을 누르거나 WASD · 왼쪽 조이스틱', '공격: 몬스터를 누르거나 공격 버튼', '스킬: 오른쪽 아래 스킬 칸 (PC는 숫자 1~6)', '물약: 물약 칸 · Q (쿨타임 있음)', '창: I 가방 · K 스킬 · C 능력 · M 지도']],
+      ['성장 · 각성', [pic(portrait(st.look), `Lv.${st.level}`)], ['몬스터를 잡아 경험치를 얻고 레벨이 오르면 능력치 점수를 받습니다', '최대 레벨에 닿으면 각성: 레벨은 1로, 능력치 보너스는 남습니다', '각성 횟수에 따라 성향에 맞는 칭호와 특성을 고릅니다']],
+      ['스킬', [pic(skillIcon(sk), SKILLS[sk]?.name || '스킬')], ['스킬북을 가방에서 눌러 배웁니다', '쓸수록 스킬 레벨이 오릅니다', '변형: 스킬마다 변형 칸을 열어 효과를 바꿉니다']],
+      ['장비', [eq ? pic(itemIcon(eq), itemName(eq)) : '', pic(chestIcon(), '가방')], ['부위: 머리 · 목걸이 · 몸 · 장갑 · 허리 · 무기 · 보조 · 반지 2 · 신발', '등급: 일반 < 마법 < 희귀 < 영웅 < 전설 < 세트', '레벨 제한 1 ~ 200, 깊은 곳 · 높은 세계 단계일수록 높은 장비', '장비를 고르면 능력치 변화가 옆 칸에 보입니다']],
+      ['강화 · 재련 · 분해', [pic(oreIcon(), '광석'), pic(coinIcon(), '골드')], ['강화(대장간): +1 ~ +10, 대장간 레벨이 상한. 단계마다 피해 · 방어 +8%', '확률: +1~3 100%, 그 뒤 90 · 80 · 70 · 55 · 45 · 35 · 25%. 실패해도 단계는 그대로', '비용: 골드 + 광석 (단계 · 아이템 레벨에 비례)', '재련: 가장 약한 옵션 하나를 다시 굴립니다', '분해: 쓰지 않는 장비를 광석 · 재료로']],
+      ['보석', [pic(oreIcon(), '보석')], ['장비 홈에 박아 능력치를 올립니다', '등급 10단계: 조각난 · 흐린 · 보통 · 빛나는 · 완벽한 · 찬란한 · 고대의 · 신성한 · 영원의 · 태초의', '몬스터 레벨이 높을수록 높은 등급이 떨어집니다. 상점은 낮은 등급만']],
+      ['던전', [pic(scrollIcon(), '열쇠')], ['지역마다 던전 입구가 하나 (미로 · 방과 복도 · 동굴)', '네임드 · 보스가 주는 열쇠로 입장, 가장 깊은 곳의 우두머리를 잡으면 클리어', '단계를 올릴수록 몬스터가 세지고 보상이 좋아집니다']],
+      ['마을 · 일꾼 · 연구', [pic(townIcon(), '마을')], ['건물을 지어 생산 · 강화 · 상점을 엽니다', '생산 건물은 일꾼을 배치해야 돌아갑니다', '연구: 가방 칸 등 영구 강화', '용병: 고용해 원정을 보냅니다']],
+      ['야영지 · 지도', [pic(scrollIcon(), '월드맵')], ['세상은 캐릭터마다 새로 만들어집니다', '야영지: 안전 지대, 포탈로 먼 곳 이동, 상인 · 수리', '지도는 가 본 곳만 밝혀집니다']],
+      ['세계 단계', [pic(scrollIcon(), TIER_NAMES.join(' · '))], ['평온 → 악몽 → 지옥', '단계가 오르면 같은 지역의 몬스터 레벨이 크게 오르고 더 좋은 장비 · 보석이 나옵니다']],
+      ['도감 · 의뢰 · 업적', [pic(bookIcon(), '도감')], ['몬스터를 잡으면 도감이 채워지고 보너스를 받습니다', '퀘스트 · 일일 의뢰 · 업적으로 보상']],
+    ];
+    const [t, imgs, lines] = S[Math.min(k, S.length - 1)];
+    return `<div class="cols"><div class="frame" style="flex:0 0 26%">${S.map((x, i) => `<button class="btn gsec${i === k ? ' on' : ''}" data-gsec="${i}">${x[0]}</button>`).join('')}</div>
+      <div class="frame" style="flex:1"><h3>${t}</h3><div class="gwrap"><div class="gimgs">${imgs.join('')}</div><ul class="glist">${lines.map((l) => `<li>${l}</li>`).join('')}</ul></div></div></div>`;
+  }
+
   map() {
     const w = this.w, st = w.st, P = w.player.pos, here = this.portalAt;
     const V = Math.max(240, Math.min(560, window.innerHeight - 110)), k = V / MAP_W, X = (x) => ((x + MAP_R) * k).toFixed(1), Y = (z) => ((z + MAP_R) * k).toFixed(1);

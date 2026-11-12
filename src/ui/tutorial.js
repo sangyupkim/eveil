@@ -45,12 +45,12 @@ class Coach {
     const pk = w.pickup.bind(w); w.pickup = (g) => { this.c.picked = true; return pk(g); };
     const up = w.usePotion.bind(w); w.usePotion = (k) => { const r = up(k); if (r) this.c.potion = true; return r; };
   }
-  get step() { return COACH[this.w.st.guide || 0]; }
+  get step() { return null; }
   advance() { this.w.st.guide = (this.w.st.guide || 0) + 1; audio.play('click'); this.hide(); }
   hide() { this.el.hidden = true; document.querySelectorAll('.coachHi').forEach((e) => e.classList.remove('coachHi')); }
   update() {
     const w = this.w, st = w.st;
-    if (st.tut === 0 || (st.guide || 0) >= COACH.length || (this.win.open && this.step?.id !== 'town')) { if (!this.el.hidden) this.hide(); return; }
+    if (true || st.tut === 0 || (st.guide || 0) >= COACH.length || (this.win.open && this.step?.id !== 'town')) { if (!this.el.hidden) this.hide(); return; }
     const P = w.player.pos;
     if (this.last) this.c.moved += Math.hypot(P.x - this.last.x, P.z - this.last.z);
     this.last = { x: P.x, z: P.z };
@@ -117,7 +117,8 @@ export class Tutorial {
       if (!this.pick) return;
       const st = this.w.st;
       chooseStart(st, this.pick);
-      st.tut = 1;
+      st.tut = TUT_DONE; st.guide = 99;
+      { const id = STARTS[st.start]?.book || 'power_strike'; addItem(st, makeBook(id, st)); }
       el.hidden = true;
       this.w.refreshGear();
       st.hp = this.w.d.maxHp; st.mp = this.w.d.maxMp;
@@ -159,6 +160,7 @@ export class Tutorial {
   update() {
     const w = this.w, st = w.st;
     this.coach.update();
+    if (st.tut > 0 && st.tut < TUT_DONE) { st.tut = TUT_DONE; st.guide = 99; } // 예전 저장: 안내 없앰
     if (st.tut >= TUT_DONE) { this.show(); return; }
     if (st.tut === 0) return;
     if (st.tut === 1 && w.zone === 'field') { st.tutK = st.kills; this.next(2); }
