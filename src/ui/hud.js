@@ -2,6 +2,7 @@
 import { STAT_NAMES, STAT_COLORS, STATS, TIERS, CONFIG } from '../data/config.js';
 import { SKILLS } from '../data/skills.js';
 import { ZONES, TOWN, WORLD_SIZE } from '../data/world.js';
+import { roomCenter, ROOMS, ROOM, ROOM_GAP, CORRIDOR, entranceOf } from '../data/dungeons.js';
 import { expNeeded, powerLevel } from '../game/growth.js';
 import { countOf } from '../game/inventory.js';
 import { skillValues } from '../game/skills.js';
@@ -283,7 +284,12 @@ export class HUD {
     c.fillStyle = 'rgba(14,11,22,0.92)';
     c.fillRect(0, 0, S, S);
     c.lineWidth = 1;
-    for (const z of ZONES) {
+    if (w.dungeon) {
+      const zi = w.dungeon.zi;
+      c.fillStyle = 'rgba(90,80,70,0.8)';
+      for (let k2 = 0; k2 < ROOMS; k2++) { const rc = roomCenter(zi, k2); c.fillRect(tx(rc.x - ROOM), tz(rc.z - ROOM), ROOM * 2 * k, ROOM * 2 * k); }
+      const r0 = roomCenter(zi, 0); c.fillRect(tx(r0.x - CORRIDOR), tz(0), CORRIDOR * 2 * k, (ROOMS - 1) * ROOM_GAP * k);
+    } else for (const z of ZONES) {
       c.beginPath();
       c.arc(tx(z.x), tz(z.z), z.r * k, 0, Math.PI * 2);
       c.fillStyle = `rgba(${z.ground.map((v) => Math.round(v * 255)).join(',')},0.55)`;
@@ -300,6 +306,7 @@ export class HUD {
     c.strokeStyle = 'rgba(0,0,0,0.8)';
     c.lineWidth = 3;
     c.stroke();
+    if (!w.dungeon) for (const z of ZONES) { const e = entranceOf(z); c.fillStyle = '#80c0ff'; c.beginPath(); c.arc(tx(e.x), tz(e.z), 4, 0, 7); c.fill(); }
     for (const m of w.monsters) {
       if (m.dead) continue;
       const big = m.tier !== 'normal';

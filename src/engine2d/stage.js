@@ -226,7 +226,7 @@ export function buildWorldProps(stage) {
     const c0 = roomCenter(zi, 0), rr = seeded(900 + zi);
     for (let x = c0.x - ROOM - 2; x <= c0.x + ROOM + 2; x += 1.5) for (let z = -ROOM - 2; z <= (ROOMS - 1) * ROOM_GAP + ROOM + 2; z += 1.5) {
       if (dungeonAt(x, z) >= 0) continue;
-      const edge = [[1.5, 0], [-1.5, 0], [0, 1.5], [0, -1.5]].some(([a, b]) => dungeonAt(x + a, z + b) >= 0);
+      const edge = [[1, 0], [-1, 0], [0, 1], [0, -1], [0.7, 0.7], [-0.7, 0.7], [0.7, -0.7], [-0.7, -0.7]].some(([a, b]) => dungeonAt(x + a, z + b) >= 0); // 바닥 바로 옆 한 겹만
       if (!edge) continue;
       stage.colliders.push({ x, z, r: 1.0 });
       addProp(stage, 'dungeon', [68, 69, 65, 73, 96, 97][Math.floor(rr() * 6)], x, z, 0);

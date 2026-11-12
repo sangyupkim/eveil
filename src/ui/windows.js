@@ -115,6 +115,10 @@ export class Windows {
       h += `<div class="sub">${BOOK_TIERS[sk.tier].name} 스킬북 · MP ${sk.mp} · 재사용 ${sk.cd}초</div><div>${sk.desc}</div>`;
       h += reqLine(sk.req, totalStats(st));
       if (st.skills[it.book]) h += `<div class="aff">아는 스킬 — 숙련 EXP로 흡수</div>`;
+    } else if (b.type === 'gem') {
+      h += `<div class="sub">보석 ×${it.qty}</div><div>${STAT_NAMES[GEMS[b.gem].stat]} +${GEM_GRADES[b.grade].v} (구멍 있는 장비를 골라 박기)</div>`;
+    } else if (b.type === 'key') {
+      h += `<div class="sub">×${it.qty}</div><div>지역의 빛나는 원(던전 입구)에서 하나 써서 들어갑니다</div>`;
     } else if (b.type === 'potion') {
       h += `<div class="sub">소모품 ×${it.qty}</div><div>${b.restore.hp ? `HP ${b.restore.hp} 회복` : `MP ${b.restore.mp} 회복`}</div>`;
     } else {

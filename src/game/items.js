@@ -53,7 +53,7 @@ export function itemName(it) {
 function baseName(it) {
   if (it.book) return `스킬북: ${SKILLS[it.book].name}`;
   const base = BASES[it.base];
-  if (base.type === 'potion') return base.name;
+  if (base.type === 'potion' || base.stack) return base.name;
   if (it.named) return it.title;
   if (it.rarity === 'legend') return `${it.title} ${base.name}`;
   if (it.rarity === 'common' || !it.affixes.length) return base.name;
@@ -70,7 +70,7 @@ export function itemColor(it) {
 export function itemValue(it) {
   if (it.book) return 40 * SKILLS[it.book].tier ** 2;
   const base = BASES[it.base];
-  if (base.type === 'potion') return Math.max(1, Math.floor(base.price / 4)) * (it.qty || 1);
+  if (base.type === 'potion' || base.stack) return Math.max(1, Math.floor((base.price || 0) / 4)) * (it.qty || 1);
   const v = (base.price || 30) * (1 + 0.15 * (it.ilvl - 1)) * RARITY[it.rarity].value;
   return Math.max(1, Math.floor(v / 4));
 }
