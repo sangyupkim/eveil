@@ -9,6 +9,7 @@ import { World } from './world/world.js';
 import { HUD } from './ui/hud.js';
 import { Windows, toggleFullscreen, setupFullscreenUi, showNotes } from './ui/windows.js';
 import { GAME_VERSION } from './data/patchnotes.js';
+import { checkUpdate } from './update.js';
 import { setupInput } from './input.js';
 import { newPlayer } from './game/player.js';
 import { CONFIG } from './data/config.js';
@@ -281,12 +282,51 @@ function startGame(stage, st) {
   window.addEventListener('beforeunload', () => save(true));
   document.addEventListener('visibilitychange', () => { if (document.hidden) save(true); });
   window.__game = { world, stage, st, save, tut, windows };
+  // 베이스캠프(마을)에 있을 때 가끔 새 버전을 확인하고, 있으면 저장한 뒤 새 버전으로 다시 연다
+  let updT = 0, wasTown = false, updating = false;
+  setInterval(async () => {
+    if (updating || window.__noSave) return;
+    const inTown = !!world.inTown && !world.dead;
+    const enter = inTown && !wasTown; wasTown = inTown;
+    if (!inTown || windows.open) return;
+    if (!enter && Date.now() - updT < 120000) return;  // 마을에 들어오면 바로, 머무는 동안은 2분마다
+    updT = Date.now();
+    const v = await checkUpdate();
+    if (!v || !world.inTown) return;
+    let tried = null; try { tried = sessionStorage.getItem('updTried'); } catch {}
+    if (tried === v) return;
+    try { sessionStorage.setItem('updTried', v); } catch {}
+    updating = true;
+    hud.toast(`새 버전 ${v}로 업데이트합니다`, '#ffd84a');
+    save(true);
+    setTimeout(() => location.reload(), 1800);
+  }, 5000);
 }
 
 boot().catch((e) => {
   console.error(e);
   $('.sub').textContent = '불러오기에 실패했습니다: ' + e.message;
 });
+
+// 메인 화면: 오른쪽 아래에 버전, 늘 새 버전을 확인해 있으면 바로 새로 연다
+// (같은 버전으로 두 번 다시 열지는 않는다 — 브라우저가 옛 파일을 쥐고 있으면 끝없이 새로 열 수 있어서)
+{
+  const verEl = document.getElementById('verInfo');
+  const show = (t) => { if (verEl) verEl.textContent = t + ' · '; };
+  show(`v${GAME_VERSION}`);
+  const titleCheck = async () => {
+    if (document.getElementById('title')?.hidden) return;
+    const v = await checkUpdate();
+    if (!v) { show(`v${GAME_VERSION} 최신`); return; }
+    let tried = null; try { tried = sessionStorage.getItem('updTried'); } catch {}
+    if (tried === v) { show(`v${GAME_VERSION} · 새 버전 v${v} — 앱을 껐다 켜 주세요`); return; }
+    try { sessionStorage.setItem('updTried', v); } catch {}
+    show(`새 버전 v${v}로 업데이트합니다`);
+    setTimeout(() => location.reload(), 1200);
+  };
+  titleCheck();
+  setInterval(titleCheck, 60000);
+}
 
 // 설치 버전: 서비스 워커 + 설치 요청 (크롬 · 안드로이드). 아이폰은 공유 → 홈 화면에 추가
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
