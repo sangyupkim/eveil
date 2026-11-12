@@ -48,6 +48,7 @@ async function boot() {
   window.addEventListener('keydown', unlock, true);
   audio.setMusic('title');
   const stage = createStage($('#view'));
+globalThis.__stage = stage;
   // 정의(JSON)와 처음 보이는 그림(마을 타일 · 아이콘 · 기본 옷)을 먼저 받는다
   const bar = (p) => { $('#loadBar i').style.width = `${Math.round(p * 100)}%`; };
   await loadAllJson();

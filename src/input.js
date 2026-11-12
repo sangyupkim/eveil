@@ -118,20 +118,7 @@ export function setupInput(world, stage, windows) {
   window.addEventListener('pointercancel', release);
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-  // ── 휠 · 핀치 줌 ──
-  canvas.addEventListener('wheel', (e) => {
-    stage.userZoom = Math.max(0.6, Math.min(1.6, stage.userZoom * (e.deltaY > 0 ? 0.93 : 1.08)));
-  }, { passive: true });
-  const touches = new Map();
-  let pinch0 = 0, zoom0 = 1;
-  canvas.addEventListener('touchstart', (e) => {
-    for (const t of e.changedTouches) touches.set(t.identifier, t);
-    if (e.touches.length === 2) { pinch0 = dist(e.touches[0], e.touches[1]); zoom0 = stage.userZoom; }
-  }, { passive: true });
-  canvas.addEventListener('touchmove', (e) => {
-    if (e.touches.length === 2 && pinch0) stage.userZoom = Math.max(0.6, Math.min(1.6, zoom0 * (dist(e.touches[0], e.touches[1]) / pinch0)));
-  }, { passive: true });
-  canvas.addEventListener('touchend', () => { pinch0 = 0; }, { passive: true });
+  // 확대 · 축소는 설정(메뉴 → 화면 확대)에서만. 게임 중 휠 · 핀치로는 바뀌지 않는다
 
   // ── 조이스틱: 왼쪽 화면 어디든 누르면 그 자리에 생긴다 (떠다니는 조이스틱) ──
   const joy = $('#joy'), knob = joy.querySelector('.knob');

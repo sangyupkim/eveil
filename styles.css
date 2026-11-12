@@ -267,7 +267,8 @@ h3 .goldTxt { margin-left: auto; font-family: var(--f-latin); color: var(--brass
 #tutBox { pointer-events: auto; cursor: pointer; }
 
 /* 안내 목표 */
-#tutBox { position: absolute; left: 50%; top: calc(var(--u) * 4.2); transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 0.35em 1.1em; background: rgba(16, 12, 26, 0.88); border: 1px solid var(--brass); border-radius: 999px; font-family: var(--f-title); font-weight: 800; color: var(--brass-hi); white-space: nowrap; box-shadow: 0 0 14px rgba(232, 195, 106, 0.3); }
+#tutBox { display: flex; align-items: center; gap: 6px; margin: 2px 0; font-size: calc(var(--u) * 0.85); color: #ffe7a0; text-shadow: 0 1px 2px #000; }
+#tutBox[hidden] { display: none; }
 #tutBox .gear { width: 1.2em; height: 1.2em; animation: gearSpin 8s linear infinite; }
 /* 첫 무기 고르기 */
 #startPick { z-index: 25; }

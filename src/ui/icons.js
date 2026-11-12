@@ -56,7 +56,8 @@ export function petIcon(kind) {
   const def = DATA.enemies?.[kind], a = def?.anims?.stance;
   if (!a) return '';
   const src = image(animImage(def, 'stance'));
-  if (!src.ok) return '';
+  // 그림을 아직 못 받았으면 받은 뒤 창을 다시 그린다 (예전엔 펫을 사기 전까지 빈 칸)
+  if (!src.ok) { src.p?.then(() => globalThis.__game?.windows.refresh()); return iconUrl(0); }
   const r = (a.f[5] || a.f[0])[0], [x, y, w, h] = r, k = Math.min(56 / w, 56 / h);
   const c = document.createElement('canvas'); c.width = c.height = S;
   c.getContext('2d').drawImage(src.im, x, y, w, h, (S - w * k) / 2, (S - h * k) / 2, w * k, h * k);

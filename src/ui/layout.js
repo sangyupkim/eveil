@@ -3,7 +3,7 @@
 const $ = (s) => document.querySelector(s);
 // key: [요소, 크기 설정 이름, 기준점]
 const PARTS = { joy: ['#joy', 'joy', 'center'], br: ['#br', 'btn', 'bottom right'], quick: ['#quick', 'btn', 'bottom right'], tl: ['#tl', 'top', 'top left'], tr: ['#tr', 'top', 'top right'] };
-export const UI_DEFAULT = { scale: 1, joy: 1, btn: 1, top: 1, alpha: 1, pos: {} };
+export const UI_DEFAULT = { scale: 1, joy: 1, btn: 1, top: 1, alpha: 1, zoom: 1, pos: {} };
 
 export function uiSettings(st) {
   st.settings.ui = { ...UI_DEFAULT, ...(st.settings.ui || {}) };
@@ -14,6 +14,7 @@ export function uiSettings(st) {
 export function applyUi(st) {
   const u = uiSettings(st);
   document.documentElement.style.setProperty('--uiK', u.scale);
+  if (globalThis.__stage) globalThis.__stage.userZoom = u.zoom; // 화면 확대는 설정에서만
   for (const [key, [sel, size, origin]] of Object.entries(PARTS)) {
     const el = $(sel);
     if (!el) continue;

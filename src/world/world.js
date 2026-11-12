@@ -1048,7 +1048,7 @@ export class World {
     if (!m.dungeon && m.tier === 'boss' && m.sp?.zone?.id === 'demongate' && (st.worldTier || 1) < 3 && (st.maxTier || 1) <= (st.worldTier || 1)) {
       st.maxTier = (st.worldTier || 1) + 1; this.ui.toast(`세계 ${TIER_NAMES[st.maxTier - 1]} 단계가 열렸습니다! (메뉴에서 바꿀 수 있습니다)`, '#ff9a6a'); sfx('awaken');
     }
-    if (!m.dungeon && !m.noLoot && (m.tier === 'boss' || (m.tier === 'named' && Math.random() < 0.5))) {
+    if (!m.dungeon && !m.noLoot && m.tier === 'boss' && Math.random() < 0.3) { // 보스가 가끔 열쇠
       if (addItem(st, makeItem('dungeon_key', { qty: 1 }, st))) { this.ui.toast('던전 열쇠를 얻었습니다', '#ffd84a'); sfx('rare', 0.7); }
     }
     if (m.dungeon && m.tier === 'boss' && this.dungeon) this.dungeonCleared(m);

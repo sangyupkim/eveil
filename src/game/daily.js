@@ -33,7 +33,7 @@ export function dailyText(q) {
 // 보상: 금화 + (처치 → 강화석, 정예 → 던전 열쇠, 던전 → 둘 다)
 export const dailyReward = (q, st) => {
   const lv = Math.max(1, Math.round((st.awakenings || 0) / 2));
-  return { gold: 200 + lv * 40, ore: q.kind === 'elite' ? 0 : 3 + Math.floor(lv / 4), key: q.kind !== 'kill' ? 1 : 0 };
+  return { gold: 200 + lv * 40, ore: q.kind === 'elite' ? 0 : 3 + Math.floor(lv / 4), key: 1 };
 };
 
 // 진행: 끝난 의뢰를 돌려준다
