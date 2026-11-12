@@ -30,7 +30,7 @@ const noise = (x, z) => (Math.sin(x * 0.11 + Math.cos(z * 0.07) * 2) + Math.sin(
 function groundAt(i, j) {
   const x = (i - j) * STEP, z = (i + j) * STEP;
   const h = hash(i, j);
-  if (farSide(x)) return dungeonAt(x, z) >= 0 ? ['dungeon', 32 + Math.floor(h * 16)] : ['void'];
+  if (farSide(x)) { const di = dungeonAt(x, z); return di >= 0 ? pick(ZONES[di].id, h) : ['void']; } // 던전 바닥은 그 지역 땅 그대로
   const dT = Math.hypot(x, z);
   if (dT < TOWN.r * 0.75) return pick('town', h);
   for (const zn of ZONES) if (distToSeg(x, z, 0, 0, zn.x * 0.72, zn.z * 0.72) < 2.6 + noise(x, z) * 1.5) return pick('town', h);
@@ -51,6 +51,10 @@ function groundAt(i, j) {
 // ───── 지형: 호수(물가 절벽) · 언덕(못 올라가는 고원) — Flare 맵의 타일 잇기 규칙 그대로 ─────
 const roadDist = (x, z) => Math.min(Math.hypot(x, z) - TOWN.r, ...ZONES.map((zn) => distToSeg(x, z, 0, 0, zn.x * 0.72, zn.z * 0.72)));
 export const LAKES = [], MESAS = [];
+// 필드 보스 자리 (지역에서 마을 반대쪽 끝) — 둘레를 넓게 비워 보스전을 쉽게
+export const bossSpot = (zn) => { const d = Math.hypot(zn.x, zn.z) || 1; return { x: zn.x + (zn.x / d) * zn.r * 0.75, z: zn.z + (zn.z / d) * zn.r * 0.75 }; };
+export const BOSS_CLEAR = 15;
+const nearBoss = (x, z, pad = 0) => ZONES.some((zn) => { const b = bossSpot(zn); return Math.hypot(b.x - x, b.z - z) < BOSS_CLEAR + pad; });
 // 야영지(포탈): 지역마다 하나, 마을 쪽 안쪽. 둘레 7은 지형 · 몬스터가 없는 안전지대
 export const CAMPS = [];
 export const inCamp = (x, z, pad = 0) => CAMPS.find((c) => Math.hypot(x - c.x, z - c.z) < 7 + pad) || null;
@@ -58,7 +62,7 @@ const HAS_BANKS = new Set(['grassland', 'snowplains', 'desert']);
 const LAVA_ZONES = new Set(['inferno', 'demongate']);
 function genTerrain(rng) {
   LAKES.length = 0; MESAS.length = 0;
-  const clear = (x, z, r) => roadDist(x, z) > r + 5 && !inCamp(x, z, r + 3) && !ZONES.some((zn) => { const e = entranceOf(zn); return Math.hypot(e.x - x, e.z - z) < r + 4; }) && ![...LAKES, ...MESAS].some((q) => Math.hypot(q.x - x, q.z - z) < q.r + r + (q.ring ? 3 : 6));
+  const clear = (x, z, r) => !nearBoss(x, z, r) && roadDist(x, z) > r + 5 && !inCamp(x, z, r + 3) && !ZONES.some((zn) => { const e = entranceOf(zn); return Math.hypot(e.x - x, e.z - z) < r + 4; }) && ![...LAKES, ...MESAS].some((q) => Math.hypot(q.x - x, q.z - z) < q.r + r + (q.ring ? 3 : 6));
   // ① 지역 경계: 언덕(물 많은 지역은 물)을 고리처럼 두르고, 길목(마을 쪽 길) · 샛길 두세 군데만 뚫는다
   const nearGate = (x, z, r) => roadDist(x, z) < r + 3.5 || !!inCamp(x, z, r + 2) || ZONES.some((zn) => { const e = entranceOf(zn); return Math.hypot(e.x - x, e.z - z) < r + 5; }) || Math.hypot(x, z) < TOWN.r + r + 3;
   for (const zn of ZONES) {
@@ -109,6 +113,21 @@ function genTerrain(rng) {
     }
   }
 }
+// 던전 벽: 기둥 대신 그 지역 언덕(필드와 같은 절벽)을 길 둘레에 두른다
+function dungeonHills() {
+  ZONES.forEach((zn, zi) => {
+    const L = layout(zi), Z = ZONE_LOOK[zn.id];
+    const bs = HAS_BANKS.has(Z.set) ? Z.set : 'grassland', top = bs !== Z.set ? [Z.set, Z.ground[0]] : null;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      if (L.at(i, j)) continue;
+      let edge = false;
+      for (let b = -1; b <= 1 && !edge; b++) for (let a = -1; a <= 1; a++) if (L.at(i + a, j + b)) { edge = true; break; }
+      if (!edge) continue;
+      const p = cellPos(zi, i, j);
+      MESAS.push({ x: p.x, z: p.z, r: T * 0.85, set: bs, top, lava: false, chasm: false, floor: [Z.set, Z.ground[0]], look: zn.id, dungeon: true });
+    }
+  });
+}
 const BK = 16, buckets = new Map();
 function makeBuckets() { buckets.clear(); for (const list of [LAKES, MESAS]) { const m = new Map(); buckets.set(list, m); for (const q of list) { const R2 = q.r * 1.3 + 3; for (let bx = Math.floor((q.x - R2) / BK); bx <= Math.floor((q.x + R2) / BK); bx++) for (let bz = Math.floor((q.z - R2) / BK); bz <= Math.floor((q.z + R2) / BK); bz++) { const key = bx * 1000 + bz; if (!m.has(key)) m.set(key, []); m.get(key).push(q); } } } }
 const blob = (list, x, z, k, pad = 0) => { const b = buckets.get(list).get(Math.floor(x / BK) * 1000 + Math.floor(z / BK)); if (b) for (const q of b) if (Math.hypot(x - q.x, z - q.z) < q.r * (1 + (noise(x * k, z * k + 31) - 0.5) * 0.45) + pad) return q; return null; };
@@ -130,10 +149,11 @@ export function generateWorld(seed) {
   }
   CAMPS.length = 0;
   for (const zn of ZONES) { const a = Math.atan2(-zn.z, -zn.x), d = zoneRadius(zn, a) * 0.55; CAMPS.push({ zone: zn.id, x: zn.x + Math.cos(a) * d, z: zn.z + Math.sin(a) * d }); }
+  setDungeonSeed(seed);
   genTerrain(rng);
+  dungeonHills();
   makeBuckets();
   lakeMemo.clear(); mesaMemo.clear(); tileCache.clear();
-  setDungeonSeed(seed);
 }
 const lakeCell = (i, j) => {
   const key = i * 100003 + j;
@@ -257,7 +277,7 @@ export function buildWorldProps(stage) {
   // 언덕: 윗면은 땅 타일을 한 단 올리고, 둘레는 '바닥이 땅인 물가 타일'을 한 단 올려 절벽을 만든다
   for (const [i, j, q] of cells(MESAS, (a, b) => mesaCell(a, b) || mesaRing(a, b))) {
     const [x, z] = cellXZ(i, j), h = hash(i, j), set = q.set;
-    const L = ZONE_LOOK[zoneAt(x, z)?.id || 'wild'], floor = L.ground;
+    const L = ZONE_LOOK[q.look || zoneAt(x, z)?.id || 'wild'], floor = L.ground;
     if (mesaCell(i, j)) {
       stage.colliders.push({ x, z, r: 1.15 });
       addProp(stage, L.set, floor[0] + Math.floor(h * (floor[1] - floor[0] + 1)), x, z, 0, HILL_LIFT);
@@ -280,25 +300,17 @@ export function buildWorldProps(stage) {
     const [a0, a1, rr] = shore[Math.floor(rng() * shore.length)];
     addProp(stage, q.set, a0 + Math.floor(rng() * (a1 - a0 + 1)), x, z, rr);
   }
-  // 던전: 바닥 칸 옆의 벽 칸마다 벽 하나 (모양에 따라 돌벽 · 바위), 바닥 군데군데 횃불 · 뼈, 우두머리 방에 석상
+  // 던전: 바닥 군데군데 뼈 · 횃불 (벽은 dungeonHills의 언덕), 우두머리 터 네 귀퉁이에 석상
   for (let zi = 0; zi < ZONES.length; zi++) {
-    const L = layout(zi), rr = seeded(900 + zi), cave = L.style === 'caves';
-    const wallIds = cave ? [144, 145, 146, 147, 148, 149] : [68, 69, 65, 73, 96, 97], wallSet = cave ? 'cave' : 'dungeon';
+    const L = layout(zi), rr = seeded(900 + zi);
     for (let j2 = 0; j2 < N; j2++) for (let i2 = 0; i2 < N; i2++) {
+      if (!L.at(i2, j2)) continue;
       const p = cellPos(zi, i2, j2);
-      if (L.at(i2, j2)) {
-        if (rr() < 0.05) addProp(stage, 'dungeon', 176 + Math.floor(rr() * 8), p.x + (rr() - 0.5), p.z + (rr() - 0.5), 0);
-        else if (rr() < 0.025 && L.dist[j2 * N + i2] > 3) addProp(stage, 'dungeon', 167, p.x, p.z, 0.4);
-        continue;
-      }
-      let edge = false;
-      for (let b = -1; b <= 1 && !edge; b++) for (let a = -1; a <= 1; a++) if (L.at(i2 + a, j2 + b)) { edge = true; break; }
-      if (!edge) continue;
-      stage.colliders.push({ x: p.x, z: p.z, r: T * 0.62 });
-      const wp = addProp(stage, wallSet, wallIds[Math.floor(rr() * wallIds.length)], p.x, p.z, 0); if (wp) wp.wall = true;
+      if (rr() < 0.03) addProp(stage, 'dungeon', 176 + Math.floor(rr() * 8), p.x + (rr() - 0.5), p.z + (rr() - 0.5), 0);
+      else if (rr() < 0.012 && L.dist[j2 * N + i2] > 3) addProp(stage, 'dungeon', 167, p.x, p.z, 0.4);
     }
     const bp = cellPos(zi, L.boss[0], L.boss[1]);
-    for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) addProp(stage, 'dungeon', 128 + Math.floor(rr() * 4), bp.x + a * T * 2, bp.z + b * T * 2, 0.6);
+    for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) addProp(stage, 'dungeon', 128 + Math.floor(rr() * 4), bp.x + a * T * 4.5, bp.z + b * T * 4.5, 0.6);
   }
   for (const c of CAMPS) {
     addProp(stage, 'grassland', 265, c.x, c.z, 0);
@@ -317,7 +329,7 @@ export function buildWorldProps(stage) {
       for (let i = 0; i < n; i++) {
         const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * zn.r * 1.05;
         const x = zn.x + Math.cos(a) * d, z = zn.z + Math.sin(a) * d;
-        if (!roadClear(x, z) || !free(x, z)) continue;
+        if (!roadClear(x, z) || !free(x, z) || nearBoss(x, z, -3)) continue;
         addProp(stage, set, ids[Math.floor(rng() * ids.length)], x, z, r);
       }
     }
@@ -450,7 +462,7 @@ export async function warmTerrain() {
     if (q.lava || q.top) drawBank(warmCtx(), set, bid, q.lava ? 'lava' : null, q.top, 0, 0, 1); else drawWater(warmCtx(), set, bid, 0, 0, 1);
   });
   for (const q of LAKES) for (let id = 0; id < 16; id++) jobs.push(() => { const set = q.set; if (q.lava || q.top) drawBank(warmCtx(), set, wb(set)[1] + id, q.lava ? 'lava' : null, q.top, 0, 0, 1); else drawWater(warmCtx(), set, wb(set)[1] + id, 0, 0, 1); });
-  for (const q of MESAS) for (let id = 0; id < 24; id++) jobs.push(() => { const L = ZONE_LOOK[zoneAt(q.x, q.z)?.id || 'wild']; drawBank(warmCtx(), q.set, wb(q.set)[0] + id, [L.set, L.ground[0]], q.top, 0, 0, 1); });
+  for (const q of MESAS) for (let id = 0; id < 24; id++) jobs.push(() => { const L = ZONE_LOOK[q.look || zoneAt(q.x, q.z)?.id || 'wild']; drawBank(warmCtx(), q.set, wb(q.set)[0] + id, [L.set, L.ground[0]], q.top, 0, 0, 1); });
   for (const j of jobs) { j(); await new Promise((r) => setTimeout(r, 0)); }
 }
 let wc = null;

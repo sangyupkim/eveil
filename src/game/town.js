@@ -114,7 +114,7 @@ export function enhance(st, it, rng = Math.random) {
 // 분해: 가방의 장비 → 강화석(등급 · 아이템 레벨만큼) + 그 레벨 지역 재료
 const RK = { common: 1, magic: 2, rare: 4, hero: 8, legend: 16 };
 export function salvageValue(it) {
-  const ore = Math.max(1, Math.round((RK[it.rarity] || 1) * (1 + it.ilvl / 10)));
+  const ore = Math.max(0, Math.floor((RK[it.rarity] || 1) * (1 + it.ilvl / 10) / 3)); // 분해 강화석은 적게 (일반 · 마법 낮은 레벨은 0)
   const zn = ZONES.find((z) => it.ilvl <= z.levels[1]) || ZONES[ZONES.length - 1];
   return { ore, mat: zn.id, matN: Math.max(1, Math.round((RK[it.rarity] || 1) / 2)) };
 }
@@ -335,7 +335,7 @@ export function claim(st, id, now = Date.now(), rng = Math.random) {
   const boost = m.job.boost || {}, sh = shelterLv(st, zn.id);
   const lvl = zoneLvl(zn), eff = partyPower(st, m, zn, boost) * (1 + SHELTER.stay * sh);
   if (rng() < deathChance(m, zn, ex.id, st, boost)) { t.mercs.splice(t.mercs.indexOf(m), 1); return { dead: true, name: m.name, gold: 0, ore: 0, mats: 0, items: [] }; }
-  const out = { gold: Math.round(lvl * 25 * ex.mult * eff), ore: Math.round(2 * ex.mult * eff), items: [] };
+  const out = { gold: Math.round(lvl * 25 * ex.mult * eff), ore: Math.round(0.8 * ex.mult * eff), items: [] };
   const rolls = Math.round(ex.mult * eff * 1.5 * (1 + SHELTER.loot * sh));
   for (let k = 0; k < rolls; k++) for (const d of rollLoot({ tier: k % 6 === 5 ? 'elite' : 'normal', level: lvl }, {}, st, rng)) if (d.kind === 'item' && d.item.base && !d.item.book) out.items.push(d.item);
   out.mats = Math.round(ex.mult * 3 * eff * (1 + SHELTER.mats * sh));

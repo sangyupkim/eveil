@@ -267,15 +267,16 @@ test('마을: 짓기 · 생산(꺼 둔 시간) · 강화 · 용병 파견', () =
   assert.ok(assignMerc(p, m.id, 'p1').ok);
   const ex = { ...m }; void ex;
   tick(p, t0 + 2 * 3600000);
-  assert.ok(buildingAt(p, 'p1').stock > 10);
+  assert.ok(buildingAt(p, 'p1').stock > 3);
   assert.ok(m.sta < 60 && m.mine > 10);                     // 체력이 닳고 솜씨가 오른다
   tick(p, t0 + 100 * 3600000);                              // 오래 꺼 둬도 창고만큼만
   assert.equal(buildingAt(p, 'p1').stock, BUILDINGS.mine.store(1));
   assert.ok(m.lv > 1);
   m.lv = MERC.lvMax; p.gold += 1e6; assert.ok(awakenMerc(p, m.id).ok && m.aw === 1 && m.lv === 1);
   townOf(p).mercs.length = 0;
-  assert.equal(collect(p, 'p1').n, 30);
-  assert.equal(townOf(p).ore, 30);
+  assert.equal(collect(p, 'p1').n, BUILDINGS.mine.store(1));
+  assert.equal(townOf(p).ore, BUILDINGS.mine.store(1));
+  townOf(p).ore = 1000; // 강화에 쓸 만큼
   const w = p.equip.weapon;
   const d0 = derive(p).dmg[1];
   let ok = 0; for (let i = 0; i < 4; i++) if (enhance(p, w, () => 0).success) ok++;
@@ -370,6 +371,19 @@ test('약초밭 · 제작소(물약 · 영약) · 파견소 · 쉼터 · 여관 
   assert.equal(researchStart(p, 'exp').ok, false);
   buildingAt(p, 'p6').lv = 5;
   assert.ok(researchStart(p, 'exp').ok);
+});
+
+test('창고: 100칸, 캐릭터끼리 나눠 쓰고 연구로 늘어난다', async () => {
+  globalThis.localStorage ??= { _m: {}, getItem(k) { return this._m[k] ?? null; }, setItem(k, v) { this._m[k] = String(v); }, removeItem(k) { delete this._m[k]; } };
+  const V = await import('../src/game/vault.js');
+  const a = newPlayer('가'), b = newPlayer('나');
+  assert.equal(V.vaultSize(a), 100);
+  a.town = { research: { vault: 2 } }; assert.equal(V.vaultSize(a), 140);
+  const it = makeItem('hp_potion', { qty: 3 }, a); addItem(a, it);
+  const sword = makeItem('short_sword', {}, a); addItem(a, sword);
+  assert.ok(V.vaultPut(a, sword.uid).ok && !a.inv.includes(sword));
+  const idx = V.vault().items.findIndex((x) => x.base === 'short_sword');
+  assert.ok(V.vaultTake(b, idx).ok && b.inv.some((x) => x.base === 'short_sword'));
 });
 
 console.log(`\n${n}개 통과`);

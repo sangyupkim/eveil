@@ -3,7 +3,7 @@ import { BASES } from '../data/items.js';
 import { SKILLS, BOOK_TIERS } from '../data/skills.js';
 import { ITEM_LOOK, SKILL_ICON, faceOf } from '../data/flareWorld.js';
 import { SCHOOL_ICON } from '../data/skills_more.js';
-import { image } from '../engine2d/sprites.js';
+import { image, DATA, animImage } from '../engine2d/sprites.js';
 import { ELIXIRS, HERBS } from '../data/potions.js';
 export const herbIcon = (id) => iconUrl(HERBS[id].icon, HERBS[id].color);
 
@@ -30,6 +30,7 @@ export function iconUrl(index, frame = null) {
 export function itemIcon(it) {
   if (it.book) return iconUrl(225, BOOK_TIERS[SKILLS[it.book].tier].color);
   if (it.shard) return iconUrl(68, '#c58cff');
+  if (BASES[it.base]?.type === 'pet') return petIcon(BASES[it.base].pet);
   if (ELIXIRS[it.base]) return iconUrl(ITEM_LOOK[it.base]?.icon ?? 84, ELIXIRS[it.base].color);
   const L = ITEM_LOOK[it.base];
   if (L) return iconUrl(L.icon);
@@ -47,3 +48,19 @@ export const duelIcon = () => iconUrl(1);
 export const swordIcon = () => iconUrl(1);
 export const townIcon = () => iconUrl(103);
 export const oreIcon = () => iconUrl(71);
+
+// 펫 아이콘: 펫 그림(서 있는 모습, 오른쪽 아래 방향)을 칸에 맞춰 찍는다
+export function petIcon(kind) {
+  const key = 'pet|' + kind;
+  if (cache.has(key)) return cache.get(key);
+  const def = DATA.enemies?.[kind], a = def?.anims?.stance;
+  if (!a) return '';
+  const src = image(animImage(def, 'stance'));
+  if (!src.ok) return '';
+  const r = (a.f[5] || a.f[0])[0], [x, y, w, h] = r, k = Math.min(56 / w, 56 / h);
+  const c = document.createElement('canvas'); c.width = c.height = S;
+  c.getContext('2d').drawImage(src.im, x, y, w, h, (S - w * k) / 2, (S - h * k) / 2, w * k, h * k);
+  const url = c.toDataURL();
+  cache.set(key, url);
+  return url;
+}

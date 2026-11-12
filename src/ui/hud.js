@@ -11,7 +11,7 @@ import { expNeeded, powerLevel } from '../game/growth.js';
 import { countOf } from '../game/inventory.js';
 import { skillValues } from '../game/skills.js';
 import { ELIXIRS } from '../data/potions.js';
-import { portrait, chestIcon, bookIcon, coinIcon, swordIcon, itemIcon, skillIcon, homeIcon, duelIcon, scrollIcon, townIcon } from './icons.js';
+import { portrait, chestIcon, bookIcon, coinIcon, swordIcon, itemIcon, skillIcon, homeIcon, duelIcon, scrollIcon, townIcon, oreIcon } from './icons.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 
@@ -201,6 +201,8 @@ export class HUD {
     if (this.isDirty) {
       this.isDirty = false;
       $('#gold').textContent = st.gold.toLocaleString();
+      $('#oreN').textContent = (st.town?.ore || 0).toLocaleString();
+      if (!$('#oreIco').src) $('#oreIco').src = oreIcon();
       $('#awakeBadge').textContent = `각성 ${st.awakenings}`;
       $('#bagCnt').textContent = `${st.inv.length}/${bagSize(st)}`;
       $('#btnHp em').textContent = countOf(st, 'hp_potion') + countOf(st, 'hp_potion_l');

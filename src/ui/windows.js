@@ -38,7 +38,8 @@ import { applyShard, canApply, lockMax, shardCost } from '../game/shards.js';
 import { HERBS, HERB_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
 import { brew, brewGold, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
 import { RESEARCH_MAX, SHELTER } from '../data/buildings.js';
-import { herbIcon } from './icons.js';
+import { herbIcon, homeIcon } from './icons.js';
+import { vault, vaultSize, vaultPut, vaultTake } from '../game/vault.js';
 import { GAME_VERSION, PATCH_NOTES } from '../data/patchnotes.js';
 import { KEY_ACTIONS, keyMap, keyName } from '../data/keys.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
@@ -61,8 +62,8 @@ export function showNotes() {
 }
 const repickCost = (t) => 2000 * (t.tier + 1) ** 2;
 const nextTitle = (st) => { const i = TITLE_AT.findIndex((n) => st.awakenings < n); return i < 0 ? '' : ` · ${titleName(titleKey(st.stats), i)}까지 각성 ${TITLE_AT[i] - st.awakenings}`; };
-const TITLES = { map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', shop: '상점', guide: '가이드북', menu: '메뉴' };
-const TAB_ORDER = ['map', 'inv', 'skills', 'char', 'quest', 'dex', 'town', 'shop', 'guide', 'menu'];
+const TITLES = { map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '메뉴' };
+const TAB_ORDER = ['map', 'inv', 'vault', 'skills', 'char', 'quest', 'dex', 'town', 'shop', 'guide', 'menu'];
 const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '');
 const ico = (it) => `<img src="${itemIcon(it)}" alt="" draggable="false" />`;
 const sicon = (id) => `<div class="sicon" style="background:radial-gradient(circle at 35% 30%, ${SKILLS[id].color}, #17111f 90%)"><img src="${skillIcon(id)}" alt="" /></div>`;
@@ -92,6 +93,7 @@ export class Windows {
 
   show(kind) {
     if (kind === 'map' && this.kind !== 'map') this.mapCenter = true;
+    if (kind === 'vault' && !this.w.inTown) { this.w.ui.toast('창고는 마을에서만 이용할 수 있습니다'); audio.play('error'); return; }
     if (kind === 'shop' && !this.w.canShop) { this.w.ui.toast('상점은 마을에서만 이용할 수 있습니다'); audio.play('error'); return; }
     if (this.kind !== kind) this.sel = null;
     this.kind = kind;
@@ -112,9 +114,9 @@ export class Windows {
 
   render() {
     $('h2', this.el).textContent = TITLES[this.kind];
-    const icons = { inv: chestIcon(), skills: bookIcon(), char: portrait(this.w.st.look), shop: coinIcon(), quest: scrollIcon(), town: townIcon(), dex: bookIcon(), map: scrollIcon(), guide: bookIcon() };
+    const icons = { inv: chestIcon(), skills: bookIcon(), char: portrait(this.w.st.look), shop: coinIcon(), quest: scrollIcon(), town: townIcon(), dex: bookIcon(), map: scrollIcon(), guide: bookIcon(), vault: homeIcon() };
     const tabs = $('.tabs', this.el);
-    tabs.innerHTML = TAB_ORDER.filter((k) => k !== 'shop' || this.w.canShop).map((k) =>
+    tabs.innerHTML = TAB_ORDER.filter((k) => (k !== 'shop' || this.w.canShop) && (k !== 'vault' || this.w.inTown)).map((k) =>
       `<button class="tab${k === this.kind ? ' on' : ''}" data-tab="${k}">${icons[k] ? `<img src="${icons[k]}" alt="" />` : '<b class="gear" style="width:1.8em;height:1.8em"></b>'}<span>${TITLES[k].split(' ')[0]}</span></button>`).join('');
     tabs.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => this.show(b.dataset.tab); });
     const body = $('.body', this.el);
@@ -286,9 +288,21 @@ export class Windows {
     return h + '</div>';
   }
 
+  // 창고: 계정 공용 (같은 계정의 캐릭터끼리 나눈다). 누르면 바로 옮긴다
+  vault() {
+    const st = this.w.st, V = vault(), n = vaultSize(st);
+    let left = `<h3>창고 <span class="cnt">${V.items.length}/${n}</span></h3><div class="grid">`;
+    for (let i = 0; i < n; i++) { const it = V.items[i]; left += it ? `<div class="cell${rar(it)}" data-vtake="${i}" title="${esc(itemName(it))}">${ico(it)}${it.qty > 1 ? `<span class="q">${it.qty}</span>` : ''}</div>` : '<div class="cell"></div>'; }
+    left += '</div>';
+    let right = `<h3>가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span></h3><div class="grid">`;
+    for (let i = 0; i < bagSize(st); i++) { const it = st.inv[i]; right += it ? `<div class="cell${rar(it)}" data-vput="${it.uid}" title="${esc(itemName(it))}">${ico(it)}${it.qty > 1 ? `<span class="q">${it.qty}</span>` : ''}</div>` : '<div class="cell"></div>'; }
+    right += '</div>';
+    return `<div class="cols"><div class="frame" style="flex:1;overflow:auto">${left}</div><div class="frame" style="flex:1;overflow:auto">${right}</div></div>`;
+  }
+
   bagHead() {
     const st = this.w.st;
-    return `<h3>가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span>${this.w.canShop ? '<button class="btn" data-selljunk="1" style="margin-left:auto">일반 · 마법 팔기</button>' : ''}<span class="goldTxt">${st.gold.toLocaleString()} G</span></h3>`;
+    return `<h3>가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span>${this.w.canShop ? '<button class="btn" data-selljunk="1" style="margin-left:auto">일반 · 마법 팔기</button>' : ''}<span class="goldTxt">${st.gold.toLocaleString()} G · ◆${(st.town?.ore || 0).toLocaleString()}</span></h3>`;
   }
 
   // 고른 가방 아이템과 같은 칸에 끼고 있는 장비
@@ -440,7 +454,7 @@ export class Windows {
       ['강화 · 재련 · 분해', [pic(oreIcon(), '광석'), pic(coinIcon(), '골드')], ['강화(대장간): +1 ~ +10, 대장간 레벨이 상한. 단계마다 피해 · 방어 +8%', '확률: +1~3 100%, 그 뒤 90 · 80 · 70 · 55 · 45 · 35 · 25%. 실패해도 단계는 그대로', '비용: 골드 + 광석 (단계 · 아이템 레벨에 비례)', '재련: 가장 약한 옵션 하나를 다시 굴립니다', '분해: 쓰지 않는 장비를 광석 · 재료로', '능력치 파편: 장비를 갈아 끼울 때 낮은 확률로, 보스가 가끔 장비 대신 떨어뜨림. 장비의 기본 피해 · 방어력이 아닌 옵션 하나', '파편 쓰기(대장간): 착용 장비 옵션 하나가 무작위로 파편 옵션으로 바뀜. 같은 옵션이 있으면 그것이 바뀜', '옵션 잠그기: 대장간 3단계 1개 · 4단계 2개 · 5단계 3개 — 잠근 옵션은 바뀌지 않음']],
       ['보석', [pic(oreIcon(), '보석')], ['장비 홈에 박아 능력치를 올립니다', '등급 10단계: 조각난 · 흐린 · 보통 · 빛나는 · 완벽한 · 찬란한 · 고대의 · 신성한 · 영원의 · 태초의', '몬스터 레벨이 높을수록 높은 등급이 떨어집니다. 상점은 낮은 등급만']],
       ['던전', [pic(scrollIcon(), '열쇠')], ['지역마다 던전 입구가 하나 (미로 · 방과 복도 · 동굴)', '네임드 · 보스가 주는 열쇠로 입장, 가장 깊은 곳의 우두머리를 잡으면 클리어', '단계를 올릴수록 몬스터가 세지고 보상이 좋아집니다']],
-      ['마을 · 용병 · 연구', [pic(townIcon(), '마을')], ['건물을 지어 생산 · 강화 · 연구를 엽니다', '건물은 각성으로 열립니다: 대장간 · 약초밭 0, 숙소 · 여관 3, 파견소 5, 광산 6, 제작소 10, 연구소 15', '단계 올리기(최고 5단계)도 각성이 필요합니다: 대장간 5 · 15 · 30 · 50 / 약초밭 3 · 10 · 25 · 45 / 숙소 8 · 18 · 32 · 50 / 여관 8 · 20 · 35 · 55 / 파견소 12 · 25 · 40 · 55 / 광산 10 · 22 · 38 · 55 / 제작소 15 · 28 · 42 · 58 / 연구소 20 · 32 · 46 · 60', '약초밭: 약초만 자랍니다. 단계마다 새 약초 (붉은 잎 · 푸른 이끼 → 무쇠뿌리 → 햇살꽃 · 바람풀 → 달빛 버섯 → 황금 인삼)', '제작소: 약초로 물약과 영약(힘 · 민첩 · 지능 · 정신 · 체력 · 방어력 · 피해 · 공격 속도 · 이동 속도 · 치명타 · 아이템 발견, 5분)을 만듭니다. 단계마다 새 조합법', '여관: 매 시간 용병이 찾아옵니다. 단계가 높을수록 좋은 등급 (정예는 2단계, 전설은 4단계부터)', '숙소: 고용 한도, 5단계에 20명', '파견소: 해방한 지역으로 용병을 여럿 보냅니다. 단계마다 인원 · 챙길 물건(물약은 안전, 영약은 힘)이 늘어납니다', '개척지 용병 쉼터(야영지): 그 지역 파견의 보상 · 힘 · 아이템 · 재료가 늘고 죽을 확률 · 체력 소모가 줄어듭니다. 3 · 5단계에 더 긴 원정', '연구소: 단계마다 더 좋은 연구가 열립니다 (연구마다 최고 5단계)', '용병은 일한 솜씨가 오르고, 레벨 20에서 각성(최대 10번). 파견에서 죽을 수 있습니다']],
+      ['마을 · 용병 · 연구', [pic(townIcon(), '마을')], ['건물을 지어 생산 · 강화 · 연구를 엽니다', '건물은 각성으로 열립니다: 대장간 · 약초밭 0, 숙소 · 여관 3, 파견소 5, 광산 6, 제작소 10, 연구소 15', '단계 올리기(최고 5단계)도 각성이 필요합니다: 대장간 5 · 15 · 30 · 50 / 약초밭 3 · 10 · 25 · 45 / 숙소 8 · 18 · 32 · 50 / 여관 8 · 20 · 35 · 55 / 파견소 12 · 25 · 40 · 55 / 광산 10 · 22 · 38 · 55 / 제작소 15 · 28 · 42 · 58 / 연구소 20 · 32 · 46 · 60', '약초밭: 약초만 자랍니다. 단계마다 새 약초 (붉은 잎 · 푸른 이끼 → 무쇠뿌리 → 햇살꽃 · 바람풀 → 달빛 버섯 → 황금 인삼)', '제작소: 약초로 물약과 영약(힘 · 민첩 · 지능 · 정신 · 체력 · 방어력 · 피해 · 공격 속도 · 이동 속도 · 치명타 · 아이템 발견, 5분)을 만듭니다. 단계마다 새 조합법', '여관: 매 시간 용병이 찾아옵니다. 단계가 높을수록 좋은 등급 (정예는 2단계, 전설은 4단계부터)', '숙소: 고용 한도, 5단계에 20명', '파견소: 해방한 지역으로 용병을 여럿 보냅니다. 단계마다 인원 · 챙길 물건(물약은 안전, 영약은 힘)이 늘어납니다', '개척지 용병 쉼터(야영지): 그 지역 파견의 보상 · 힘 · 아이템 · 재료가 늘고 죽을 확률 · 체력 소모가 줄어듭니다. 3 · 5단계에 더 긴 원정', '연구소: 단계마다 더 좋은 연구가 열립니다 (연구마다 최고 5단계)', '창고(마을, 창고 탭): 같은 계정의 캐릭터끼리 함께 씁니다. 100칸, 연구 「큰 창고」로 단계마다 +20칸', '용병은 일한 솜씨가 오르고, 레벨 20에서 각성(최대 10번). 파견에서 죽을 수 있습니다']],
       ['야영지 · 지도', [pic(scrollIcon(), '월드맵')], ['세상은 캐릭터마다 새로 만들어집니다', '야영지: 안전 지대, 포탈로 먼 곳 이동, 상인 · 수리', '지도는 가 본 곳만 밝혀집니다']],
       ['세계 단계', [pic(scrollIcon(), TIER_NAMES.join(' · '))], ['평온 → 악몽 → 지옥', '단계가 오르면 같은 지역의 몬스터 레벨이 크게 오르고 더 좋은 장비 · 보석이 나옵니다']],
       ['도감 · 의뢰 · 업적', [pic(bookIcon(), '도감')], ['몬스터를 잡으면 도감이 채워지고 보너스를 받습니다', '퀘스트 · 일일 의뢰 · 업적으로 보상']],
@@ -616,8 +630,8 @@ export class Windows {
       const b = BASES[id];
       const desc = b.dmg ? `피해 ${b.dmg[0]}~${b.dmg[1]} · ${WEAPON_CLASSES[b.cls].name}` : b.armor ? `방어력 ${b.armor}${b.block ? ` · 막기 ${b.block * 100}%` : ''}` : b.restore ? (b.restore.hp ? `HP ${b.restore.hp}` : `MP ${b.restore.mp}`) : '';
       const qty = b.stack ? [1, 5, 20] : [1];
-      list += `<div class="row"><div class="cell shopIco">${ico({ base: id, rarity: 'common' })}</div><div class="grow"><b>${b.name}</b><div class="note">${desc}</div></div>
-        ${qty.map((q) => `<button class="btn" data-buy="${id}" data-q="${q}" ${st.gold < b.price * q ? 'disabled' : ''}>${q > 1 ? `×${q} ` : ''}${b.price * q}G</button>`).join('')}</div>`;
+      list += `<div class="row shopRow"><div class="cell shopIco">${ico({ base: id, rarity: 'common' })}</div><div class="grow"><b>${b.name}</b><div class="note">${desc}</div></div>
+        <div class="buys">${qty.map((q) => `<button class="btn" data-buy="${id}" data-q="${q}" ${st.gold < b.price * q ? 'disabled' : ''}>${q > 1 ? `×${q} ` : ''}${(b.price * q).toLocaleString()}G</button>`).join('')}</div></div>`;
     }
     const cur = this.cur();
     return `<div class="cols"><div class="frame" style="flex:1"><h3>상인 오르텐</h3>${list}</div>
@@ -784,6 +798,8 @@ export class Windows {
       if (r.ok) { audio.play('rankup'); w.ui.toast(`${affixText(r.old)} → ${affixText(r.now)}`, '#c58cff'); this.shardSel = null; w.refreshGear(); }
       townDone(r);
     });
+    on('[data-vput]', (el) => { const r = vaultPut(st, Number(el.dataset.vput)); if (!r.ok && r.why) { w.ui.toast(r.why); audio.play('error'); } else audio.play('click'); w.ui.dirty(); this.render(); });
+    on('[data-vtake]', (el) => { const r = vaultTake(st, Number(el.dataset.vtake)); if (!r.ok && r.why) { w.ui.toast(r.why); audio.play('error'); } else audio.play('click'); w.ui.dirty(); this.render(); });
     on('[data-notes]', () => showNotes());
     on('[data-restore]', async () => {
       const b = await cloud.restore(st.cid);

@@ -62,6 +62,8 @@ function setup(db: DB): Promise<unknown> {
       // 닉네임: 소문자로 맞춘 이름 하나에 캐릭터 하나
       db.prepare('CREATE TABLE IF NOT EXISTS ash_names (lname TEXT PRIMARY KEY, name TEXT NOT NULL, k TEXT NOT NULL, at INTEGER NOT NULL)'),
       db.prepare('CREATE TABLE IF NOT EXISTS ash_rank (id TEXT PRIMARY KEY, name TEXT, aw INTEGER, dg INTEGER, title TEXT, at INTEGER)'),
+      // 계정 공용 창고 (캐릭터끼리 나눠 쓴다)
+      db.prepare('CREATE TABLE IF NOT EXISTS ash_vault (id TEXT PRIMARY KEY, data TEXT NOT NULL, at INTEGER NOT NULL)'),
     ])
     .catch((e) => {
       ready = null;
@@ -190,6 +192,18 @@ export async function ashen(db: DB, d: Record<string, unknown>, ip: string): Pro
     return { ok: true, id, data: s?.data ?? null, at: s?.at ?? 0 };
   }
   if (type === 'ash_ping') return { ok: true, moved: await movedAway() };
+  // 계정 공용 창고: 읽기 · 쓰기 (더 새 것만 덮는다, 다른 기기가 가져갔으면 거절)
+  if (type === 'ash_vault') {
+    const r = await db.prepare('SELECT data, at FROM ash_vault WHERE id = ?').bind(id).first<{ data: string; at: number }>();
+    return { ok: true, data: r?.data ?? null, at: r?.at ?? 0 };
+  }
+  if (type === 'ash_vault_put') {
+    if (await movedAway()) return { ok: false, error: 'moved' };
+    const data = String(d.data ?? ''), at = Number(d.at) || Date.now();
+    if (data.length > 600000) return { ok: false, error: 'big' };
+    await db.prepare('INSERT INTO ash_vault (id, data, at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data, at = excluded.at WHERE excluded.at >= ash_vault.at').bind(id, data, at).run();
+    return { ok: true };
+  }
   if (type === 'ash_save') {
     if (await movedAway()) return { ok: false, error: 'moved' };
     const data = String(d.data ?? '');

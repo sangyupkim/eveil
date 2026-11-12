@@ -147,3 +147,16 @@ body.touch #quick .slot:nth-child(n) { right: auto; bottom: auto; }
 .mapZoom .btn { min-width: 2.2em; padding: 0.2em 0.6em; }
 .wmap.big .pin { font-size: 13px; }
 .wmap.big .pin.go { padding: 4px 8px; }
+
+/* 상점: 이름이 세로로 잘리지 않게 — 이름 칸은 최소 폭, 버튼은 작게 모아 접는다 */
+.shopRow .grow { min-width: 7.5em; }
+.shopRow .grow b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.shopRow .buys { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; max-width: 58%; }
+.shopRow .buys .btn { padding: 0.25em 0.6em; font-size: 0.85em; white-space: nowrap; }
+/* 강화석 알약 */
+.pill.ore { color: #cfe0ff; font-family: var(--f-latin); font-weight: 700; }
+.pill.ore img { width: 1.3em; height: 1.3em; }
+/* 가방 머리 줄: 좁아도 글자가 세로로 쌓이지 않게 */
+.frame > h3 { flex-wrap: wrap; row-gap: 4px; }
+.frame > h3 > *, .frame > h3 { white-space: nowrap; }
+.goldTxt { white-space: nowrap; }

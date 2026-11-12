@@ -24,7 +24,7 @@ import { itemName, itemColor, isBook, makeItem, makeBook, rollBase, itemValue } 
 import { seeded, randInt, randRange } from '../game/rng.js';
 import { Actor, makeHero } from '../engine2d/actor.js';
 import { FX, drawPowerFrame } from '../engine2d/fx.js';
-import { resolveCollision, zoneAt, clearLine, findPath, blockedAt, LAKES, MESAS, CAMPS, inCamp } from '../engine2d/stage.js';
+import { resolveCollision, zoneAt, clearLine, findPath, blockedAt, LAKES, MESAS, CAMPS, inCamp, bossSpot } from '../engine2d/stage.js';
 import { reveal, saveFog, loadFog } from '../ui/mapimg.js';
 import { DATA, image, animImage, drawRect, frameIndex } from '../engine2d/sprites.js';
 import { MONSTER_LOOK, ITEM_LOOK, LOOT_LOOK } from '../data/flareWorld.js';
@@ -401,7 +401,7 @@ export class World {
     const day = dayKey();
     const opened = (this.st.chests?.day === day ? this.st.chests.ids : []);
     [...LAKES, ...MESAS].forEach((q, i) => {
-      if (q.x > 500 || q.ring || (q.wild && i % 3)) return;
+      if (q.x > 500 || q.ring || q.wild || i % 3) return; // 보물 상자는 드물게
       const p = this.freeSpot(q.x + (i % 2 ? 2 : -2), q.z - q.r - 2.2, 0.8);
       const c = { id: i, x: p.x, z: p.z, open: opened.includes(i) };
       c.draw = { z: p.z, draw: (ctx, stg) => { const def = DATA.tiles.dungeon, tt = def.tiles[c.open ? 160 : 144], src = image(def.imgs[tt[0]]); if (!src.ok || !stg.onScreen(c.x, c.z, 3)) return; const s2 = stg.toScreen(c.x, c.z); drawRect(ctx, src.im, tt.slice(1), s2.x, s2.y, stg.scale()); } };
@@ -415,9 +415,10 @@ export class World {
       c.open = true;
       const day = dayKey(); if (st.chests?.day !== day) st.chests = { day, ids: [] }; st.chests.ids.push(c.id);
       const zn = zoneAt(c.x, c.z) || ALL_ZONES[0], lv = zn.levels[1];
-      this.dropGround({ kind: 'item', item: makeItem(rollBase(lv), { rarity: Math.random() < 0.25 ? 'hero' : 'rare', ilvl: lv }, st) }, c.x + 1, c.z + 0.5);
-      this.dropGround({ kind: 'gold', amount: lv * 40 }, c.x - 1, c.z + 0.5);
-      if (Math.random() < 0.5) this.dropGround({ kind: 'item', item: makeItem(`gem_${['ruby', 'emerald', 'sapphire', 'amethyst', 'diamond'][Math.floor(Math.random() * 5)]}_${gemGradeFor(lv)}`, { qty: 1 }, st) }, c.x, c.z + 1.2);
+      const rr = Math.random(), rar = rr < 0.03 ? 'hero' : rr < 0.25 ? 'rare' : 'magic'; // 대부분 마법, 가끔 희귀
+      if (Math.random() < 0.6) this.dropGround({ kind: 'item', item: makeItem(rollBase(lv), { rarity: rar, ilvl: lv }, st) }, c.x + 1, c.z + 0.5);
+      this.dropGround({ kind: 'gold', amount: lv * 12 }, c.x - 1, c.z + 0.5);
+      if (Math.random() < 0.15) this.dropGround({ kind: 'item', item: makeItem(`gem_${['ruby', 'emerald', 'sapphire', 'amethyst', 'diamond'][Math.floor(Math.random() * 5)]}_${gemGradeFor(lv)}`, { qty: 1 }, st) }, c.x, c.z + 1.2);
       this.fx.pillar(c.x, c.z, 0xffd060, 1.4, 5, 1.5); sfx('rare'); this.ui.toast('숨은 보물 상자!', '#ffd84a');
     }
   }
@@ -598,19 +599,22 @@ export class World {
       for (let n = 0, tries = 0; n < total && tries < 400; tries++) {
         const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * zn.r * 0.88;
         const cx = zn.x + Math.cos(a) * r, cz = zn.z + Math.sin(a) * r;
-        if (Math.hypot(cx, cz) < TOWN.r + 10 || blockedAt(this.stage, cx, cz, 2) || packs.some((q) => Math.hypot(q[0] - cx, q[1] - cz) < 16)) continue;
+        // 베이스캠프 둘레(마을 + 25칸)와 보스 터에는 무리를 두지 않는다
+        const bs = bossSpot(zn);
+        if (Math.hypot(cx, cz) < TOWN.r + 30 || Math.hypot(bs.x - cx, bs.z - cz) < 20 || blockedAt(this.stage, cx, cz, 2) || packs.some((q) => Math.hypot(q[0] - cx, q[1] - cz) < 16)) continue;
         packs.push([cx, cz]);
         const k = Math.min(total - n, 3 + Math.floor(rng() * 5));
         for (let i = 0; i < k; i++) {
           const x = cx + (rng() - 0.5) * 7, z = cz + (rng() - 0.5) * 7;
-          if (blockedAt(this.stage, x, z, 1)) continue;
+          if (blockedAt(this.stage, x, z, 1) || Math.hypot(x, z) < TOWN.r + 25) continue;
           this.spawners.push({ zone: zn, x, z, level: lv(x, z), tier: 'normal', timer: 0, mon: null }); n++;
         }
       }
       // 네임드: 지역 한가운데 / 보스: 마을에서 가장 먼 곳
       const ux = zn.x / Math.hypot(zn.x, zn.z), uz = zn.z / Math.hypot(zn.x, zn.z);
       this.spawners.push({ zone: zn, x: zn.x - uz * 12, z: zn.z + ux * 12, level: zn.levels[1], tier: 'named', timer: 0, mon: null, fixed: zn.named });
-      this.spawners.push({ zone: zn, x: zn.x + ux * zn.r * 0.75, z: zn.z + uz * zn.r * 0.75, level: zn.levels[1] + 1, tier: 'boss', timer: 0, mon: null, fixed: zn.boss });
+      const bsp = bossSpot(zn);
+      this.spawners.push({ zone: zn, x: bsp.x, z: bsp.z, level: zn.levels[1] + 1, tier: 'boss', timer: 0, mon: null, fixed: zn.boss });
     }
     this.spawners = this.spawners.filter((sp) => !inCamp(sp.x, sp.z, 4));
   }
