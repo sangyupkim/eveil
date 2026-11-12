@@ -399,6 +399,16 @@ export class Windows {
       <div class="note">${sk}</div><div class="mini" style="height:5px;max-width:12em"><i style="width:${Math.round((m.sta / sm) * 100)}%;background:#6ad07a"></i></div></div>`;
   }
 
+  // 창 위에 뜨는 알림 (확인을 눌러 닫는다)
+  alert(title, text = '') {
+    document.getElementById('winAlert')?.remove();
+    const el = document.createElement('div');
+    el.id = 'winAlert';
+    el.innerHTML = `<div><b>${esc(title)}</b>${text ? `<p>${esc(text)}</p>` : ''}<button class="plate gold">확인</button></div>`;
+    el.querySelector('button').onclick = () => { audio.play('click'); el.remove(); };
+    document.body.appendChild(el);
+  }
+
   keysPanel() {
     const m = keyMap(this.w.st);
     return `<h3>단축키 <button class="btn" data-keyreset="1">처음대로</button></h3><div class="keygrid">${KEY_ACTIONS.map(([id, nm]) =>
@@ -658,12 +668,10 @@ export class Windows {
     });
     on('[data-turnin]', () => {
       const r = questTurnIn(st, bagSize(st));
+      if (r.bagFull) { audio.play('error'); this.alert('가방이 가득 찼습니다', `보상을 받으려면 가방 ${r.need}칸이 필요합니다`); return; }
       if (!r.ok) { if (r.why) w.ui.toast(r.why); audio.play('error'); return; }
       audio.play('awaken');
       w.fx.pillar(w.player.pos.x, w.player.pos.z, 0xffd860, 1.2);
-      // 가방이 가득하면 남은 보상은 발밑에
-      (r.overflow || []).forEach((it, k) => w.dropGround({ kind: 'item', item: it }, w.player.pos.x + Math.cos(k * 2.1) * 1.2, w.player.pos.z + Math.sin(k * 2.1) * 1.2));
-      if (r.overflow?.length) w.ui.toast('가방이 가득 차서 보상을 발밑에 떨어뜨렸습니다', '#ffb060');
       w.ui.toast(`보상: ${r.q.reward.gold} G${r.items.length ? ` · ${r.items.map((it) => itemName(it)).join(' · ')}` : ''}`, '#ffd84a');
       w.ui.log(`퀘스트 완료: ${r.q.name}`, '#ffd84a');
       w.ui.dirty();

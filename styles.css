@@ -434,3 +434,8 @@ html.force-land #rotate { display: none !important; }
 #movedBox { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; background: rgba(8, 6, 12, 0.88); color: #e8dcc0; text-align: center; }
 #movedBox > div { max-width: 26em; padding: 1.4em 1.8em; border: 1px solid #c9a050; background: #15111c; }
 #movedBox b { font-size: 1.2em; color: #ffd84a; }
+
+#winAlert { position: fixed; inset: 0; z-index: 150; display: flex; align-items: center; justify-content: center; background: rgba(8, 6, 12, 0.6); color: #e8dcc0; text-align: center; }
+#winAlert > div { min-width: 18em; padding: 1.2em 1.6em; border: 1px solid #c9a050; background: #15111c; box-shadow: 0 0 24px rgba(0,0,0,.6); }
+#winAlert b { font-size: 1.15em; color: #ffb060; display: block; margin-bottom: .4em; }
+#winAlert .plate { margin-top: .8em; min-width: 8em; }
