@@ -384,3 +384,5 @@ body.canInstall #btnInstall { display: inline-block; }
 .doll .sil { position: absolute; left: 22%; top: 3%; width: 56%; height: 94%; fill: rgba(200, 170, 110, 0.10); stroke: rgba(217, 182, 106, 0.35); stroke-width: 0.6; }
 .doll .dslot { position: absolute; width: auto; height: 15%; aspect-ratio: 1; transform: translate(-50%, -50%); }
 .kv.diff b em { font-style: normal; }
+
+.penta { width: calc(var(--u) * 7); height: calc(var(--u) * 7); flex: 0 0 auto; }

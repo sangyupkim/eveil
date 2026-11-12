@@ -27,9 +27,18 @@ import { uiSettings, applyUi, editUi } from './layout.js';
 
 import { TITLE_AT, titleKey, titleName, UNIQUES, perkChoices } from '../data/titles.js';
 import { VARIANTS, variantSlots } from '../game/skills.js';
+import { SCHOOL_NAMES } from '../data/skills.js';
 import { GEMS, GEM_GRADES } from '../data/legends.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { dailyOf, dailyText, dailyReward } from '../game/daily.js';
+// 스탯 오각형: 내가 어느 쪽으로 컸나
+const pentagon = (stats) => {
+  const mx = Math.max(...STATS.map((k) => stats[k])) || 1, pt = (i, r) => { const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5; return `${(50 + Math.cos(a) * r).toFixed(1)},${(50 + Math.sin(a) * r).toFixed(1)}`; };
+  const grid = [1, 0.66, 0.33].map((k) => `<polygon points="${STATS.map((_, i) => pt(i, 40 * k)).join(' ')}" fill="none" stroke="rgba(217,182,106,.25)"/>`).join('');
+  const shape = `<polygon points="${STATS.map((k, i) => pt(i, 40 * Math.max(0.08, stats[k] / mx))).join(' ')}" fill="rgba(255,200,90,.35)" stroke="#e8c36a" stroke-width="1.2"/>`;
+  const labels = STATS.map((k, i) => { const [x, y] = pt(i, 48).split(','); return `<text x="${x}" y="${y}" fill="${STAT_COLORS[k]}" font-size="8" text-anchor="middle" dominant-baseline="middle">${STAT_NAMES[k]}</text>`; }).join('');
+  return `<svg class="penta" viewBox="0 0 100 100">${grid}${shape}${labels}</svg>`;
+};
 const repickCost = (t) => 2000 * (t.tier + 1) ** 2;
 const nextTitle = (st) => { const i = TITLE_AT.findIndex((n) => st.awakenings < n); return i < 0 ? '' : ` · ${titleName(titleKey(st.stats), i)}까지 각성 ${TITLE_AT[i] - st.awakenings}`; };
 const TITLES = { inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', town: '마을', shop: '상점', menu: '메뉴' };
@@ -212,7 +221,8 @@ export class Windows {
 
   skills() {
     const st = this.w.st;
-    const ids = Object.keys(st.skills);
+    const all = Object.keys(st.skills), school = this.skillSchool || 'all';
+    const ids = school === 'all' ? all : all.filter((id) => SKILLS[id].school === school);
     const stats = totalStats(st);
     if (this.skillSel && !st.skills[this.skillSel]) this.skillSel = null;
     if (!this.skillSel && ids.length) this.skillSel = ids[0];
@@ -247,7 +257,8 @@ export class Windows {
       }
       det += `</div>${st.quick.includes(id) ? '<div class="btns"><button class="btn" data-qs="-1">빼기</button></div>' : ''}`;
     }
-    return `<div class="cols"><div class="frame" style="flex:1"><h3>배운 스킬 <span class="cnt">${ids.length}</span></h3>${list}</div>
+    const tabs = ['all', ...Object.keys(SCHOOL_NAMES)].filter((k) => k === 'all' || all.some((id) => SKILLS[id].school === k)).map((k) => `<button class="btn${school === k ? ' on' : ''}" data-school="${k}">${k === 'all' ? '전체' : SCHOOL_NAMES[k]}</button>`).join('');
+    return `<div class="cols"><div class="frame" style="flex:1"><h3>배운 스킬 <span class="cnt">${all.length}</span></h3><div class="btns" style="flex-wrap:wrap;margin:0 0 6px">${tabs}</div>${list}</div>
       <div class="frame detail" style="flex:0 0 44%">${det}</div></div>`;
   }
 
@@ -275,11 +286,12 @@ export class Windows {
     const total = STATS.reduce((a, s) => a + st.apTotal[s], 0) || 1;
     const hist = STATS.map((s) => `<span style="color:${STAT_COLORS[s]}">${STAT_NAMES[s]} ${Math.round((st.apTotal[s] / total) * 100)}%</span>`).join(' · ');
     return `<div class="cols"><div class="frame" style="flex:1.25">
-        <div class="row" style="border:0;padding-top:0"><div class="portrait"><img src="${portrait(st.look)}" alt="" /></div>
+        <div class="row" style="border:0;padding-top:0"><div class="portrait"><img src="${portrait(st.look)}" alt="" /></div>${pentagon(stats)}
           <div class="grow"><div class="detail"><div class="nm">${esc(st.name)}</div></div><div class="note">${(st.titles || []).length ? `<b style="color:#ffd860">${esc(st.titles[st.titles.length - 1].name)}</b> · ` : ''}각성 ${st.awakenings}회 · EXP ${Math.floor(st.exp)} / ${need}${nextTitle(st)}</div>
           <div class="mini"><i style="width:${Math.min(100, (st.exp / need) * 100)}%;background:linear-gradient(#ffe7a0,#c99a3a)"></i></div></div></div>
         ${rows}
         <div class="note" style="margin-top:6px">누적 성향 ${hist}</div>
+        <div class="note">칭호 도감 ${(st.titleSeen || []).length} / 45</div>
         ${(st.titles || []).map((t, i) => `<div class="note"><b style="color:#ffd860">${esc(t.name)}</b> ${esc(t.perk.text)} <button class="btn" data-repick="${i}" ${st.gold < repickCost(t) ? 'disabled' : ''}>다시 고르기 ${repickCost(t).toLocaleString()}G</button></div>`).join('')}
       </div><div class="frame" style="flex:1">
         <h3>세부 능력치</h3><div class="kv">${kv}</div>
@@ -540,6 +552,7 @@ export class Windows {
       w.ui.dirty(); this.render();
     });
     on('[data-hire]', () => townDone(hire(st), '용병을 고용했습니다'));
+    on('[data-school]', (el) => { this.skillSchool = el.dataset.school; this.skillSel = null; audio.play('click'); this.render(); });
     on('[data-socket]', (el) => {
       const it = this.cur(); if (!it?.sockets || it.gems.length >= it.sockets) return;
       if (!takeOne(st, el.dataset.socket)) return;

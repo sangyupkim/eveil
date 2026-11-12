@@ -299,6 +299,7 @@ export class World {
     if ((st.titles ||= []).some((t) => t.tier === tier)) return;
     this.ui.titlePick({ tier, key, name: titleName(key, tier), choices: perkChoices(key, tier) }, (perk) => {
       st.titles.push({ tier, key, name: titleName(key, tier), perk });
+      const seen = (st.titleSeen ||= []); if (!seen.includes(key + tier)) seen.push(key + tier);
       sfx('awaken'); this.fx.pillar(this.player.pos.x, this.player.pos.z, 0xffe080, 1.4);
       this.ui.log(`칭호: ${titleName(key, tier)} — ${perk.text}`, '#ffd860');
       this.ui.dirty();
