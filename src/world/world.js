@@ -293,7 +293,8 @@ export class World {
   makePet() {
     if (this.pet) { this.stage.remove(this.pet); this.pet = null; }
     if (!this.st.pet) return;
-    this.pet = new Actor(this.scene, { enemy: this.st.pet.kind }, { size: 0.5 });
+    if (!this.st.pet.kind.startsWith('pet_')) this.st.pet = { kind: 'pet_dog', name: '강아지' }; // 예전 개미귀신 펫
+    this.pet = new Actor(this.scene, { enemy: this.st.pet.kind }, { size: 0.62 });
     this.pet.pos.set(this.player.pos.x + 1, 0, this.player.pos.z + 1);
     this.pet.name = this.st.pet.name;
   }
@@ -1839,7 +1840,7 @@ export class World {
     const it = st.inv.find((x) => x.uid === uid);
     if (!it) return;
     this.d = derive(st, this.buffValues());
-    if (BASES[it.base]?.type === 'pet') { takeOne(st, it.base); st.pet = { kind: 'antlion_small', name: '개미귀신' }; this.makePet(); this.ui.toast('펫이 태어났습니다! 물건을 주워 오고 함께 싸웁니다', '#7fe07a'); sfx('learn'); this.ui.dirty(); return; }
+    if (BASES[it.base]?.type === 'pet') { takeOne(st, it.base); const cat = BASES[it.base].pet === 'pet_cat'; st.pet = { kind: cat ? 'pet_cat' : 'pet_dog', name: cat ? '고양이' : '강아지' }; this.makePet(); this.ui.toast(`${st.pet.name}가 함께합니다! 물건을 주워 오고 함께 싸웁니다`, '#7fe07a'); sfx('learn'); this.ui.dirty(); return; }
     if (isBook(it)) {
       const c = canLearn(st, it.book, this.d.stats);
       if (c.ok) {

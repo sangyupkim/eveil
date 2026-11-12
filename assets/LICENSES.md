@@ -33,3 +33,6 @@
 - 거미줄 숲: "Corrupted Minds" — MrAmogus
 - 망령의 항구: "Evil Approach" — TheBlackSword
 - 악마의 관문: "Epic Boss Battle" — Juhani Junkala (KaadmY 올림)
+
+## 펫 (assets/flare/enemies/pet_dog · pet_cat)
+- "Animal Pack Vol.2" — Quaternius, CC0 (OpenGameArt "Animated Animales Low Poly"). 3D 모델을 8방향으로 찍어 씀: `node tools/prep-pets.mjs`

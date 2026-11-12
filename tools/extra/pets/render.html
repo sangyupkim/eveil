@@ -1,0 +1,51 @@
+<!doctype html><html><body style="margin:0;background:transparent">
+<script type="importmap">{ "imports": { "three": "/node_modules/three/build/three.module.js", "three/addons/": "/node_modules/three/examples/jsm/" } }</script>
+<script type="module">
+// 3D 펫 모델을 Flare처럼 8방향 그림으로 찍는다 (tools/prep-pets.mjs가 연다)
+import * as THREE from 'three';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+const C = 128;
+const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+r.setSize(C, C); r.setClearColor(0, 0); document.body.appendChild(r.domElement);
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xfff4e0, 0x403020, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(-3, 6, 4); scene.add(sun);
+const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
+window.info = async (name) => {
+  const o = await new FBXLoader().loadAsync('/tools/extra/pets/' + name + '.fbx');
+  const out = []; o.traverse((m) => { if (m.isMesh) out.push([m.name, !!m.geometry.attributes.color, JSON.stringify((Array.isArray(m.material) ? m.material : [m.material]).map((x) => x.name))]); }); window.meshes = out;
+  return o.animations.map((a) => [a.name, a.duration.toFixed(2)]);
+};
+// anims: [[이름, 원본 이름, 프레임 수]] → 칸 C, 줄 = 방향 8, 칸 = 동작 프레임 이어 붙임
+window.sheet = async (name, anims) => {
+  const o = await new FBXLoader().loadAsync('/tools/extra/pets/' + name + '.fbx');
+  o.traverse((m) => { if (m.isMesh) { const vc = !!m.geometry.attributes.color; m.material = (Array.isArray(m.material) ? m.material : [m.material]).map((x) => new THREE.MeshLambertMaterial({ color: (window.PAL || {})[x.name] ?? (vc ? 0xffffff : x.color), vertexColors: vc, flatShading: true })); if (m.material.length === 1) m.material = m.material[0]; } });
+  const box = new THREE.Box3().setFromObject(o), size = box.getSize(new THREE.Vector3()), k = 1.6 / Math.max(size.x, size.y, size.z);
+  o.scale.multiplyScalar(k); const piv = new THREE.Group(); piv.add(o); scene.add(piv);
+  const b2 = new THREE.Box3().setFromObject(piv); o.position.y -= b2.min.y; o.position.x -= (b2.min.x + b2.max.x) / 2; o.position.z -= (b2.min.z + b2.max.z) / 2;
+  const el = Math.PI / 6; cam.position.set(0, Math.sin(el) * 10, Math.cos(el) * 10); cam.lookAt(0, 0.45, 0); cam.zoom = 1.05; cam.updateProjectionMatrix();
+  const mixer = new THREE.AnimationMixer(o);
+  const total = anims.reduce((a, x) => a + x[2], 0), out = document.createElement('canvas'); out.width = total * C; out.height = 8 * C;
+  const g = out.getContext('2d'), def = { anims: {} };
+  let col = 0;
+  for (const [an, src, n, dur, type] of anims) {
+    const clip = o.animations.find((a) => a.name === src) || o.animations[0];
+    mixer.stopAllAction(); const act = mixer.clipAction(clip); act.play();
+    def.anims[an] = { frames: n, dur, type, f: {} };
+    for (let d = 0; d < 8; d++) {
+      const th = Math.PI + (Math.PI / 4) * d; // 화면 방향 (y 아래)
+      piv.rotation.y = Math.atan2(-Math.cos(th) / 64, -Math.sin(th) / 32) + (window.YAW || 0); // 모델 앞(+z)을 그 화면 방향의 세계 방향으로
+      def.anims[an].f[d] = [];
+      for (let i = 0; i < n; i++) {
+        mixer.setTime((clip.duration * i) / n); r.render(scene, cam);
+        g.drawImage(r.domElement, (col + i) * C, d * C);
+        def.anims[an].f[d].push([(col + i) * C, d * C, C, C, C / 2, C * 0.78]);
+      }
+    }
+    col += n;
+  }
+  scene.remove(piv);
+  return { png: out.toDataURL(), def };
+};
+window.ready = true;
+</script></body></html>
