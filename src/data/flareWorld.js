@@ -1,3 +1,4 @@
+import { GEMS, GEM_GRADES, gemId } from './legends.js';
 // 2D(Flare) 그림 연결: 지역마다 땅 타일 · 배경 물건, 몬스터 그림, 장비 겹그림 · 아이콘
 
 // ───── 땅 · 배경 ─────
@@ -132,6 +133,8 @@ export const ITEM_LOOK = {
   frost_boots: { layers: { feet: 'plate_boots' }, icon: 164, tint: C.ice }, dragon_boots: { layers: { feet: 'plate_boots' }, icon: 164, tint: C.red },
   leather_belt: { icon: 208 }, heavy_belt: { icon: 208 }, warden_belt: { icon: 208 }, dragon_belt: { icon: 208 },
   amulet: { icon: 212 }, amulet2: { icon: 213 }, ring: { icon: 198 }, ring2: { icon: 204 },
+  cloth_wraps: { layers: { hands: 'cloth_gloves' }, icon: 186 }, chain_gloves: { layers: { hands: 'chain_gloves' }, icon: 154 }, mage_sleeves: { layers: { hands: 'mage_sleeves' }, icon: 138 }, shadow_gloves: { layers: { hands: 'leather_gloves' }, icon: 146, tint: C.vio }, ember_sleeves: { layers: { hands: 'mage_sleeves_alt1' }, icon: 138, tint: C.red }, cloth_shoes: { layers: { feet: 'cloth_sandals' }, icon: 132 }, chain_boots: { layers: { feet: 'chain_boots' }, icon: 156 }, mage_boots: { layers: { feet: 'mage_boots' }, icon: 140 }, shadow_boots: { layers: { feet: 'leather_boots' }, icon: 148, tint: C.vio }, ember_boots: { layers: { feet: 'mage_boots_alt1' }, icon: 140, tint: C.red }, cloth_sash: { icon: 208, tint: C.vio }, chain_belt: { icon: 208, tint: C.dark }, rune_sash: { icon: 208, tint: C.gold }, leather_hood: { layers: { head: 'leather_hood' }, icon: 144, tint: C.grn }, chain_coif: { layers: { head: 'chain_coif' }, icon: 152, tint: C.dark }, plate_helm: { layers: { head: 'plate_helm' }, icon: 160 }, shadow_hood: { layers: { head: 'leather_hood' }, icon: 144, tint: C.vio }, ember_hood: { layers: { head: 'mage_hood_alt1' }, icon: 136, tint: C.red }, bone_amulet: { icon: 214 }, jade_amulet: { icon: 212, tint: C.grn }, sun_amulet: { icon: 213, tint: C.gold }, star_amulet: { icon: 215 }, copper_ring: { icon: 199 }, silver_ring: { icon: 200 }, jade_ring: { icon: 205 }, sapphire_ring: { icon: 204 }, ruby_ring: { icon: 207 },
+  ...Object.fromEntries(Object.entries(GEMS).flatMap(([g, x]) => GEM_GRADES.map((gr, k) => [gemId(g, k), { icon: x.icon }]))),
   dungeon_key: { icon: 226 }, hp_potion: { icon: 64 }, mp_potion: { icon: 65 }, hp_potion_l: { icon: 84 }, mp_potion_l: { icon: 86 },
 };
 // 처음 복장 (안 입은 부위)

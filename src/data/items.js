@@ -1,3 +1,4 @@
+import { GEMS, GEM_GRADES, gemId } from './legends.js';
 // 아이템 정의. 상점은 일반(흰색) 기본 장비와 소모품만 판다.
 
 export const SLOTS = ['weapon', 'offhand', 'helm', 'armor', 'gloves', 'boots', 'belt', 'amulet', 'ring1', 'ring2'];
@@ -96,6 +97,35 @@ export const BASES = {
   amulet2: { name: '고대 목걸이', slot: 'amulet', minLvl: 20, icon: 'i_necklace', mtint: 0xffd36a },
   ring2: { name: '룬 반지', slot: 'ring', minLvl: 20, icon: 'i_ring2', mtint: 0xb08aff },
 
+  // ───── 장비 늘리기 (방어구 · 장신구) ─────
+  cloth_wraps: { name: '천 손싸개', slot: 'gloves', armor: 1, minLvl: 1, mods: { maxMp: 6 } },
+  chain_gloves: { name: '사슬 장갑', slot: 'gloves', armor: 4, req: { str: 14 }, minLvl: 7 },
+  mage_sleeves: { name: '마법사 소매', slot: 'gloves', armor: 5, req: { int: 30 }, minLvl: 16, mods: { maxMp: 20 } },
+  shadow_gloves: { name: '그림자 장갑', slot: 'gloves', armor: 12, req: { dex: 46 }, minLvl: 28 },
+  ember_sleeves: { name: '불꽃 소매', slot: 'gloves', armor: 10, req: { int: 54 }, minLvl: 32, mods: { maxMp: 40 } },
+  cloth_shoes: { name: '천 신', slot: 'boots', armor: 1, minLvl: 1, mods: { maxMp: 6 } },
+  chain_boots: { name: '사슬 장화', slot: 'boots', armor: 4, req: { str: 14 }, minLvl: 7 },
+  mage_boots: { name: '마법사 신', slot: 'boots', armor: 5, req: { int: 30 }, minLvl: 16, mods: { maxMp: 20 } },
+  shadow_boots: { name: '그림자 장화', slot: 'boots', armor: 12, req: { dex: 46 }, minLvl: 28 },
+  ember_boots: { name: '불꽃 신', slot: 'boots', armor: 10, req: { int: 54 }, minLvl: 32, mods: { maxMp: 40 } },
+  cloth_sash: { name: '천 띠', slot: 'belt', armor: 1, minLvl: 1, mods: { maxMp: 6 } },
+  chain_belt: { name: '사슬 허리띠', slot: 'belt', armor: 6, req: { str: 16 }, minLvl: 9 },
+  rune_sash: { name: '룬 띠', slot: 'belt', armor: 7, req: { int: 36 }, minLvl: 20, mods: { maxMp: 30 } },
+  leather_hood: { name: '가죽 두건', slot: 'helm', armor: 5, req: { dex: 16 }, minLvl: 5 },
+  chain_coif: { name: '사슬 두건', slot: 'helm', armor: 9, req: { str: 18 }, minLvl: 8 },
+  plate_helm: { name: '판금 투구', slot: 'helm', armor: 18, req: { str: 36 }, minLvl: 18 },
+  shadow_hood: { name: '그림자 두건', slot: 'helm', armor: 16, req: { dex: 46 }, minLvl: 28 },
+  ember_hood: { name: '불꽃 두건', slot: 'helm', armor: 12, req: { int: 54 }, minLvl: 32, mods: { maxMp: 45 } },
+  bone_amulet: { name: '뼈 목걸이', slot: 'amulet', minLvl: 8 },
+  jade_amulet: { name: '비취 목걸이', slot: 'amulet', minLvl: 14 },
+  sun_amulet: { name: '태양 목걸이', slot: 'amulet', minLvl: 28 },
+  star_amulet: { name: '별 목걸이', slot: 'amulet', minLvl: 36 },
+  copper_ring: { name: '구리 반지', slot: 'ring', minLvl: 1 },
+  silver_ring: { name: '은 반지', slot: 'ring', minLvl: 8 },
+  jade_ring: { name: '비취 반지', slot: 'ring', minLvl: 14 },
+  sapphire_ring: { name: '청옥 반지', slot: 'ring', minLvl: 22 },
+  ruby_ring: { name: '홍옥 반지', slot: 'ring', minLvl: 30 },
+  ...Object.fromEntries(Object.entries(GEMS).flatMap(([g, x]) => GEM_GRADES.map((gr, k) => [gemId(g, k), { name: `${gr.pre ? gr.pre + ' ' : ''}${x.name}`, type: 'gem', gem: g, grade: k, stack: true, price: 40 * (k + 1) ** 2 }]))),
   dungeon_key: { name: '던전 열쇠', type: 'key', price: 0, stack: true },
   hp_potion: { name: '체력 물약', type: 'potion', restore: { hp: 70 }, price: 15, shop: true, stack: true, icon: 'i_potion_hp', itint: 0xff3040 },
   mp_potion: { name: '마나 물약', type: 'potion', restore: { mp: 45 }, price: 15, shop: true, stack: true, icon: 'i_potion_mp', itint: 0x3a78ff },

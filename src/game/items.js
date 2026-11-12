@@ -3,13 +3,19 @@ import { BASES, AFFIXES, RARITY, RARITY_ORDER, AFFIX_PREFIX, LEGEND_NAMES, WEAPO
 import { SKILLS, BOOK_TIERS } from '../data/skills.js';
 import { R, randInt, pick, weighted } from './rng.js';
 import { UNIQUES } from '../data/titles.js';
+import { NAMED_LEGENDS, socketRoll } from '../data/legends.js';
+// 이름 있는 전설 (정해진 옵션 · 고유 효과)
+export function makeNamed(def, st = null) {
+  return { uid: uid(st), base: def.base, rarity: 'legend', ilvl: def.ilvl, named: def.id, title: def.name, unique: def.unique, affixes: def.affixes.map(([id, v]) => ({ id, v })), sockets: 2, gems: [] };
+}
+export const namedOf = (zoneId) => NAMED_LEGENDS[zoneId] || [];
 
 const uid = (st) => (st ? st.nextUid++ : Math.floor(Math.random() * 1e9));
 
 export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1 } = {}, st = null, rng = R) {
   const base = BASES[baseId];
   if (!base) throw new Error('없는 아이템: ' + baseId);
-  if (base.type === 'potion') return { uid: uid(st), base: baseId, qty };
+  if (base.type === 'potion' || base.stack) return { uid: uid(st), base: baseId, qty };
   const it = { uid: uid(st), base: baseId, rarity, ilvl, affixes: [] };
   const r = RARITY[rarity];
   const n = randInt(r.affix[0], r.affix[1], rng);
@@ -27,6 +33,8 @@ export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1 } = {}, 
     it.affixes.push({ id, v });
   }
   if (rarity === 'legend') { it.title = pick(LEGEND_NAMES, rng); it.unique = Math.floor(rng() * UNIQUES.length); }
+  const sk = socketRoll(rarity, rng);
+  if (sk) { it.sockets = sk; it.gems = []; }
   return it;
 }
 
@@ -46,6 +54,7 @@ function baseName(it) {
   if (it.book) return `스킬북: ${SKILLS[it.book].name}`;
   const base = BASES[it.base];
   if (base.type === 'potion') return base.name;
+  if (it.named) return it.title;
   if (it.rarity === 'legend') return `${it.title} ${base.name}`;
   if (it.rarity === 'common' || !it.affixes.length) return base.name;
   const top = [...it.affixes].sort((a, b) => b.v / AFFIXES[b.id].max(it.ilvl) - a.v / AFFIXES[a.id].max(it.ilvl))[0];

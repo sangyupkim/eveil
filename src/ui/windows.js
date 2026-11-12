@@ -22,10 +22,12 @@ import { ZONES } from '../data/world.js';
 import { nextQuest, questDone, questNeed, goalText, questTurnIn } from '../game/quests.js';
 import { audio } from '../engine/audio.js';
 import { cloud } from '../net/cloud.js';
+import { takeOne } from '../game/inventory.js';
 import { uiSettings, applyUi, editUi } from './layout.js';
 
 import { TITLE_AT, titleKey, titleName, UNIQUES, perkChoices } from '../data/titles.js';
 import { VARIANTS, variantSlots } from '../game/skills.js';
+import { GEMS, GEM_GRADES } from '../data/legends.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { dailyOf, dailyText, dailyReward } from '../game/daily.js';
 const repickCost = (t) => 2000 * (t.tier + 1) ** 2;
@@ -114,6 +116,11 @@ export class Windows {
       if (b.mods) for (const k in b.mods) h += `<div>${k === 'maxMp' ? '최대 MP' : k} +${b.mods[k]}</div>`;
       for (const a of it.affixes) h += `<div class="aff">${affixText(a)}</div>`;
       if (it.unique != null) h += `<div class="aff" style="color:#41e07a">◆ ${UNIQUES[it.unique].text}</div>`;
+      if (it.sockets) {
+        h += `<div class="aff" style="color:#c0b0ff">구멍 ${it.gems.length} / ${it.sockets}${it.gems.map((g) => ` · ${BASES[g].name} ${STAT_NAMES[GEMS[BASES[g].gem].stat]} +${GEM_GRADES[BASES[g].grade].v}`).join('')}</div>`;
+        const gems = it.gems.length < it.sockets ? this.w.st.inv.filter((x) => BASES[x.base]?.type === 'gem') : [];
+        if (gems.length && where !== 'none') h += `<div class="btns" style="flex-wrap:wrap">${gems.map((x) => `<button class="btn" data-socket="${x.base}">${BASES[x.base].name} 박기</button>`).join('')}</div>`;
+      }
       if (it.set) {
         const s = SETS[it.set], n = setCounts(this.w.st.equip)[it.set] || 0;
         const fx = (b) => Object.entries(b).map(([k, v]) => AFFIXES[k].text.replace('{v}', v)).join(' · ');
@@ -533,6 +540,11 @@ export class Windows {
       w.ui.dirty(); this.render();
     });
     on('[data-hire]', () => townDone(hire(st), '용병을 고용했습니다'));
+    on('[data-socket]', (el) => {
+      const it = this.cur(); if (!it?.sockets || it.gems.length >= it.sockets) return;
+      if (!takeOne(st, el.dataset.socket)) return;
+      it.gems.push(el.dataset.socket); audio.play('rankup'); w.ui.toast(`${BASES[el.dataset.socket].name}을(를) 박았습니다`, '#c0b0ff'); w.refreshGear(); w.ui.dirty(); this.render();
+    });
     on('[data-var]', (el) => { const s = st.skills[this.skillSel]; if (!s) return; (s.var ||= []).push(el.dataset.var); audio.play('rankup'); w.ui.dirty(); this.render(); });
     on('[data-repick]', (el) => {
       const t = st.titles[Number(el.dataset.repick)], cost = repickCost(t);

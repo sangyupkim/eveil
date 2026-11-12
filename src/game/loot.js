@@ -4,7 +4,8 @@ import { skillsOfTier, SKILLS } from '../data/skills.js';
 import { ZONE_SCHOOLS } from '../data/skills_more.js';
 import { SLOTS } from '../data/items.js';
 import { R, randInt, chance, weighted, pick } from './rng.js';
-import { makeItem, makeBook, rollBase, rollRarity, isStack } from './items.js';
+import { makeItem, makeBook, rollBase, rollRarity, isStack, makeNamed, namedOf } from './items.js';
+import { NAMED_CHANCE, GEM_DROP, GEMS, GEM_GRADES, gemId } from '../data/legends.js';
 
 // mon: { tier, level }, opt: { auto, magicFind, goldFind }
 export function rollLoot(mon, opt = {}, st = null, rng = R) {
@@ -37,6 +38,14 @@ export function rollLoot(mon, opt = {}, st = null, rng = R) {
     const big = mon.tier === 'named' || mon.tier === 'boss';
     const pool = skillsOfTier(tier).filter((id) => big || SKILLS[id].school !== 'mix').flatMap((id) => (zs.includes(SKILLS[id].school) ? [id, id, id] : [id]));
     if (pool.length) out.push({ kind: 'item', item: makeBook(pick(pool, rng), st) });
+  }
+  // 이름 있는 전설 (지역 보스 · 드물게 네임드)
+  const zid = mon.sp?.zone?.id, nc = mon.dungeon ? (mon.tier === 'boss' ? NAMED_CHANCE.dungeon : 0) : NAMED_CHANCE[mon.tier] || 0;
+  if (zid && nc && chance(nc, rng)) { const pool = namedOf(zid); if (pool.length) out.push({ kind: 'item', item: makeNamed(pick(pool, rng), st) }); }
+  // 보석: 깊은 곳일수록 높은 등급
+  if (chance((GEM_DROP[mon.tier] || 0) * dropMult, rng)) {
+    const k = mon.level >= GEM_GRADES[2].lvl && chance(0.3, rng) ? 2 : mon.level >= GEM_GRADES[1].lvl && chance(0.5, rng) ? 1 : 0;
+    out.push({ kind: 'item', item: makeItem(gemId(pick(Object.keys(GEMS), rng), k), { qty: 1 }, st) });
   }
   return out;
 }

@@ -1,3 +1,4 @@
+import { GEMS, GEM_GRADES } from '../data/legends.js';
 import { setBonus } from './town.js';
 // 플레이어 상태(저장되는 값)와 거기서 계산되는 능력치.
 import { CONFIG, STATS } from '../data/config.js';
@@ -60,6 +61,7 @@ export function gearSum(st) {
     if (base.block) g.block += base.block;
     if (base.mods) for (const k in base.mods) g[k] = (g[k] || 0) + base.mods[k];
     for (const a of it.affixes || []) g[a.id] = (g[a.id] || 0) + a.v;
+    for (const gm of it.gems || []) { const b = BASES[gm]; if (b) g[GEMS[b.gem].stat] = (g[GEMS[b.gem].stat] || 0) + GEM_GRADES[b.grade].v; }
   }
   const sb = setBonus(st.equip);
   for (const k in sb) g[k] = (g[k] || 0) + sb[k];
