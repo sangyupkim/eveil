@@ -12,6 +12,7 @@ import { addAP, gainExp, rewardFactor } from '../game/growth.js';
 import { addSkillExp, skillValues, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
 import { rollLoot, rollDeathDrop } from '../game/loot.js';
 import { dropMats, liberateAdd } from '../game/town.js';
+import { dailyProgress, dailyReward, dailyText } from '../game/daily.js';
 import { MATERIALS } from '../data/crafting.js';
 import { addItem, takeOne, countOf, equip as equipItem, unequip as unequipItem } from '../game/inventory.js';
 import { itemName, itemColor, isBook, makeItem, makeBook, rollBase, itemValue } from '../game/items.js';
@@ -191,6 +192,18 @@ export class World {
     }
   }
 
+  // 오늘의 의뢰 끝: 보상을 바로 준다
+  dailyDone(list) {
+    const st = this.st;
+    for (const q of list) {
+      const r = dailyReward(q, st);
+      st.gold += r.gold; if (r.ore) townOf(st).ore += r.ore;
+      if (r.key) addItem(st, makeItem('dungeon_key', { qty: r.key }, st));
+      this.ui.toast(`오늘의 의뢰 완료: ${dailyText(q)} — ${r.gold}G${r.ore ? ` · 강화석 ${r.ore}` : ''}${r.key ? ' · 던전 열쇠' : ''}`, '#ffd84a');
+      sfx('coin');
+    }
+  }
+
   // ───────── 던전 ─────────
   // 입구 위에 서면: 열쇠가 있으면 들어간다
   checkDungeonGate(dt) {
@@ -243,6 +256,7 @@ export class World {
   dungeonCleared(m) {
     const st = this.st, dg = this.dungeon, zn = dg.zone;
     st.dungeons[zn.id] = Math.max(st.dungeons[zn.id] || 0, dg.stage);
+    this.dailyDone(dailyProgress(st, { kind: 'dungeon', zone: zn.id }));
     // 보상: 영웅 이상 2개 (단계가 높을수록 전설), 상급 스킬북 하나, 금화
     const lv = zn.levels[1] + dg.stage;
     for (let i = 0; i < 2; i++) {
@@ -721,6 +735,7 @@ export class World {
       if (addItem(st, makeItem('dungeon_key', { qty: 1 }, st))) { this.ui.toast('던전 열쇠를 얻었습니다', '#ffd84a'); sfx('rare', 0.7); }
     }
     if (m.dungeon && m.tier === 'boss' && this.dungeon) this.dungeonCleared(m);
+    if (!m.noLoot) this.dailyDone(dailyProgress(st, { kind: 'kill', zone: m.dungeon ? null : m.sp?.zone?.id, tier: m.tier }));
     const zid = m.sp?.zone?.id, got = zid && !m.noLoot ? dropMats(st, zid, m.tier) : 0;
     if (zid && !m.dungeon && !m.noLoot && liberateAdd(st, zid, m.tier)) {
       const zn = ALL_ZONES.find((z) => z.id === zid);

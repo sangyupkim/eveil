@@ -25,6 +25,7 @@ import { cloud } from '../net/cloud.js';
 import { uiSettings, applyUi, editUi } from './layout.js';
 
 import { TITLE_AT, titleKey, titleName, UNIQUES } from '../data/titles.js';
+import { dailyOf, dailyText, dailyReward } from '../game/daily.js';
 const nextTitle = (st) => { const i = TITLE_AT.findIndex((n) => st.awakenings < n); return i < 0 ? '' : ` · ${titleName(titleKey(st.stats), i)}까지 각성 ${TITLE_AT[i] - st.awakenings}`; };
 const TITLES = { inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', town: '마을', shop: '상점', menu: '메뉴' };
 const TAB_ORDER = ['inv', 'skills', 'char', 'quest', 'town', 'shop', 'menu'];
@@ -269,7 +270,9 @@ export class Windows {
         <h3 style="margin-top:12px">보상</h3><div class="rws">${rewards(q.reward)}</div>
         <div class="btns"><button class="plate gold" data-turnin="1" ${done && this.w.inTown ? '' : 'disabled'}>${done ? (this.w.inTown ? '보상 받기' : '경비대장 하겐에게 보고') : '진행 중'}</button></div>`;
     }
-    let list = '';
+    const dl = dailyOf(st);
+    let list = `<h3>오늘의 의뢰</h3>` + dl.list.map((x) => { const r = dailyReward(x, st);
+      return `<div class="row qrow${x.done ? ' fin' : ''}"><div class="grow">${dailyText(x)}<div class="note">${r.gold}G${r.ore ? ` · 강화석 ${r.ore}` : ''}${r.key ? ' · 던전 열쇠' : ''}</div></div><span class="note">${x.done ? '완료' : `${x.have} / ${x.need}`}</span></div>`; }).join('');
     for (const z of ZONES) {
       list += `<h3>${z.name}</h3>`;
       for (const x of QUESTS.filter((y) => y.zone === z.id)) {
