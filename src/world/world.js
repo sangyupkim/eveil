@@ -14,7 +14,7 @@ import { MONSTERS, ZONES, TOWN } from '../data/world.js';
 import { derive, damageReduction, totalStats } from '../game/player.js';
 import { ELIXIRS, ELIXIR_TIME } from '../data/potions.js';
 import { addAP, gainExp, rewardFactor } from '../game/growth.js';
-import { addSkillExp, skillValues, skillEff, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
+import { addSkillExp, skillValues, skillEff, modsOf, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
 import { rollLoot, rollDeathDrop } from '../game/loot.js';
 import { dropMats, liberateAdd } from '../game/town.js';
 import { dailyProgress, dailyReward, dailyText, dayKey } from '../game/daily.js';
@@ -103,7 +103,7 @@ export class World {
     this.refreshCamps();
     // 자리를 비운 동안 쌓인 것 알려 주기
     const away = townTick(st);
-    if (away > 0.05 && Object.keys(townOf(st).plots).length) setTimeout(() => this.ui.log(`자리를 비운 ${away >= 1 ? Math.floor(away) + '시간' : Math.round(away * 60) + '분'} 동안 마을이 일했습니다 (마을 창에서 거두기)`, '#ffd84a'), 500);
+    if (away > 0.05 && Object.keys(townOf(st).plots).length) setTimeout(() => this.ui.log(`자리를 비운 ${away >= 1 ? Math.floor(away) + '시간' : Math.round(away * 60) + '분'} 동안 마을이 일했습니다`, '#ffd84a'), 500);
   }
 
   // 마을 건물 그리기 (빈터는 팻말 + 바닥 표시)
@@ -151,6 +151,19 @@ export class World {
       // 바닥 차지: 가로 약 7.4칸 · 세로 약 3칸 (지붕 아래 벽 안쪽)
       for (let u = -3.2; u <= 3.2; u += 0.9) for (let v = -1.6; v <= 1.4; v += 0.9) col(cur.x + dx + u, cur.z + dz + v, 0.6);
     };
+    // 천막: Flare 천막은 두 조각(72+73, 74+75)으로 잘려 있다. 이음매를 맞춰(기준점 px) 한 채로 붙인다
+    const TENT = { A: [[72, 0, 0], [73, 96, -48]], B: [[74, 0, 0], [75, 96, 48]] };
+    const tent = (kind, dx, dz, k, filter) => {
+      const def = DATA.tiles.grassland, x0 = cur.x + dx - 0.75 * k, z0 = cur.z + dz;
+      for (const [id, px, py] of TENT[kind]) {
+        const tt = def.tiles[id]; if (!tt) continue;
+        image(def.imgs[tt[0]]);
+        const x = x0 + (px / 64) * k, z = z0 + (py / 32) * k;
+        const d = { z: z0 + 1.2, draw: (ctx, stg) => { const src = image(def.imgs[tt[0]]); if (!src.ok || !stg.onScreen(x, z, 8)) return; const p = stg.toScreen(x, z); if (filter) { ctx.save(); ctx.filter = filter; } drawRect(ctx, src.im, tt.slice(1), p.x, p.y, stg.scale() * k); if (filter) ctx.restore(); } };
+        this.stage.add(d); this.townDraw.push(d);
+      }
+      for (let u = -1.8; u <= 1.8; u += 0.9) for (let v = -1; v <= 1; v += 0.9) col(x0 + 0.75 * k + u * k, z0 + v * k, 0.6);
+    };
     // 건물 설계: 그림 · 바닥 크기(가로 반 w, 세로 반 h)는 그림 크기에서 잰 값. 소품은 바닥 밖 앞쪽에
     //  대장간 = 그을린 돌오두막(가로 7.6) + 화로 · 모루    여관 = 큰 돌오두막(가로 8.6) + 통 · 상자 · 횃불
     //  광산 = 땅속 갱도 계단(가로 9) + 바위 · 종유석      연구소 = 마법진(가로 6) + 돌기둥 넷 · 석상
@@ -163,7 +176,7 @@ export class World {
       lab: (b) => { big('ruins', 380, 0, 0.4, 1.0, 0, 0, '', 0); return [['ruins', 243, 0.0, -3.0], ['ruins', 223, -3.6, -1.6], ['ruins', 231, 3.6, -1.6], ['ruins', 152, -3.8, 2.8], ['ruins', 223, 3.8, 2.8], ['ruins', 241, 0.0, 4.2], ['dungeon', 167, -1.8, 4.0], ['dungeon', 167, 1.8, 4.0]]; },
       workshop: (b) => { cabin('A', 0, -0.6, 'brightness(0.86) sepia(0.2)'); return [['grassland', 76, 4.6, 2.2], ['grassland', 103, -4.2, 2.8], ['grassland', 100, 2.2, 3.8], ['grassland', 101, -1.8, 4.0]]; },
       // 파견소 = 천막 야영 (단계마다 천막이 늘어난다) + 횃불
-      guild: (b) => { big('grassland', 72, -1.8, -0.4, 0.95, 0, 0, 'brightness(0.92) sepia(0.15)', 2.6); big('grassland', 72, 2.4, 0.6, 0.8, 0, 0, 'saturate(1.2) hue-rotate(-10deg)', 2.2); if (b.lv >= 3) big('grassland', 72, -0.2, -3.2, 0.75, 0, 0, 'brightness(0.85)', 2); return [['dungeon', 167, 4.2, 3.4], ['dungeon', 167, -4.2, 3.4], ['grassland', 96, 0.4, 4.0], ['grassland', 98, -3.0, 4.2]]; },
+      guild: (b) => { tent('A', -2.0, -0.8, 0.95, 'brightness(0.92) sepia(0.15)'); tent('B', 2.6, 0.4, 0.85, 'saturate(1.2) hue-rotate(-10deg)'); if (b.lv >= 3) tent('A', 0.2, -3.4, 0.8, 'brightness(0.85)'); return [['dungeon', 167, 4.2, 3.4], ['dungeon', 167, -4.2, 3.4], ['grassland', 96, 0.4, 4.0], ['grassland', 98, -3.0, 4.2]]; },
       house: (b) => { cabin('B', b.lv >= 3 ? -2.2 : 0, -0.6, 'saturate(1.15) brightness(1.08)'); if (b.lv >= 3) cabin('A', 3.4, -3.6, 'saturate(1.1) brightness(1.04)'); return [['grassland', 98, 4.4, 2.8], ['grassland', 122, -4.4, 2.8], ['grassland', 121, -3.4, 3.8]]; },
     };
     for (const pl of PLOTS) {
@@ -449,7 +462,7 @@ export class World {
     const a = Math.random() * 6.28, sp = this.freeSpot(P.x + Math.cos(a) * 10, P.z + Math.sin(a) * 10, 1);
     const n = new Actor(this.scene, { npc: 'wandering_trader' }); n.pos.set(sp.x, 0, sp.z); n.play('idle'); n.name = '떠돌이 상인';
     this.eventNpc = n; this.eventT = 240;
-    this.fx.pillar(sp.x, sp.z, 0xffd060, 1.2, 5, 1); this.ui.toast('떠돌이 상인이 나타났습니다! (4분)', '#ffd84a'); sfx('coin');
+    this.fx.pillar(sp.x, sp.z, 0xffd060, 1.2, 5, 1); this.ui.toast('떠돌이 상인이 나타났습니다', '#ffd84a'); sfx('coin');
   }
 
   // ───────── 지역 습격 ─────────
@@ -490,7 +503,7 @@ export class World {
       this.gateAway = zi;
       const zn = ALL_ZONES[zi], stage = Math.min(MAX_STAGE, (this.st.dungeons?.[zn.id] || 0) + 1), keys = countOf(this.st, 'dungeon_key');
       this.asking = true; this.moveTo = null; this.target = null; this.toggleAuto(false);
-      this.ui.ask(`${zn.name} 던전 ${stage}단계`, keys ? `던전 열쇠 1개를 써서 들어갈까요? (가진 열쇠 ${keys})` : '던전 열쇠가 필요합니다 (네임드 · 보스 · 상점)', keys ? '들어가기' : null, (yes) => { this.asking = false; if (yes) this.enterDungeon(zi); });
+      this.ui.ask(`${zn.name} 던전 ${stage}단계`, keys ? `던전 열쇠 1개를 써서 들어갈까요? · 열쇠 ${keys}` : '던전 열쇠가 필요합니다', keys ? '들어가기' : null, (yes) => { this.asking = false; if (yes) this.enterDungeon(zi); });
       return;
     }
   }
@@ -1015,6 +1028,7 @@ export class World {
   // src: melee · ranged · magic(완드 기본공격) · skill
   hitMonster(m, raw, { crit = false, src = 'melee', ctx = null, pierce = 0 } = {}) {
     if (!m || m.dead) return;
+    if (ctx?.slow) m.slowT = Math.max(m.slowT || 0, ctx.slow);
     const kind = this.d.cls.kind;
     if (src === 'melee' && !ctx && kind === 'melee') this.perk('meleeHit');
     if ((src === 'ranged' || (src === 'melee' && kind === 'ranged')) && !ctx) this.perk('rangedHit');
@@ -1142,7 +1156,7 @@ export class World {
     if (m.tier !== 'normal') this.ui.log(`${m.name} 처치!`, TIERS[m.tier].color);
     if (!m.dungeon && m.tier === 'boss') (st.rec ||= {}).bosses = (st.rec.bosses || 0) + 1;
     if (!m.dungeon && m.tier === 'boss' && m.sp?.zone?.id === 'demongate' && (st.worldTier || 1) < 3 && (st.maxTier || 1) <= (st.worldTier || 1)) {
-      st.maxTier = (st.worldTier || 1) + 1; this.ui.toast(`세계 ${TIER_NAMES[st.maxTier - 1]} 단계가 열렸습니다! (메뉴에서 바꿀 수 있습니다)`, '#ff9a6a'); sfx('awaken');
+      st.maxTier = (st.worldTier || 1) + 1; this.ui.toast(`세계 ${TIER_NAMES[st.maxTier - 1]} 단계가 열렸습니다`, '#ff9a6a'); sfx('awaken');
     }
     if (!m.dungeon && !m.noLoot && m.tier === 'boss' && Math.random() < 0.3) { // 보스가 가끔 열쇠
       if (addItem(st, makeItem('dungeon_key', { qty: 1 }, st))) { this.ui.toast('던전 열쇠를 얻었습니다', '#ffd84a'); sfx('rare', 0.7); }
@@ -1428,7 +1442,7 @@ export class World {
     const s = this.st.skills[id];
     if (!s) return { ok: false, why: '배우지 않은 스킬' };
     const sk = SKILLS[id];
-    const v = skillValues(id, s.rank, s.var);
+    const v = skillValues(id, s.rank, modsOf(s));
     if ((this.cds[id] || 0) > 0) return { ok: false, why: '재사용 대기 중' };
     if (this.st.mp < v.mp) return { ok: false, why: 'MP가 부족합니다' };
     const kind = this.d.cls.kind;
@@ -1465,7 +1479,7 @@ export class World {
   }
 
   castSkill(id, v) {
-    const st = this.st, d = this.d, sk = skillEff(id, st.skills[id]?.var);
+    const st = this.st, d = this.d, sk = skillEff(id, modsOf(st.skills[id]));
     const P = this.player;
     this.pendingSkill = null;
     this.skillUsed = true;
@@ -1473,8 +1487,10 @@ export class World {
     st.mp -= v.mp;
     this.perk(sk.type === 'buff' ? 'buff' : sk.ap === 'int' ? 'spell' : 'skill', this.target?.pos);
     this.cds[id] = v.cd;
-    this.skillExp(id, 1);
-    const ctx = { id, mp: v.mp, hits: 0, apGiven: false };
+    if (!v.echoed) this.skillExp(id, 1);
+    const ctx = { id, mp: v.mp, hits: 0, apGiven: false, slow: sk.slow };
+    // 변형 「메아리」: 잠시 뒤 약하게 한 번 더
+    if (sk.echo && !v.echoed) this.later(0.6, () => { if (!this.dead) this.castSkill(id, { ...v, mp: 0, power: v.power * sk.echo, echoed: true, cd: this.cds[id] }); });
     const t = this.target;
     if (t) P.face(t.pos.x, t.pos.z);
     // 혼합 기술: 둘째 스탯 1점당 피해 +1.2%, 쓸 때 그 스탯 행동 기록
@@ -2071,7 +2087,7 @@ export class World {
       takeOne(st, it.base);
       (st.elix ||= {})[it.base] = { buff: E.buff, v, t: ELIXIR_TIME };
       this.d = derive(st, this.buffValues());
-      this.ui.toast(`${E.name}: ${E.stat ? `${E.text.split(' ')[0]} +${v}` : E.text} (5분)`, E.color);
+      this.ui.toast(`${E.name}: ${E.stat ? `${E.text.split(' ')[0]} +${v}` : E.text} · 5분`, E.color);
       sfx('buff');
       this.fx.ring(this.player.pos.x, this.player.pos.z, 2.2, new THREE.Color(E.color).getHex(), 0.7);
     } else if (BASES[it.base].type === 'potion') {

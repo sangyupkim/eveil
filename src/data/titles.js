@@ -34,8 +34,8 @@ export const TRIGGERS = {
 // 효과 조각: v = 1단계 세기 (단계마다 ×1.4 · ×1.8)
 export const EFFECTS = {
   str: [{ id: 'might', text: (v) => `3초 동안 피해 +${v}%`, v: 15 }, { id: 'shock', text: (v) => `주변에 무기 피해 ${v}% 충격파`, v: 60 }],
-  dex: [{ id: 'haste', text: (v) => `3초 동안 공격 속도 +${v}%`, v: 20 }, { id: 'arrow', text: (v) => `가까운 적에게 화살 한 발 (무기 피해 ${v}%)`, v: 70 }],
-  int: [{ id: 'blast', text: (v) => `원소 폭발 (주문 피해 ${v})`, v: 30 }, { id: 'chill', text: (v) => `주변 적 ${v / 10}초 느리게`, v: 20 }],
+  dex: [{ id: 'haste', text: (v) => `3초 동안 공격 속도 +${v}%`, v: 20 }, { id: 'arrow', text: (v) => `가까운 적에게 무기 피해 ${v}% 화살`, v: 70 }],
+  int: [{ id: 'blast', text: (v) => `주문 피해 ${v} 원소 폭발`, v: 30 }, { id: 'chill', text: (v) => `주변 적 ${v / 10}초 느리게`, v: 20 }],
   wis: [{ id: 'mp', text: (v) => `MP ${v} 회복`, v: 6 }, { id: 'ward', text: (v) => `3초 동안 받는 피해 -${v}%`, v: 20 }],
   vit: [{ id: 'ward', text: (v) => `3초 동안 받는 피해 -${v}%`, v: 20 }, { id: 'thorns', text: (v) => `가까운 적에게 무기 피해 ${v}% 반격`, v: 50 }],
 };
@@ -68,12 +68,12 @@ export const UNIQUES = [
   { trig: 'rangedHit', p: 0.25, eff: 'arrow', v: 90, text: '화살이 맞으면 25% 확률로 한 발 더' },
   { trig: 'kill', p: 1, eff: 'haste', v: 25, text: '적을 쓰러뜨리면 3초 동안 공격 속도 +25%' },
   { trig: 'hurt', p: 0.3, eff: 'thorns', v: 90, text: '맞으면 30% 확률로 무기 피해 90% 반격' },
-  { trig: 'block', p: 1, eff: 'blast', v: 60, text: '막으면 원소 폭발 (주문 피해 60)' },
+  { trig: 'block', p: 1, eff: 'blast', v: 60, text: '막으면 주문 피해 60 원소 폭발' },
   { trig: 'spell', p: 0.4, eff: 'chill', v: 30, text: '주문을 쓰면 40% 확률로 주변 적 3초 느리게' },
   { trig: 'dodge', p: 1, eff: 'might', v: 30, text: '피하면 3초 동안 피해 +30%' },
   { trig: 'buff', p: 1, eff: 'mp', v: 15, text: '보조 주문을 쓰면 MP 15 회복' },
   { trig: 'meleeHit', p: 0.18, eff: 'blast', v: 45, text: '근접 공격이 맞으면 18% 확률로 원소 폭발' },
   { trig: 'kill', p: 1, eff: 'ward', v: 25, text: '적을 쓰러뜨리면 3초 동안 받는 피해 -25%' },
-  { trig: 'spell', p: 0.3, eff: 'shock', v: 70, text: '주문을 쓰면 30% 확률로 무기 피해 70% 충격파 (마검)' },
+  { trig: 'spell', p: 0.3, eff: 'shock', v: 70, text: '주문을 쓰면 30% 확률로 무기 피해 70% 충격파' },
   { trig: 'rangedHit', p: 0.15, eff: 'chill', v: 20, text: '화살이 맞으면 15% 확률로 주변 적 2초 느리게' },
 ];

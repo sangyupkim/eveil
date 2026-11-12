@@ -9,7 +9,7 @@ import { CAMPS } from '../engine2d/stage.js';
 import { PLOTS, BUILDINGS } from '../data/buildings.js';
 import { expNeeded, powerLevel } from '../game/growth.js';
 import { countOf } from '../game/inventory.js';
-import { skillValues } from '../game/skills.js';
+import { skillValues, modsOf } from '../game/skills.js';
 import { ELIXIRS } from '../data/potions.js';
 import { portrait, chestIcon, bookIcon, coinIcon, swordIcon, itemIcon, skillIcon, homeIcon, duelIcon, scrollIcon, townIcon, oreIcon } from './icons.js';
 
@@ -154,7 +154,7 @@ export class HUD {
     const need = expNeeded(st.awakenings);
     $('.bar.xp i').style.transform = `scaleX(${st.exp / need})`;
     $('#expBar i').style.transform = `scaleX(${st.exp / need})`;
-    $('#expBar span').textContent = `각성 EXP ${((st.exp / need) * 100).toFixed(2)}%${w.auto ? '  (자동 사냥 -20%)' : ''}`;
+    $('#expBar span').textContent = `각성 EXP ${((st.exp / need) * 100).toFixed(2)}%${w.auto ? ' · 자동 -20%' : ''}`;
 
     // 퀵슬롯 쿨타임
     const slots = $('#quick').children;
@@ -162,7 +162,7 @@ export class HUD {
       const id = st.quick[i];
       const el = slots[i];
       if (!id || !st.skills[id]) continue;
-      const v = skillValues(id, st.skills[id].rank, st.skills[id].var);
+      const v = skillValues(id, st.skills[id].rank, modsOf(st.skills[id]));
       const cd = Math.max(0, w.cds[id] || 0);
       el.querySelector('.cd').style.setProperty('--cd', (cd / v.cd).toFixed(3));
       el.classList.toggle('nomp', st.mp < v.mp);
@@ -276,7 +276,7 @@ export class HUD {
       place('npc', w.npc.pos, 2.9, () => {
         const el = document.createElement('div');
         el.className = 'lbl npc';
-        el.textContent = `${w.npc.name} (상점)`;
+        el.textContent = w.npc.name;
         return el;
       });
     }
@@ -292,9 +292,9 @@ export class HUD {
       const b = w.st.town?.plots?.[pl.id], nm = b ? `${BUILDINGS[b.type].name} ${b.lv}단계` : '빈 집터';
       place('plot' + pl.id + nm, { x: pl.x, y: 0, z: pl.z }, b && b.type !== 'herb' ? 4.2 : 1.6, () => { const el = document.createElement('div'); el.className = 'lbl npc'; el.textContent = nm; return el; });
     }
-    for (const [k, n, tag] of [['gemNpc', w.gemNpc, '보석 · 열쇠'], ['sage', w.sage, '도감 · 칭호']]) {
+    for (const [k, n, tag] of [['gemNpc', w.gemNpc, ''], ['sage', w.sage, '']]) {
       if (!n || Math.hypot(n.pos.x - P.x, n.pos.z - P.z) >= 22) continue;
-      place(k, n.pos, 2.9, () => { const el = document.createElement('div'); el.className = 'lbl npc'; el.textContent = `${n.name} (${tag})`; return el; });
+      place(k, n.pos, 2.9, () => { const el = document.createElement('div'); el.className = 'lbl npc'; el.textContent = n.name; return el; });
     }
     for (const [k, el] of this.labels) if (!seen.has(k)) { el.remove(); this.labels.delete(k); }
   }

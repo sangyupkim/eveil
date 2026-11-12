@@ -7,7 +7,7 @@ import { learn, addSkillExp, canLearn } from '../src/game/skills.js';
 import { rollLoot, rollDeathDrop } from '../src/game/loot.js';
 import { makeItem, itemName, rollBase } from '../src/game/items.js';
 import * as await_fs from 'node:fs';
-import { brew, dispatchParty, shelterUp, deathChance, rollMerc, researchStart } from '../src/game/town.js';
+import { brew, brewCollect, dispatchParty, shelterUp, deathChance, rollMerc, researchStart } from '../src/game/town.js';
 import { HERBS } from '../src/data/potions.js';
 import { countOf } from '../src/game/inventory.js';
 import { townOf, build, tick, collect, enhance, hire, dispatch, claim, buildingAt, dropMats, craft, craftZones, upgrade, setBase, liberateAdd, assignMerc, recruits, mercSlots, awakenMerc, MERC } from '../src/game/town.js';
@@ -346,7 +346,8 @@ test('약초밭 · 제작소(물약 · 영약) · 파견소 · 쉼터 · 여관 
   assert.ok(brew(p, 'hp_potion', 2).ok);
   assert.equal(brew(p, 'el_luck').ok, false);
   buildingAt(p, 'p2').lv = 5;
-  assert.ok(brew(p, 'el_luck').ok && countOf(p, 'el_luck') === 1);
+  assert.ok(brew(p, 'el_luck').ok && countOf(p, 'el_luck') === 0); // 시간이 걸린다
+  assert.ok(brewCollect(p, Date.now() + 3600000).n >= 3 && countOf(p, 'el_luck') === 1);
   // 숙소 5단계 = 20명
   buildingAt(p, 'p5').lv = 5; assert.equal(mercSlots(p), 20);
   // 여관: 1단계에는 정예 · 전설이 오지 않고, 5단계에는 온다

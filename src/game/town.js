@@ -215,7 +215,7 @@ export function assignMerc(st, id, plot) {
   if (plot) {
     const b = t.plots[plot];
     if (!b || !SKILL_OF[b.type]) return { ok: false };
-    if (t.mercs.filter((x) => x.work === plot && x !== m).length >= b.lv) return { ok: false, why: '자리가 없습니다 (단계를 올리세요)' };
+    if (t.mercs.filter((x) => x.work === plot && x !== m).length >= b.lv) return { ok: false, why: '자리가 없습니다' };
   }
   m.work = plot || null;
   return { ok: true };
@@ -312,7 +312,7 @@ export function dispatchParty(st, ids, zoneId, expId, pack = [], now = Date.now(
   const boost = packBoost(pack), share = { safe: boost.safe, pow: boost.pow }; // 함께 간 모두가 나눠 쓴다
   const party = `pt${now.toString(36)}`;
   const until = now + ex.min * 60000 * (1 - researchK(st, 'merc')) * (1 - bonusOf(st, 'guild'));
-  for (const m of ms) { m.sta -= staNeed; m.work = null; m.job = { zone: zoneId, exp: expId, until, party, boost: share }; }
+  for (const m of ms) { m.sta -= staNeed; m.work = null; m.job = { zone: zoneId, exp: expId, from: now, until, party, boost: share }; }
   return { ok: true, n: ms.length };
 }
 function takeOneItem(st, base) { const it = st.inv.find((x) => x.base === base); if (!it) return; it.qty--; if (it.qty <= 0) st.inv.splice(st.inv.indexOf(it), 1); }
@@ -324,7 +324,7 @@ export function dispatch(st, id, zoneId, expId, now = Date.now()) {
   if (!isLiberated(st, zoneId)) return { ok: false, why: '해방한 지역에만 보낼 수 있습니다' };
   if (m.sta < EXP_STA[expId]) return { ok: false, why: '체력이 모자랍니다' };
   m.sta -= EXP_STA[expId]; m.work = null;
-  m.job = { zone: zoneId, exp: expId, until: now + ex.min * 60000 * (1 - researchK(st, 'merc')) };
+  m.job = { zone: zoneId, exp: expId, from: now, until: now + ex.min * 60000 * (1 - researchK(st, 'merc')) };
   return { ok: true };
 }
 // 돌아온 용병의 전리품을 받는다 (죽었으면 dead: true, 전리품 없음)
@@ -359,17 +359,33 @@ export function dropMats(st, zoneId, tier, rng = Math.random) {
 // ── 제작소: 약초로 물약 · 영약 ──
 export const recipesOpen = (st) => { const w = findBuilding(st, 'workshop'); return w ? RECIPES.filter((r) => r.lv <= w.lv) : []; };
 export const brewGold = (st, r) => Math.round(r.gold * (1 - bonusOf(st, 'workshop')));
-export function brew(st, id, times = 1) {
+// 제작에는 시간이 든다: 한 번에 하나씩 차례로 (t.brew 줄, 끝나면 [받기])
+export const brewTime = (r) => (20 + 15 * r.lv) * 1000; // 한 번 만드는 데 드는 시간
+export const BREW_QUEUE = 5;
+export function brew(st, id, times = 1, now = Date.now()) {
   const r = RECIPES.find((x) => x.id === id), t = townOf(st);
   if (!r || !recipesOpen(st).includes(r)) return { ok: false, why: '제작소 단계를 올려야 합니다' };
   times = Math.max(1, Math.floor(times));
+  t.brew ||= [];
+  if (t.brew.length >= BREW_QUEUE) return { ok: false, why: '제작 줄이 가득 찼습니다' };
   for (const [h, q] of Object.entries(r.herbs)) if ((t.herbs[h] || 0) < q * times) return { ok: false, why: `${HERBS[h].name}이(가) 모자랍니다` };
   const g = brewGold(st, r) * times;
   if (st.gold < g) return { ok: false, why: '금화가 모자랍니다' };
-  if (!addItem(st, makeItem(id, { qty: r.n * times }, st))) return { ok: false, why: '가방이 가득 찼습니다' };
   for (const [h, q] of Object.entries(r.herbs)) t.herbs[h] -= q * times;
   st.gold -= g;
-  return { ok: true, n: r.n * times };
+  const from = Math.max(now, t.brew.length ? t.brew[t.brew.length - 1].until : now);
+  t.brew.push({ id, n: r.n * times, from, until: from + brewTime(r) * times });
+  return { ok: true, n: r.n * times, queued: true };
+}
+// 다 된 것을 가방으로
+export function brewCollect(st, now = Date.now()) {
+  const t = townOf(st); let n = 0;
+  while (t.brew?.length && t.brew[0].until <= now) {
+    const b = t.brew[0];
+    if (!addItem(st, makeItem(b.id, { qty: b.n }, st))) return { ok: n > 0, n, why: '가방이 가득 찼습니다' };
+    n += b.n; t.brew.shift();
+  }
+  return { ok: n > 0, n };
 }
 // 예전 세트 제작 (지금은 쓰지 않는다 — 이미 만든 세트 장비 효과는 그대로)
 export const craftZones = (st) => { const w = findBuilding(st, 'workshop'); return w ? ZONES.slice(0, BUILDINGS.workshop.zones(w.lv)) : []; };
@@ -416,7 +432,7 @@ export function researchStart(st, id, now = Date.now()) {
   if (lv >= RESEARCH_MAX) return { ok: false, why: '최고 단계입니다' };
   const c = researchCost(lv, id);
   if (st.gold < c.gold) return { ok: false, why: '금화가 모자랍니다' };
-  st.gold -= c.gold; t.lab = { id, until: now + c.min * 60000 * (1 - bonusOf(st, 'lab')) };
+  st.gold -= c.gold; t.lab = { id, from: now, until: now + c.min * 60000 * (1 - bonusOf(st, 'lab')) };
   return { ok: true };
 }
 export function researchTick(st, now = Date.now()) {

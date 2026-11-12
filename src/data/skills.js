@@ -30,7 +30,7 @@ export const SKILLS = {
   aimed_shot: {
     name: '조준 사격', glyph: '조', color: '#8fd0a0', tier: 1, type: 'arrow', ap: 'weapon', needs: 'bow',
     req: { dex: 12 }, mp: 5, cd: 3, range: 13, power: 2.0, perRank: 0.18,
-    desc: '숨을 고르고 정확히 쏘아 큰 피해를 준다. (활 필요)',
+    desc: '숨을 고르고 정확히 쏘아 큰 피해를 준다.',
   },
   whirlwind: {
     name: '회전 베기', glyph: '회', color: '#d9823a', tier: 2, type: 'spin', ap: 'weapon', needs: 'melee',
@@ -45,7 +45,7 @@ export const SKILLS = {
   multishot: {
     name: '연사', glyph: '연', color: '#7fe0b0', tier: 2, type: 'arrow', ap: 'weapon', needs: 'bow',
     req: { dex: 18 }, mp: 10, cd: 5, range: 12, power: 0.8, perRank: 0.07, count: 5,
-    desc: '여러 적에게 동시에 화살을 쏜다. (활 필요)',
+    desc: '여러 적에게 동시에 화살을 쏜다.',
   },
   iron_skin: {
     name: '철벽', glyph: '철', color: '#b0b8c8', tier: 2, type: 'buff', ap: 'vit',
