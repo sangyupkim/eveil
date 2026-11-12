@@ -11,7 +11,7 @@ import { derive, damageReduction } from '../game/player.js';
 import { addAP, gainExp, rewardFactor } from '../game/growth.js';
 import { addSkillExp, skillValues, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
 import { rollLoot, rollDeathDrop } from '../game/loot.js';
-import { dropMats } from '../game/town.js';
+import { dropMats, liberateAdd } from '../game/town.js';
 import { MATERIALS } from '../data/crafting.js';
 import { addItem, takeOne, countOf, equip as equipItem, unequip as unequipItem } from '../game/inventory.js';
 import { itemName, itemColor, isBook, makeItem, makeBook, rollBase, itemValue } from '../game/items.js';
@@ -722,6 +722,11 @@ export class World {
     }
     if (m.dungeon && m.tier === 'boss' && this.dungeon) this.dungeonCleared(m);
     const zid = m.sp?.zone?.id, got = zid && !m.noLoot ? dropMats(st, zid, m.tier) : 0;
+    if (zid && !m.dungeon && !m.noLoot && liberateAdd(st, zid, m.tier)) {
+      const zn = ALL_ZONES.find((z) => z.id === zid);
+      this.ui.toast(`${zn.name} 해방! 여관에서 용병을 보낼 수 있습니다`, '#7fe07a'); sfx('awaken');
+      this.fx.pillar(this.player.pos.x, this.player.pos.z, 0x7fe07a, 2, 6, 2);
+    }
     if (got) { this.matLog = (this.matLog || 0) + got; this.fx.text(m.pos.clone().setY(2.2), `+${got} ${MATERIALS[zid].name}`, 'heal'); if (m.tier !== 'normal') this.ui.log(`${MATERIALS[zid].name} +${got}`, '#c8e08a'); }
     this.ui.dirty();
   }

@@ -61,7 +61,7 @@ export class HUD {
   zone(z) {
     $('.zoneName').textContent = z ? z.name + (z.levels ? `  ·  위험도 ${z.levels[0]}~${z.levels[1]}` : '') : '황야';
     let info = '안전 지역 · 상점 이용 가능';
-    if (z && z.levels) info = `위험도 ${z.levels[0]}~${z.levels[1]} · 권장 각성 ${Math.max(0, (z.levels[0] - 1) * 2)}+`;
+    if (z && z.levels) info = `위험도 ${z.levels[0]}~${z.levels[1]} · 권장 각성 ${Math.max(0, (z.levels[0] - 1) * 2)}+${z.id ? ` · 해방 ${Math.floor(((this.world.st.liberate?.[z.id] || 0) / 400) * 100)}%` : ''}`;
     else if (!z) info = '지역 사이의 황야';
     $('.zoneInfo').textContent = info;
     $('#shopBtn').hidden = !(z && z.id === 'town');

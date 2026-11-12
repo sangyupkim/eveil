@@ -96,10 +96,21 @@ export function hire(st) {
   t.mercs.push({ name: MERC_NAMES[t.mercs.length % MERC_NAMES.length], lv: 1, exp: 0, job: null });
   return { ok: true };
 }
-// 파견: 내가 다녀온 지역 중 고른다
+// ── 지역 해방 ── 직접 잡아 오염을 걷어 내면 해방 → 그곳에만 용병을 보낼 수 있다
+export const LIBERATE_NEED = 400;
+export const LIBERATE_PTS = { normal: 1, elite: 5, named: 30, boss: 80 };
+export function liberateAdd(st, zoneId, tier) {
+  const L = (st.liberate ||= {});
+  if (!ZONES.some((z) => z.id === zoneId) || L[zoneId] >= LIBERATE_NEED) return false;
+  L[zoneId] = Math.min(LIBERATE_NEED, (L[zoneId] || 0) + (LIBERATE_PTS[tier] || 1));
+  return L[zoneId] >= LIBERATE_NEED; // 이번에 해방됐나
+}
+export const isLiberated = (st, zoneId) => (st.liberate?.[zoneId] || 0) >= LIBERATE_NEED;
+// 파견: 해방한 지역에만
 export function dispatch(st, i, zoneId, expId, now = Date.now()) {
   const m = townOf(st).mercs[i], ex = EXPEDITIONS.find((e) => e.id === expId), zn = ZONES.find((z) => z.id === zoneId);
   if (!m || m.job || !ex || !zn) return { ok: false };
+  if (!isLiberated(st, zoneId)) return { ok: false, why: '해방한 지역에만 보낼 수 있습니다' };
   m.job = { zone: zoneId, exp: expId, until: now + ex.min * 60000 };
   return { ok: true };
 }
@@ -114,6 +125,9 @@ export function claim(st, i, now = Date.now(), rng = Math.random) {
   const out = { gold: Math.round(lvl * 25 * ex.mult * eff), ore: Math.round(2 * ex.mult * eff), items: [] };
   const rolls = Math.round(ex.mult * eff * 1.5);
   for (let k = 0; k < rolls; k++) for (const d of rollLoot({ tier: k % 6 === 5 ? 'elite' : 'normal', level: lvl }, {}, st, rng)) if (d.kind === 'item' && d.item.base && !d.item.book) out.items.push(d.item);
+  // 그 지역 재료도 가져온다
+  out.mats = Math.round(ex.mult * 3 * eff);
+  t.mats ||= {}; t.mats[zn.id] = (t.mats[zn.id] || 0) + out.mats;
   st.gold += out.gold; t.ore += out.ore;
   const kept = out.items.filter((it) => addItem(st, it));
   out.items = kept;

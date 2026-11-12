@@ -7,7 +7,7 @@ import { learn, addSkillExp, canLearn } from '../src/game/skills.js';
 import { rollLoot, rollDeathDrop } from '../src/game/loot.js';
 import { makeItem, itemName, rollBase } from '../src/game/items.js';
 import * as await_fs from 'node:fs';
-import { townOf, build, tick, collect, enhance, hire, dispatch, claim, buildingAt, dropMats, craft, craftZones, upgrade, setBase } from '../src/game/town.js';
+import { townOf, build, tick, collect, enhance, hire, dispatch, claim, buildingAt, dropMats, craft, craftZones, upgrade, setBase, liberateAdd } from '../src/game/town.js';
 import { BUILDINGS } from '../src/data/buildings.js';
 import { MONSTER_LOOK, ITEM_LOOK, SKILL_ICON } from '../src/data/flareWorld.js';
 import { addItem, equip } from '../src/game/inventory.js';
@@ -255,6 +255,8 @@ test('마을: 짓기 · 생산(꺼 둔 시간) · 강화 · 용병 파견', () =
   assert.ok(derive(p).dmg[1] > d0 * 1.2);
   assert.ok(itemName(w).startsWith('+4 '));
   assert.ok(hire(p).ok); assert.equal(hire(p).ok, false);               // 여관 1단계 = 1명
+  assert.equal(dispatch(p, 0, 'field', 'short', t0).ok, false); // 해방 전에는 못 보낸다
+  for (let i = 0; i < 400; i++) liberateAdd(p, 'field', 'normal');
   assert.ok(dispatch(p, 0, 'field', 'short', t0).ok);
   assert.equal(claim(p, 0, t0 + 5 * 60000), null);                       // 아직
   const g0 = p.gold, r = claim(p, 0, t0 + 11 * 60000, seeded(3));

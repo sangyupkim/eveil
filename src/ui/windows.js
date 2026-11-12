@@ -13,7 +13,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 
 import { itemIcon, skillIcon, portrait, chestIcon, bookIcon, coinIcon, scrollIcon, townIcon, oreIcon } from './icons.js';
 import { MATERIALS, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
-import { craft, craftZones, setCounts, setBase } from '../game/town.js';
+import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED } from '../game/town.js';
 import { AFFIXES } from '../data/items.js';
 import { PLOTS, BUILDINGS, EXPEDITIONS, townOf, buildingAt, build, upgrade, collect, enhance, enhanceCap, enhanceCost, hire, mercSlots, dispatch, claim, tick } from '../game/town.js';
 import { mercCost } from '../data/buildings.js';
@@ -324,12 +324,14 @@ export class Windows {
         }
       }
       if (b.type === 'inn') {
-        const zones = ZONES.filter((z) => z.levels[0] <= 1 + st.awakenings * 1.5);
+        const zones = ZONES.filter((z) => isLiberated(st, z.id));
+        right += `<div class="note">해방 ${ZONES.map((z) => `${z.name} ${Math.floor(((st.liberate?.[z.id] || 0) / LIBERATE_NEED) * 100)}%`).join(' · ')}</div>`;
         t.mercs.forEach((m, i) => {
           const left = m.job ? Math.max(0, m.job.until - Date.now()) : 0;
           right += `<div class="row"><div class="grow"><b>${m.name}</b> <small>Lv ${m.lv}</small><div class="note">${m.job ? (left > 0 ? `${ZONES.find((z) => z.id === m.job.zone).name} · ${Math.ceil(left / 60000)}분 남음` : '돌아옴') : '쉬는 중'}</div></div>
             ${m.job && left <= 0 ? `<button class="btn gold" data-claim="${i}">전리품</button>` : ''}</div>`;
-          if (!m.job) right += `<div class="btns" style="margin:0 0 8px"><select data-zone="${i}" class="btn">${zones.map((z) => `<option value="${z.id}">${z.name}</option>`).join('')}</select>${EXPEDITIONS.map((e) => `<button class="btn" data-go-exp="${i}|${e.id}">${e.name} ${e.min}분</button>`).join('')}</div>`;
+          if (!m.job && !zones.length) right += `<div class="note">해방한 지역 없음</div>`;
+          else if (!m.job) right += `<div class="btns" style="margin:0 0 8px"><select data-zone="${i}" class="btn">${zones.map((z) => `<option value="${z.id}">${z.name}</option>`).join('')}</select>${EXPEDITIONS.map((e) => `<button class="btn" data-go-exp="${i}|${e.id}">${e.name} ${e.min}분</button>`).join('')}</div>`;
         });
         const n = t.mercs.length, slots = mercSlots(st);
         if (n < slots) right += `<div class="btns"><button class="btn" data-hire="1" ${st.gold < mercCost(n) ? 'disabled' : ''}>용병 고용 ${Math.round(mercCost(n)).toLocaleString()} G</button></div>`;
@@ -509,7 +511,7 @@ export class Windows {
     });
     on('[data-claim]', (el) => {
       const r = claim(st, Number(el.dataset.claim));
-      if (r) { audio.play('coin'); w.ui.toast(`전리품: ${r.gold.toLocaleString()} G · 강화석 ${r.ore}${r.items.length ? ` · 장비 ${r.items.length}개` : ''}`, '#ffd84a'); }
+      if (r) { audio.play('coin'); w.ui.toast(`전리품: ${r.gold.toLocaleString()} G · 강화석 ${r.ore} · 재료 ${r.mats}${r.items.length ? ` · 장비 ${r.items.length}개` : ''}`, '#ffd84a'); }
       w.ui.dirty(); this.render();
     });
     on('[data-go]', (el) => this.show(el.dataset.go));
