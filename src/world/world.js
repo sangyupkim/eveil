@@ -1,3 +1,5 @@
+import { ZONES as ALL_ZONES } from '../data/world.js';
+import { roomCenter, entranceOf, ROOMS, MAX_STAGE, stageMods } from '../data/dungeons.js';
 import { TITLE_AT, titleKey, titleName, perkChoices, UNIQUES } from '../data/titles.js';
 // 게임 월드: 플레이어 조작 · 몬스터 AI · 전투 · 스킬 · 드랍 · 사망 · 자동 사냥
 import * as THREE from 'three';
@@ -12,7 +14,7 @@ import { rollLoot, rollDeathDrop } from '../game/loot.js';
 import { dropMats } from '../game/town.js';
 import { MATERIALS } from '../data/crafting.js';
 import { addItem, takeOne, countOf, equip as equipItem, unequip as unequipItem } from '../game/inventory.js';
-import { itemName, itemColor, isBook, makeItem, itemValue } from '../game/items.js';
+import { itemName, itemColor, isBook, makeItem, makeBook, rollBase, itemValue } from '../game/items.js';
 import { seeded, randInt, randRange } from '../game/rng.js';
 import { Actor, makeHero } from '../engine2d/actor.js';
 import { FX } from '../engine2d/fx.js';
@@ -187,6 +189,72 @@ export class World {
         if (m) this.fx.projectile({ from: { x: P.x, y: 1.3, z: P.z }, target: m.actor, color: 0xd0e0ff, size: 0.6, speed: 26, bolt: true, onHit: () => this.hitMonster(m, wd * k.v / 100, { src: 'perk' }) });
       }
     }
+  }
+
+  // ───────── 던전 ─────────
+  // 입구 위에 서면: 열쇠가 있으면 들어간다
+  checkDungeonGate(dt) {
+    this.gateCd = Math.max(0, (this.gateCd || 0) - dt);
+    if (this.dungeon || this.dead || this.gateCd > 0) return;
+    const P = this.player.pos;
+    for (let zi = 0; zi < ALL_ZONES.length; zi++) {
+      const e = entranceOf(ALL_ZONES[zi]);
+      if (Math.hypot(P.x - e.x, P.z - e.z) > 1.4) continue;
+      this.gateCd = 3;
+      const keys = countOf(this.st, 'dungeon_key');
+      if (!keys) { this.ui.toast(`${ALL_ZONES[zi].name} 던전 — 던전 열쇠가 필요합니다 (네임드 · 보스)`); return; }
+      this.enterDungeon(zi);
+      return;
+    }
+  }
+  enterDungeon(zi) {
+    const st = this.st, zn = ALL_ZONES[zi];
+    takeOne(st, 'dungeon_key');
+    const stage = Math.min(MAX_STAGE, ((st.dungeons ||= {})[zn.id] || 0) + 1);
+    this.leaveDungeon(true);
+    this.dungeon = { zi, stage, zone: zn };
+    this.toggleAuto(false);
+    const c0 = roomCenter(zi, 0);
+    this.player.pos.set(c0.x, 0, c0.z - 3); this.moveTo = null; this.target = null;
+    this.fx.arrive(c0.x, c0.z - 3);
+    const mod = stageMods(stage), L = zn.levels[1] + mod.level;
+    const put = (k, tier, n, type) => {
+      const c = roomCenter(zi, k);
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * 6.28 + Math.random();
+        const m = this.spawn({ zone: zn, x: c.x + Math.cos(a) * 3.5, z: c.z + Math.sin(a) * 3.5, level: L, tier, timer: 0, mon: null, forceType: type, fixed: tier === 'boss' ? { type: zn.boss.type, name: `${zn.name} 던전 우두머리` } : null });
+        m.maxHp = m.hp = Math.round(m.maxHp * mod.hp); m.dmg = m.dmg.map((v) => v * mod.dmg); m.dungeon = true; m.exp *= 1.5;
+      }
+    };
+    put(1, 'normal', 5); put(1, 'elite', 1);
+    put(2, 'normal', 6); put(2, 'elite', 2);
+    put(ROOMS - 1, 'boss', 1);
+    this.ui.toast(`${zn.name} 던전 ${stage}단계`, '#ffd84a');
+    this.ui.dirty();
+  }
+  leaveDungeon(silent = false) {
+    if (!this.dungeon) return;
+    for (const m of this.monsters) if (m.dungeon && !m.dead) { m.dead = true; m.noLoot = true; this.stage.remove(m.actor); }
+    this.monsters = this.monsters.filter((m) => !m.dungeon);
+    const zn = this.dungeon.zone;
+    this.dungeon = null;
+    if (!silent) { const e = entranceOf(zn); this.player.pos.set(e.x + 2, 0, e.z + 2); this.gateCd = 4; this.fx.arrive(e.x + 2, e.z + 2); }
+  }
+  dungeonCleared(m) {
+    const st = this.st, dg = this.dungeon, zn = dg.zone;
+    st.dungeons[zn.id] = Math.max(st.dungeons[zn.id] || 0, dg.stage);
+    // 보상: 영웅 이상 2개 (단계가 높을수록 전설), 상급 스킬북 하나, 금화
+    const lv = zn.levels[1] + dg.stage;
+    for (let i = 0; i < 2; i++) {
+      const rarity = Math.random() < 0.08 + dg.stage * 0.035 ? 'legend' : 'hero';
+      this.dropGround({ kind: 'item', item: makeItem(rollBase(lv), { rarity, ilvl: lv }, st) }, m.pos.x + i * 1.2, m.pos.z + 1);
+    }
+    const tier = dg.stage >= 7 ? 5 : dg.stage >= 4 ? 4 : 3, pool = Object.keys(SKILLS).filter((id) => SKILLS[id].tier === tier);
+    this.dropGround({ kind: 'item', item: makeBook(pool[Math.floor(Math.random() * pool.length)], st) }, m.pos.x - 1.2, m.pos.z + 1);
+    this.dropGround({ kind: 'gold', amount: Math.round(lv * 60 * (1 + dg.stage * 0.2)) }, m.pos.x, m.pos.z - 1);
+    this.ui.toast(`던전 ${dg.stage}단계 돌파! 15초 뒤 밖으로 나갑니다`, '#ffd84a');
+    sfx('awaken');
+    this.later(15, () => { if (this.dungeon === dg) this.leaveDungeon(); });
   }
 
   // 각성 20 · 40 · 60: 키운 스탯으로 칭호를 받고 특성 하나를 고른다
@@ -649,6 +717,10 @@ export class World {
     if (best === 'legend') { this.fx.shake(0.4); this.fx.pillar(m.pos.x, m.pos.z, 0x41e07a, 2.2, 6, 2); sfx('rare'); this.ui.toast('전설 장비!', '#41e07a'); }
     else if (best === 'hero') { sfx('rare', 0.8); this.fx.pillar(m.pos.x, m.pos.z, 0xff9a3c, 1.2, 4, 1); }
     if (m.tier !== 'normal') this.ui.log(`${m.name} 처치!`, TIERS[m.tier].color);
+    if (!m.dungeon && !m.noLoot && (m.tier === 'boss' || (m.tier === 'named' && Math.random() < 0.5))) {
+      if (addItem(st, makeItem('dungeon_key', { qty: 1 }, st))) { this.ui.toast('던전 열쇠를 얻었습니다', '#ffd84a'); sfx('rare', 0.7); }
+    }
+    if (m.dungeon && m.tier === 'boss' && this.dungeon) this.dungeonCleared(m);
     const zid = m.sp?.zone?.id, got = zid && !m.noLoot ? dropMats(st, zid, m.tier) : 0;
     if (got) { this.matLog = (this.matLog || 0) + got; this.fx.text(m.pos.clone().setY(2.2), `+${got} ${MATERIALS[zid].name}`, 'heal'); if (m.tier !== 'normal') this.ui.log(`${MATERIALS[zid].name} +${got}`, '#c8e08a'); }
     this.ui.dirty();
@@ -782,6 +854,7 @@ export class World {
   }
 
   revive() {
+    this.leaveDungeon(true);
     this.dead = false;
     this.player.lock = 0;
     this.player.pos.set(0, 0, 4);
@@ -1368,6 +1441,7 @@ export class World {
     this.time += dt;
     const st = this.st;
     st.playTime += dt;
+    this.checkDungeonGate(dt);
     // 자동 사냥 중 죽으면 잠시 뒤 마을에서 일어나 다시 사냥
     if (this.dead && this.auto) { this.autoReviveT = (this.autoReviveT ?? 6) - dt; if (this.autoReviveT <= 0) { this.autoReviveT = null; this.revive(); this.ui.closeDeath?.(); this.ui.log('자동 사냥: 마을에서 다시 출발합니다', '#9a917f'); } }
     for (let i = this.timers.length - 1; i >= 0; i--) {
@@ -1435,6 +1509,7 @@ export class World {
       this.recallT -= dt;
       if (this.recallT <= 0) {
         this.fx.burst(P.pos.x, 1, P.pos.z, 0x80b0ff, 18, 4, 0.4);
+        this.leaveDungeon(true);
         P.pos.set(0, 0, 4);
         this.stage.cam.x = 0; this.stage.cam.z = 4;
         this.fx.portal(0, 2.2, 1.2);
@@ -1526,11 +1601,12 @@ export class World {
 
     // 지역
     const zn = zoneAt(P.pos.x, P.pos.z);
-    const id = this.inTown ? 'town' : zn?.id || 'wild';
+    const dg = this.dungeon;
+    const id = dg ? 'dg' + dg.zi + '_' + dg.stage : this.inTown ? 'town' : zn?.id || 'wild';
     if (id !== this.zone) {
       this.zone = id;
       if (zn) st.lastZone = zn.id;
-      this.ui.zone(id === 'town' ? TOWN : zn);
+      this.ui.zone(dg ? { name: `${dg.zone.name} 던전 ${dg.stage}단계`, levels: [dg.zone.levels[1] + dg.stage, dg.zone.levels[1] + dg.stage] } : id === 'town' ? TOWN : zn);
     }
     this.musicT = (this.musicT || 0) - dt;
     if (this.musicT <= 0) {

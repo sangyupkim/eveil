@@ -96,6 +96,7 @@ export const BASES = {
   amulet2: { name: '고대 목걸이', slot: 'amulet', minLvl: 20, icon: 'i_necklace', mtint: 0xffd36a },
   ring2: { name: '룬 반지', slot: 'ring', minLvl: 20, icon: 'i_ring2', mtint: 0xb08aff },
 
+  dungeon_key: { name: '던전 열쇠', type: 'key', price: 0, stack: true },
   hp_potion: { name: '체력 물약', type: 'potion', restore: { hp: 70 }, price: 15, shop: true, stack: true, icon: 'i_potion_hp', itint: 0xff3040 },
   mp_potion: { name: '마나 물약', type: 'potion', restore: { mp: 45 }, price: 15, shop: true, stack: true, icon: 'i_potion_mp', itint: 0x3a78ff },
   hp_potion_l: { name: '큰 체력 물약', type: 'potion', restore: { hp: 220 }, price: 50, shop: true, stack: true, icon: 'i_potion_hp_l', itint: 0xff3040 },

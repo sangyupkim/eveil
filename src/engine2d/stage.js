@@ -1,6 +1,8 @@
 // 2D 쿼터뷰 화면: 카메라 · 땅 타일 · 배경 물건 · 앞뒤 정렬 · 조명. 게임 규칙의 좌표(x, z)는 그대로 쓴다
 // 투영: 화면 x = x·48, 화면 y = z·24 − 높이·48 (Flare 타일 192×96 하나 = 세계 (2, 2) 대각)
 import { ZONES, TOWN, WORLD_SIZE } from '../data/world.js';
+import { dungeonAt, DUNGEON_X, ROOMS, ROOM, ROOM_GAP, roomCenter, entranceOf } from '../data/dungeons.js';
+const farSide = (x) => x > DUNGEON_X - 30;
 import { ZONE_LOOK, ZONE_PROPS, FLAT } from '../data/flareWorld.js';
 import { DATA, image, drawRect } from './sprites.js';
 import { seeded } from '../game/rng.js';
@@ -26,6 +28,7 @@ const noise = (x, z) => (Math.sin(x * 0.11 + Math.cos(z * 0.07) * 2) + Math.sin(
 function groundAt(i, j) {
   const x = (i - j) * STEP, z = (i + j) * STEP;
   const h = hash(i, j);
+  if (farSide(x)) return dungeonAt(x, z) >= 0 ? ['dungeon', 32 + Math.floor(h * 16)] : ['void'];
   const dT = Math.hypot(x, z);
   if (dT < TOWN.r * 0.75) return pick('town', h);
   for (const zn of ZONES) if (distToSeg(x, z, 0, 0, zn.x * 0.72, zn.z * 0.72) < 2.6 + noise(x, z) * 1.5) return pick('town', h);
@@ -49,7 +52,7 @@ export const LAKES = [], MESAS = [];
 const HAS_BANKS = new Set(['grassland', 'snowplains', 'desert']);
 {
   const rng = seeded(4242);
-  const clear = (x, z, r) => roadDist(x, z) > r + 5 && ![...LAKES, ...MESAS].some((q) => Math.hypot(q.x - x, q.z - z) < q.r + r + 6);
+  const clear = (x, z, r) => roadDist(x, z) > r + 5 && !ZONES.some((zn) => { const e = entranceOf(zn); return Math.hypot(e.x - x, e.z - z) < r + 4; }) && ![...LAKES, ...MESAS].some((q) => Math.hypot(q.x - x, q.z - z) < q.r + r + 6);
   for (const zn of ZONES) {
     const L = ZONE_LOOK[zn.id];
     const bs = HAS_BANKS.has(L.set) ? L.set : 'grassland', top = bs !== L.set ? [L.set, L.ground[0]] : null, lava = zn.id === 'inferno';
@@ -218,6 +221,24 @@ export function buildWorldProps(stage) {
     const [a0, a1, rr] = shore[Math.floor(rng() * shore.length)];
     addProp(stage, q.set, a0 + Math.floor(rng() * (a1 - a0 + 1)), x, z, rr);
   }
+  // 던전: 바닥 둘레에 벽 덩어리, 방마다 석상 · 뼈 · 횃불, 마지막 방에 상자
+  for (let zi = 0; zi < ZONES.length; zi++) {
+    const c0 = roomCenter(zi, 0), rr = seeded(900 + zi);
+    for (let x = c0.x - ROOM - 2; x <= c0.x + ROOM + 2; x += 1.5) for (let z = -ROOM - 2; z <= (ROOMS - 1) * ROOM_GAP + ROOM + 2; z += 1.5) {
+      if (dungeonAt(x, z) >= 0) continue;
+      const edge = [[1.5, 0], [-1.5, 0], [0, 1.5], [0, -1.5]].some(([a, b]) => dungeonAt(x + a, z + b) >= 0);
+      if (!edge) continue;
+      stage.colliders.push({ x, z, r: 1.0 });
+      addProp(stage, 'dungeon', [68, 69, 65, 73, 96, 97][Math.floor(rr() * 6)], x, z, 0);
+    }
+    for (let k = 0; k < ROOMS; k++) {
+      const c = roomCenter(zi, k);
+      for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) addProp(stage, 'dungeon', k === ROOMS - 1 ? 128 + Math.floor(rr() * 4) : 167, c.x + a * (ROOM - 1.5), c.z + b * (ROOM - 1.5), k === ROOMS - 1 ? 0.8 : 0.3);
+      for (let n = 0; n < 5; n++) addProp(stage, 'dungeon', 176 + Math.floor(rr() * 8), c.x + (rr() - 0.5) * ROOM * 1.6, c.z + (rr() - 0.5) * ROOM * 1.6, 0);
+    }
+  }
+  // 지역마다 던전 입구 (빛나는 원)
+  for (const zn of ZONES) { const e = entranceOf(zn); addProp(stage, 'desert', 201, e.x, e.z, 0); }
   const free = (x, z) => !inLake(x, z, 1.5) && !inLake(x + 1.5, z) && !inLake(x - 1.5, z) && !inMesa(x, z) && !inMesa(x + 1.5, z + 1.5) && !inMesa(x - 1.5, z);
   for (const zn of ZONES) {
     for (const [set, ids, n, r] of ZONE_PROPS[zn.id] || []) {
@@ -292,6 +313,7 @@ export function resolveCollision(stage, p, radius = 0.5) {
       p.z = c.z + (dz / d) * min;
     }
   }
+  if (farSide(p.x)) return;
   const d = Math.hypot(p.x, p.z);
   if (d > WORLD_SIZE) { p.x *= WORLD_SIZE / d; p.z *= WORLD_SIZE / d; }
 }
@@ -418,8 +440,9 @@ function render(stage, dt) {
     const j = dd - i;
     const x = (i - j) * STEP, z = (i + j) * STEP;
     if (x < c0.x - 4 || x > c1.x + 4 || z < c0.z - 4 || z > c1.z + 4) continue;
-    if (Math.hypot(x, z) > WORLD_SIZE + 12) continue;
+    if (!farSide(x) && Math.hypot(x, z) > WORLD_SIZE + 12) continue;
     const [set, id, wet, lake] = tileAt(i, j);
+    if (set === 'void') continue;
     const p = stage.toScreen(x, z);
     if (lake && (lake.lava || lake.top)) drawBank(ctx, set, id, lake.lava ? 'lava' : null, lake.top, p.x, p.y, s);
     else if (wet || (set !== 'cave' && id >= wb(set)[0] && id < wb(set)[0] + 24)) drawWater(ctx, set, id, p.x, p.y, s); else drawTile(stage, ctx, set, id, p.x, p.y, s);
@@ -471,7 +494,7 @@ function render(stage, dt) {
 export function blockedAt(stage, x, z, r = 0.5) {
   const list = grid(stage).get(Math.floor(x / CELL) * 10007 + Math.floor(z / CELL)) || [];
   for (const c of list) if ((x - c.x) ** 2 + (z - c.z) ** 2 < (c.r + r) ** 2) return true;
-  return Math.hypot(x, z) > WORLD_SIZE;
+  return farSide(x) ? dungeonAt(x, z) < 0 : Math.hypot(x, z) > WORLD_SIZE;
 }
 // 두 점 사이 직선이 트였나
 export function clearLine(stage, a, b, r = 0.5) {

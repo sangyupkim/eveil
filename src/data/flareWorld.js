@@ -132,7 +132,7 @@ export const ITEM_LOOK = {
   frost_boots: { layers: { feet: 'plate_boots' }, icon: 164, tint: C.ice }, dragon_boots: { layers: { feet: 'plate_boots' }, icon: 164, tint: C.red },
   leather_belt: { icon: 208 }, heavy_belt: { icon: 208 }, warden_belt: { icon: 208 }, dragon_belt: { icon: 208 },
   amulet: { icon: 212 }, amulet2: { icon: 213 }, ring: { icon: 198 }, ring2: { icon: 204 },
-  hp_potion: { icon: 64 }, mp_potion: { icon: 65 }, hp_potion_l: { icon: 84 }, mp_potion_l: { icon: 86 },
+  dungeon_key: { icon: 226 }, hp_potion: { icon: 64 }, mp_potion: { icon: 65 }, hp_potion_l: { icon: 84 }, mp_potion_l: { icon: 86 },
 };
 // 처음 복장 (안 입은 부위)
 export const BASE_CLOTHES = { chest: 'cloth_shirt', legs: 'cloth_pants', feet: 'cloth_sandals', hands: 'default_hands' };
