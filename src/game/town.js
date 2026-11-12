@@ -318,6 +318,7 @@ export function dispatchParty(st, ids, zoneId, expId, pack = [], now = Date.now(
   const staNeed = Math.round(EXP_STA[expId] * (1 - SHELTER.sta * shelterLv(st, zoneId)));
   for (const m of ms) {
     if (!m || m.job) return { ok: false, why: '이미 파견 중인 용병이 있습니다' };
+    if (m.work) return { ok: false, why: `${m.name}은(는) 건물에서 일하는 중입니다` };
     if (m.sta < staNeed) return { ok: false, why: `${m.name}의 체력이 모자랍니다` };
   }
   for (const p of pack) for (let i = 0; i < p.qty; i++) takeOneItem(st, p.base);
@@ -333,6 +334,7 @@ const countOf = (st, base) => st.inv.filter((x) => x.base === base).reduce((a, x
 export function dispatch(st, id, zoneId, expId, now = Date.now()) {
   const m = typeof id === 'number' ? townOf(st).mercs[id] : mercById(st, id), ex = EXPEDITIONS.find((e) => e.id === expId), zn = ZONES.find((z) => z.id === zoneId);
   if (!m || m.job || !ex || !zn) return { ok: false };
+  if (m.work) return { ok: false, why: '건물에서 일하는 중입니다' };
   if (!isLiberated(st, zoneId)) return { ok: false, why: '해방한 지역에만 보낼 수 있습니다' };
   if (m.sta < EXP_STA[expId]) return { ok: false, why: '체력이 모자랍니다' };
   m.sta -= EXP_STA[expId]; m.work = null;
