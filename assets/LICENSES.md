@@ -9,3 +9,7 @@
 
 - Flare 그림을 고친 것(WebP 변환 · 색 입히기 · 버튼 잘라내기)도 CC-BY-SA 3.0을 따른다. 게임 메뉴에 출처를 표시한다.
 - 다시 만들기: `git clone --depth 1 https://github.com/flareteam/flare-game` → `node tools/prep-flare.mjs <flare-game 폴더>`
+
+## CC0 효과음 (assets/sound/cc0)
+- "80 CC0 RPG SFX" — rubberduck, OpenGameArt (CC0): https://opengameart.org/content/80-cc0-rpg-sfx
+- "RPG Sound Pack" — artisticdude, OpenGameArt (CC0): https://opengameart.org/content/rpg-sound-pack

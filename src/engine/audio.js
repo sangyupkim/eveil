@@ -3,19 +3,26 @@ const ROOT = 'assets/sound/';
 
 // 게임 소리 이름 → 파일 (여럿이면 무작위). '@'는 몬스터 무리 소리 (play(name, k, 무리))
 const SFX = {
-  swing: ['melee_attack', 'melee_attack_2'], heavy: ['melee_attack_3'], spin: ['melee_attack_2', 'melee_attack_3'],
-  hit: ['@hit'], crit: ['powers/spikes'], hurt: ['male_hit'], block: ['powers/block'], dodge: ['steps/step_cloth1', 'steps/step_cloth2'],
-  shoot: ['powers/shoot'], magic: ['powers/shock'], cast: ['powers/teleport'], fire: ['powers/fireball'], boom: ['powers/burn', 'powers/quake'],
+  swing: ['melee_attack', 'melee_attack_2', 'cc0/swing1', 'cc0/swing2', 'cc0/swing3'], heavy: ['melee_attack_3'], spin: ['melee_attack_2', 'melee_attack_3'],
+  hit: ['@hit'], crit: ['powers/spikes', 'cc0/blade_01', 'cc0/blade_02', 'cc0/blade_03'], hurt: ['male_hit'], block: ['powers/block'], dodge: ['steps/step_cloth1', 'steps/step_cloth2'],
+  shoot: ['powers/shoot'], magic: ['powers/shock', 'cc0/magic1', 'cc0/spell_01'], cast: ['powers/teleport', 'cc0/spell', 'cc0/spell_02'], fire: ['powers/fireball', 'cc0/spell_fire_01', 'cc0/spell_fire_02', 'cc0/spell_fire_03', 'cc0/spell_fire_04'], boom: ['powers/burn', 'powers/quake'],
   zap: ['powers/thunder'], ice: ['powers/freeze'], slam: ['powers/quake'], heal: ['powers/heal'], buff: ['powers/warcry'],
-  coin: ['inventory/inventory_coins'], pickup: ['flying_loot'], rare: ['inventory/inventory_gem'], potion: ['powers/potion'],
-  awaken: ['level_up'], rankup: ['inventory/inventory_gem'], learn: ['inventory/inventory_page'], mdie: ['@die'], death: ['male_die'],
+  coin: ['inventory/inventory_coins', 'cc0/coin1', 'cc0/coin2', 'cc0/coin3', 'cc0/item_coins_01', 'cc0/item_coins_02', 'cc0/item_coins_03', 'cc0/item_coins_04'], pickup: ['flying_loot'], rare: ['inventory/inventory_gem', 'cc0/item_gem_01', 'cc0/item_gem_02', 'cc0/item_gem_03', 'cc0/item_gem_04'], potion: ['powers/potion', 'cc0/bubble1', 'cc0/bubble2', 'cc0/bottle'],
+  awaken: ['level_up'], rankup: ['inventory/inventory_gem'], learn: ['inventory/inventory_page', 'cc0/book_01', 'cc0/book_02', 'cc0/book_03', 'cc0/book_04'], mdie: ['@die'], death: ['male_die'],
   recall: ['environment/teleporter'], click: ['widget_activate'], error: ['no_mana'], mattack: ['@phys'], mshoot: ['powers/shoot'],
-  equip_metal: ['inventory/inventory_metal'], equip_leather: ['inventory/inventory_leather'], equip_cloth: ['inventory/inventory_cloth'], step: ['steps/step_leather1', 'steps/step_leather2', 'steps/step_leather3', 'steps/step_leather4'],
+  equip_metal: ['inventory/inventory_metal', 'cc0/chain1', 'cc0/metal1'], equip_leather: ['inventory/inventory_leather', 'cc0/armor_light'], equip_cloth: ['inventory/inventory_cloth', 'cc0/cloth_heavy'], step: ['steps/step_leather1', 'steps/step_leather2', 'steps/step_leather3', 'steps/step_leather4'],
 };
 // 몬스터 무리별 소리 (없으면 해골)
 const FAM = { antlion: 'antlion', fire_ant: 'antlion', ice_ant: 'antlion', goblin: 'goblin', hobgoblin: 'goblin', skeleton: 'skeleton', minotaur: 'minotaur', wyvern: 'wyvern', zombie: 'zombie', cursed: 'grave' };
 export const familyOf = (sprite = '') => FAM[Object.keys(FAM).find((k) => sprite.startsWith(k))] || 'skeleton';
+const VOICE = {
+  antlion: ['slime1', 'slime2', 'slime3', 'slime4', 'slime5'], zombie: ['beast1', 'beast2', 'beast3', 'beast4', 'beast5'],
+  grave: ['shade1', 'shade2', 'shade3', 'shade4', 'shade5'], minotaur: ['ogre1', 'ogre2', 'ogre3', 'giant1', 'giant2', 'giant3'],
+  wyvern: ['creature_roar_01', 'creature_roar_02', 'creature_roar_03'], goblin: ['beast1', 'beast3', 'beast5'],
+};
 const famFile = (fam, kind) => {
+  // 쓰러질 때는 절반쯤 새 울음으로
+  if (kind === 'die' && VOICE[fam] && Math.random() < 0.5) return 'cc0/' + VOICE[fam][Math.floor(Math.random() * VOICE[fam].length)];
   const has = { grave: ['attack', 'die', 'hit'] }[fam];
   if (fam === 'grave') return 'enemies/grave_' + (kind === 'phys' ? 'attack' : has.includes(kind) ? kind : 'hit');
   if (fam === 'goblin' && kind === 'phys') return 'enemies/goblin_phys';
@@ -54,6 +61,7 @@ export class Audio {
     // 효과음은 모두 미리 받아 둔다 (처음 재생도 늦지 않게)
     for (const list of Object.values(SFX)) for (const f of list) if (f[0] !== '@') this.load(f);
     for (const fam of new Set(Object.values(FAM))) for (const k of ['hit', 'die', 'phys']) this.load(famFile(fam, k));
+    for (const v of Object.values(VOICE)) for (const f of v) this.load('cc0/' + f);
     this.setMusic(this.want, true);
   }
 
