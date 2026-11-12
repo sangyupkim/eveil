@@ -64,7 +64,7 @@ export function equip(st, uid, rng = Math.random) {
   for (const b of back) st.inv.push(b); // 꺼낸 장비는 칸 수와 상관없이 가방으로
   // 갈아 끼운 장비에서 낮은 확률로 능력치 파편
   const shards = [];
-  for (const b of back) if (rng() < SHARD.swapChance) { const sh = shardFrom(b, st, rng); if (sh) { st.inv.push(sh); shards.push(sh); } }
+  for (const b of back) if (rng() < SHARD.swapChance * (1 + 0.2 * (st.town?.research?.shard || 0))) { const sh = shardFrom(b, st, rng); if (sh) { st.inv.push(sh); shards.push(sh); } }
   return { ok: true, slot, base, shards };
 }
 

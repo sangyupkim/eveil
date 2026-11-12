@@ -134,6 +134,19 @@ export const BASES = {
   mp_potion: { name: '마나 물약', type: 'potion', restore: { mp: 45 }, price: 15, shop: true, stack: true, icon: 'i_potion_mp', itint: 0x3a78ff },
   hp_potion_l: { name: '큰 체력 물약', type: 'potion', restore: { hp: 220 }, price: 50, shop: true, stack: true, icon: 'i_potion_hp_l', itint: 0xff3040 },
   mp_potion_l: { name: '큰 마나 물약', type: 'potion', restore: { mp: 140 }, price: 50, shop: true, stack: true, icon: 'i_potion_mp_l', itint: 0x3a78ff },
+
+  // 영약: 제작소에서 약초로만 만든다 (상점 판매 없음)
+  el_str: { name: '힘의 영약', type: 'elixir', price: 80, stack: true },
+  el_dex: { name: '민첩의 영약', type: 'elixir', price: 80, stack: true },
+  el_int: { name: '지능의 영약', type: 'elixir', price: 80, stack: true },
+  el_wis: { name: '정신의 영약', type: 'elixir', price: 80, stack: true },
+  el_vit: { name: '체력의 영약', type: 'elixir', price: 80, stack: true },
+  el_armor: { name: '강철 피부 물약', type: 'elixir', price: 80, stack: true },
+  el_might: { name: '분노의 물약', type: 'elixir', price: 80, stack: true },
+  el_haste: { name: '신속의 물약', type: 'elixir', price: 80, stack: true },
+  el_swift: { name: '바람걸음 물약', type: 'elixir', price: 80, stack: true },
+  el_focus: { name: '매의 눈 물약', type: 'elixir', price: 80, stack: true },
+  el_luck: { name: '행운의 물약', type: 'elixir', price: 80, stack: true },
 };
 export const isTwoHandedBase = (b) => !!(b.two ?? WEAPON_CLASSES[b.cls]?.two);
 

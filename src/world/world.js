@@ -11,7 +11,8 @@ import { CONFIG, TIERS, AP_TABLE } from '../data/config.js';
 import { SKILLS } from '../data/skills.js';
 import { BASES, WEAPON_CLASSES, RARITY_ORDER } from '../data/items.js';
 import { MONSTERS, ZONES, TOWN } from '../data/world.js';
-import { derive, damageReduction } from '../game/player.js';
+import { derive, damageReduction, totalStats } from '../game/player.js';
+import { ELIXIRS, ELIXIR_TIME } from '../data/potions.js';
 import { addAP, gainExp, rewardFactor } from '../game/growth.js';
 import { addSkillExp, skillValues, skillEff, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
 import { rollLoot, rollDeathDrop } from '../game/loot.js';
@@ -161,6 +162,8 @@ export class World {
       mine: (b) => { big('dungeon', 286, 0, -0.6, 0.75, 0, 0, 'sepia(0.4) brightness(0.9)', 2.8); return [['cave', 148, 4.6, -1.8], ['cave', 130, -4.4, 1.2], ['cave', 131, 3.8, 3.2], ['cave', 151, -3.6, -2.8], ['grassland', 100, -4.6, 3.6]]; },
       lab: (b) => { big('ruins', 380, 0, 0.4, 1.0, 0, 0, '', 0); return [['ruins', 243, 0.0, -3.0], ['ruins', 223, -3.6, -1.6], ['ruins', 231, 3.6, -1.6], ['ruins', 152, -3.8, 2.8], ['ruins', 223, 3.8, 2.8], ['ruins', 241, 0.0, 4.2], ['dungeon', 167, -1.8, 4.0], ['dungeon', 167, 1.8, 4.0]]; },
       workshop: (b) => { cabin('A', 0, -0.6, 'brightness(0.86) sepia(0.2)'); return [['grassland', 76, 4.6, 2.2], ['grassland', 103, -4.2, 2.8], ['grassland', 100, 2.2, 3.8], ['grassland', 101, -1.8, 4.0]]; },
+      // 파견소 = 천막 야영 (단계마다 천막이 늘어난다) + 횃불
+      guild: (b) => { big('grassland', 72, -1.8, -0.4, 0.95, 0, 0, 'brightness(0.92) sepia(0.15)', 2.6); big('grassland', 72, 2.4, 0.6, 0.8, 0, 0, 'saturate(1.2) hue-rotate(-10deg)', 2.2); if (b.lv >= 3) big('grassland', 72, -0.2, -3.2, 0.75, 0, 0, 'brightness(0.85)', 2); return [['dungeon', 167, 4.2, 3.4], ['dungeon', 167, -4.2, 3.4], ['grassland', 96, 0.4, 4.0], ['grassland', 98, -3.0, 4.2]]; },
       house: (b) => { cabin('B', b.lv >= 3 ? -2.2 : 0, -0.6, 'saturate(1.15) brightness(1.08)'); if (b.lv >= 3) cabin('A', 3.4, -3.6, 'saturate(1.1) brightness(1.04)'); return [['grassland', 98, 4.4, 2.8], ['grassland', 122, -4.4, 2.8], ['grassland', 121, -3.4, 3.8]]; },
     };
     for (const pl of PLOTS) {
@@ -248,6 +251,8 @@ export class World {
     for (const k in this.buffs) if (this.buffs[k].t > 0) b[k] = this.buffs[k].v;
     // 칭호 특성으로 생긴 잠깐 효과 (피해 · 공격 속도 · 받는 피해 감소)
     for (const k in this.pbuffs || {}) if (this.pbuffs[k].t > 0) b[k] = (b[k] || 0) + this.pbuffs[k].v;
+    // 영약 (마신 뒤 5분)
+    for (const k in this.st.elix || {}) { const e = this.st.elix[k]; if (e.t > 0) b[e.buff] = (b[e.buff] || 0) + e.v; }
     return b;
   }
 
@@ -351,6 +356,10 @@ export class World {
     for (const c of CAMPS) {
       const k = this.st.camps?.[c.zone]; if (!k) continue;
       if (k.merchant) { const a = new Actor(this.scene, { npc: 'wandering_trader' }); a.pos.set(c.x + 3, 0, c.z - 1); a.facing = -0.5; a.play('idle'); a.name = '떠돌이 상인'; this.campNpcs.push(a); }
+      if (k.rest) { // 용병 쉼터: 단계마다 천막 하나씩
+        const tt = DATA.tiles.grassland.tiles[72], spots = [[-5, -2], [5, -3], [-6, 3], [6, 2.5], [0, -5]];
+        for (let i = 0; i < Math.min(5, k.rest); i++) { const [dx, dz] = spots[i], x = c.x + dx, z = c.z + dz; const d = { z: z + 1.5, draw: (ctx, stg) => { const src = image(DATA.tiles.grassland.imgs[tt[0]]); if (!src.ok || !stg.onScreen(x, z, 5)) return; const p = stg.toScreen(x, z); drawRect(ctx, src.im, tt.slice(1), p.x, p.y, stg.scale() * 0.8); } }; this.stage.add(d); this.campDraw.push(d); }
+      }
       if (k.fire) { const tt = DATA.tiles.grassland.tiles[100]; const d = { z: c.z + 1.5, draw: (ctx, stg) => { const src = image(DATA.tiles.grassland.imgs[tt[0]]); if (!src.ok || !stg.onScreen(c.x, c.z, 4)) return; const s2 = stg.toScreen(c.x - 3, c.z + 1.5); drawRect(ctx, src.im, tt.slice(1), s2.x, s2.y, stg.scale()); } }; this.stage.add(d); this.campDraw.push(d); }
     }
   }
@@ -1027,11 +1036,11 @@ export class World {
     if (this.chain >= 3) this.fx.text(this.player.pos.clone().setY(3.2), `연쇄 ${this.chain}`, this.chain >= 10 ? 'crit' : 'heal');
     if (this.chain % 10 === 0) { this.chainSpdT = 5; sfx('buff', 0.6); }
     const exp = m.exp * rf.exp * this.autoMult * (1 + Math.min(20, this.chain) * 0.02) * (this.night > 0.5 ? 1.2 : 1);
-    const results = gainExp(st, exp);
+    const results = gainExp(st, exp * (1 + researchK(st, 'exp')));
     for (const r of results) this.onAwaken(r);
 
     // 드랍
-    const drops = m.noLoot ? [] : rollLoot(m, { auto: this.auto, magicFind: d.magicFind, goldFind: d.goldFind * (1 + researchK(st, 'gold')) }, st);
+    const drops = m.noLoot ? [] : rollLoot(m, { auto: this.auto, magicFind: d.magicFind + researchK(st, 'luck'), goldFind: d.goldFind * (1 + researchK(st, 'gold')) }, st);
     drops.forEach((dr, i) => {
       const a = (i / Math.max(1, drops.length)) * Math.PI * 2 + Math.random();
       const r = drops.length > 1 ? 1.2 + Math.random() : 0.6;
@@ -1782,6 +1791,7 @@ export class World {
     // 버프 · 쿨타임 · 회복
     let buffChanged = false;
     for (const k in this.buffs) { const b = this.buffs[k]; if (b.t > 0) { b.t -= dt; if (b.t <= 0) buffChanged = true; } }
+    for (const k in this.st.elix || {}) { const e = this.st.elix[k]; e.t -= dt; if (e.t <= 0) { delete this.st.elix[k]; buffChanged = true; this.ui.dirty(); } }
     for (const k in this.pbuffs || {}) { const b = this.pbuffs[k]; if (b.t > 0) { b.t -= dt; if (b.t <= 0) buffChanged = true; } }
     if (buffChanged) this.d = derive(st, this.buffValues());
     for (const k in this.cds) if (this.cds[k] > 0) this.cds[k] -= dt;
@@ -1972,6 +1982,15 @@ export class World {
         const req = Object.entries(SKILLS[it.book].req).map(([k, v]) => `${k.toUpperCase()} ${v}`).join(', ');
         this.ui.toast(`스탯이 부족합니다 (${req})`);
       }
+    } else if (BASES[it.base].type === 'elixir') {
+      const E = ELIXIRS[it.base], base = totalStats(st);
+      const v = E.stat ? Math.max(5, Math.round(base[E.buff] * 0.1)) : E.v;
+      takeOne(st, it.base);
+      (st.elix ||= {})[it.base] = { buff: E.buff, v, t: ELIXIR_TIME };
+      this.d = derive(st, this.buffValues());
+      this.ui.toast(`${E.name}: ${E.stat ? `${E.text.split(' ')[0]} +${v}` : E.text} (5분)`, E.color);
+      sfx('buff');
+      this.fx.ring(this.player.pos.x, this.player.pos.z, 2.2, new THREE.Color(E.color).getHex(), 0.7);
     } else if (BASES[it.base].type === 'potion') {
       this.usePotion(BASES[it.base].restore.hp ? 'hp' : 'mp');
     } else {

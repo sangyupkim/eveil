@@ -4,6 +4,8 @@ import { SKILLS, BOOK_TIERS } from '../data/skills.js';
 import { ITEM_LOOK, SKILL_ICON, faceOf } from '../data/flareWorld.js';
 import { SCHOOL_ICON } from '../data/skills_more.js';
 import { image } from '../engine2d/sprites.js';
+import { ELIXIRS, HERBS } from '../data/potions.js';
+export const herbIcon = (id) => iconUrl(HERBS[id].icon, HERBS[id].color);
 
 const SHEET = 'icons.webp', S = 64;
 const cache = new Map();
@@ -28,6 +30,7 @@ export function iconUrl(index, frame = null) {
 export function itemIcon(it) {
   if (it.book) return iconUrl(225, BOOK_TIERS[SKILLS[it.book].tier].color);
   if (it.shard) return iconUrl(68, '#c58cff');
+  if (ELIXIRS[it.base]) return iconUrl(ITEM_LOOK[it.base]?.icon ?? 84, ELIXIRS[it.base].color);
   const L = ITEM_LOOK[it.base];
   if (L) return iconUrl(L.icon);
   const b = BASES[it.base];

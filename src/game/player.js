@@ -88,6 +88,7 @@ export function totalStats(st, g = gearSum(st)) {
 export function derive(st, buffs = {}) {
   const g = gearSum(st);
   const s = totalStats(st, g);
+  for (const k of ['str', 'dex', 'int', 'wis', 'vit']) if (buffs[k]) s[k] += buffs[k]; // 영약
   const weapon = st.equip.weapon;
   const cls = WEAPON_CLASSES[weapon ? BASES[weapon.base].cls : 'unarmed'];
   const wd = weapon ? scaledDmg(weapon) : [2, 4];
@@ -115,11 +116,11 @@ export function derive(st, buffs = {}) {
     healMult: 1 + s.wis * 0.035,
     hpRegen: 0.5 + s.vit * 0.04 + (g.hpRegen || 0),
     mpRegen: 0.6 + s.wis * 0.07 + (g.mpRegen || 0),
-    moveSpeed: 6.2 * (1 + (g.moveSpd || 0) / 100),
+    moveSpeed: 6.2 * (1 + ((g.moveSpd || 0) + (buffs.swift || 0)) / 100),
     lifeSteal: (g.lifeSteal || 0) / 100,
     skillExp: 1 + (g.skillExp || 0) / 100,
     goldFind: 1 + (g.goldFind || 0) / 100,
-    magicFind: g.magicFind || 0,
+    magicFind: (g.magicFind || 0) + (buffs.luck || 0),
   };
 }
 

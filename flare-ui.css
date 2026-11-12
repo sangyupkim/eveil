@@ -132,3 +132,8 @@ body.touch #quick .slot:nth-child(n) { right: auto; bottom: auto; }
   .fs-head { gap: 6px; }
   .fs-head h2 { font-size: calc(var(--u) * 1.35); }
 }
+
+/* 약초 창고 줄 */
+.herbBar { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 8px; }
+.herbBar .hb { display: flex; align-items: center; gap: 3px; padding: 1px 6px 1px 2px; border: 1px solid var(--line); border-radius: 6px; background: rgba(0, 0, 0, 0.35); font-size: calc(var(--u) * 0.85); }
+.herbBar .hb img { width: 1.7em; height: 1.7em; }

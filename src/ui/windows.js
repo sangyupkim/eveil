@@ -27,7 +27,7 @@ import { ZONES, MONSTERS } from '../data/world.js';
 import { nextQuest, questDone, questNeed, goalText, questTurnIn } from '../game/quests.js';
 import { audio } from '../engine/audio.js';
 import { cloud } from '../net/cloud.js';
-import { takeOne } from '../game/inventory.js';
+import { takeOne, countOf } from '../game/inventory.js';
 import { uiSettings, applyUi, editUi } from './layout.js';
 
 import { TITLE_AT, titleKey, titleName, UNIQUES, perkChoices } from '../data/titles.js';
@@ -35,6 +35,10 @@ import { VARIANTS, variantSlots } from '../game/skills.js';
 import { SCHOOL_NAMES } from '../data/skills.js';
 import { GEMS, GEM_GRADES } from '../data/legends.js';
 import { applyShard, canApply, lockMax, shardCost } from '../game/shards.js';
+import { HERBS, HERB_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
+import { brew, brewGold, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
+import { RESEARCH_MAX, SHELTER } from '../data/buildings.js';
+import { herbIcon } from './icons.js';
 import { GAME_VERSION, PATCH_NOTES } from '../data/patchnotes.js';
 import { KEY_ACTIONS, keyMap, keyName } from '../data/keys.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
@@ -150,6 +154,8 @@ export class Windows {
       h += `<div class="sub">보석 ×${it.qty}</div><div>${STAT_NAMES[GEMS[b.gem].stat]} +${GEM_GRADES[b.grade].v} (구멍 있는 장비를 골라 박기)</div>`;
     } else if (b.type === 'key') {
       h += `<div class="sub">×${it.qty}</div><div>지역의 빛나는 원(던전 입구)에서 하나 써서 들어갑니다</div>`;
+    } else if (b.type === 'elixir') {
+      h += `<div class="sub">영약 ×${it.qty} · 5분</div><div class="aff">${ELIXIRS[it.base].text}</div>`;
     } else if (b.type === 'potion') {
       h += `<div class="sub">소모품 ×${it.qty}</div><div>${b.restore.hp ? `HP ${b.restore.hp} 회복` : `MP ${b.restore.mp} 회복`}</div>`;
     } else {
@@ -175,13 +181,41 @@ export class Windows {
     h += `<div class="sub">판매가 ${itemValue(it)} G</div>`;
     h += '<div class="btns">';
     if (where === 'inv') {
-      if (!it.shard) h += `<button class="btn gold" data-act="use">${isBook(it) ? '배우기' : b.type === 'potion' ? '사용' : '장착'}</button>`;
+      if (!it.shard) h += `<button class="btn gold" data-act="use">${isBook(it) ? '배우기' : b.type === 'potion' ? '사용' : b.type === 'elixir' ? '마시기' : '장착'}</button>`;
       if (this.w.canShop) h += `<button class="btn" data-act="sell">판매</button>`;
       h += `<button class="btn danger" data-act="drop">버리기</button>`;
     } else if (where === 'equip') {
       h += `<button class="btn" data-act="unequip">해제</button>`;
     }
     h += '</div>';
+    return h;
+  }
+
+  // 파견소: 용병 여럿 · 지역 · 기간 · 챙길 물약/영약을 골라 보낸다
+  guildPanel(gb) {
+    const st = this.w.st, t = townOf(st), P = (this.party ||= { ids: [], pack: {} });
+    const zones = ZONES.filter((z) => isLiberated(st, z.id));
+    if (!zones.some((z) => z.id === P.zone)) P.zone = zones[0]?.id;
+    if (!EXPEDITIONS.some((e) => e.id === P.exp)) P.exp = 'mid';
+    P.ids = P.ids.filter((id) => t.mercs.some((m) => m.id === id && !m.job));
+    const zn = ZONES.find((z) => z.id === P.zone), sh = zn ? shelterLv(st, zn.id) : 0;
+    const pack = Object.entries(P.pack).filter(([, q]) => q > 0).map(([base, qty]) => ({ base, qty })), boost = packBoost(pack);
+    const back = t.mercs.filter((m) => m.job && Date.now() >= m.job.until).length;
+    let h = `<div class="kv"><span>한 번에</span><b>${partyMax(st)}명</b><span>챙길 물건</span><b>${packMax(st)}개</b></div>`;
+    if (back) h += `<div class="btns"><button class="btn gold" data-claimall="1">돌아온 용병 ${back}명 전리품 받기</button></div>`;
+    if (!zones.length) return h + '<div class="note">해방한 지역 없음</div>';
+    h += `<h3 style="margin-top:8px">지역</h3><div class="btns" style="flex-wrap:wrap;margin:0">${zones.map((z) => `<button class="btn ${z.id === P.zone ? 'on' : ''}" data-pzone="${z.id}">${z.name}${shelterLv(st, z.id) ? ` · 쉼터 ${shelterLv(st, z.id)}` : ''}</button>`).join('')}</div>
+      <div class="note">쉼터 ${sh}단계 · ${SHELTER.text(sh)}</div>`;
+    h += `<h3 style="margin-top:8px">기간</h3><div class="btns" style="flex-wrap:wrap;margin:0">${EXPEDITIONS.map((e) => `<button class="btn ${e.id === P.exp ? 'on' : ''}" data-pexp="${e.id}" ${e.rest && sh < e.rest ? 'disabled' : ''}>${e.name} ${e.min >= 60 ? e.min / 60 + '시간' : e.min + '분'}${e.rest && sh < e.rest ? ` · 쉼터 ${e.rest}` : ''}</button>`).join('')}</div>`;
+    const staNeed = Math.round(EXP_STA[P.exp] * (1 - SHELTER.sta * sh));
+    h += `<h3 style="margin-top:8px">용병 <small>${P.ids.length} / ${partyMax(st)} · 체력 ${staNeed}</small></h3>`;
+    h += t.mercs.filter((m) => !m.job).map((m) => { const on = P.ids.includes(m.id), dc = zn ? deathChance(m, zn, P.exp, st, boost) : 0;
+      return `<div class="row pick ${on ? 'on' : ''}" data-pm="${m.id}">${this.mercLine(m, 'hunt')}<div class="note" style="min-width:5.5em;color:${dc > 0.15 ? '#ff7060' : ''}">사망 ${Math.round(dc * 100)}%${m.sta < staNeed ? ' · 지침' : ''}</div></div>`; }).join('') || '<div class="note">쉬는 용병 없음</div>';
+    const goods = st.inv.filter((x) => ['potion', 'elixir'].includes(BASES[x.base]?.type));
+    const tot = pack.reduce((a, p) => a + p.qty, 0);
+    h += `<h3 style="margin-top:8px">챙길 물건 <small>${tot} / ${packMax(st)} · 안전 +${Math.round(boost.safe * 100)}% · 힘 +${Math.round(boost.pow * 100)}%</small></h3>`;
+    h += goods.map((x) => `<div class="row"><div class="cell shopIco">${ico(x)}</div><div class="grow">${BASES[x.base].name} <small class="note">${x.qty}</small></div><button class="btn" data-ppack="${x.base}|-1">-</button><b style="min-width:1.6em;text-align:center">${P.pack[x.base] || 0}</b><button class="btn" data-ppack="${x.base}|1">+</button></div>`).join('') || '<div class="note">물약 · 영약 없음</div>';
+    h += `<div class="btns"><button class="btn gold" data-psend="1" ${P.ids.length ? '' : 'disabled'}>파견 보내기</button></div>`;
     return h;
   }
 
@@ -400,11 +434,11 @@ export class Windows {
       ['조작', [pic(portrait(st.look), '내 캐릭터')], ['이동: 땅을 누르거나 WASD · 왼쪽 조이스틱', '공격: 몬스터를 누르거나 공격 버튼', '스킬: 오른쪽 아래 스킬 칸 (PC는 숫자 1~6)', '물약: 물약 칸 · Q (쿨타임 있음)', '창: I 가방 · K 스킬 · C 능력 · M 지도']],
       ['성장 · 각성', [pic(portrait(st.look), `Lv.${st.level}`)], ['몬스터를 잡아 경험치를 얻고 레벨이 오르면 능력치 점수를 받습니다', '최대 레벨에 닿으면 각성: 레벨은 1로, 능력치 보너스는 남습니다', '각성 횟수에 따라 성향에 맞는 칭호와 특성을 고릅니다']],
       ['스킬', [pic(skillIcon(sk), SKILLS[sk]?.name || '스킬')], ['스킬북을 가방에서 눌러 배웁니다', '쓸수록 스킬 레벨이 오릅니다', '변형: 스킬마다 변형 칸을 열어 효과를 바꿉니다']],
-      ['장비', [eq ? pic(itemIcon(eq), itemName(eq)) : '', pic(chestIcon(), '가방')], ['부위: 머리 · 목걸이 · 몸 · 장갑 · 허리 · 무기 · 보조 · 반지 2 · 신발', '등급: 일반 < 마법 < 희귀 < 영웅 < 전설 < 세트', '레벨 제한 1 ~ 200, 깊은 곳 · 높은 세계 단계일수록 높은 장비', '장비를 고르면 능력치 변화가 옆 칸에 보입니다']],
+      ['장비', [eq ? pic(itemIcon(eq), itemName(eq)) : '', pic(chestIcon(), '가방')], ['부위: 머리 · 목걸이 · 몸 · 장갑 · 허리 · 무기 · 보조 · 반지 2 · 신발', '등급: 일반 < 마법 < 희귀 < 영웅 < 전설', '레벨 제한 1 ~ 200, 깊은 곳 · 높은 세계 단계일수록 높은 장비', '장비를 고르면 능력치 변화가 옆 칸에 보입니다']],
       ['강화 · 재련 · 분해', [pic(oreIcon(), '광석'), pic(coinIcon(), '골드')], ['강화(대장간): +1 ~ +10, 대장간 레벨이 상한. 단계마다 피해 · 방어 +8%', '확률: +1~3 100%, 그 뒤 90 · 80 · 70 · 55 · 45 · 35 · 25%. 실패해도 단계는 그대로', '비용: 골드 + 광석 (단계 · 아이템 레벨에 비례)', '재련: 가장 약한 옵션 하나를 다시 굴립니다', '분해: 쓰지 않는 장비를 광석 · 재료로', '능력치 파편: 장비를 갈아 끼울 때 낮은 확률로, 보스가 가끔 장비 대신 떨어뜨림. 장비의 기본 피해 · 방어력이 아닌 옵션 하나', '파편 쓰기(대장간): 착용 장비 옵션 하나가 무작위로 파편 옵션으로 바뀜. 같은 옵션이 있으면 그것이 바뀜', '옵션 잠그기: 대장간 3단계 1개 · 4단계 2개 · 5단계 3개 — 잠근 옵션은 바뀌지 않음']],
       ['보석', [pic(oreIcon(), '보석')], ['장비 홈에 박아 능력치를 올립니다', '등급 10단계: 조각난 · 흐린 · 보통 · 빛나는 · 완벽한 · 찬란한 · 고대의 · 신성한 · 영원의 · 태초의', '몬스터 레벨이 높을수록 높은 등급이 떨어집니다. 상점은 낮은 등급만']],
       ['던전', [pic(scrollIcon(), '열쇠')], ['지역마다 던전 입구가 하나 (미로 · 방과 복도 · 동굴)', '네임드 · 보스가 주는 열쇠로 입장, 가장 깊은 곳의 우두머리를 잡으면 클리어', '단계를 올릴수록 몬스터가 세지고 보상이 좋아집니다']],
-      ['마을 · 용병 · 연구', [pic(townIcon(), '마을')], ['건물을 지어 생산 · 강화 · 연구를 엽니다', '여관에는 매 시간 다른 용병이 찾아옵니다. 솜씨(채광 · 재배 · 손재주 · 학식 · 살림 · 탐험)와 등급이 제각각', '숙소 단계가 고용 한도입니다', '건물은 각성 단계에 따라 열립니다: 대장간 · 약초밭 0, 숙소 · 여관 3, 광산 6, 제작소 10, 연구소 15', '단계 올리기(최고 5단계)도 각성이 필요합니다: 대장간 5 · 15 · 30 · 50 / 약초밭 3 · 10 · 25 · 45 / 숙소 8 · 18 · 32 · 50 / 여관 8 · 20 · 35 · 55 / 광산 10 · 22 · 38 · 55 / 제작소 15 · 28 · 42 · 58 / 연구소 20 · 32 · 46 · 60', '모든 건물에 용병을 둘 수 있습니다: 광산 · 약초밭은 생산, 대장간 · 제작소는 금화 절약, 연구소는 연구 시간 단축, 여관은 휴식 회복, 숙소는 체력 소모 감소', '체력이 닳으면 쉬어야 합니다', '시킨 일의 솜씨가 오르고, 레벨 20에서 각성(최대 10번)', '파견은 위험해서 약한 용병은 죽을 수 있습니다', '연구: 가방 칸 등 영구 강화']],
+      ['마을 · 용병 · 연구', [pic(townIcon(), '마을')], ['건물을 지어 생산 · 강화 · 연구를 엽니다', '건물은 각성으로 열립니다: 대장간 · 약초밭 0, 숙소 · 여관 3, 파견소 5, 광산 6, 제작소 10, 연구소 15', '단계 올리기(최고 5단계)도 각성이 필요합니다: 대장간 5 · 15 · 30 · 50 / 약초밭 3 · 10 · 25 · 45 / 숙소 8 · 18 · 32 · 50 / 여관 8 · 20 · 35 · 55 / 파견소 12 · 25 · 40 · 55 / 광산 10 · 22 · 38 · 55 / 제작소 15 · 28 · 42 · 58 / 연구소 20 · 32 · 46 · 60', '약초밭: 약초만 자랍니다. 단계마다 새 약초 (붉은 잎 · 푸른 이끼 → 무쇠뿌리 → 햇살꽃 · 바람풀 → 달빛 버섯 → 황금 인삼)', '제작소: 약초로 물약과 영약(힘 · 민첩 · 지능 · 정신 · 체력 · 방어력 · 피해 · 공격 속도 · 이동 속도 · 치명타 · 아이템 발견, 5분)을 만듭니다. 단계마다 새 조합법', '여관: 매 시간 용병이 찾아옵니다. 단계가 높을수록 좋은 등급 (정예는 2단계, 전설은 4단계부터)', '숙소: 고용 한도, 5단계에 20명', '파견소: 해방한 지역으로 용병을 여럿 보냅니다. 단계마다 인원 · 챙길 물건(물약은 안전, 영약은 힘)이 늘어납니다', '개척지 용병 쉼터(야영지): 그 지역 파견의 보상 · 힘 · 아이템 · 재료가 늘고 죽을 확률 · 체력 소모가 줄어듭니다. 3 · 5단계에 더 긴 원정', '연구소: 단계마다 더 좋은 연구가 열립니다 (연구마다 최고 5단계)', '용병은 일한 솜씨가 오르고, 레벨 20에서 각성(최대 10번). 파견에서 죽을 수 있습니다']],
       ['야영지 · 지도', [pic(scrollIcon(), '월드맵')], ['세상은 캐릭터마다 새로 만들어집니다', '야영지: 안전 지대, 포탈로 먼 곳 이동, 상인 · 수리', '지도는 가 본 곳만 밝혀집니다']],
       ['세계 단계', [pic(scrollIcon(), TIER_NAMES.join(' · '))], ['평온 → 악몽 → 지옥', '단계가 오르면 같은 지역의 몬스터 레벨이 크게 오르고 더 좋은 장비 · 보석이 나옵니다']],
       ['도감 · 의뢰 · 업적', [pic(bookIcon(), '도감')], ['몬스터를 잡으면 도감이 채워지고 보너스를 받습니다', '퀘스트 · 일일 의뢰 · 업적으로 보상']],
@@ -455,7 +489,8 @@ export class Windows {
     let side = `<div class="note">${here ? '이동할 곳을 고르세요 (밝게 빛나는 곳)' : '포탈 위에 서면 발견한 야영지로 이동할 수 있습니다'}</div>`;
     if (k2) side += `<h3 style="margin-top:10px">야영지 시설</h3>
       <div class="row"><div class="grow"><b>떠돌이 상인</b><div class="note">사고팔기</div></div><button class="btn" data-camp="${cz}|merchant" ${k2.merchant || st.gold < 5000 ? 'disabled' : ''}>${k2.merchant ? '있음' : '5,000 G'}</button></div>
-      <div class="row"><div class="grow"><b>모닥불</b><div class="note">야영지에서 빨리 회복</div></div><button class="btn" data-camp="${cz}|fire" ${k2.fire || st.gold < 2000 ? 'disabled' : ''}>${k2.fire ? '있음' : '2,000 G'}</button></div>`;
+      <div class="row"><div class="grow"><b>모닥불</b><div class="note">야영지에서 빨리 회복</div></div><button class="btn" data-camp="${cz}|fire" ${k2.fire || st.gold < 2000 ? 'disabled' : ''}>${k2.fire ? '있음' : '2,000 G'}</button></div>
+      <div class="row"><div class="grow"><b>용병 쉼터</b> <small>${k2.rest || 0} / ${SHELTER.max}</small><div class="note">이 지역 파견: ${SHELTER.text(k2.rest || 0)}</div></div>${(k2.rest || 0) < SHELTER.max ? `<button class="btn" data-shelter="${cz}" ${st.gold < SHELTER.cost(k2.rest || 0) ? 'disabled' : ''}>${(k2.rest || 0) ? '올리기' : '짓기'} ${SHELTER.cost(k2.rest || 0).toLocaleString()} G</button>` : ''}</div>`;
     side += `<div class="note" style="margin-top:10px">발견한 야영지 ${Object.keys(st.camps || {}).length} / ${CAMPS.length}</div>`;
     return `<div class="cols"><div class="frame" style="flex:0 0 auto"><div class="wmap" style="width:${V}px;height:${V}px"><canvas class="wmc" width="${V}" height="${V}"></canvas>${pins.join('')}</div></div><div class="frame" style="flex:1">${side}</div></div>`;
   }
@@ -501,12 +536,17 @@ export class Windows {
       const an = def.up?.[b.lv - 1] ?? 0, anOk = (st.awakenings || 0) >= an;
       right = `<h3>${def.name} · ${b.lv}단계</h3><div class="btns" style="margin:0 0 8px"><button class="btn" data-upgrade="1" ${up == null || st.gold < up || !umOk || !anOk ? 'disabled' : ''}>${up == null ? '최고 단계' : !anOk ? `각성 ${an} 필요` : `단계 올리기 ${up.toLocaleString()} G${um ? ` · ${MATERIALS[um.zone].name} ${um.n}` : ''}`}</button></div>`;
       if (b.type === 'workshop') {
-        for (const zn of craftZones(st)) {
-          const zi = ZONES.indexOf(zn), c = craftCost(zi), have = t.mats[zn.id] || 0, s = SETS[zn.id];
-          right += `<div class="row"><div class="grow"><b style="color:#7fe07a">${s.name}</b><div class="note">${MATERIALS[zn.id].name} ${have} / ${c.mats} · ${c.gold.toLocaleString()} G</div></div>
-            ${SET_SLOTS.map((sl) => `<button class="btn" data-craft="${zn.id}|${sl}" ${have < c.mats || st.gold < c.gold ? 'disabled' : ''}>${BASES[setBase(zi, sl)].name}</button>`).join('')}</div>`;
+        right += `<div class="herbBar">${HERB_IDS.map((h) => `<span class="hb" title="${HERBS[h].name}"><img src="${herbIcon(h)}" alt="" />${t.herbs[h] || 0}</span>`).join('')}</div>`;
+        for (const rc of RECIPES) {
+          const open = rc.lv <= b.lv, can = (k) => open && Object.entries(rc.herbs).every(([h, q]) => (t.herbs[h] || 0) >= q * k) && st.gold >= brewGold(st, rc) * k;
+          const it = { base: rc.id }, E = ELIXIRS[rc.id], fx = E ? E.text : BASES[rc.id].restore.hp ? `HP ${BASES[rc.id].restore.hp}` : `MP ${BASES[rc.id].restore.mp}`;
+          right += `<div class="row" style="${open ? '' : 'opacity:.45'}"><div class="cell shopIco">${ico(it)}</div><div class="grow"><b>${BASES[rc.id].name}${rc.n > 1 ? ` ×${rc.n}` : ''}</b> <small class="note">${fx}</small>
+            <div class="note">${open ? Object.entries(rc.herbs).map(([h, q]) => `${HERBS[h].name} ${q}`).join(' · ') + ` · ${brewGold(st, rc)} G` : `제작소 ${rc.lv}단계`}</div></div>
+            ${open ? `<button class="btn" data-brew="${rc.id}|1" ${can(1) ? '' : 'disabled'}>만들기</button><button class="btn" data-brew="${rc.id}|5" ${can(5) ? '' : 'disabled'}>×5</button>` : ''}</div>`;
         }
       }
+      if (b.type === 'herb') right += `<div class="herbBar">${herbsAt(5).map((h) => `<span class="hb" style="${HERBS[h].lv <= b.lv ? '' : 'opacity:.35'}" title="${HERBS[h].name}${HERBS[h].lv <= b.lv ? '' : ` · ${HERBS[h].lv}단계`}"><img src="${herbIcon(h)}" alt="" />${HERBS[h].lv <= b.lv ? t.herbs[h] || 0 : HERBS[h].lv + '단계'}</span>`).join('')}</div>`;
+      if (b.type === 'guild') right += this.guildPanel(b);
       if (SKILL_OF[b.type]) {
         const sk = SKILL_OF[b.type], crew = t.mercs.filter((m) => m.work === sel), idle = t.mercs.filter((m) => !m.work && !m.job);
         const eff = crew.filter((m) => !m.tired).reduce((a, m) => a + (m[sk] || 0) / 10, 0) / b.lv;
@@ -532,19 +572,19 @@ export class Windows {
         if (junk.length) right += `<h3 style="margin-top:8px">분해 <button class="btn" data-salvageall="1">일반 · 마법 모두</button></h3>` + junk.map((x) => { const v = salvageValue(x); return `<div class="row"><div class="cell shopIco${rar(x)}">${ico(x)}</div><div class="grow"><b style="color:${itemColor(x)}">${esc(itemName(x))}</b><div class="note">강화석 ${v.ore} · ${MATERIALS[v.mat].name} ${v.matN}</div></div><button class="btn" data-salvage="${x.uid}">분해</button></div>`; }).join('');
       }
       if (b.type === 'lab') {
-        const cap = BUILDINGS.lab.slots(b.lv);
         if (t.lab) right += `<div class="note">연구 중: ${RESEARCH[t.lab.id].name} · ${Math.max(1, Math.ceil((t.lab.until - Date.now()) / 60000))}분 남음</div>`;
         for (const [id, r] of Object.entries(RESEARCH)) {
-          const lv = researchLv(st, id), c = researchCost(lv), max = lv >= cap;
-          right += `<div class="row"><div class="grow"><b>${r.name}</b> <small>${lv}단계</small><div class="note">${lv ? r.text(lv) : '없음'} → ${r.text(lv + 1)}</div></div>
-            <button class="btn" data-research="${id}" ${max || t.lab || st.gold < c.gold ? 'disabled' : ''}>${max ? '상한' : `${c.gold.toLocaleString()}G · ${c.min}분`}</button></div>`;
+          const lv = researchLv(st, id), c = researchCost(lv, id), max = lv >= RESEARCH_MAX, open = b.lv >= r.lab;
+          right += `<div class="row" style="${open ? '' : 'opacity:.45'}"><div class="grow"><b>${r.name}</b> <small>${lv} / ${RESEARCH_MAX}</small><div class="note">${open ? `${lv ? r.text(lv) : '없음'}${max ? '' : ` → ${r.text(lv + 1)}`}` : `연구소 ${r.lab}단계 · ${r.text(1)}`}</div></div>
+            ${open ? `<button class="btn" data-research="${id}" ${max || t.lab || st.gold < c.gold ? 'disabled' : ''}>${max ? '완료' : `${c.gold.toLocaleString()}G · ${c.min}분`}</button>` : ''}</div>`;
         }
       }
       if (b.type === 'house') right += `<div class="kv"><span>고용 한도</span><b>${mercSlots(st)}명</b><span>지금</span><b>${t.mercs.length}명</b></div>`;
       if (b.type === 'inn') {
         const zones = ZONES.filter((z) => isLiberated(st, z.id)), rec = recruits(st), slots = mercSlots(st);
         const nextH = Math.ceil((3600000 - (Date.now() % 3600000)) / 60000);
-        right += `<h3>찾아온 용병 <small>${nextH}분 뒤 바뀜 · 고용 ${t.mercs.length} / ${slots}</small></h3>`;
+        const gw = BUILDINGS.inn.grades(b.lv), gs = gw.reduce((a, v) => a + v, 0);
+        right += `<h3>찾아온 용병 <small>${nextH}분 뒤 바뀜 · 고용 ${t.mercs.length} / ${slots}</small></h3><div class="note">${GRADES.map((g, i) => `<span style="color:${g.color}">${g.name} ${Math.round((gw[i] / gs) * 100)}%</span>`).join(' · ')}</div>`;
         right += rec.map((m) => `<div class="row">${this.mercLine(m)}<button class="btn gold" data-hirem="${m.id}" ${t.mercs.length >= slots || st.gold < m.cost ? 'disabled' : ''}>${m.cost.toLocaleString()} G</button></div>`).join('') || '<div class="note">없음</div>';
         right += `<h3 style="margin-top:8px">내 용병</h3>`;
         t.mercs.forEach((m) => {
@@ -554,9 +594,7 @@ export class Windows {
             ${m.job && left <= 0 ? `<button class="btn gold" data-claim="${m.id}">전리품</button>` : ''}
             ${m.lv >= MERC.lvMax && (m.aw || 0) < MERC.awMax ? `<button class="btn gold" data-mawk="${m.id}" ${st.gold < awakenCost(m) ? 'disabled' : ''}>각성 ${awakenCost(m).toLocaleString()}G</button>` : ''}
             ${!m.job ? `<button class="btn" data-mgear="${m.id}">장비</button><button class="btn danger" data-mfire="${m.id}">내보내기</button>` : ''}</div>`;
-          if (!m.job && zones.length) right += `<div class="btns" style="margin:0 0 8px"><select data-zone="${m.id}" class="btn">${zones.map((z) => `<option value="${z.id}">${z.name} (사망 ${Math.round(deathChance(m, z, 'mid') * 100)}%)</option>`).join('')}</select>${EXPEDITIONS.map((e) => `<button class="btn" data-go-exp="${m.id}|${e.id}" ${m.sta < EXP_STA[e.id] ? 'disabled' : ''}>${e.name} ${e.min}분 · 체력 ${EXP_STA[e.id]}</button>`).join('')}</div>`;
         });
-        if (!zones.length) right += `<div class="note">해방한 지역이 없어 파견할 수 없음</div>`;
       }
     }
     return `<div class="cols"><div class="frame" style="flex:0 0 40%"><h3>마을 <span class="goldTxt">${st.gold.toLocaleString()} G</span></h3><div class="note" style="display:flex;gap:6px;align-items:center"><img src="${oreIcon()}" style="width:1.6em" alt="" />강화석 ${t.ore}</div><div class="note">용병 ${t.mercs.length} / ${mercSlots(st)} · 쉬는 ${t.mercs.filter((m) => !m.work && !m.job).length}</div><div class="note">${Object.entries(t.mats).filter(([, n]) => n > 0).map(([k, n]) => `${MATERIALS[k].name} ${n}`).join(' · ')}</div>${left}</div>
@@ -712,7 +750,7 @@ export class Windows {
     const townDone = (r, okMsg) => { if (!r?.ok) { if (r?.why) w.ui.toast(r.why); audio.play('error'); } else { if (okMsg) w.ui.toast(okMsg, '#ffd84a'); w.refreshTown(); w.ui.dirty(); } this.render(); };
     on('[data-build]', (el) => { const r = build(st, this.townSel || PLOTS[0].id, el.dataset.build); if (r.ok) audio.play('rankup'); townDone(r, `${BUILDINGS[el.dataset.build].name}을(를) 지었습니다`); });
     on('[data-upgrade]', () => { const r = upgrade(st, this.townSel); if (r.ok) audio.play('rankup'); townDone(r, '단계를 올렸습니다'); });
-    on('[data-collect]', () => { const r = collect(st, this.townSel); if (r?.n) { audio.play('coin'); w.ui.toast(`${r.what} ${r.n}개를 거뒀습니다`, '#ffd84a'); } w.ui.dirty(); this.render(); });
+    on('[data-collect]', () => { const r = collect(st, this.townSel); if (r?.n) { audio.play('coin'); w.ui.toast(r.got ? `약초: ${Object.entries(r.got).map(([h, q]) => `${HERBS[h].name} ${q}`).join(' · ')}` : `${r.what} ${r.n}개를 거뒀습니다`, '#7fe07a'); } w.ui.dirty(); this.render(); });
     on('[data-enh]', (el) => {
       const it = st.equip[el.dataset.enh], r = enhance(st, it);
       if (!r.ok) { w.ui.toast(r.why); audio.play('error'); }
@@ -775,6 +813,14 @@ export class Windows {
       if (r.ok) { audio.play('rankup'); w.ui.toast(`${itemName(r.item)} 제작!`, '#7fe07a'); }
       townDone(r);
     });
+    on('[data-brew]', (el) => { const [id, k] = el.dataset.brew.split('|'), r = brew(st, id, Number(k)); if (r.ok) { audio.play('potion'); w.ui.toast(`${BASES[id].name} ${r.n}개 완성`, '#7fe07a'); } townDone(r); });
+    on('[data-pm]', (el) => { const id = el.dataset.pm, P = (this.party ||= { ids: [], pack: {} }); const i = P.ids.indexOf(id); if (i >= 0) P.ids.splice(i, 1); else if (P.ids.length < partyMax(st)) P.ids.push(id); audio.play('click'); this.render(); });
+    on('[data-pzone]', (el) => { (this.party ||= { ids: [], pack: {} }).zone = el.dataset.pzone; audio.play('click'); this.render(); });
+    on('[data-pexp]', (el) => { (this.party ||= { ids: [], pack: {} }).exp = el.dataset.pexp; audio.play('click'); this.render(); });
+    on('[data-ppack]', (el) => { const [base, d] = el.dataset.ppack.split('|'), P = (this.party ||= { ids: [], pack: {} }); const tot = Object.values(P.pack).reduce((a, v) => a + v, 0); const n = (P.pack[base] || 0) + Number(d); if (n < 0 || (Number(d) > 0 && (tot >= packMax(st) || n > countOf(st, base)))) return; P.pack[base] = n; audio.play('click'); this.render(); });
+    on('[data-psend]', () => { const P = this.party; const r = dispatchParty(st, P.ids, P.zone, P.exp, Object.entries(P.pack).filter(([, q]) => q > 0).map(([base, qty]) => ({ base, qty }))); if (r.ok) { this.party = { ids: [], pack: {}, zone: P.zone, exp: P.exp }; audio.play('rankup'); } townDone(r, `용병 ${r.n}명이 파견을 떠났습니다`); });
+    on('[data-claimall]', () => { let g = 0, dead = []; for (const m of [...townOf(st).mercs]) if (m.job && Date.now() >= m.job.until) { const r = claim(st, m.id); if (r?.dead) dead.push(r.name); else if (r) g += r.gold; } if (dead.length) { audio.play('error'); w.ui.toast(`${dead.join(' · ')}이(가) 돌아오지 못했습니다…`, '#ff7060'); } else audio.play('coin'); w.ui.toast(`전리품 ${g.toLocaleString()} G 외`, '#ffd84a'); w.ui.dirty(); this.render(); });
+    on('[data-shelter]', (el) => { const r = shelterUp(st, el.dataset.shelter); if (r.ok) { audio.play('rankup'); w.refreshCamps(); } townDone(r, `쉼터 ${r.lv}단계`); });
     on('[data-go-exp]', (el) => {
       const [i, ex] = el.dataset.goExp.split('|');
       const zone = body.querySelector(`[data-zone="${i}"]`)?.value;

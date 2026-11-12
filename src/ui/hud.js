@@ -10,6 +10,7 @@ import { PLOTS, BUILDINGS } from '../data/buildings.js';
 import { expNeeded, powerLevel } from '../game/growth.js';
 import { countOf } from '../game/inventory.js';
 import { skillValues } from '../game/skills.js';
+import { ELIXIRS } from '../data/potions.js';
 import { portrait, chestIcon, bookIcon, coinIcon, swordIcon, itemIcon, skillIcon, homeIcon, duelIcon, scrollIcon, townIcon } from './icons.js';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -187,9 +188,10 @@ export class HUD {
 
     // 버프
     const bb = $('#buffs');
-    const active = Object.entries(w.buffs).filter(([, b]) => b.t > 0);
-    if (bb.childElementCount !== active.length || this.isDirty) {
-      bb.innerHTML = active.map(([, b]) => `<div class="buff" style="background:${SKILLS[b.id].color}55;border-color:${SKILLS[b.id].color}"><img src="${skillIcon(b.id)}" alt="" /></div>`).join('');
+    const active = Object.entries(w.buffs).filter(([, b]) => b.t > 0), elix = Object.keys(w.st.elix || {});
+    if (bb.childElementCount !== active.length + elix.length || this.isDirty) {
+      bb.innerHTML = active.map(([, b]) => `<div class="buff" style="background:${SKILLS[b.id].color}55;border-color:${SKILLS[b.id].color}"><img src="${skillIcon(b.id)}" alt="" /></div>`).join('')
+        + elix.map((k) => `<div class="buff" title="${ELIXIRS[k].name} ${ELIXIRS[k].text}" style="background:${ELIXIRS[k].color}44;border-color:${ELIXIRS[k].color}"><img src="${itemIcon({ base: k })}" alt="" /></div>`).join('');
     }
 
     this.updateLabels();

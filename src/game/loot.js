@@ -23,7 +23,7 @@ export function rollLoot(mon, opt = {}, st = null, rng = R) {
     const n = randInt(t.items[0], t.items[1], rng);
     for (let i = 0; i < n; i++) {
       // 보스는 가끔 장비 대신 능력치 파편
-      if (mon.tier === 'boss' && rng() < SHARD.bossChance) { out.push({ kind: 'item', item: rollShard(mon.level, st, rng) }); continue; }
+      if (mon.tier === 'boss' && rng() < SHARD.bossChance * (1 + 0.2 * (st?.town?.research?.shard || 0))) { out.push({ kind: 'item', item: rollShard(mon.level, st, rng) }); continue; }
       const rarity = rollRarity(t.rarity, opt.magicFind || 0, rng);
       out.push({ kind: 'item', item: makeItem(rollBase(mon.level, rng), { rarity, ilvl: mon.level }, st, rng) });
     }

@@ -7,6 +7,9 @@ import { learn, addSkillExp, canLearn } from '../src/game/skills.js';
 import { rollLoot, rollDeathDrop } from '../src/game/loot.js';
 import { makeItem, itemName, rollBase } from '../src/game/items.js';
 import * as await_fs from 'node:fs';
+import { brew, dispatchParty, shelterUp, deathChance, rollMerc, researchStart } from '../src/game/town.js';
+import { HERBS } from '../src/data/potions.js';
+import { countOf } from '../src/game/inventory.js';
 import { townOf, build, tick, collect, enhance, hire, dispatch, claim, buildingAt, dropMats, craft, craftZones, upgrade, setBase, liberateAdd, assignMerc, recruits, mercSlots, awakenMerc, MERC } from '../src/game/town.js';
 import { BUILDINGS } from '../src/data/buildings.js';
 import { MONSTER_LOOK, ITEM_LOOK, SKILL_ICON } from '../src/data/flareWorld.js';
@@ -324,6 +327,49 @@ test('능력치 파편: 갈아 끼울 때 · 보스 드랍 · 대장간에서 �
   }
   const s3 = makeShard({ id: free, v: 1 }, st); st.inv.push(s3);
   assert.equal(applyShard(st, it, s3.uid, [0, 1, 2], 4).ok, false);
+});
+
+test('약초밭 · 제작소(물약 · 영약) · 파견소 · 쉼터 · 여관 등급 · 연구 해금', () => {
+  const p = newPlayer('방랑자', { face: 'm01' }, 'sword');
+  p.gold = 1e7; p.awakenings = 60;
+  const t = townOf(p);
+  for (const [pl, ty] of [['p1', 'herb'], ['p2', 'workshop'], ['p3', 'guild'], ['p4', 'inn'], ['p5', 'house'], ['p6', 'lab']]) assert.ok(build(p, pl, ty).ok, ty);
+  // 약초밭은 약초만, 단계마다 새 약초
+  const hb = buildingAt(p, 'p1'); hb.stock = 30;
+  const c1 = collect(p, 'p1');
+  assert.ok(c1.got && Object.keys(c1.got).every((h) => HERBS[h].lv <= 1) && countOf(p, 'hp_potion') >= 0);
+  hb.lv = 5; hb.stock = 60;
+  assert.ok(Object.keys(collect(p, 'p1').got).includes('gold'));
+  // 제작소 단계가 낮으면 영약을 못 만든다
+  t.herbs = { red: 50, blue: 50, iron: 50, sun: 50, wind: 50, moon: 50, gold: 50 };
+  assert.ok(brew(p, 'hp_potion', 2).ok);
+  assert.equal(brew(p, 'el_luck').ok, false);
+  buildingAt(p, 'p2').lv = 5;
+  assert.ok(brew(p, 'el_luck').ok && countOf(p, 'el_luck') === 1);
+  // 숙소 5단계 = 20명
+  buildingAt(p, 'p5').lv = 5; assert.equal(mercSlots(p), 20);
+  // 여관: 1단계에는 정예 · 전설이 오지 않고, 5단계에는 온다
+  const ra = seeded(77), g1 = Array.from({ length: 400 }, () => rollMerc(ra, 1).grade), g5 = Array.from({ length: 400 }, () => rollMerc(ra, 5).grade);
+  assert.ok(Math.max(...g1) <= 1 && g5.includes(3) && g5.filter((g) => g >= 2).length > g1.filter((g) => g >= 2).length);
+  // 파견소: 인원 · 물건 수 제한, 쉼터는 사망을 낮춘다
+  p.liberate = { [ZONES[0].id]: 9999 };
+  for (let i = 0; i < 3; i++) { const m = rollMerc(seeded(50 + i), 3); t.mercs.push(m); }
+  const ids = t.mercs.map((m) => m.id);
+  assert.equal(dispatchParty(p, ids.slice(0, 2), ZONES[0].id, 'short').ok, false); // 1단계는 1명
+  buildingAt(p, 'p3').lv = 3;
+  addItem(p, makeItem('hp_potion', { qty: 10 }, p));
+  assert.equal(dispatchParty(p, ids.slice(0, 2), ZONES[0].id, 'short', [{ base: 'hp_potion', qty: 9 }]).ok, false); // 물건 5개까지
+  const zn = ZONES[0], m0 = t.mercs[0], d0 = deathChance(m0, zn, 'long', p);
+  p.camps = { [zn.id]: {} };
+  assert.ok(shelterUp(p, zn.id).ok && shelterUp(p, zn.id).ok);
+  assert.ok(deathChance(m0, zn, 'long', p) < d0);
+  assert.equal(dispatchParty(p, ids.slice(0, 1), zn.id, 'siege').ok, false); // 쉼터 3단계 필요
+  const r = dispatchParty(p, ids.slice(0, 3), zn.id, 'short', [{ base: 'hp_potion', qty: 3 }]);
+  assert.ok(r.ok, r.why); assert.ok(t.mercs.every((m) => m.job));
+  // 연구: 연구소 단계에 따라 열린다
+  assert.equal(researchStart(p, 'exp').ok, false);
+  buildingAt(p, 'p6').lv = 5;
+  assert.ok(researchStart(p, 'exp').ok);
 });
 
 console.log(`\n${n}개 통과`);
