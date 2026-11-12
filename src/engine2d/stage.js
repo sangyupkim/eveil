@@ -58,8 +58,8 @@ export const LAKES = [], MESAS = [];
       const x = zn.x + Math.cos(a) * d, z = zn.z + Math.sin(a) * d;
       if (clear(x, z, r)) { LAKES.push({ x, z, r, set: L.set }); k++; }
     }
-    for (let k = 0, tries = 0; k < 0 && tries < 80; tries++) { // 고원: Flare 절벽은 뒤쪽 테두리 그림이 없어 접었다
-      const a = rng() * 6.28, d = zn.r * (0.25 + rng() * 0.55), r = 4.5 + rng() * 3.5;
+    for (let k = 0, tries = 0; k < 2 && tries < 80; tries++) { // 언덕: 물가 타일의 물을 땅으로 바꿔 한 단 올린다
+      const a = rng() * 6.28, d = zn.r * (0.25 + rng() * 0.55), r = 5 + rng() * 3.5;
       const x = zn.x + Math.cos(a) * d, z = zn.z + Math.sin(a) * d;
       if (clear(x, z, r)) { MESAS.push({ x, z, r, set: L.set }); k++; }
     }
@@ -79,12 +79,25 @@ const lakeCell = (i, j) => {
   lakeMemo.set(key, v);
   return v;
 };
-const mesaCell = (i, j) => blob(MESAS, ...cellXZ(i, j), 0.8);
+const mesaRaw = (i, j) => blob(MESAS, ...cellXZ(i, j), 0.8);
+const nearMesa = (i, j) => { for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const q = mesaRaw(i + a, j + b); if (q) return q; } return null; };
+const mesaFill1 = (i, j) => mesaRaw(i, j) || (nearMesa(i, j) && edgeKind((a, b) => !mesaRaw(a, b), i, j) === 'bad' ? nearMesa(i, j) : null);
+const mesaMemo = new Map();
+const mesaCell = (i, j) => {
+  const key = i * 100003 + j;
+  if (mesaMemo.has(key)) return mesaMemo.get(key);
+  let v = mesaFill1(i, j);
+  if (!v) { const q = nearMesa(i, j); if (q && edgeKind((a, b) => !mesaFill1(a, b), i, j) === 'bad') v = q; }
+  mesaMemo.set(key, v);
+  return v;
+};
+// 언덕 둘레(낮은 쪽) 칸
+const mesaRing = (i, j) => { if (mesaCell(i, j)) return null; for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const q = mesaCell(i + a, j + b); if (q) return q; } return null; };
 export function inLake(x, z, pad = 0) {
   const i = Math.round((x + z) / (2 * STEP)), j = Math.round((z - x) / (2 * STEP));
   return lakeCell(i, j) || (pad > 0 ? blob(LAKES, x, z, 0.9, pad + 1.5) : null);
 }
-export const inMesa = (x, z) => mesaCell(Math.round((x + z) / (2 * STEP)), Math.round((z - x) / (2 * STEP)));
+export const inMesa = (x, z) => { const i = Math.round((x + z) / (2 * STEP)), j = Math.round((z - x) / (2 * STEP)); return mesaCell(i, j) || mesaRing(i, j); };
 // 테두리 칸 종류: 네 방향(북 j-1 · 동 i+1 · 남 j+1 · 서 i-1) 중 바깥(땅)인 쪽으로 고른다
 const N4 = [[0, -1], [1, 0], [0, 1], [-1, 0]], D4 = [[1, -1], [1, 1], [-1, 1], [-1, -1]]; // 북동 · 남동 · 남서 · 북서
 function edgeKind(inside, i, j) {
@@ -98,7 +111,7 @@ function edgeKind(inside, i, j) {
 const BANK = { W: [144, 148], N: [145, 149], E: [146, 150], S: [147, 151], NW: [152, 156], NE: [153, 157], ES: [154, 158], SW: [155, 159], iNW: [160, 164], iNE: [161, 165], iSE: [162, 166], iSW: [163, 167] };
 // 절벽: 고원 안쪽 테두리 칸 (물건 층)
 const CLIFF = { E: [48, 52], S: [49, 53], W: [50, 54], N: [51, 55], iSE: [56, 60], iSW: [57, 61], iNW: [58, 62], iNE: [59, 63], ES: [64, 68], SW: [65, 69], NW: [66, 70], NE: [67, 71] };
-export const CLIFF_LIFT = 192; // 고원 윗면 높이 (화면 px)
+export const HILL_LIFT = 96; // 언덕 높이 = 물가 절벽 한 단 (화면 px)
 
 function pick(look, h) { const L = ZONE_LOOK[look]; return [L.set, L.ground[0] + Math.floor(h * (L.ground[1] - L.ground[0] + 1))]; }
 
@@ -174,18 +187,27 @@ export function buildWorldProps(stage) {
     return out;
   };
   for (const [i, j] of cells(LAKES, lakeCell)) { const [x, z] = cellXZ(i, j); stage.colliders.push({ x, z, r: 1.15 }); }
-  for (const [i, j, q] of cells(MESAS, mesaCell)) {
-    const [x, z] = cellXZ(i, j), h = hash(i, j);
-    stage.colliders.push({ x, z, r: 1.15 });
-    const k = edgeKind((a, b) => !!mesaCell(a, b), i, j);
-    const set = q.set === 'snowplains' ? 'snowplains' : 'grassland';
-    if (k && k !== 'bad') addProp(stage, set, CLIFF[k][h < 0.5 ? 0 : 1], x, z, 0);
-    addProp(stage, set, ZONE_LOOK[zoneAt(x, z)?.id || 'wild'].ground[0] + Math.floor(h * 8), x, z + 0.01, 0, CLIFF_LIFT);
+  // 언덕: 윗면은 땅 타일을 한 단 올리고, 둘레는 '바닥이 땅인 물가 타일'을 한 단 올려 절벽을 만든다
+  for (const [i, j, q] of cells(MESAS, (a, b) => mesaCell(a, b) || mesaRing(a, b))) {
+    const [x, z] = cellXZ(i, j), h = hash(i, j), set = q.set === 'snowplains' ? 'snowplains' : 'grassland';
+    const floor = ZONE_LOOK[zoneAt(x, z)?.id || 'wild'].ground;
+    if (mesaCell(i, j)) {
+      stage.colliders.push({ x, z, r: 1.15 });
+      addProp(stage, set, floor[0] + Math.floor(h * (floor[1] - floor[0] + 1)), x, z, 0, HILL_LIFT);
+    } else {
+      const k = edgeKind((a, b) => !mesaCell(a, b), i, j);
+      if (!k || k === 'bad') continue;
+      stage.colliders.push({ x, z, r: 0.95 });
+      const p = { set, id: BANK[k][h < 0.5 ? 0 : 1], x, z, t: DATA.tiles[set].tiles[BANK[k][0]], lift: HILL_LIFT, bank: floor[0] };
+      const key = Math.floor(x / CHUNK) + ',' + Math.floor(z / CHUNK);
+      if (!stage.props.has(key)) stage.props.set(key, []);
+      stage.props.get(key).push(p);
+    }
   }
   // 물가 둘레에 갈대 · 바위
   for (const q of LAKES) for (let i = 0; i < 22; i++) {
     const a = rng() * 6.28, d = q.r * (1.1 + rng() * 0.25), x = q.x + Math.cos(a) * d, z = q.z + Math.sin(a) * d;
-    if (inLake(x, z, 0.6) || inMesa(x, z)) continue;
+    if (inLake(x, z, 0.6) || inMesa(x, z) || inMesa(x + 1.5, z + 1.5) || inMesa(x - 1.5, z + 1.5)) continue;
     const shore = q.set === 'snowplains' ? [[552, 567, 0], [112, 115, 0]] : [[114, 115, 0], [124, 127, 0], [128, 131, 0.6]];
     const [a0, a1, rr] = shore[Math.floor(rng() * shore.length)];
     addProp(stage, q.set, a0 + Math.floor(rng() * (a1 - a0 + 1)), x, z, rr);
@@ -312,6 +334,42 @@ function drawWater(ctx, set, id, sx, sy, s) {
   ctx.drawImage(c, sx - t[5] * s, sy - t[6] * s, t[3] * s, t[4] * s);
 }
 
+// 언덕 둘레: 물가 타일의 물 픽셀을 땅 타일 무늬로 바꾼 사본 (격자에 맞춰 이어지게)
+const bankCache = new Map();
+function drawBank(ctx, set, id, floorId, sx, sy, s) {
+  const key = set + id + '|' + floorId;
+  let c = bankCache.get(key);
+  if (!c) {
+    const def = DATA.tiles[set], t = def?.tiles[id], src = t && image(def.imgs[t[0]]);
+    const ft = def?.tiles[floorId], fsrc = ft && image(def.imgs[ft[0]]);
+    if (!src?.ok || !fsrc?.ok) return;
+    // 바닥 무늬 판: 칸 중심이 (96 + 96m, 48 + 48n), m + n 짝수
+    const F = document.createElement('canvas'); F.width = 576; F.height = 384;
+    const fg = F.getContext('2d');
+    for (let m = -1; m <= 6; m++) for (let n = -1; n <= 8; n++) if ((m + n) % 2 === 0) fg.drawImage(fsrc.im, ft[1], ft[2], ft[3], ft[4], 96 + 96 * m - ft[5], 48 + 48 * n - ft[6], ft[3], ft[4]);
+    const fd = fg.getImageData(0, 0, 576, 384).data;
+    c = document.createElement('canvas'); c.width = t[3]; c.height = t[4];
+    const g = c.getContext('2d');
+    g.drawImage(src.im, t[1], t[2], t[3], t[4], 0, 0, t[3], t[4]);
+    const im = g.getImageData(0, 0, t[3], t[4]), d = im.data, W = t[3];
+    // 그림 안의 칸 중심은 (t[5], t[6]) → 바닥 판의 (192 + 96, 96 + 48)에 맞춘다
+    const ox = 288 - t[5], oy = 144 - t[6];
+    for (let q = 0; q < d.length; q += 4) {
+      if (!d[q + 3]) continue;
+      const r = d[q], gg = d[q + 1], b = d[q + 2], lum = (r + gg + b) / 3;
+      if (lum > 50 || lum < 2 || r > b + 7 || r > gg + 7) continue;
+      const px = (q / 4) % W, py = Math.floor(q / 4 / W), f = ((py + oy) * 576 + px + ox) * 4;
+      if (f < 0 || f >= fd.length || !fd[f + 3]) continue;
+      const shade = 1;
+      d[q] = fd[f] * shade; d[q + 1] = fd[f + 1] * shade; d[q + 2] = fd[f + 2] * shade; d[q + 3] = 255;
+    }
+    g.putImageData(im, 0, 0);
+    c.t = t; bankCache.set(key, c);
+  }
+  const t = c.t;
+  ctx.drawImage(c, sx - t[5] * s, sy - t[6] * s, t[3] * s, t[4] * s);
+}
+
 function render(stage, dt) {
   stage.time += dt;
   const { ctx, W, H } = stage;
@@ -360,12 +418,9 @@ function render(stage, dt) {
   for (const d of stage.drawables) if (d.visible !== false) list.push(d);
   list.sort((a, b) => a.z - b.z);
   for (const o of list) {
-    if (o.t && o.lift) { // 고원 윗면: 이음새가 안 보이게 조금 크게, 볕이 드는 것처럼 조금 밝게
-      const p = stage.toScreen(o.x, o.z), y = p.y - o.lift * s;
-      drawTile(stage, ctx, o.set, o.id, p.x, y, s * 1.04);
-      ctx.fillStyle = 'rgba(255,240,200,0.07)'; const w = 100 * s, h = 50 * s;
-      ctx.beginPath(); ctx.moveTo(p.x - w, y); ctx.lineTo(p.x, y - h); ctx.lineTo(p.x + w, y); ctx.lineTo(p.x, y + h); ctx.fill();
-    } else if (o.t) { const p = stage.toScreen(o.x, o.z); drawTile(stage, ctx, o.set, o.id, p.x, p.y, s); }
+    if (o.t && o.bank) { const p = stage.toScreen(o.x, o.z); drawBank(ctx, o.set, o.id, o.bank, p.x, p.y - o.lift * s, s); }
+    else if (o.t && o.lift) { const p = stage.toScreen(o.x, o.z); drawTile(stage, ctx, o.set, o.id, p.x, p.y - o.lift * s, s * 1.02); }
+    else if (o.t) { const p = stage.toScreen(o.x, o.z); drawTile(stage, ctx, o.set, o.id, p.x, p.y, s); }
     else o.draw(ctx, stage);
   }
   for (const g of stage.topLayers) g(ctx, stage);
