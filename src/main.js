@@ -1,3 +1,4 @@
+import "./rotate.js";
 // 시작점: 타이틀 → 로딩 → 게임 루프 · 자동 저장
 import { createStage, buildWorldProps, isTouch, generateWorld } from './engine2d/stage.js';
 import { rebuildTerrain } from './ui/mapimg.js';
