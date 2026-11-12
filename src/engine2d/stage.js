@@ -1,8 +1,8 @@
 // 2D 쿼터뷰 화면: 카메라 · 땅 타일 · 배경 물건 · 앞뒤 정렬 · 조명. 게임 규칙의 좌표(x, z)는 그대로 쓴다
 // 투영: 화면 x = x·48, 화면 y = z·24 − 높이·48 (Flare 타일 192×96 하나 = 세계 (2, 2) 대각)
 import { ZONES, TOWN, WORLD_SIZE } from '../data/world.js';
-import { dungeonAt, DUNGEON_X, ROOMS, ROOM, ROOM_GAP, roomCenter, entranceOf } from '../data/dungeons.js';
-const farSide = (x) => x > DUNGEON_X - 30;
+import { dungeonAt, DUNGEON_X, entranceOf, layout, cellPos, N, T } from '../data/dungeons.js';
+const farSide = (x) => x > DUNGEON_X - 80;
 import { ZONE_LOOK, ZONE_PROPS, FLAT } from '../data/flareWorld.js';
 import { DATA, image, drawRect } from './sprites.js';
 import { seeded } from '../game/rng.js';
@@ -178,6 +178,7 @@ function addProp(stage, set, id, x, z, r, lift = 0) {
     stage.props.get(key).push(p);
   }
   if (r > 0) stage.colliders.push({ x, z, r });
+  return p;
 }
 
 export function buildWorldProps(stage) {
@@ -223,24 +224,33 @@ export function buildWorldProps(stage) {
     const [a0, a1, rr] = shore[Math.floor(rng() * shore.length)];
     addProp(stage, q.set, a0 + Math.floor(rng() * (a1 - a0 + 1)), x, z, rr);
   }
-  // 던전: 바닥 둘레에 벽 덩어리, 방마다 석상 · 뼈 · 횃불, 마지막 방에 상자
+  // 던전: 바닥 칸 옆의 벽 칸마다 벽 하나 (모양에 따라 돌벽 · 바위), 바닥 군데군데 횃불 · 뼈, 우두머리 방에 석상
   for (let zi = 0; zi < ZONES.length; zi++) {
-    const c0 = roomCenter(zi, 0), rr = seeded(900 + zi);
-    for (let x = c0.x - ROOM - 2; x <= c0.x + ROOM + 2; x += 1.5) for (let z = -ROOM - 2; z <= (ROOMS - 1) * ROOM_GAP + ROOM + 2; z += 1.5) {
-      if (dungeonAt(x, z) >= 0) continue;
-      const edge = [[1, 0], [-1, 0], [0, 1], [0, -1], [0.7, 0.7], [-0.7, 0.7], [0.7, -0.7], [-0.7, -0.7]].some(([a, b]) => dungeonAt(x + a, z + b) >= 0); // 바닥 바로 옆 한 겹만
+    const L = layout(zi), rr = seeded(900 + zi), cave = L.style === 'caves';
+    const wallIds = cave ? [144, 145, 146, 147, 148, 149] : [68, 69, 65, 73, 96, 97], wallSet = cave ? 'cave' : 'dungeon';
+    for (let j2 = 0; j2 < N; j2++) for (let i2 = 0; i2 < N; i2++) {
+      const p = cellPos(zi, i2, j2);
+      if (L.at(i2, j2)) {
+        if (rr() < 0.05) addProp(stage, 'dungeon', 176 + Math.floor(rr() * 8), p.x + (rr() - 0.5), p.z + (rr() - 0.5), 0);
+        else if (rr() < 0.025 && L.dist[j2 * N + i2] > 3) addProp(stage, 'dungeon', 167, p.x, p.z, 0.4);
+        continue;
+      }
+      let edge = false;
+      for (let b = -1; b <= 1 && !edge; b++) for (let a = -1; a <= 1; a++) if (L.at(i2 + a, j2 + b)) { edge = true; break; }
       if (!edge) continue;
-      stage.colliders.push({ x, z, r: 1.0 });
-      addProp(stage, 'dungeon', [68, 69, 65, 73, 96, 97][Math.floor(rr() * 6)], x, z, 0);
+      stage.colliders.push({ x: p.x, z: p.z, r: T * 0.62 });
+      const wp = addProp(stage, wallSet, wallIds[Math.floor(rr() * wallIds.length)], p.x, p.z, 0); if (wp) wp.wall = true;
     }
-    for (let k = 0; k < ROOMS; k++) {
-      const c = roomCenter(zi, k);
-      for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) addProp(stage, 'dungeon', k === ROOMS - 1 ? 128 + Math.floor(rr() * 4) : 167, c.x + a * (ROOM - 1.5), c.z + b * (ROOM - 1.5), k === ROOMS - 1 ? 0.8 : 0.3);
-      for (let n = 0; n < 5; n++) addProp(stage, 'dungeon', 176 + Math.floor(rr() * 8), c.x + (rr() - 0.5) * ROOM * 1.6, c.z + (rr() - 0.5) * ROOM * 1.6, 0);
-    }
+    const bp = cellPos(zi, L.boss[0], L.boss[1]);
+    for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) addProp(stage, 'dungeon', 128 + Math.floor(rr() * 4), bp.x + a * T * 2, bp.z + b * T * 2, 0.6);
   }
-  // 지역마다 던전 입구 (빛나는 원)
-  for (const zn of ZONES) { const e = entranceOf(zn); addProp(stage, 'desert', 201, e.x, e.z, 0); }
+  // 지역마다 던전 입구: 지형에 맞는 문 · 동굴 입구 + 양옆 횃불 (문 자체는 막혀 있고, 바로 앞에 서면 들어갈지 묻는다)
+  for (const zn of ZONES) {
+    const e = entranceOf(zn), set = ZONE_LOOK[zn.id].set;
+    const [ds, di] = set === 'ruins' ? ['ruins', 250] : set === 'desert' ? ['desert', 184] : set === 'cave' ? ['dungeon', 116] : ['dungeon', 113];
+    addProp(stage, ds, di, e.x, e.z - 1.2, 1.1);
+    addProp(stage, 'dungeon', 167, e.x - 1.8, e.z - 0.6, 0.3); addProp(stage, 'dungeon', 167, e.x + 1.8, e.z - 0.6, 0.3);
+  }
   const free = (x, z) => !inLake(x, z, 1.5) && !inLake(x + 1.5, z) && !inLake(x - 1.5, z) && !inMesa(x, z) && !inMesa(x + 1.5, z + 1.5) && !inMesa(x - 1.5, z);
   for (const zn of ZONES) {
     for (const [set, ids, n, r] of ZONE_PROPS[zn.id] || []) {
@@ -506,7 +516,9 @@ function render(stage, dt) {
   for (const o of list) {
     if (o.t && o.bank) { const p = stage.toScreen(o.x, o.z); drawBank(ctx, o.set, o.id, o.bank, o.top, p.x, p.y - o.lift * s, s); }
     else if (o.t && o.lift) { const p = stage.toScreen(o.x, o.z); drawTile(stage, ctx, o.set, o.id, p.x, p.y - o.lift * s, s * 1.02); }
-    else if (o.t) { const p = stage.toScreen(o.x, o.z); drawTile(stage, ctx, o.set, o.id, p.x, p.y, s); }
+    else if (o.t && o.wall && o.z > stage.cam.z && Math.abs(o.x - stage.cam.x) + (o.z - stage.cam.z) < 7) { // 앞을 가리는 던전 벽은 비쳐 보이게
+      const p = stage.toScreen(o.x, o.z); ctx.globalAlpha = 0.3; drawTile(stage, ctx, o.set, o.id, p.x, p.y, s); ctx.globalAlpha = 1;
+    } else if (o.t) { const p = stage.toScreen(o.x, o.z); drawTile(stage, ctx, o.set, o.id, p.x, p.y, s); }
     else o.draw(ctx, stage);
   }
   for (const g of stage.topLayers) g(ctx, stage);

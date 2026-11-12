@@ -1,6 +1,6 @@
 import { bagSize } from '../game/inventory.js';
 import { ZONES as ALL_ZONES } from '../data/world.js';
-import { roomCenter, entranceOf, ROOMS, MAX_STAGE, stageMods } from '../data/dungeons.js';
+import { entranceOf, MAX_STAGE, stageMods, layout as dungeonLayout, cellPos, N } from '../data/dungeons.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { gemGradeFor } from '../data/legends.js';
 import { TITLE_AT, titleKey, titleName, perkChoices, UNIQUES } from '../data/titles.js';
@@ -323,42 +323,46 @@ export class World {
   // ───────── 던전 ─────────
   // 입구 위에 서면: 열쇠가 있으면 들어간다
   checkDungeonGate(dt) {
-    this.gateCd = Math.max(0, (this.gateCd || 0) - dt);
-    if (this.dungeon || this.dead || this.gateCd > 0) return;
+    if (this.dungeon || this.dead || this.asking) return;
     const P = this.player.pos;
     for (let zi = 0; zi < ALL_ZONES.length; zi++) {
-      const e = entranceOf(ALL_ZONES[zi]);
-      if (Math.hypot(P.x - e.x, P.z - e.z) > 1.4) continue;
-      this.gateCd = 3;
-      const keys = countOf(this.st, 'dungeon_key');
-      if (!keys) { this.ui.toast(`${ALL_ZONES[zi].name} 던전 — 던전 열쇠가 필요합니다 (네임드 · 보스)`); return; }
-      this.enterDungeon(zi);
+      const e = entranceOf(ALL_ZONES[zi]), d = Math.hypot(P.x - e.x, P.z - e.z);
+      if (this.gateAway === zi) { if (d > 3.5) this.gateAway = null; continue; } // 한 번 물었으면 멀어질 때까지 다시 묻지 않는다
+      if (d > 1.6) continue;
+      this.gateAway = zi;
+      const zn = ALL_ZONES[zi], stage = Math.min(MAX_STAGE, (this.st.dungeons?.[zn.id] || 0) + 1), keys = countOf(this.st, 'dungeon_key');
+      this.asking = true; this.moveTo = null; this.target = null; this.toggleAuto(false);
+      this.ui.ask(`${zn.name} 던전 ${stage}단계`, keys ? `던전 열쇠 1개를 써서 들어갈까요? (가진 열쇠 ${keys})` : '던전 열쇠가 필요합니다 (네임드 · 보스 · 상점)', keys ? '들어가기' : null, (yes) => { this.asking = false; if (yes) this.enterDungeon(zi); });
       return;
     }
   }
   enterDungeon(zi) {
     const st = this.st, zn = ALL_ZONES[zi];
-    takeOne(st, 'dungeon_key');
+    if (!takeOne(st, 'dungeon_key')) return;
     const stage = Math.min(MAX_STAGE, ((st.dungeons ||= {})[zn.id] || 0) + 1);
     this.leaveDungeon(true);
     this.dungeon = { zi, stage, zone: zn };
     this.toggleAuto(false);
-    const c0 = roomCenter(zi, 0);
-    this.player.pos.set(c0.x, 0, c0.z - 3); this.moveTo = null; this.target = null;
-    this.fx.arrive(c0.x, c0.z - 3);
+    const Ld = dungeonLayout(zi), sp0 = cellPos(zi, Ld.start[0], Ld.start[1]);
+    this.player.pos.set(sp0.x, 0, sp0.z); this.moveTo = null; this.target = null;
+    this.stage.cam.x = sp0.x; this.stage.cam.z = sp0.z;
+    this.fx.arrive(sp0.x, sp0.z);
     const mod = stageMods(stage), L = zn.levels[1] + mod.level;
-    const put = (k, tier, n, type) => {
-      const c = roomCenter(zi, k);
-      for (let i = 0; i < n; i++) {
-        const a = (i / n) * 6.28 + Math.random();
-        const m = this.spawn({ zone: zn, x: c.x + Math.cos(a) * 3.5, z: c.z + Math.sin(a) * 3.5, level: L, tier, timer: 0, mon: null, forceType: type, fixed: tier === 'boss' ? { type: zn.boss.type, name: `${zn.name} 던전 우두머리` } : null });
-        m.maxHp = m.hp = Math.round(m.maxHp * mod.hp); m.dmg = m.dmg.map((v) => v * mod.dmg); m.dungeon = true; m.exp *= 1.5;
-      }
+    // 몬스터: 시작에서 먼 칸일수록 많이 · 정예는 깊은 곳, 우두머리는 가장 먼 방
+    const cells = [];
+    for (let k = 0; k < Ld.g.length; k++) if (Ld.g[k] && Ld.dist[k] > 5 && Ld.dist[k] < Ld.far - 2) cells.push(k);
+    const pick = () => cells.splice(Math.floor(Math.random() * cells.length), 1)[0];
+    const put = (k, tier, fixed) => {
+      const p = cellPos(zi, k % N, Math.floor(k / N));
+      const m = this.spawn({ zone: zn, x: p.x, z: p.z, level: L, tier, timer: 0, mon: null, fixed });
+      m.maxHp = m.hp = Math.round(m.maxHp * mod.hp); m.dmg = m.dmg.map((v) => v * mod.dmg); m.dungeon = true; m.exp *= 1.5;
+      m.home = { x: p.x, z: p.z };
     };
-    put(1, 'normal', 5); put(1, 'elite', 1);
-    put(2, 'normal', 6); put(2, 'elite', 2);
-    put(ROOMS - 1, 'boss', 1);
-    this.ui.toast(`${zn.name} 던전 ${stage}단계`, '#ffd84a');
+    for (let n = 0; n < 22 && cells.length; n++) put(pick(), 'normal');
+    cells.sort((a, b) => Ld.dist[b] - Ld.dist[a]);
+    for (let n = 0; n < 4 && cells.length; n++) put(cells.splice(Math.floor(Math.random() * Math.min(12, cells.length)), 1)[0], 'elite');
+    put(Ld.boss[1] * N + Ld.boss[0], 'boss', { type: zn.boss.type, name: `${zn.name} 던전 우두머리` });
+    this.ui.toast(`${zn.name} 던전 ${stage}단계 — 가장 깊은 곳의 우두머리를 찾으세요`, '#ffd84a');
     this.ui.dirty();
   }
   leaveDungeon(silent = false) {

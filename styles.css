@@ -392,3 +392,7 @@ body.canInstall #btnInstall { display: inline-block; }
 #notes .nbox { width: min(640px, 90vw); max-height: 80vh; overflow: auto; padding: 1em 1.4em; background: rgba(20,16,12,.96); border: 1px solid #8a6a30; color: #e8dcc0; position: relative; }
 #notes h2 { color: #ffd860; margin: .2em 0; font-family: var(--f-title); } #notes h2 small { font-size: .6em; color: #a89878; }
 #notes .nclose { position: sticky; top: 0; float: right; }
+
+#askBox { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.5); color: #e8dcc0; text-align: center; }
+#askBox[hidden] { display: none; }
+#askBox h1 { color: #ffd860; font-family: var(--f-title); margin: 0; }

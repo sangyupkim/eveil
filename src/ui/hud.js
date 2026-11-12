@@ -3,7 +3,7 @@ import { bagSize } from '../game/inventory.js';
 import { STAT_NAMES, STAT_COLORS, STATS, TIERS, CONFIG } from '../data/config.js';
 import { SKILLS } from '../data/skills.js';
 import { ZONES, TOWN, WORLD_SIZE } from '../data/world.js';
-import { roomCenter, ROOMS, ROOM, ROOM_GAP, CORRIDOR, entranceOf } from '../data/dungeons.js';
+import { entranceOf, layout as dungeonLayout, cellPos, N, T } from '../data/dungeons.js';
 import { expNeeded, powerLevel } from '../game/growth.js';
 import { countOf } from '../game/inventory.js';
 import { skillValues } from '../game/skills.js';
@@ -87,6 +87,16 @@ export class HUD {
     this.awT = setTimeout(() => { el.hidden = true; }, 3200);
     this.log(`각성 ${r.n}회: ${STATS.filter((s) => r.gains[s]).map((s) => `${STAT_NAMES[s]}+${r.gains[s]}`).join(' ')}`, '#ffd860');
     this.dirty();
+  }
+
+  // 묻기 창: 제목 · 글 · [예] · [아니오] (yes 글자가 없으면 [닫기]만)
+  ask(title, text, yes, done) {
+    let el = $('#askBox');
+    if (!el) { el = document.createElement('div'); el.id = 'askBox'; document.body.appendChild(el); }
+    el.innerHTML = `<div class="tpBox"><h1 style="font-size:1.6em">${title}</h1><div style="margin:.4em 0 1em">${text}</div><div class="tpList" style="justify-content:center">${yes ? `<button class="plate gold" data-a="1">${yes}</button>` : ''}<button class="plate" data-a="0">${yes ? '아니오' : '닫기'}</button></div></div>`;
+    el.hidden = false;
+    const t0 = performance.now();
+    el.querySelectorAll('[data-a]').forEach((b) => b.addEventListener('pointerup', () => { if (performance.now() - t0 < 300) return; el.hidden = true; done(b.dataset.a === '1'); }));
   }
 
   // 칭호 고르기: 이름 + 특성 셋 중 하나
@@ -292,8 +302,9 @@ export class HUD {
     if (w.dungeon) {
       const zi = w.dungeon.zi;
       c.fillStyle = 'rgba(90,80,70,0.8)';
-      for (let k2 = 0; k2 < ROOMS; k2++) { const rc = roomCenter(zi, k2); c.fillRect(tx(rc.x - ROOM), tz(rc.z - ROOM), ROOM * 2 * k, ROOM * 2 * k); }
-      const r0 = roomCenter(zi, 0); c.fillRect(tx(r0.x - CORRIDOR), tz(0), CORRIDOR * 2 * k, (ROOMS - 1) * ROOM_GAP * k);
+      const Ld = dungeonLayout(zi), o = cellPos(zi, 0, 0);
+      for (let k2 = 0; k2 < Ld.g.length; k2++) if (Ld.g[k2]) { const i = k2 % N, j = Math.floor(k2 / N); c.fillRect(tx(o.x + (i - 0.5) * T), tz(o.z + (j - 0.5) * T), T * k + 0.5, T * k + 0.5); }
+      const bp = cellPos(zi, Ld.boss[0], Ld.boss[1]); c.fillStyle = '#ff5a4a'; c.beginPath(); c.arc(tx(bp.x), tz(bp.z), 4, 0, 7); c.fill();
     } else for (const z of ZONES) {
       c.beginPath();
       c.arc(tx(z.x), tz(z.z), z.r * k, 0, Math.PI * 2);
