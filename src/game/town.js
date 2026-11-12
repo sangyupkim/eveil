@@ -1,5 +1,5 @@
 // 마을 규칙 (화면과 무관): 짓기 · 단계 올리기 · 생산 쌓기 · 강화 · 용병 파견
-import { BUILDINGS, PLOTS, ENHANCE, EXPEDITIONS, MERC_NAMES, mercCost } from '../data/buildings.js';
+import { BUILDINGS, PLOTS, ENHANCE, EXPEDITIONS, MERC_NAMES, mercCost, RESEARCH, researchCost } from '../data/buildings.js';
 import { ZONES } from '../data/world.js';
 import { rollLoot } from './loot.js';
 import { addItem } from './inventory.js';
@@ -111,7 +111,7 @@ export function dispatch(st, i, zoneId, expId, now = Date.now()) {
   const m = townOf(st).mercs[i], ex = EXPEDITIONS.find((e) => e.id === expId), zn = ZONES.find((z) => z.id === zoneId);
   if (!m || m.job || !ex || !zn) return { ok: false };
   if (!isLiberated(st, zoneId)) return { ok: false, why: '해방한 지역에만 보낼 수 있습니다' };
-  m.job = { zone: zoneId, exp: expId, until: now + ex.min * 60000 };
+  m.job = { zone: zoneId, exp: expId, until: now + ex.min * 60000 * (1 - researchK(st, 'merc')) };
   return { ok: true };
 }
 // 돌아온 용병의 전리품을 받는다
@@ -121,7 +121,9 @@ export function claim(st, i, now = Date.now(), rng = Math.random) {
   const ex = EXPEDITIONS.find((e) => e.id === m.job.exp), zn = ZONES.find((z) => z.id === m.job.zone);
   const lvl = Math.round((zn.levels[0] + zn.levels[1]) / 2);
   // 용병 강함: 레벨이 지역보다 낮으면 성과가 줄어든다
-  const eff = Math.max(0.25, Math.min(1.5, (m.lv * 3) / Math.max(1, lvl)));
+  // 맡긴 장비가 좋을수록 성과가 오른다
+  const gearK = m.gear ? 1 + m.gear.ilvl * 0.012 * ({ magic: 1, rare: 1.3, hero: 1.6, legend: 2 }[m.gear.rarity] || 0.8) : 1;
+  const eff = Math.max(0.25, Math.min(1.5, (m.lv * 3) / Math.max(1, lvl))) * gearK;
   const out = { gold: Math.round(lvl * 25 * ex.mult * eff), ore: Math.round(2 * ex.mult * eff), items: [] };
   const rolls = Math.round(ex.mult * eff * 1.5);
   for (let k = 0; k < rolls; k++) for (const d of rollLoot({ tier: k % 6 === 5 ? 'elite' : 'normal', level: lvl }, {}, st, rng)) if (d.kind === 'item' && d.item.base && !d.item.book) out.items.push(d.item);
@@ -140,7 +142,7 @@ export function claim(st, i, now = Date.now(), rng = Math.random) {
 // 몬스터를 잡으면 재료가 마을 창고로 바로 (가방을 쓰지 않는다)
 export function dropMats(st, zoneId, tier, rng = Math.random) {
   const d = MAT_DROP[tier] || MAT_DROP.normal;
-  if (!MATERIALS[zoneId] || rng() >= d[0]) return 0;
+  if (!MATERIALS[zoneId] || rng() >= d[0] * (1 + researchK(st, 'mats'))) return 0;
   const m = townOf(st).mats;
   m[zoneId] = (m[zoneId] || 0) + d[1];
   return d[1];
@@ -177,5 +179,33 @@ export function setBonus(equip) {
     for (const b of [n >= 2 && s.b2, n >= 4 && s.b4]) if (b) for (const k in b) g[k] = (g[k] || 0) + b[k];
   }
   return g;
+}
+// ── 연구소 ── 한 번에 하나, 끝나는 시각으로 흐른다 (꺼 둔 동안에도)
+export const researchLv = (st, id) => townOf(st).research?.[id] || 0;
+export const researchK = (st, id) => researchLv(st, id) * RESEARCH[id].k;
+export function researchStart(st, id, now = Date.now()) {
+  const t = townOf(st), lab = findBuilding(st, 'lab');
+  if (!lab || t.lab) return { ok: false, why: t.lab ? '이미 연구 중입니다' : '연구소가 없습니다' };
+  const lv = researchLv(st, id);
+  if (lv >= BUILDINGS.lab.slots(lab.lv)) return { ok: false, why: '연구소 단계를 올려야 합니다' };
+  const c = researchCost(lv);
+  if (st.gold < c.gold) return { ok: false, why: '금화가 모자랍니다' };
+  st.gold -= c.gold; t.lab = { id, until: now + c.min * 60000 };
+  return { ok: true };
+}
+export function researchTick(st, now = Date.now()) {
+  const t = townOf(st);
+  if (!t.lab || now < t.lab.until) return null;
+  const id = t.lab.id; (t.research ||= {})[id] = (t.research[id] || 0) + 1; t.lab = null;
+  return id;
+}
+// 용병 장비: 가방에서 가장 좋은 (끼지 않은) 장비 하나를 맡긴다 (돌려받지 않는다)
+export function mercGear(st, i) {
+  const m = townOf(st).mercs[i];
+  const it = st.inv.filter((x) => BASES[x.base]?.slot && !x.book && x.ilvl).sort((a, b) => b.ilvl - a.ilvl)[0];
+  if (!m || !it) return { ok: false, why: '맡길 장비가 없습니다' };
+  st.inv.splice(st.inv.indexOf(it), 1);
+  m.gear = { ilvl: it.ilvl, rarity: it.rarity, name: it.base };
+  return { ok: true };
 }
 export { PLOTS, BUILDINGS, EXPEDITIONS };

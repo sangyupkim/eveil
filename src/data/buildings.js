@@ -5,6 +5,7 @@ export const PLOTS = [
   { id: 'p3', x: -8, z: 16, name: '남서 빈터' },
   { id: 'p4', x: 9, z: 16, name: '남동 빈터' },
   { id: 'p5', x: 0, z: -16, name: '북쪽 빈터' },
+  { id: 'p6', x: -15, z: -10, name: '북서 빈터' },
 ];
 
 // cost(lv): 다음 단계 금화 · max: 최고 단계
@@ -32,6 +33,11 @@ export const BUILDINGS = {
     zones: (lv) => [0, 2, 4, 5, 6, 8][lv], // 만들 수 있는 지역 수
     look: [['grassland', 100, 0, 0], ['grassland', 120, 1.4, 0.6]],
   },
+  lab: {
+    name: '연구소', desc: '금화 · 시간으로 영구 능력', max: 5, cost: (lv) => [800, 3000, 9000, 22000, 50000][lv] ?? null,
+    slots: (lv) => lv, // 연구 단계 상한
+    look: [['ruins', 278, 0, 0], ['ruins', 279, 1.4, 0.4], ['ruins', 283, -1.2, 0.8]],
+  },
   inn: {
     name: '여관', desc: '용병 고용 · 사냥 파견', max: 5, cost: (lv) => [500, 2000, 6000, 16000, 40000][lv] ?? null,
     slots: (lv) => [0, 1, 2, 3, 4, 5][lv],      // 용병 수
@@ -53,5 +59,15 @@ export const EXPEDITIONS = [
   { id: 'mid', name: '반나절 사냥', min: 60, mult: 7 },
   { id: 'long', name: '긴 원정', min: 240, mult: 32 },
 ];
+// 연구: 단계마다 효과 · 금화 · 걸리는 시간(분)
+export const RESEARCH = {
+  potion: { name: '물약 정제', text: (lv) => `물약 회복량 +${lv * 10}%`, k: 0.1 },
+  merc: { name: '원정 지도', text: (lv) => `원정 시간 -${lv * 8}%`, k: 0.08 },
+  mats: { name: '채집 요령', text: (lv) => `재료 얻을 확률 +${lv * 10}%`, k: 0.1 },
+  gold: { name: '흥정술', text: (lv) => `금화 획득 +${lv * 6}%`, k: 0.06 },
+};
+export const researchCost = (lv) => ({ gold: 500 * (lv + 1) ** 2, min: 20 * (lv + 1) ** 2 });
+// 건물 단계마다 늘어나는 꾸밈 (상자 · 통 · 횃불 · 석상)
+export const LEVEL_DECOR = [[], [], [['grassland', 96, 1.8, -1.2], ['ruins', 287, -1.8, -1.0]], [['dungeon', 167, 2.2, 1.6], ['dungeon', 167, -2.2, 1.6]], [['ruins', 241, 0, -2.2]], [['grassland', 98, 2.4, -0.4], ['ruins', 289, -2.6, -0.2]]];
 export const MERC_NAMES = ['브란', '셀마', '오덴', '이라', '케일', '도르', '미라', '하스', '유나', '바크'];
 export const mercCost = (n) => 400 * Math.pow(2.5, n);

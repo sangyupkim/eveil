@@ -24,7 +24,8 @@ import { resolveCollision, zoneAt, clearLine, findPath, blockedAt } from '../eng
 import { DATA, image, animImage, drawRect, frameIndex } from '../engine2d/sprites.js';
 import { MONSTER_LOOK, ITEM_LOOK, LOOT_LOOK } from '../data/flareWorld.js';
 import { PLOTS, BUILDINGS } from '../data/buildings.js';
-import { townOf, tick as townTick } from '../game/town.js';
+import { townOf, tick as townTick, researchK, researchTick, researchLv } from '../game/town.js';
+import { RESEARCH, LEVEL_DECOR } from '../data/buildings.js';
 import { audio, familyOf } from '../engine/audio.js';
 const sfx = (n, k, fam) => audio.play(n, k, fam);
 
@@ -122,6 +123,7 @@ export class World {
         if (id === 296 && set === 'grassland') { for (let u = -6; u <= 6; u += 1.2) for (let v = -6; v <= 6; v += 1.2) if (Math.abs(u) + Math.abs(v) <= 5.8) col(pl.x + dx + 7.3 + u, pl.z + dz - 2.2 + v, 0.9); }
         else if (b.type !== 'herb') col(pl.x + dx, pl.z + dz, 0.8);
       }
+      for (let lv = 2; lv <= b.lv; lv++) for (const [set, id, dx, dz] of LEVEL_DECOR[lv] || []) tile(set, id, pl.x + dx, pl.z + dz);
     }
   }
 
@@ -744,7 +746,7 @@ export class World {
     for (const r of results) this.onAwaken(r);
 
     // 드랍
-    const drops = m.noLoot ? [] : rollLoot(m, { auto: this.auto, magicFind: d.magicFind, goldFind: d.goldFind }, st);
+    const drops = m.noLoot ? [] : rollLoot(m, { auto: this.auto, magicFind: d.magicFind, goldFind: d.goldFind * (1 + researchK(st, 'gold')) }, st);
     drops.forEach((dr, i) => {
       const a = (i / Math.max(1, drops.length)) * Math.PI * 2 + Math.random();
       const r = drops.length > 1 ? 1.2 + Math.random() : 0.6;
@@ -980,8 +982,9 @@ export class World {
     if (!id) { this.ui.toast(kind === 'hp' ? '체력 물약이 없습니다' : '마나 물약이 없습니다'); return false; }
     takeOne(st, id);
     const r = BASES[id].restore;
-    if (r.hp) this.healPlayer(r.hp);
-    if (r.mp) { this.gainMp(r.mp); this.fx.text(this.player.pos.clone().setY(2.6), `+${r.mp}`, 'mana'); }
+    const rk = 1 + researchK(st, 'potion');
+    if (r.hp) this.healPlayer(r.hp * rk);
+    if (r.mp) { this.gainMp(r.mp * rk); this.fx.text(this.player.pos.clone().setY(2.6), `+${r.mp}`, 'mana'); }
     this.fx.burst(this.player.pos.x, 1.2, this.player.pos.z, r.hp ? 0xff4050 : 0x4080ff, 8, 2);
     sfx('potion');
     this.potionCd = 0.8;
@@ -1529,6 +1532,8 @@ export class World {
     if (this.townT <= 0) {
       this.townT = 5;
       townTick(st);
+      const done = researchTick(st);
+      if (done) this.ui.toast(`연구 완료: ${RESEARCH[done].name} ${researchLv(st, done)}단계`, '#7fe07a');
       this.checkAchievements();
       const back = townOf(st).mercs.filter((m) => m.job && Date.now() >= m.job.until && !m.job.told);
       for (const m of back) { m.job.told = true; this.ui.toast(`용병 ${m.name}이(가) 사냥에서 돌아왔습니다`, '#ffd84a'); }

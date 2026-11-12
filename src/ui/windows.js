@@ -13,7 +13,8 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 
 import { itemIcon, skillIcon, portrait, chestIcon, bookIcon, coinIcon, scrollIcon, townIcon, oreIcon } from './icons.js';
 import { MATERIALS, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
-import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED } from '../game/town.js';
+import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear } from '../game/town.js';
+import { RESEARCH, researchCost } from '../data/buildings.js';
 import { AFFIXES } from '../data/items.js';
 import { PLOTS, BUILDINGS, EXPEDITIONS, townOf, buildingAt, build, upgrade, collect, enhance, enhanceCap, enhanceCost, hire, mercSlots, dispatch, claim, tick } from '../game/town.js';
 import { mercCost } from '../data/buildings.js';
@@ -383,12 +384,21 @@ export class Windows {
             <button class="btn" data-enh="${slot}" ${max || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>강화</button></div>`;
         }
       }
+      if (b.type === 'lab') {
+        const cap = BUILDINGS.lab.slots(b.lv);
+        if (t.lab) right += `<div class="note">연구 중: ${RESEARCH[t.lab.id].name} · ${Math.max(1, Math.ceil((t.lab.until - Date.now()) / 60000))}분 남음</div>`;
+        for (const [id, r] of Object.entries(RESEARCH)) {
+          const lv = researchLv(st, id), c = researchCost(lv), max = lv >= cap;
+          right += `<div class="row"><div class="grow"><b>${r.name}</b> <small>${lv}단계</small><div class="note">${lv ? r.text(lv) : '없음'} → ${r.text(lv + 1)}</div></div>
+            <button class="btn" data-research="${id}" ${max || t.lab || st.gold < c.gold ? 'disabled' : ''}>${max ? '상한' : `${c.gold.toLocaleString()}G · ${c.min}분`}</button></div>`;
+        }
+      }
       if (b.type === 'inn') {
         const zones = ZONES.filter((z) => isLiberated(st, z.id));
         right += `<div class="note">해방 ${ZONES.map((z) => `${z.name} ${Math.floor(((st.liberate?.[z.id] || 0) / LIBERATE_NEED) * 100)}%`).join(' · ')}</div>`;
         t.mercs.forEach((m, i) => {
           const left = m.job ? Math.max(0, m.job.until - Date.now()) : 0;
-          right += `<div class="row"><div class="grow"><b>${m.name}</b> <small>Lv ${m.lv}</small><div class="note">${m.job ? (left > 0 ? `${ZONES.find((z) => z.id === m.job.zone).name} · ${Math.ceil(left / 60000)}분 남음` : '돌아옴') : '쉬는 중'}</div></div>
+          right += `<div class="row"><div class="grow"><b>${m.name}</b> <small>Lv ${m.lv}${m.gear ? ` · 장비 ${BASES[m.gear.name]?.name || ''}(${m.gear.ilvl})` : ''}</small> <button class="btn" data-mgear="${i}">장비 맡기기</button><div class="note">${m.job ? (left > 0 ? `${ZONES.find((z) => z.id === m.job.zone).name} · ${Math.ceil(left / 60000)}분 남음` : '돌아옴') : '쉬는 중'}</div></div>
             ${m.job && left <= 0 ? `<button class="btn gold" data-claim="${i}">전리품</button>` : ''}</div>`;
           if (!m.job && !zones.length) right += `<div class="note">해방한 지역 없음</div>`;
           else if (!m.job) right += `<div class="btns" style="margin:0 0 8px"><select data-zone="${i}" class="btn">${zones.map((z) => `<option value="${z.id}">${z.name}</option>`).join('')}</select>${EXPEDITIONS.map((e) => `<button class="btn" data-go-exp="${i}|${e.id}">${e.name} ${e.min}분</button>`).join('')}</div>`;
@@ -556,6 +566,8 @@ export class Windows {
       w.ui.dirty(); this.render();
     });
     on('[data-hire]', () => townDone(hire(st), '용병을 고용했습니다'));
+    on('[data-research]', (el) => townDone(researchStart(st, el.dataset.research), '연구를 시작했습니다'));
+    on('[data-mgear]', (el) => townDone(mercGear(st, Number(el.dataset.mgear)), '장비를 맡겼습니다 (원정 성과 상승)'));
     on('[data-school]', (el) => { this.skillSchool = el.dataset.school; this.skillSel = null; audio.play('click'); this.render(); });
     on('[data-socket]', (el) => {
       const it = this.cur(); if (!it?.sockets || it.gems.length >= it.sockets) return;
