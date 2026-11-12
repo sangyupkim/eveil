@@ -33,7 +33,7 @@ const famFile = (fam, kind) => {
 const MUSIC = {
   title: 'title', town: 'town', wild: 'overworld', field: 'overworld', forest: 'forest', grave: 'unrest', ruins: 'dungeon',
   swamp: 'magical', frost: 'wind_ambient', valley: 'battle', inferno: 'cave', boss: 'boss',
-  orcfort: 'battle', webwood: 'forest', harbor: 'unrest', demongate: 'cave',
+  orcfort: 'z_orcfort', webwood: 'z_webwood', harbor: 'z_harbor', demongate: 'z_demongate',
 };
 
 export class Audio {

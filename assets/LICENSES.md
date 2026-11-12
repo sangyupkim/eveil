@@ -27,3 +27,9 @@
   - 트롤 · 그림자 · 해골 기사/고위 마법사/사교도 · 유령 선장/선원: VWolfdog (OpenGameArt "FLARE Model - Troll", "Shadow", "Flare skeleton mod", "Flare zombie mod")
   - 악마 · 악마 석상: umask007 (OpenGameArt "Animated Daemon", "Daemon statue")
   - 변환: `node tools/prep-enemies-extra.mjs <new_game_mod 경로>`
+
+## 새 지역 음악 (assets/sound/music/z_*) — 모두 CC0, OpenGameArt
+- 오크 요새: "Battle Theme" — vermilion_wizard
+- 거미줄 숲: "Corrupted Minds" — MrAmogus
+- 망령의 항구: "Evil Approach" — TheBlackSword
+- 악마의 관문: "Epic Boss Battle" — Juhani Junkala (KaadmY 올림)
