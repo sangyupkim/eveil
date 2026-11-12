@@ -1,5 +1,5 @@
 // 마을 규칙 (화면과 무관): 짓기 · 단계 올리기 · 생산 쌓기 · 강화 · 용병 파견
-import { BUILDINGS, PLOTS, ENHANCE, EXPEDITIONS, MERC_NAMES, mercCost, RESEARCH, researchCost } from '../data/buildings.js';
+import { BUILDINGS, PLOTS, ENHANCE, EXPEDITIONS, MERC_NAMES, mercCost, RESEARCH, researchCost, workerCost, WORKER_MAX } from '../data/buildings.js';
 import { ZONES } from '../data/world.js';
 import { rollLoot } from './loot.js';
 import { addItem } from './inventory.js';
@@ -47,7 +47,7 @@ export function tick(st, now = Date.now()) {
   for (const b of Object.values(t.plots)) {
     const def = BUILDINGS[b.type];
     if (!def.rate) continue;
-    b.stock = Math.min(def.store(b.lv), (b.stock || 0) + def.rate(b.lv) * hours);
+    b.stock = Math.min(def.store(b.lv), (b.stock || 0) + def.rate(b.lv) * Math.min(1, (b.workers || 0) / b.lv) * hours);
   }
   return hours;
 }
@@ -114,6 +114,25 @@ export function reforge(st, it, rng = Math.random) {
   const pick = fresh.affixes.find((a) => !it.affixes.some((b) => b.id === a.id)) || fresh.affixes[0];
   if (pick) it.affixes[k] = pick;
   return { ok: true, old, now: it.affixes[k] };
+}
+
+// ── 일꾼 ──
+export const freeWorkers = (st) => { const t = townOf(st); return (t.workers || 0) - Object.values(t.plots).reduce((a, b) => a + (b.workers || 0), 0); };
+export function hireWorker(st) {
+  const t = townOf(st), n = t.workers || 0;
+  if (n >= WORKER_MAX) return { ok: false, why: '더 고용할 수 없습니다' };
+  const c = workerCost(n);
+  if (st.gold < c) return { ok: false, why: '금화가 모자랍니다' };
+  st.gold -= c; t.workers = n + 1;
+  return { ok: true };
+}
+export function assignWorker(st, plot, d) {
+  const b = buildingAt(st, plot);
+  if (!b || !BUILDINGS[b.type].rate) return { ok: false };
+  const v = (b.workers || 0) + d;
+  if (v < 0 || v > b.lv || (d > 0 && freeWorkers(st) <= 0)) return { ok: false, why: d > 0 ? (v > b.lv ? '자리가 없습니다 (단계를 올리세요)' : '쉬는 일꾼이 없습니다') : '' };
+  b.workers = v;
+  return { ok: true };
 }
 
 // ── 용병 ──

@@ -1,11 +1,11 @@
 // 마을 건물. 빈터(PLOTS)에 짓고, 금화로 단계를 올린다. 생산은 실제 시간으로 흐른다 (꺼 둔 동안에도)
 export const PLOTS = [
-  { id: 'p1', x: -14, z: 8, name: '서쪽 빈터' },
-  { id: 'p2', x: 14, z: 8, name: '동쪽 빈터' },
-  { id: 'p3', x: -8, z: 16, name: '남서 빈터' },
-  { id: 'p4', x: 9, z: 16, name: '남동 빈터' },
-  { id: 'p5', x: 0, z: -16, name: '북쪽 빈터' },
-  { id: 'p6', x: -15, z: -10, name: '북서 빈터' },
+  { id: 'p1', x: -15.5, z: 0.0, name: '서쪽 집터' },
+  { id: 'p2', x: -11.0, z: -11.0, name: '북서쪽 집터' },
+  { id: 'p3', x: 0.0, z: -15.5, name: '북쪽 집터' },
+  { id: 'p4', x: 11.0, z: -11.0, name: '북동쪽 집터' },
+  { id: 'p5', x: 15.5, z: 0.0, name: '동쪽 집터' },
+  { id: 'p6', x: -11.9, z: 10.0, name: '남서쪽 집터' },
 ];
 
 // cost(lv): 다음 단계 금화 · max: 최고 단계
@@ -70,5 +70,8 @@ export const RESEARCH = {
 export const researchCost = (lv) => ({ gold: 500 * (lv + 1) ** 2, min: 20 * (lv + 1) ** 2 });
 // 건물 단계마다 늘어나는 꾸밈 (상자 · 통 · 횃불 · 석상)
 export const LEVEL_DECOR = [[], [], [['grassland', 96, 1.8, -1.2], ['ruins', 287, -1.8, -1.0]], [['dungeon', 167, 2.2, 1.6], ['dungeon', 167, -2.2, 1.6]], [['ruins', 241, 0, -2.2]], [['grassland', 98, 2.4, -0.4], ['ruins', 289, -2.6, -0.2]]];
+// 일꾼: 광산 · 약초밭은 일꾼이 있어야 생산 (단계만큼 자리, 자리를 다 채우면 온전히)
+export const workerCost = (n) => Math.round(300 * Math.pow(n + 1, 1.5));
+export const WORKER_MAX = 12;
 export const MERC_NAMES = ['브란', '셀마', '오덴', '이라', '케일', '도르', '미라', '하스', '유나', '바크'];
 export const mercCost = (n) => 400 * Math.pow(2.5, n);

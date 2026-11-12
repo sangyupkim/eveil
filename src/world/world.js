@@ -121,16 +121,28 @@ export class World {
       const d = { z, draw: (ctx, st) => { const src = image(def.imgs[tt[0]]); if (!src.ok) return; const p = st.toScreen(x, z); drawRect(ctx, src.im, tt.slice(1), p.x, p.y, st.scale()); } };
       this.stage.add(d); this.townDraw.push(d);
     };
+    // 집: 오두막(296)을 줄여 그린다. 그림 기준점에서 바닥 가운데는 (+7.3, −2.2) → 집터 가운데에 맞춘다
+    const house = (x, z, k, tint) => {
+      const def = DATA.tiles.grassland, tt = def.tiles[296];
+      const ax = x - 7.3 * k, az = z + 2.2 * k;
+      const d = { z: z + 2 * k, draw: (ctx, stg) => { const src = image(def.imgs[tt[0]]); if (!src.ok || !stg.onScreen(x, z, 8)) return; const p = stg.toScreen(ax, az); drawRect(ctx, src.im, tt.slice(1), p.x, p.y, stg.scale() * k);
+        if (tint) { ctx.save(); ctx.globalCompositeOperation = 'source-atop'; ctx.restore(); } } };
+      this.stage.add(d); this.townDraw.push(d);
+      for (let u = -5; u <= 5; u += 1.2) for (let v = -5; v <= 5; v += 1.2) if (Math.abs(u) + Math.abs(v) <= 5.2) col(x + u * k * 1.15, z + v * k * 1.15, 0.8);
+    };
+    const SIGN = { smithy: [['grassland', 103, 2.6, 3.2], ['dungeon', 167, -2.6, 3.4]], mine: [['cave', 130, 2.8, 3.0], ['cave', 131, -2.8, 3.2]], workshop: [['grassland', 100, 2.6, 3.2], ['grassland', 96, -2.6, 3.0]],
+      lab: [['ruins', 278, 2.6, 3.2], ['ruins', 293, -2.6, 3.0]], inn: [['grassland', 98, 2.8, 3.2], ['dungeon', 167, -2.8, 3.2]] };
     for (const pl of PLOTS) {
       const b = t.plots[pl.id];
       if (!b) { tile('grassland', 138, pl.x, pl.z); continue; }
-      for (const [set, id, dx, dz] of BUILDINGS[b.type].look) {
-        tile(set, id, pl.x + dx, pl.z + dz);
-        // 오두막(296)은 기준점 오른쪽 위로 큰 바닥, 그 밖은 작은 원
-        if (id === 296 && set === 'grassland') { for (let u = -6; u <= 6; u += 1.2) for (let v = -6; v <= 6; v += 1.2) if (Math.abs(u) + Math.abs(v) <= 5.8) col(pl.x + dx + 7.3 + u, pl.z + dz - 2.2 + v, 0.9); }
-        else if (b.type !== 'herb') col(pl.x + dx, pl.z + dz, 0.8);
+      if (b.type === 'herb') { // 밭: 작물 줄 + 울타리
+        for (let u = -2; u <= 2; u++) for (let v = -1; v <= 1; v++) tile('grassland', 120 + ((u + v + 4) % 4), pl.x + u * 1.6, pl.z + v * 1.8);
+        for (const [a2, b2] of [[-4.2, -3], [4.2, -3], [-4.2, 3], [4.2, 3]]) { tile('grassland', 104, pl.x + a2, pl.z + b2); col(pl.x + a2, pl.z + b2, 0.6); }
+      } else {
+        house(pl.x, pl.z, b.type === 'inn' ? 0.62 : 0.5 + b.lv * 0.02);
+        for (const [set, id, dx, dz] of SIGN[b.type] || []) { tile(set, id, pl.x + dx, pl.z + dz); col(pl.x + dx, pl.z + dz, 0.7); }
       }
-      for (let lv = 2; lv <= b.lv; lv++) for (const [set, id, dx, dz] of LEVEL_DECOR[lv] || []) tile(set, id, pl.x + dx, pl.z + dz);
+      for (let lv = 2; lv <= b.lv; lv++) for (const [set, id, dx, dz] of LEVEL_DECOR[lv] || []) tile(set, id, pl.x + dx * 1.6, pl.z + dz + 3.8);
     }
   }
 

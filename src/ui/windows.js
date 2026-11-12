@@ -17,8 +17,8 @@ import { terrain, fogCan, MAP_R, MAP_W, FOG_C, seen as seenAt } from './mapimg.j
 import { CAMPS, inCamp } from '../engine2d/stage.js';
 import { entranceOf } from '../data/dungeons.js';
 import { MATERIALS, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
-import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, salvage, salvageValue, reforge, reforgeCost } from '../game/town.js';
-import { RESEARCH, researchCost } from '../data/buildings.js';
+import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, hireWorker, assignWorker, freeWorkers, salvage, salvageValue, reforge, reforgeCost } from '../game/town.js';
+import { RESEARCH, researchCost, workerCost, WORKER_MAX } from '../data/buildings.js';
 import { AFFIXES } from '../data/items.js';
 import { PLOTS, BUILDINGS, EXPEDITIONS, townOf, buildingAt, build, upgrade, collect, enhance, enhanceCap, enhanceCost, hire, mercSlots, dispatch, claim, tick } from '../game/town.js';
 import { mercCost } from '../data/buildings.js';
@@ -425,7 +425,8 @@ export class Windows {
             ${SET_SLOTS.map((sl) => `<button class="btn" data-craft="${zn.id}|${sl}" ${have < c.mats || st.gold < c.gold ? 'disabled' : ''}>${BASES[setBase(zi, sl)].name}</button>`).join('')}</div>`;
         }
       }
-      if (def.rate) right += `<div class="kv"><span>생산</span><b>시간당 ${def.rate(b.lv)}</b><span>쌓인 양</span><b>${Math.floor(b.stock)} / ${def.store(b.lv)}</b></div>
+      if (def.rate) right += `<div class="row"><div class="grow"><b>일꾼 ${b.workers || 0} / ${b.lv}</b><div class="note">${b.workers ? `생산 ${Math.round(((b.workers || 0) / b.lv) * 100)}%` : '일꾼이 없으면 생산하지 않습니다'}</div></div><button class="btn" data-work="-1">−</button><button class="btn" data-work="1">+</button></div>`;
+      if (def.rate) right += `<div class="kv"><span>생산</span><b>시간당 ${Math.round(def.rate(b.lv) * Math.min(1, (b.workers || 0) / b.lv))}</b><span>쌓인 양</span><b>${Math.floor(b.stock)} / ${def.store(b.lv)}</b></div>
         <div class="btns"><button class="btn gold" data-collect="1" ${b.stock < 1 ? 'disabled' : ''}>거두기</button></div>`;
       if (b.type === 'smithy') {
         const cap = enhanceCap(st);
@@ -465,7 +466,7 @@ export class Windows {
         else right += `<div class="note">용병 ${n} / ${slots} · 여관 단계를 올리면 더 고용</div>`;
       }
     }
-    return `<div class="cols"><div class="frame" style="flex:0 0 40%"><h3>마을 <span class="goldTxt">${st.gold.toLocaleString()} G</span></h3><div class="note" style="display:flex;gap:6px;align-items:center"><img src="${oreIcon()}" style="width:1.6em" alt="" />강화석 ${t.ore}</div><div class="note">${Object.entries(t.mats).filter(([, n]) => n > 0).map(([k, n]) => `${MATERIALS[k].name} ${n}`).join(' · ')}</div>${left}</div>
+    return `<div class="cols"><div class="frame" style="flex:0 0 40%"><h3>마을 <span class="goldTxt">${st.gold.toLocaleString()} G</span></h3><div class="note" style="display:flex;gap:6px;align-items:center"><img src="${oreIcon()}" style="width:1.6em" alt="" />강화석 ${t.ore}</div><div class="row"><div class="grow"><b>일꾼 ${t.workers || 0}</b> <small>쉬는 ${freeWorkers(st)}</small></div><button class="btn" data-hireworker="1" ${(t.workers || 0) >= WORKER_MAX || st.gold < workerCost(t.workers || 0) ? 'disabled' : ''}>고용 ${workerCost(t.workers || 0).toLocaleString()}G</button></div><div class="note">${Object.entries(t.mats).filter(([, n]) => n > 0).map(([k, n]) => `${MATERIALS[k].name} ${n}`).join(' · ')}</div>${left}</div>
       <div class="frame detail" style="flex:1">${right}</div></div>`;
   }
 
@@ -623,6 +624,8 @@ export class Windows {
       w.ui.dirty(); this.render();
     });
     on('[data-hire]', () => townDone(hire(st), '용병을 고용했습니다'));
+    on('[data-hireworker]', () => townDone(hireWorker(st), '일꾼을 고용했습니다'));
+    on('[data-work]', (el) => townDone(assignWorker(st, this.townSel, Number(el.dataset.work))));
     on('[data-travel]', (el) => { this.portalAt = null; this.close(); w.travel(el.dataset.travel); });
     on('[data-camp]', (el) => { const [z, what] = el.dataset.camp.split('|'); const r = w.buildCamp(z, what); if (!r.ok && r.why) w.ui.toast(r.why); w.ui.dirty(); this.render(); });
     on('[data-salvage]', (el) => { const r = salvage(st, Number(el.dataset.salvage)); if (r.ok) { audio.play('coin'); w.ui.toast(`분해: 강화석 ${r.ore} · ${MATERIALS[r.mat].name} ${r.matN}`, '#ffd84a'); } townDone(r); });

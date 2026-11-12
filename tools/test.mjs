@@ -7,7 +7,7 @@ import { learn, addSkillExp, canLearn } from '../src/game/skills.js';
 import { rollLoot, rollDeathDrop } from '../src/game/loot.js';
 import { makeItem, itemName, rollBase } from '../src/game/items.js';
 import * as await_fs from 'node:fs';
-import { townOf, build, tick, collect, enhance, hire, dispatch, claim, buildingAt, dropMats, craft, craftZones, upgrade, setBase, liberateAdd } from '../src/game/town.js';
+import { townOf, build, tick, collect, enhance, hire, dispatch, claim, buildingAt, dropMats, craft, craftZones, upgrade, setBase, liberateAdd, hireWorker, assignWorker } from '../src/game/town.js';
 import { BUILDINGS } from '../src/data/buildings.js';
 import { MONSTER_LOOK, ITEM_LOOK, SKILL_ICON } from '../src/data/flareWorld.js';
 import { addItem, equip } from '../src/game/inventory.js';
@@ -242,6 +242,8 @@ test('마을: 짓기 · 생산(꺼 둔 시간) · 강화 · 용병 파견', () =
   assert.ok(build(p, 'p1', 'mine').ok);
   assert.equal(build(p, 'p2', 'mine').ok, false); // 같은 건물은 하나
   assert.ok(build(p, 'p2', 'smithy').ok && build(p, 'p3', 'inn').ok && build(p, 'p4', 'herb').ok);
+  assert.equal(assignWorker(p, 'p1', 1).ok, false); // 일꾼이 없으면 못 둔다
+  assert.ok(hireWorker(p).ok && assignWorker(p, 'p1', 1).ok);
   tick(p, t0 + 2 * 3600000);                       // 2시간 꺼 둠
   assert.equal(Math.floor(buildingAt(p, 'p1').stock), 12);
   tick(p, t0 + 100 * 3600000);                     // 오래 꺼 둬도 창고만큼만
