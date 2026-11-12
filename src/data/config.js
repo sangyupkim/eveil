@@ -15,8 +15,8 @@ export const CONFIG = {
   startStat: 10,
   // 각성(스탯 성장)
   awakenPoints: 5,          // 각성 1회에 오르는 스탯 총량
-  expBase: 100,
-  expGrowth: 1.12,          // 필요 EXP = expBase × expGrowth^각성횟수
+  expBase: 150,
+  expGrowth: 1.15,          // (옛날 게임처럼 느리게, v2 기본 방향)          // 필요 EXP = expBase × expGrowth^각성횟수
   apKeepAfterAwaken: 0.5,   // 각성 후 남기는 행동 기록 비율
   apSoftCapStart: 10,       // 이 값을 넘는 스탯은 같은 행동의 AP 효율이 떨어진다
   apSoftCapScale: 60,
@@ -35,7 +35,7 @@ export const CONFIG = {
   inventorySize: 40,
   quickSlots: 6,
   skillMaxRank: 10,
-  respawnTime: 20,          // 일반 몬스터 재생성(초)
+  respawnTime: 35,          // 일반 몬스터 재생성(초)
   namedRespawn: 180,
   bossRespawn: 360,
   eliteChance: 0.08,
@@ -69,13 +69,14 @@ export const TIERS = {
 };
 
 // 몬스터 등급별 드랍
+// 드랍: 장비는 드물게 — 천천히 잡아 가며 하나씩 얻고 강화한다 (v2 기본 방향)
 export const LOOT = {
-  normal: { itemChance: 0.18, items: [1, 1], gold: [0.55, 1], potion: 0.08, book: 0.01, bookTiers: { 1: 1 },
-    rarity: { common: 62, magic: 30, rare: 7.5, hero: 0.5, legend: 0 } },
-  elite: { itemChance: 1, items: [1, 2], gold: [1, 3], potion: 0.3, book: 0.06, bookTiers: { 1: 70, 2: 30 },
-    rarity: { common: 0, magic: 50, rare: 38, hero: 10, legend: 2 } },
-  named: { itemChance: 1, items: [2, 2], gold: [1, 8], potion: 0.6, book: 0.25, bookTiers: { 2: 60, 3: 40 },
-    rarity: { common: 0, magic: 0, rare: 50, hero: 40, legend: 10 } },
-  boss: { itemChance: 1, items: [3, 4], gold: [1, 20], potion: 1, book: 1, bookTiers: { 3: 60, 4: 35, 5: 5 },
-    rarity: { common: 0, magic: 0, rare: 20, hero: 55, legend: 25 } },
+  normal: { itemChance: 0.06, items: [1, 1], gold: [0.5, 1], potion: 0.05, book: 0.005, bookTiers: { 1: 1 },
+    rarity: { common: 70, magic: 26, rare: 3.8, hero: 0.2, legend: 0 } },
+  elite: { itemChance: 0.6, items: [1, 1], gold: [1, 3], potion: 0.25, book: 0.04, bookTiers: { 1: 70, 2: 30 },
+    rarity: { common: 10, magic: 55, rare: 30, hero: 4.5, legend: 0.5 } },
+  named: { itemChance: 1, items: [1, 2], gold: [1, 8], potion: 0.5, book: 0.2, bookTiers: { 2: 60, 3: 40 },
+    rarity: { common: 0, magic: 20, rare: 50, hero: 26, legend: 4 } },
+  boss: { itemChance: 1, items: [2, 3], gold: [1, 20], potion: 1, book: 0.8, bookTiers: { 3: 60, 4: 35, 5: 5 },
+    rarity: { common: 0, magic: 0, rare: 40, hero: 48, legend: 12 } },
 };

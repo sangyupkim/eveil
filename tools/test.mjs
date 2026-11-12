@@ -87,7 +87,7 @@ test('강한 몬스터일수록 스킬북 · 좋은 장비가 잘 나온다', ()
     return { books: books / N, tier: books ? bookTier / books : 0, good: good / N };
   };
   const nrm = stat('normal', 20000), boss = stat('boss', 2000);
-  assert.ok(nrm.books < 0.02 && boss.books >= 1);
+  assert.ok(nrm.books < 0.02 && boss.books >= 0.7);
   assert.ok(boss.tier > 3 && nrm.tier <= 1);
   assert.ok(boss.good > nrm.good * 50);
 });
