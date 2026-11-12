@@ -228,12 +228,16 @@ test('재료 · 제작소 · 세트 효과', () => {
   const hp0 = derive(p).maxHp;
   for (const sl of ['helm', 'armor']) { const r = craft(p, 'field', sl); assert.ok(r.ok, r.why); equip(p, r.item.uid); }
   assert.ok(derive(p).maxHp >= hp0 + 30, '2세트 효과');
-  // 단계 올리기는 재료가 든다
+  // 단계 올리기는 각성 · 재료가 든다 (5단계는 각성 60 이하)
+  for (const d of Object.values(BUILDINGS)) assert.ok(d.up.length === 4 && d.up[3] <= 60 && d.up.every((v, i) => !i || v > d.up[i - 1]));
+  const aw = p.awakenings; p.awakenings = 0;
+  assert.equal(upgrade(p, 'p5').ok, false);
+  p.awakenings = aw;
   assert.ok(upgrade(p, 'p5').ok); // 1 → 2는 금화만
   townOf(p).mats.field = 0;
   assert.equal(upgrade(p, 'p5').ok, false); // 2 → 3은 들판 재료
   townOf(p).mats.field = 8;
-  assert.ok(upgrade(p, 'p5').ok);
+  p.awakenings = 30; assert.ok(upgrade(p, 'p5').ok);
 });
 
 test('마을: 짓기 · 생산(꺼 둔 시간) · 강화 · 용병 파견', () => {

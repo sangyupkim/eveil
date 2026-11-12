@@ -32,6 +32,8 @@ export function upgrade(st, plot) {
   if (!b) return { ok: false };
   const def = BUILDINGS[b.type], cost = def.cost(b.lv);
   if (b.lv >= def.max || cost == null) return { ok: false, why: '최고 단계입니다' };
+  const an = def.up?.[b.lv - 1] ?? 0;
+  if ((st.awakenings || 0) < an) return { ok: false, why: `각성 ${an} 필요` };
   if (st.gold < cost) return { ok: false, why: '금화가 모자랍니다' };
   const um = upgradeMats(b.lv), mats = townOf(st).mats;
   if (um && (mats[um.zone] || 0) < um.n) return { ok: false, why: `${MATERIALS[um.zone].name} ${um.n}개가 필요합니다` };

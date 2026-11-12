@@ -10,43 +10,43 @@ export const PLOTS = [
   { id: 'p7', x: -15.6, z: -11.2, name: '북서쪽 집터' },
 ];
 
-// cost(lv): 다음 단계 금화 · max: 최고 단계
+// cost(lv): 다음 단계 금화 · max: 최고 단계 · need: 짓는 데 필요한 각성 · up: 2~5단계로 올리는 데 필요한 각성
 export const BUILDINGS = {
   smithy: {
-    name: '대장간', need: 0, desc: '장비 강화 (+1 ~ +10)', max: 5, cost: (lv) => [300, 1200, 4000, 12000, 30000][lv] ?? null,
+    name: '대장간', up: [5, 15, 30, 50], need: 0, desc: '장비 강화 (+1 ~ +10)', max: 5, cost: (lv) => [300, 1200, 4000, 12000, 30000][lv] ?? null,
     // 단계마다 강화 상한
     cap: (lv) => [0, 4, 6, 8, 9, 10][lv],
     look: [['grassland', 103, 0, 0], ['grassland', 100, 1.6, 0.8], ['dungeon', 151, -1.4, 0.6]],
   },
   mine: {
-    name: '광산', need: 6, desc: '강화석 생산', max: 5, cost: (lv) => [200, 900, 3000, 9000, 24000][lv] ?? null,
+    name: '광산', up: [10, 22, 38, 55], need: 6, desc: '강화석 생산', max: 5, cost: (lv) => [200, 900, 3000, 9000, 24000][lv] ?? null,
     rate: (lv) => [0, 6, 12, 20, 32, 50][lv],      // 시간당 강화석
     store: (lv) => [0, 30, 60, 120, 200, 320][lv], // 쌓아 둘 수 있는 양
     look: [['cave', 130, 0, 0], ['cave', 131, 1.5, 0.4], ['cave', 151, -1.4, 0.6]],
   },
   herb: {
-    name: '약초밭', need: 0, desc: '물약 생산', max: 5, cost: (lv) => [150, 700, 2500, 8000, 20000][lv] ?? null,
+    name: '약초밭', up: [3, 10, 25, 45], need: 0, desc: '물약 생산', max: 5, cost: (lv) => [150, 700, 2500, 8000, 20000][lv] ?? null,
     rate: (lv) => [0, 4, 7, 11, 16, 24][lv],
     store: (lv) => [0, 20, 40, 70, 110, 160][lv],
     look: [['grassland', 120, -1, 0], ['grassland', 121, 0.4, 0.6], ['grassland', 122, 1.4, -0.2], ['grassland', 123, -0.2, -0.9]],
   },
   workshop: {
-    name: '제작소', need: 10, desc: '지역 재료로 세트 장비 제작', max: 5, cost: (lv) => [400, 1500, 5000, 14000, 35000][lv] ?? null,
+    name: '제작소', up: [15, 28, 42, 58], need: 10, desc: '지역 재료로 세트 장비 제작', max: 5, cost: (lv) => [400, 1500, 5000, 14000, 35000][lv] ?? null,
     zones: (lv) => [0, 2, 4, 6, 8, 12][lv], // 만들 수 있는 지역 수
     look: [['grassland', 100, 0, 0], ['grassland', 120, 1.4, 0.6]],
   },
   lab: {
-    name: '연구소', need: 15, desc: '금화 · 시간으로 영구 능력', max: 5, cost: (lv) => [800, 3000, 9000, 22000, 50000][lv] ?? null,
+    name: '연구소', up: [20, 32, 46, 60], need: 15, desc: '금화 · 시간으로 영구 능력', max: 5, cost: (lv) => [800, 3000, 9000, 22000, 50000][lv] ?? null,
     slots: (lv) => lv, // 연구 단계 상한
     look: [['ruins', 278, 0, 0], ['ruins', 279, 1.4, 0.4], ['ruins', 283, -1.2, 0.8]],
   },
   house: {
-    name: '숙소', need: 3, desc: '용병이 묵는 곳 (고용 한도)', max: 5, cost: (lv) => [300, 1500, 5000, 14000, 32000][lv] ?? null,
+    name: '숙소', up: [8, 18, 32, 50], need: 3, desc: '용병이 묵는 곳 (고용 한도)', max: 5, cost: (lv) => [300, 1500, 5000, 14000, 32000][lv] ?? null,
     beds: (lv) => [0, 3, 5, 7, 10, 14][lv],
     look: [],
   },
   inn: {
-    name: '여관', need: 3, desc: '매 시간 용병이 찾아옴 · 사냥 파견', max: 5, cost: (lv) => [500, 2000, 6000, 16000, 40000][lv] ?? null,
+    name: '여관', up: [8, 20, 35, 55], need: 3, desc: '매 시간 용병이 찾아옴 · 사냥 파견', max: 5, cost: (lv) => [500, 2000, 6000, 16000, 40000][lv] ?? null,
     slots: (lv) => [0, 1, 2, 3, 4, 5][lv],      // 용병 수
     look: [['grassland', 296, -7, 1]],
   },
@@ -82,3 +82,6 @@ export const workerCost = (n) => Math.round(300 * Math.pow(n + 1, 1.5));
 export const WORKER_MAX = 12;
 export const MERC_NAMES = ['브란', '셀마', '오덴', '이라', '케일', '도르', '미라', '하스', '유나', '바크'];
 export const mercCost = (n) => 400 * Math.pow(2.5, n);
+
+// 다음 단계로 올리는 데 필요한 각성 (최고 단계면 null)
+export const upNeed = (type, lv) => BUILDINGS[type]?.up?.[lv - 1] ?? null;
