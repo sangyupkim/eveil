@@ -65,6 +65,7 @@ export const RESEARCH = {
   merc: { name: '원정 지도', text: (lv) => `원정 시간 -${lv * 8}%`, k: 0.08 },
   mats: { name: '채집 요령', text: (lv) => `재료 얻을 확률 +${lv * 10}%`, k: 0.1 },
   gold: { name: '흥정술', text: (lv) => `금화 획득 +${lv * 6}%`, k: 0.06 },
+  bag: { name: '큰 배낭', text: (lv) => `가방 +${lv * 8}칸`, k: 0 },
 };
 export const researchCost = (lv) => ({ gold: 500 * (lv + 1) ** 2, min: 20 * (lv + 1) ** 2 });
 // 건물 단계마다 늘어나는 꾸밈 (상자 · 통 · 횃불 · 석상)

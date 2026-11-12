@@ -1,3 +1,4 @@
+import { bagSize } from '../game/inventory.js';
 // 창: 가방(장비) · 스킬 · 능력(스탯/성향) · 상점 · 메뉴
 import { STATS, STAT_NAMES, STAT_COLORS, STAT_DESC, CONFIG } from '../data/config.js';
 import { SKILLS, BOOK_TIERS } from '../data/skills.js';
@@ -203,7 +204,7 @@ export class Windows {
   bagGrid() {
     const st = this.w.st;
     let h = '<div class="grid">';
-    for (let i = 0; i < CONFIG.inventorySize; i++) {
+    for (let i = 0; i < bagSize(st); i++) {
       const it = st.inv[i];
       if (!it) { h += '<div class="cell"></div>'; continue; }
       const sel = this.sel?.from === 'inv' && this.sel.uid === it.uid ? ' sel' : '';
@@ -214,7 +215,7 @@ export class Windows {
 
   bagHead() {
     const st = this.w.st;
-    return `<h3>가방 <span class="cnt">${st.inv.length}/${CONFIG.inventorySize}</span>${this.w.inTown ? '<button class="btn" data-selljunk="1" style="margin-left:auto">일반 · 마법 팔기</button>' : ''}<span class="goldTxt">${st.gold.toLocaleString()} G</span></h3>`;
+    return `<h3>가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span>${this.w.inTown ? '<button class="btn" data-selljunk="1" style="margin-left:auto">일반 · 마법 팔기</button>' : ''}<span class="goldTxt">${st.gold.toLocaleString()} G</span></h3>`;
   }
 
   // 고른 가방 아이템과 같은 칸에 끼고 있는 장비
@@ -566,7 +567,7 @@ export class Windows {
       el.onchange = () => { if (el.dataset.vol === 'sfx') audio.play('coin'); };
     });
     on('[data-turnin]', () => {
-      const r = questTurnIn(st, CONFIG.inventorySize);
+      const r = questTurnIn(st, bagSize(st));
       if (!r.ok) { if (r.why) w.ui.toast(r.why); audio.play('error'); return; }
       audio.play('awaken');
       w.fx.pillar(w.player.pos.x, w.player.pos.z, 0xffd860, 1.2);

@@ -1,3 +1,4 @@
+import { bagSize } from '../game/inventory.js';
 // 화면 위 정보: HP/MP · EXP · 퀵슬롯 · 미니맵 · 이름표 · 알림 · 각성 연출 · 사망 화면
 import { STAT_NAMES, STAT_COLORS, STATS, TIERS, CONFIG } from '../data/config.js';
 import { SKILLS } from '../data/skills.js';
@@ -185,7 +186,7 @@ export class HUD {
       this.isDirty = false;
       $('#gold').textContent = st.gold.toLocaleString();
       $('#awakeBadge').textContent = `각성 ${st.awakenings}`;
-      $('#bagCnt').textContent = `${st.inv.length}/${CONFIG.inventorySize}`;
+      $('#bagCnt').textContent = `${st.inv.length}/${bagSize(st)}`;
       $('#btnHp em').textContent = countOf(st, 'hp_potion') + countOf(st, 'hp_potion_l');
       $('#btnMp em').textContent = countOf(st, 'mp_potion') + countOf(st, 'mp_potion_l');
       for (let i = 0; i < slots.length; i++) {

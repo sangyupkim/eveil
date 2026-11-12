@@ -5,7 +5,7 @@ import { ZONE_SCHOOLS } from '../data/skills_more.js';
 import { SLOTS } from '../data/items.js';
 import { R, randInt, chance, weighted, pick } from './rng.js';
 import { makeItem, makeBook, rollBase, rollRarity, isStack, makeNamed, namedOf } from './items.js';
-import { NAMED_CHANCE, GEM_DROP, GEMS, GEM_GRADES, gemId } from '../data/legends.js';
+import { NAMED_CHANCE, GEM_DROP, GEMS, GEM_GRADES, gemId, gemGradeFor } from '../data/legends.js';
 
 // mon: { tier, level }, opt: { auto, magicFind, goldFind }
 export function rollLoot(mon, opt = {}, st = null, rng = R) {
@@ -44,7 +44,7 @@ export function rollLoot(mon, opt = {}, st = null, rng = R) {
   if (zid && nc && chance(nc, rng)) { const pool = namedOf(zid); if (pool.length) out.push({ kind: 'item', item: makeNamed(pick(pool, rng), st) }); }
   // 보석: 깊은 곳일수록 높은 등급
   if (chance((GEM_DROP[mon.tier] || 0) * dropMult, rng)) {
-    const k = mon.level >= GEM_GRADES[2].lvl && chance(0.3, rng) ? 2 : mon.level >= GEM_GRADES[1].lvl && chance(0.5, rng) ? 1 : 0;
+    const k = gemGradeFor(mon.level, rng);
     out.push({ kind: 'item', item: makeItem(gemId(pick(Object.keys(GEMS), rng), k), { qty: 1 }, st) });
   }
   return out;

@@ -5,12 +5,13 @@ import { isStack } from './items.js';
 import { meetsReq } from './skills.js';
 import { totalStats } from './player.js';
 
+export const bagSize = (st) => CONFIG.inventorySize + 8 * (st?.town?.research?.bag || 0);
 export function addItem(st, it) {
   if (isStack(it)) {
     const same = st.inv.find((x) => x.base === it.base);
     if (same) { same.qty += it.qty; return true; }
   }
-  if (st.inv.length >= CONFIG.inventorySize) return false;
+  if (st.inv.length >= bagSize(st)) return false;
   st.inv.push(it);
   return true;
 }
@@ -66,7 +67,7 @@ export function equip(st, uid) {
 export function unequip(st, slot) {
   const it = st.equip[slot];
   if (!it) return { ok: false };
-  if (st.inv.length >= CONFIG.inventorySize) return { ok: false, why: '가방이 가득 찼습니다' };
+  if (st.inv.length >= bagSize(st)) return { ok: false, why: '가방이 가득 찼습니다' };
   st.equip[slot] = null;
   st.inv.push(it);
   return { ok: true };

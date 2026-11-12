@@ -1,6 +1,8 @@
+import { bagSize } from '../game/inventory.js';
 import { ZONES as ALL_ZONES } from '../data/world.js';
 import { roomCenter, entranceOf, ROOMS, MAX_STAGE, stageMods } from '../data/dungeons.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
+import { gemGradeFor } from '../data/legends.js';
 import { TITLE_AT, titleKey, titleName, perkChoices, UNIQUES } from '../data/titles.js';
 // 게임 월드: 플레이어 조작 · 몬스터 AI · 전투 · 스킬 · 드랍 · 사망 · 자동 사냥
 import * as THREE from 'three';
@@ -243,7 +245,7 @@ export class World {
     const P = this.player.pos, st = this.st;
     this.petT = (this.petT || 0) - dt;
     let goal = { x: P.x - 1.2, z: P.z + 0.8 };
-    const g = this.ground.filter((x) => dist2(x, P) < 9 && !(x.kind === 'item' && st.inv.length >= CONFIG.inventorySize && !BASES[x.item.base]?.stack)).sort((a, b) => dist2(a, pet.pos) - dist2(b, pet.pos))[0];
+    const g = this.ground.filter((x) => dist2(x, P) < 9 && !(x.kind === 'item' && st.inv.length >= bagSize(st) && !BASES[x.item.base]?.stack)).sort((a, b) => dist2(a, pet.pos) - dist2(b, pet.pos))[0];
     if (g) { goal = g; if (dist2(pet.pos, g) < 0.8) this.pickup(g); }
     const d = dist2(pet.pos, goal);
     if (d > 0.4) { this.stepToward(pet.pos, goal, Math.min(14, 5 + d) * dt); pet.face(goal.x, goal.z); pet.play('run', { speed: 1.4 }); } else pet.play('idle');
@@ -287,7 +289,7 @@ export class World {
       const zn = zoneAt(c.x, c.z) || ALL_ZONES[0], lv = zn.levels[1];
       this.dropGround({ kind: 'item', item: makeItem(rollBase(lv), { rarity: Math.random() < 0.25 ? 'hero' : 'rare', ilvl: lv }, st) }, c.x + 1, c.z + 0.5);
       this.dropGround({ kind: 'gold', amount: lv * 40 }, c.x - 1, c.z + 0.5);
-      if (Math.random() < 0.5) this.dropGround({ kind: 'item', item: makeItem(`gem_${['ruby', 'emerald', 'sapphire', 'amethyst', 'diamond'][Math.floor(Math.random() * 5)]}_${lv >= 30 ? 1 : 0}`, { qty: 1 }, st) }, c.x, c.z + 1.2);
+      if (Math.random() < 0.5) this.dropGround({ kind: 'item', item: makeItem(`gem_${['ruby', 'emerald', 'sapphire', 'amethyst', 'diamond'][Math.floor(Math.random() * 5)]}_${gemGradeFor(lv)}`, { qty: 1 }, st) }, c.x, c.z + 1.2);
       this.fx.pillar(c.x, c.z, 0xffd060, 1.4, 5, 1.5); sfx('rare'); this.ui.toast('숨은 보물 상자!', '#ffd84a');
     }
   }
@@ -838,7 +840,7 @@ export class World {
     (st.dex ||= {})[m.type] = (st.dex[m.type] || 0) + 1;
     if (m.golden) {
       const lv = m.level;
-      for (let i = 0; i < 3; i++) this.dropGround({ kind: 'item', item: makeItem(`gem_${['ruby', 'emerald', 'sapphire', 'amethyst', 'diamond'][Math.floor(Math.random() * 5)]}_${lv >= 30 ? 1 : 0}`, { qty: 1 }, st) }, m.pos.x + i - 1, m.pos.z + 1);
+      for (let i = 0; i < 3; i++) this.dropGround({ kind: 'item', item: makeItem(`gem_${['ruby', 'emerald', 'sapphire', 'amethyst', 'diamond'][Math.floor(Math.random() * 5)]}_${gemGradeFor(lv)}`, { qty: 1 }, st) }, m.pos.x + i - 1, m.pos.z + 1);
       this.dropGround({ kind: 'gold', amount: lv * 120 }, m.pos.x, m.pos.z - 1);
       this.dropGround({ kind: 'item', item: makeItem(rollBase(lv), { rarity: 'rare', ilvl: lv }, st) }, m.pos.x + 1, m.pos.z - 1);
       this.fx.pillar(m.pos.x, m.pos.z, 0xffd040, 1.8, 6, 1.5); this.ui.toast(`${m.name} 처치!`, '#ffd040');
@@ -1514,14 +1516,14 @@ export class World {
       if (st.hp / d.maxHp < 0.95) { this.moveTo = null; this.target = null; return; }
     }
     if (st.mp / d.maxMp < 0.2) this.usePotion('mp');
-    if (!this.inTown && st.inv.length >= CONFIG.inventorySize && st.settings.autoSell !== false && this.recallT <= 0) {
+    if (!this.inTown && st.inv.length >= bagSize(st) && st.settings.autoSell !== false && this.recallT <= 0) {
       this.ui.log('가방이 가득 차 귀환합니다', '#9a917f'); this.recall(); return;
     }
     // 가까운 전리품 먼저 (싸우는 중이 아닐 때)
     const fighting = this.monsters.some((m) => !m.dead && m.state === 'chase' && dist2(m.pos, P) < 6);
     if (!fighting) {
       const g = this.ground.filter((x) => dist2(x, P) < 12).sort((a, b) => dist2(a, P) - dist2(b, P))[0];
-      if (g && !(g.kind === 'item' && st.inv.length >= CONFIG.inventorySize && !BASES[g.item.base]?.stack)) {
+      if (g && !(g.kind === 'item' && st.inv.length >= bagSize(st) && !BASES[g.item.base]?.stack)) {
         this.moveTo = { x: g.x, z: g.z }; this.target = null; return;
       }
     }
