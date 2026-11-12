@@ -45,7 +45,7 @@ export function setupInput(world, stage, windows) {
         return;
       }
     }
-    for (const [npc, win] of [[world.gemNpc, 'shop'], [world.sage, 'dex']]) {
+    for (const [npc, win] of [[world.gemNpc, 'shop'], [world.sage, 'dex'], ...(world.campNpcs || []).map((a) => [a, 'shop'])]) {
       if (!npc || !pickNpc(e.clientX, e.clientY, npc)) continue;
       const n = npc.pos;
       if (Math.hypot(n.x - world.player.pos.x, n.z - world.player.pos.z) < 5) windows.show(win);
@@ -170,8 +170,9 @@ export function setupInput(world, stage, windows) {
     if (k === 'c') windows.toggle('char');
     if (k === 'm') windows.toggle('menu');
     if (k === 'j') windows.toggle('quest');
+    if (k === 'n') windows.toggle('map');
     if (k === 't') windows.toggle('town');
-    if (k === 'p' && world.inTown) windows.toggle('shop');
+    if (k === 'p' && world.canShop) windows.toggle('shop');
     if (windows.open || e.repeat) return;
     if (k >= '1' && k <= '6') { world.manual(); world.useSkill(world.st.quick[Number(k) - 1]); }
     if (k === 'q') world.usePotion('hp');
@@ -202,3 +203,5 @@ export function setupInput(world, stage, windows) {
 }
 
 const dist = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+
+document.getElementById('minimap')?.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); window.__game?.windows.show('map'); });

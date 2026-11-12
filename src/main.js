@@ -162,6 +162,7 @@ function startGame(stage, st) {
   hud.onDirty = () => { clearTimeout(hud.winT); hud.winT = setTimeout(() => windows.refresh(), 0); };
   const input = setupInput(world, stage, windows);
   const tut = new Tutorial(world, windows);
+  world.onPortal = (zone) => { windows.portalAt = zone; windows.show('map'); };
   $('#hud').hidden = false;
   stage.follow(world.player.pos.x, world.player.pos.z, 1);
   hud.log(`${st.name}, 여명 초소에 왔다.`, '#e8c36a');

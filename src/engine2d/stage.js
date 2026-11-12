@@ -51,13 +51,16 @@ function groundAt(i, j) {
 // ───── 지형: 호수(물가 절벽) · 언덕(못 올라가는 고원) — Flare 맵의 타일 잇기 규칙 그대로 ─────
 const roadDist = (x, z) => Math.min(Math.hypot(x, z) - TOWN.r, ...ZONES.map((zn) => distToSeg(x, z, 0, 0, zn.x * 0.72, zn.z * 0.72)));
 export const LAKES = [], MESAS = [];
+// 야영지(포탈): 지역마다 하나, 마을 쪽 안쪽. 둘레 7은 지형 · 몬스터가 없는 안전지대
+export const CAMPS = ZONES.map((zn) => { const a = Math.atan2(-zn.z, -zn.x), d = zoneRadius(zn, a) * 0.55; return { zone: zn.id, x: zn.x + Math.cos(a) * d, z: zn.z + Math.sin(a) * d }; });
+export const inCamp = (x, z, pad = 0) => CAMPS.find((c) => Math.hypot(x - c.x, z - c.z) < 7 + pad) || null;
 const HAS_BANKS = new Set(['grassland', 'snowplains', 'desert']);
 const LAVA_ZONES = new Set(['inferno', 'demongate']);
 {
   const rng = seeded(4242);
-  const clear = (x, z, r) => roadDist(x, z) > r + 5 && !ZONES.some((zn) => { const e = entranceOf(zn); return Math.hypot(e.x - x, e.z - z) < r + 4; }) && ![...LAKES, ...MESAS].some((q) => Math.hypot(q.x - x, q.z - z) < q.r + r + (q.ring ? 3 : 6));
+  const clear = (x, z, r) => roadDist(x, z) > r + 5 && !inCamp(x, z, r + 3) && !ZONES.some((zn) => { const e = entranceOf(zn); return Math.hypot(e.x - x, e.z - z) < r + 4; }) && ![...LAKES, ...MESAS].some((q) => Math.hypot(q.x - x, q.z - z) < q.r + r + (q.ring ? 3 : 6));
   // ① 지역 경계: 언덕(물 많은 지역은 물)을 고리처럼 두르고, 길목(마을 쪽 길) · 샛길 두세 군데만 뚫는다
-  const nearGate = (x, z, r) => roadDist(x, z) < r + 3.5 || ZONES.some((zn) => { const e = entranceOf(zn); return Math.hypot(e.x - x, e.z - z) < r + 5; }) || Math.hypot(x, z) < TOWN.r + r + 3;
+  const nearGate = (x, z, r) => roadDist(x, z) < r + 3.5 || !!inCamp(x, z, r + 2) || ZONES.some((zn) => { const e = entranceOf(zn); return Math.hypot(e.x - x, e.z - z) < r + 5; }) || Math.hypot(x, z) < TOWN.r + r + 3;
   for (const zn of ZONES) {
     const L = ZONE_LOOK[zn.id], wet = ['swamp', 'harbor', 'webwood', 'frost'].includes(zn.id) || LAVA_ZONES.has(zn.id);
     const bs = HAS_BANKS.has(L.set) ? L.set : 'grassland', top = bs !== L.set ? [L.set, L.ground[0]] : null;
@@ -280,6 +283,10 @@ export function buildWorldProps(stage) {
     const bp = cellPos(zi, L.boss[0], L.boss[1]);
     for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) addProp(stage, 'dungeon', 128 + Math.floor(rr() * 4), bp.x + a * T * 2, bp.z + b * T * 2, 0.6);
   }
+  for (const c of CAMPS) {
+    addProp(stage, 'grassland', 265, c.x, c.z, 0);
+    for (const [a, b] of [[-3.5, -2], [3.5, -2], [-3.5, 2.5], [3.5, 2.5]]) addProp(stage, 'dungeon', 167, c.x + a, c.z + b, 0.3);
+  }
   // 지역마다 던전 입구: 지형에 맞는 문 · 동굴 입구 + 양옆 횃불 (문 자체는 막혀 있고, 바로 앞에 서면 들어갈지 묻는다)
   for (const zn of ZONES) {
     const e = entranceOf(zn), set = ZONE_LOOK[zn.id].set;
@@ -331,6 +338,18 @@ function buildTown(stage, rng) {
   }
 }
 export function buildTerrain() {}
+
+// 지도 색: 위에서 본 지형 한 점
+export function mapColor(x, z) {
+  if (Math.hypot(x, z) > WORLD_SIZE) return null;
+  if (Math.hypot(x, z) < TOWN.r) return [120, 96, 62];
+  const lk = inLake(x, z);
+  if (lk) return lk.lava ? [200, 80, 20] : lk.chasm ? [8, 8, 12] : [40, 90, 140];
+  const zn = zoneAt(x, z), base = zn ? zn.ground.map((v) => Math.round(v * 255 * 0.9 + 20)) : [62, 60, 44];
+  if (inMesa(x, z)) return base.map((v) => Math.round(v * 0.55 + 40));
+  if (ZONES.some((q) => distToSeg(x, z, 0, 0, q.x * 0.72, q.z * 0.72) < 2.4)) return [150, 128, 90];
+  return base;
+}
 
 // ───── 충돌 (칸 격자로 가까운 것만) ─────
 const CELL = 8;

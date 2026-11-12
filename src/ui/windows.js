@@ -13,6 +13,9 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
 import { itemIcon, skillIcon, portrait, chestIcon, bookIcon, coinIcon, scrollIcon, townIcon, oreIcon } from './icons.js';
+import { terrain, fogCan, MAP_R, MAP_W, FOG_C, seen as seenAt } from './mapimg.js';
+import { CAMPS, inCamp } from '../engine2d/stage.js';
+import { entranceOf } from '../data/dungeons.js';
 import { MATERIALS, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
 import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, salvage, salvageValue, reforge, reforgeCost } from '../game/town.js';
 import { RESEARCH, researchCost } from '../data/buildings.js';
@@ -52,8 +55,8 @@ export function showNotes() {
 }
 const repickCost = (t) => 2000 * (t.tier + 1) ** 2;
 const nextTitle = (st) => { const i = TITLE_AT.findIndex((n) => st.awakenings < n); return i < 0 ? '' : ` · ${titleName(titleKey(st.stats), i)}까지 각성 ${TITLE_AT[i] - st.awakenings}`; };
-const TITLES = { inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', shop: '상점', menu: '메뉴' };
-const TAB_ORDER = ['inv', 'skills', 'char', 'quest', 'dex', 'town', 'shop', 'menu'];
+const TITLES = { map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', shop: '상점', menu: '메뉴' };
+const TAB_ORDER = ['map', 'inv', 'skills', 'char', 'quest', 'dex', 'town', 'shop', 'menu'];
 const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '');
 const ico = (it) => `<img src="${itemIcon(it)}" alt="" draggable="false" />`;
 const sicon = (id) => `<div class="sicon" style="background:radial-gradient(circle at 35% 30%, ${SKILLS[id].color}, #17111f 90%)"><img src="${skillIcon(id)}" alt="" /></div>`;
@@ -77,7 +80,7 @@ export class Windows {
   }
 
   show(kind) {
-    if (kind === 'shop' && !this.w.inTown) { this.w.ui.toast('상점은 마을에서만 이용할 수 있습니다'); audio.play('error'); return; }
+    if (kind === 'shop' && !this.w.canShop) { this.w.ui.toast('상점은 마을에서만 이용할 수 있습니다'); audio.play('error'); return; }
     if (this.kind !== kind) this.sel = null;
     this.kind = kind;
     this.el.hidden = false;
@@ -86,6 +89,7 @@ export class Windows {
   }
 
   close() {
+    this.portalAt = null;
     this.el.hidden = true;
     this.kind = null;
     this.sel = null;
@@ -95,15 +99,17 @@ export class Windows {
 
   render() {
     $('h2', this.el).textContent = TITLES[this.kind];
-    const icons = { inv: chestIcon(), skills: bookIcon(), char: portrait(this.w.st.look), shop: coinIcon(), quest: scrollIcon(), town: townIcon(), dex: bookIcon() };
+    const icons = { inv: chestIcon(), skills: bookIcon(), char: portrait(this.w.st.look), shop: coinIcon(), quest: scrollIcon(), town: townIcon(), dex: bookIcon(), map: scrollIcon() };
     const tabs = $('.tabs', this.el);
-    tabs.innerHTML = TAB_ORDER.filter((k) => k !== 'shop' || this.w.inTown).map((k) =>
+    tabs.innerHTML = TAB_ORDER.filter((k) => k !== 'shop' || this.w.canShop).map((k) =>
       `<button class="tab${k === this.kind ? ' on' : ''}" data-tab="${k}">${icons[k] ? `<img src="${icons[k]}" alt="" />` : '<b class="gear" style="width:1.8em;height:1.8em"></b>'}<span>${TITLES[k].split(' ')[0]}</span></button>`).join('');
     tabs.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => this.show(b.dataset.tab); });
     const body = $('.body', this.el);
     // 다시 그려도 스크롤 위치는 지킨다
     const keep = [...body.querySelectorAll('.frame')].map((f) => f.scrollTop);
     body.innerHTML = this[this.kind]();
+    const wc = body.querySelector('.wmc');
+    if (wc) { const g = wc.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(terrain, 0, 0, wc.width, wc.height); g.imageSmoothingEnabled = true; g.drawImage(fogCan, 0, 0, wc.width, wc.height); }
     body.querySelectorAll('.frame').forEach((f, i) => { f.scrollTop = keep[i] || 0; });
     this.bind(body);
   }
@@ -156,7 +162,7 @@ export class Windows {
     h += '<div class="btns">';
     if (where === 'inv') {
       h += `<button class="btn gold" data-act="use">${isBook(it) ? '배우기' : b.type === 'potion' ? '사용' : '장착'}</button>`;
-      if (this.w.inTown) h += `<button class="btn" data-act="sell">판매</button>`;
+      if (this.w.canShop) h += `<button class="btn" data-act="sell">판매</button>`;
       h += `<button class="btn danger" data-act="drop">버리기</button>`;
     } else if (where === 'equip') {
       h += `<button class="btn" data-act="unequip">해제</button>`;
@@ -215,7 +221,7 @@ export class Windows {
 
   bagHead() {
     const st = this.w.st;
-    return `<h3>가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span>${this.w.inTown ? '<button class="btn" data-selljunk="1" style="margin-left:auto">일반 · 마법 팔기</button>' : ''}<span class="goldTxt">${st.gold.toLocaleString()} G</span></h3>`;
+    return `<h3>가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span>${this.w.canShop ? '<button class="btn" data-selljunk="1" style="margin-left:auto">일반 · 마법 팔기</button>' : ''}<span class="goldTxt">${st.gold.toLocaleString()} G</span></h3>`;
   }
 
   // 고른 가방 아이템과 같은 칸에 끼고 있는 장비
@@ -349,6 +355,29 @@ export class Windows {
     const got = st.ach || [];
     det += `<h3 style="margin-top:14px">업적 <span class="cnt">${got.length} / ${ACHIEVEMENTS.length}</span></h3><div class="achs">${ACHIEVEMENTS.map((a) => `<span class="ach${got.includes(a.id) ? ' on' : ''}" title="${a.text}">${a.name}<small>${a.text}</small></span>`).join('')}</div>`;
     return `<div class="cols"><div class="frame detail" style="flex:1.1">${det}</div><div class="frame" style="flex:1">${list}</div></div>`;
+  }
+
+  // 월드맵: 지형 + 안개 + 마을 · 야영지(포탈) · 던전 입구 · 나. 포탈 위에서 열면 발견한 곳으로 이동
+  map() {
+    const w = this.w, st = w.st, P = w.player.pos, here = this.portalAt;
+    const V = Math.max(240, Math.min(560, window.innerHeight - 110)), k = V / MAP_W, X = (x) => ((x + MAP_R) * k).toFixed(1), Y = (z) => ((z + MAP_R) * k).toFixed(1);
+    const pins = [];
+    pins.push(`<div class="pin town${here ? ' go' : ''}" style="left:${X(0)}px;top:${Y(-2)}px" ${here ? 'data-travel="town"' : ''}>여명 초소</div>`);
+    for (const c of CAMPS) {
+      const zn = ZONES.find((z) => z.id === c.zone), got = st.camps?.[c.zone];
+      if (!got && !seenAt(c.x, c.z)) continue;
+      pins.push(`<div class="pin camp${got ? '' : ' off'}${here && got && here !== c.zone ? ' go' : ''}" style="left:${X(c.x)}px;top:${Y(c.z)}px" ${here && got ? `data-travel="${c.zone}"` : ''}>${zn.name}</div>`);
+    }
+    for (const zn of ZONES) { const e = entranceOf(zn); if (seenAt(e.x, e.z)) pins.push(`<div class="pin gate" style="left:${X(e.x)}px;top:${Y(e.z)}px" title="던전"></div>`); }
+    pins.push(`<div class="pin me" style="left:${X(P.x)}px;top:${Y(P.z)}px"></div>`);
+    // 오른쪽: 지금 있는 야영지 시설
+    const cz = here && here !== 'town' ? here : inCamp(P.x, P.z)?.zone, k2 = cz && st.camps?.[cz];
+    let side = `<div class="note">${here ? '이동할 곳을 고르세요 (밝게 빛나는 곳)' : '포탈 위에 서면 발견한 야영지로 이동할 수 있습니다'}</div>`;
+    if (k2) side += `<h3 style="margin-top:10px">야영지 시설</h3>
+      <div class="row"><div class="grow"><b>떠돌이 상인</b><div class="note">사고팔기</div></div><button class="btn" data-camp="${cz}|merchant" ${k2.merchant || st.gold < 5000 ? 'disabled' : ''}>${k2.merchant ? '있음' : '5,000 G'}</button></div>
+      <div class="row"><div class="grow"><b>모닥불</b><div class="note">야영지에서 빨리 회복</div></div><button class="btn" data-camp="${cz}|fire" ${k2.fire || st.gold < 2000 ? 'disabled' : ''}>${k2.fire ? '있음' : '2,000 G'}</button></div>`;
+    side += `<div class="note" style="margin-top:10px">발견한 야영지 ${Object.keys(st.camps || {}).length} / ${CAMPS.length}</div>`;
+    return `<div class="cols"><div class="frame" style="flex:0 0 auto"><div class="wmap" style="width:${V}px;height:${V}px"><canvas class="wmc" width="${V}" height="${V}"></canvas>${pins.join('')}</div></div><div class="frame" style="flex:1">${side}</div></div>`;
   }
 
   // 몬스터 도감 (잡은 수 50 · 200 · 500마다 그 몬스터에게 피해 +2 · 4 · 6%) · 보스 기록
@@ -490,7 +519,7 @@ export class Windows {
           ${card('skills', `<img src="${bookIcon()}" alt="" />`, '스킬')}
           ${card('char', `<img src="${portrait(st.look)}" alt="" />`, '능력')}
           ${card('quest', `<img src="${scrollIcon()}" alt="" />`, '퀘스트')}
-          ${card('shop', `<img src="${coinIcon()}" alt="" />`, '상점', !this.w.inTown)}
+          ${card('shop', `<img src="${coinIcon()}" alt="" />`, '상점', !this.w.canShop)}
         </div>
         <div class="kv" style="margin-top:14px"><span>플레이 시간</span><b>${Math.floor(t / 60)}시간 ${t % 60}분</b><span>각성</span><b>${st.awakenings}회</b>
           <span>배운 스킬</span><b>${Object.keys(st.skills).length}개</b><span>자동 사냥 효율</span><b>${Math.round(CONFIG.autoPenalty * 100)}%</b>
@@ -594,6 +623,8 @@ export class Windows {
       w.ui.dirty(); this.render();
     });
     on('[data-hire]', () => townDone(hire(st), '용병을 고용했습니다'));
+    on('[data-travel]', (el) => { this.portalAt = null; this.close(); w.travel(el.dataset.travel); });
+    on('[data-camp]', (el) => { const [z, what] = el.dataset.camp.split('|'); const r = w.buildCamp(z, what); if (!r.ok && r.why) w.ui.toast(r.why); w.ui.dirty(); this.render(); });
     on('[data-salvage]', (el) => { const r = salvage(st, Number(el.dataset.salvage)); if (r.ok) { audio.play('coin'); w.ui.toast(`분해: 강화석 ${r.ore} · ${MATERIALS[r.mat].name} ${r.matN}`, '#ffd84a'); } townDone(r); });
     on('[data-salvageall]', () => { let n = 0; for (const x of [...st.inv]) if (!x.book && BASES[x.base]?.slot && ['common', 'magic'].includes(x.rarity) && salvage(st, x.uid).ok) n++; audio.play('coin'); w.ui.toast(`장비 ${n}개 분해`, '#ffd84a'); townDone({ ok: true }); });
     on('[data-reforge]', (el) => { const it = st.equip[el.dataset.reforge], r = reforge(st, it); if (r.ok) { audio.play('rankup'); w.ui.toast(`재련: ${affixText(r.old)} → ${affixText(r.now)}`, '#ffd84a'); w.refreshGear(); } townDone(r); });

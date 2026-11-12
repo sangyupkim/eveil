@@ -22,7 +22,8 @@ import { itemName, itemColor, isBook, makeItem, makeBook, rollBase, itemValue } 
 import { seeded, randInt, randRange } from '../game/rng.js';
 import { Actor, makeHero } from '../engine2d/actor.js';
 import { FX } from '../engine2d/fx.js';
-import { resolveCollision, zoneAt, clearLine, findPath, blockedAt, LAKES, MESAS } from '../engine2d/stage.js';
+import { resolveCollision, zoneAt, clearLine, findPath, blockedAt, LAKES, MESAS, CAMPS, inCamp } from '../engine2d/stage.js';
+import { reveal, saveFog, loadFog } from '../ui/mapimg.js';
 import { DATA, image, animImage, drawRect, frameIndex } from '../engine2d/sprites.js';
 import { MONSTER_LOOK, ITEM_LOOK, LOOT_LOOK } from '../data/flareWorld.js';
 import { PLOTS, BUILDINGS } from '../data/buildings.js';
@@ -96,6 +97,8 @@ export class World {
     this.refreshTown();
     this.makeChests();
     this.makePet();
+    loadFog(this.st);
+    this.refreshCamps();
     // 자리를 비운 동안 쌓인 것 알려 주기
     const away = townTick(st);
     if (away > 0.05 && Object.keys(townOf(st).plots).length) setTimeout(() => this.ui.log(`자리를 비운 ${away >= 1 ? Math.floor(away) + '시간' : Math.round(away * 60) + '분'} 동안 마을이 일했습니다 (마을 창에서 거두기)`, '#ffd84a'), 500);
@@ -230,6 +233,48 @@ export class World {
       if (!blockedAt(this.stage, nx, nz, r)) return { x: nx, z: nz };
     }
     return { x, z };
+  }
+
+  // ───────── 야영지 · 포탈 · 지도 안개 ─────────
+  campStep(dt) {
+    const st = this.st, P = this.player.pos;
+    this.fogT = (this.fogT || 0) - dt;
+    if (this.fogT <= 0 && !this.dungeon) { this.fogT = 0.3; if (reveal(P.x, P.z) && (this.fogSaveT = (this.fogSaveT || 0) - 0.3) <= 0) { this.fogSaveT = 5; saveFog(st); } }
+    if (this.dungeon || this.dead) return;
+    const c = inCamp(P.x, P.z, 1), camps = (st.camps ||= {});
+    if (c && !camps[c.zone]) { camps[c.zone] = {}; this.ui.toast(`야영지 발견! 포탈로 오갈 수 있습니다`, '#80c0ff'); sfx('rankup'); this.refreshCamps(); }
+    // 모닥불이 있는 야영지에서는 빨리 회복
+    if (c && camps[c.zone]?.fire && !this.dead) { st.hp = Math.min(this.d.maxHp, st.hp + this.d.maxHp * 0.08 * dt); st.mp = Math.min(this.d.maxMp, st.mp + this.d.maxMp * 0.08 * dt); }
+    // 포탈 위에 서면 지도 (마을 포탈 · 야영지 포탈)
+    const pt = [{ x: 0, z: -2, zone: 'town' }, ...CAMPS].find((q) => Math.hypot(P.x - q.x, P.z - q.z) < 1.3);
+    if (pt && this.portalAway !== pt.zone) { this.portalAway = pt.zone; this.moveTo = null; this.target = null; this.onPortal?.(pt.zone); }
+    else if (!pt && this.portalAway) { const q = [{ x: 0, z: -2, zone: 'town' }, ...CAMPS].find((x) => x.zone === this.portalAway); if (!q || Math.hypot(P.x - q.x, P.z - q.z) > 3) this.portalAway = null; }
+  }
+  // 포탈로 이동 (발견한 야영지 · 마을)
+  travel(zone) {
+    const q = zone === 'town' ? { x: 0, z: -2 } : CAMPS.find((c) => c.zone === zone);
+    if (!q || (zone !== 'town' && !this.st.camps?.[zone])) return;
+    this.portalAway = zone; this.cancelRecall?.();
+    this.player.pos.set(q.x, 0, q.z + 2); this.stage.cam.x = q.x; this.stage.cam.z = q.z + 2;
+    this.fx.arrive(q.x, q.z + 2); sfx('cast'); this.moveTo = null; this.target = null;
+  }
+  // 야영지 시설: 상인 · 모닥불 (금화로 짓는다)
+  refreshCamps() {
+    for (const a of this.campNpcs || []) this.stage.remove(a);
+    for (const d of this.campDraw || []) this.stage.remove(d);
+    this.campNpcs = []; this.campDraw = [];
+    for (const c of CAMPS) {
+      const k = this.st.camps?.[c.zone]; if (!k) continue;
+      if (k.merchant) { const a = new Actor(this.scene, { npc: 'wandering_trader' }); a.pos.set(c.x + 3, 0, c.z - 1); a.facing = -0.5; a.play('idle'); a.name = '떠돌이 상인'; this.campNpcs.push(a); }
+      if (k.fire) { const tt = DATA.tiles.grassland.tiles[100]; const d = { z: c.z + 1.5, draw: (ctx, stg) => { const src = image(DATA.tiles.grassland.imgs[tt[0]]); if (!src.ok || !stg.onScreen(c.x, c.z, 4)) return; const s2 = stg.toScreen(c.x - 3, c.z + 1.5); drawRect(ctx, src.im, tt.slice(1), s2.x, s2.y, stg.scale()); } }; this.stage.add(d); this.campDraw.push(d); }
+    }
+  }
+  buildCamp(zone, what) {
+    const st = this.st, k = st.camps?.[zone], cost = { merchant: 5000, fire: 2000 }[what];
+    if (!k || k[what]) return { ok: false };
+    if (st.gold < cost) return { ok: false, why: '금화가 모자랍니다' };
+    st.gold -= cost; k[what] = true; this.refreshCamps(); sfx('rankup');
+    return { ok: true };
   }
 
   // ───────── 펫: 따라다니며 물건을 줍고, 가끔 함께 문다 ─────────
@@ -421,6 +466,7 @@ export class World {
     this.sage = new Actor(this.scene, { npc: 'peasant_woman1' }); this.sage.pos.set(-10, 0, -3); this.sage.facing = 0.6; this.sage.play('idle'); this.sage.name = '현자 에라';
   }
 
+  get canShop() { const c = inCamp(this.player.pos.x, this.player.pos.z); return this.inTown || !!(c && this.st.camps?.[c.zone]?.merchant); }
   get inTown() {
     return dist2(this.player.pos, TOWN) < TOWN.r;
   }
@@ -448,6 +494,7 @@ export class World {
       this.spawners.push({ zone: zn, x: zn.x - uz * 12, z: zn.z + ux * 12, level: zn.levels[1], tier: 'named', timer: 0, mon: null, fixed: zn.named });
       this.spawners.push({ zone: zn, x: zn.x + ux * zn.r * 0.75, z: zn.z + uz * zn.r * 0.75, level: zn.levels[1] + 1, tier: 'boss', timer: 0, mon: null, fixed: zn.boss });
     }
+    this.spawners = this.spawners.filter((sp) => !inCamp(sp.x, sp.z, 4));
   }
 
   spawn(sp) {
@@ -512,7 +559,7 @@ export class World {
     const p = this.player.pos;
     if (m.dash) { this.dashStep(m, dt); return; }
     const d = dist2(m.pos, p);
-    const valid = !this.dead && !this.inTown;
+    const valid = !this.dead && !this.inTown && !inCamp(p.x, p.z);
     const fromHome = dist2(m.pos, m.home);
     const spd = m.speed * (m.slowT > 0 ? 0.5 : 1);
     if (m.slowT > 0) m.slowT -= dt;
@@ -1598,6 +1645,7 @@ export class World {
     this.raidStep(dt);
     this.petStep(dt);
     this.skyStep(dt);
+    this.campStep(dt);
     // 자동 사냥 중 죽으면 잠시 뒤 마을에서 일어나 다시 사냥
     if (this.dead && this.auto) { this.autoReviveT = (this.autoReviveT ?? 6) - dt; if (this.autoReviveT <= 0) { this.autoReviveT = null; this.revive(); this.ui.closeDeath?.(); this.ui.log('자동 사냥: 마을에서 다시 출발합니다', '#9a917f'); } }
     for (let i = this.timers.length - 1; i >= 0; i--) {
@@ -1621,6 +1669,7 @@ export class World {
     this.npc.update(dt);
     this.guard.update(dt);
     this.gemNpc?.update(dt); this.sage?.update(dt);
+    for (const a of this.campNpcs || []) a.update(dt);
     this.updateSpawners(dt);
     const P = this.player.pos;
     // 화면에 보이는 몬스터만 그린다 (뼈대 모델은 스스로 화면 밖을 거르지 못한다)

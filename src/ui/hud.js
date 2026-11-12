@@ -4,6 +4,8 @@ import { STAT_NAMES, STAT_COLORS, STATS, TIERS, CONFIG } from '../data/config.js
 import { SKILLS } from '../data/skills.js';
 import { ZONES, TOWN, WORLD_SIZE } from '../data/world.js';
 import { entranceOf, layout as dungeonLayout, cellPos, N, T } from '../data/dungeons.js';
+import { terrain, fogCan, MAP_R, FOG_C, seen as seenAt } from './mapimg.js';
+import { CAMPS } from '../engine2d/stage.js';
 import { expNeeded, powerLevel } from '../game/growth.js';
 import { countOf } from '../game/inventory.js';
 import { skillValues } from '../game/skills.js';
@@ -305,16 +307,16 @@ export class HUD {
       const Ld = dungeonLayout(zi), o = cellPos(zi, 0, 0);
       for (let k2 = 0; k2 < Ld.g.length; k2++) if (Ld.g[k2]) { const i = k2 % N, j = Math.floor(k2 / N); c.fillRect(tx(o.x + (i - 0.5) * T), tz(o.z + (j - 0.5) * T), T * k + 0.5, T * k + 0.5); }
       const bp = cellPos(zi, Ld.boss[0], Ld.boss[1]); c.fillStyle = '#ff5a4a'; c.beginPath(); c.arc(tx(bp.x), tz(bp.z), 4, 0, 7); c.fill();
-    } else for (const z of ZONES) {
-      c.beginPath();
-      c.arc(tx(z.x), tz(z.z), z.r * k, 0, Math.PI * 2);
-      c.fillStyle = `rgba(${z.ground.map((v) => Math.round(v * 255)).join(',')},0.55)`;
-      c.fill();
+    } else {
+      // 지형 그림 + 탐험 안개
+      c.imageSmoothingEnabled = false;
+      c.drawImage(terrain, P.x - R + MAP_R, P.z - R + MAP_R, R * 2, R * 2, 0, 0, S, S);
+      c.imageSmoothingEnabled = true;
+      c.drawImage(fogCan, (P.x - R + MAP_R) / FOG_C, (P.z - R + MAP_R) / FOG_C, (R * 2) / FOG_C, (R * 2) / FOG_C, 0, 0, S, S);
+      for (const cp of CAMPS) if (w.st.camps?.[cp.zone]) { c.fillStyle = '#9ad0ff'; c.fillRect(tx(cp.x) - 3, tz(cp.z) - 3, 6, 6); }
     }
     c.beginPath();
     c.arc(tx(TOWN.x), tz(TOWN.z), TOWN.r * k, 0, Math.PI * 2);
-    c.fillStyle = 'rgba(120,90,50,0.55)';
-    c.fill();
     c.strokeStyle = 'rgba(232,195,106,0.5)';
     c.stroke();
     c.beginPath();
@@ -322,7 +324,7 @@ export class HUD {
     c.strokeStyle = 'rgba(0,0,0,0.8)';
     c.lineWidth = 3;
     c.stroke();
-    if (!w.dungeon) for (const z of ZONES) { const e = entranceOf(z); c.fillStyle = '#80c0ff'; c.beginPath(); c.arc(tx(e.x), tz(e.z), 4, 0, 7); c.fill(); }
+    if (!w.dungeon) for (const z of ZONES) { const e = entranceOf(z); if (!seenAt(e.x, e.z)) continue; c.fillStyle = '#80c0ff'; c.beginPath(); c.arc(tx(e.x), tz(e.z), 4, 0, 7); c.fill(); }
     for (const m of w.monsters) {
       if (m.dead) continue;
       const big = m.tier !== 'normal';
@@ -337,7 +339,7 @@ export class HUD {
     }
     // 보스 위치 표시
     for (const sp of w.spawners) {
-      if (sp.tier !== 'boss') continue;
+      if (sp.tier !== 'boss' || !seenAt(sp.x, sp.z)) continue;
       c.fillStyle = sp.mon ? '#ff5a4a' : 'rgba(255,90,74,0.3)';
       c.font = '13px sans-serif';
       c.fillText('☠', tx(sp.x) - 5, tz(sp.z) + 5);
