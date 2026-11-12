@@ -174,7 +174,32 @@ export class FX {
     if (kind === 'fire') return this.play('blast', x, z, { scale: Math.min(1.6, r / 3), dur: Math.max(0.35, dur) });
     return this.ground(kind === 'nature' ? 'shield' : 'shield', x, z, { scale: Math.min(2, r / 2.2), dur: Math.max(0.3, dur), tint: color, fade: true });
   }
-  drawGround() {}
+  // 땅에 그리는 것: 적 공격 예고(도형)만
+  drawGround(ctx, st) {
+    const k = st.scale();
+    for (const it of this.items) {
+      if (it.kind !== 'warn') continue;
+      const q = Math.min(1, it.t / it.dur);
+      ctx.globalCompositeOperation = 'source-over';
+      if (it.shape === 'circle') {
+        if (!st.onScreen(it.x, it.z, it.r + 4)) continue;
+        const pulse = 0.5 + 0.5 * Math.sin(this.time * 14);
+        ctx.globalAlpha = 0.2 + 0.08 * pulse; ctx.fillStyle = hex(it.color); ellipse(ctx, st, it.x, it.z, it.r); ctx.fill();
+        ctx.globalAlpha = 0.45; ellipse(ctx, st, it.x, it.z, it.r * q); ctx.fill();
+        ctx.globalAlpha = 0.95; ctx.strokeStyle = hex(it.color); ctx.lineWidth = 3 * k; ellipse(ctx, st, it.x, it.z, it.r); ctx.stroke();
+        ctx.globalAlpha = 0.8; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5 * k; ellipse(ctx, st, it.x, it.z, it.r * q); ctx.stroke();
+      } else {
+        const ux = Math.sin(it.angle), uz = Math.cos(it.angle), w = it.width / 2;
+        const pt = (a, b) => st.toScreen(it.x + ux * a - uz * b, it.z + uz * a + ux * b);
+        const path = (L) => { const ps = [pt(0, -w), pt(L, -w), pt(L, w), pt(0, w)]; ctx.beginPath(); ps.forEach((s2, i) => (i ? ctx.lineTo(s2.x, s2.y) : ctx.moveTo(s2.x, s2.y))); ctx.closePath(); };
+        ctx.fillStyle = hex(it.color);
+        ctx.globalAlpha = 0.22; path(it.len); ctx.fill();
+        ctx.globalAlpha = 0.45; path(it.len * q); ctx.fill();
+        ctx.globalAlpha = 0.9; ctx.strokeStyle = hex(it.color); ctx.lineWidth = 2.5 * k; path(it.len); ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
 
   drawTop() {}
 
@@ -275,12 +300,11 @@ export class FX {
     }
   }
 
-  // 예고: 붉은 룬이 그 자리에서 돈다 (도형 판 대신)
-  telegraph(x, z, radius, delay, color = 0xff4020) { return this.ground('runes', x, z, { scale: radius / 1.6, dur: delay, loop: true, tint: color, alpha: 0.95 }); }
+  // 적 공격 예고: 한눈에 보여야 하므로 색칠한 도형(원 · 직선 띠)으로. 가운데부터 차오르면 맞는다
+  telegraph(x, z, radius, delay, color = 0xff4020) { const it = { kind: 'warn', shape: 'circle', x, z, r: radius, color, dur: delay, t: 0 }; this.items.push(it); return it; }
   lane(x1, z1, x2, z2, width, delay, color = 0xff4020) {
-    const len = Math.hypot(x2 - x1, z2 - z1), n = Math.max(2, Math.round(len / 1.6));
-    for (let i = 0; i <= n; i++) { const t = i / n; this.ground('runes', x1 + (x2 - x1) * t, z1 + (z2 - z1) * t, { scale: width / 2.4, dur: delay, loop: true, tint: color, alpha: 0.9 }); }
-    return null;
+    const it = { kind: 'warn', shape: 'lane', x: x1, z: z1, angle: Math.atan2(x2 - x1, z2 - z1), len: Math.hypot(x2 - x1, z2 - z1), width, color, dur: delay, t: 0 };
+    this.items.push(it); return it;
   }
   // 그을음: 검은 연기
   scorch(x, z, radius) {
