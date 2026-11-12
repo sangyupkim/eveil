@@ -554,9 +554,21 @@ function reqLine(req, stats) {
   return `<div class="sub">요구: ${parts.join(', ')}</div>`;
 }
 
-export function toggleFullscreen() {
+export function toggleFullscreen(on = !document.fullscreenElement) {
   const d = document;
-  if (!d.fullscreenElement) {
-    d.documentElement.requestFullscreen?.().then(() => screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {});
+  if (on) {
+    const el = d.documentElement, req = el.requestFullscreen || el.webkitRequestFullscreen;
+    Promise.resolve(req?.call(el)).then(() => screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {});
   } else d.exitFullscreen?.();
+}
+// 전체 화면이 풀리면 다시 켜는 단추 · 세로 화면 안내에서 가로 전체 화면
+export function setupFullscreenUi(isTouch) {
+  const btn = document.getElementById('btnFull'), can = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+  const sync = () => { btn.hidden = !isTouch || !can || !!(document.fullscreenElement || document.webkitFullscreenElement); };
+  document.addEventListener('fullscreenchange', sync); document.addEventListener('webkitfullscreenchange', sync);
+  btn.addEventListener('click', () => toggleFullscreen(true));
+  document.getElementById('btnRotate')?.addEventListener('click', () => toggleFullscreen(true));
+  // 꾹 눌러 뜨는 메뉴 막기
+  document.addEventListener('contextmenu', (e) => { if (e.target.tagName !== 'INPUT') e.preventDefault(); });
+  sync();
 }

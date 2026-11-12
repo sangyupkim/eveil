@@ -216,6 +216,16 @@ export class World {
     }
   }
 
+  // 막힌 곳(언덕 · 물 · 바위 · 벽)이면 가까운 빈자리로
+  freeSpot(x, z, r = 0.6) {
+    if (!blockedAt(this.stage, x, z, r)) return { x, z };
+    for (let d = 0.75; d <= 10; d += 0.75) for (let k = 0; k < 12; k++) {
+      const a = (k / 12) * Math.PI * 2 + d, nx = x + Math.cos(a) * d, nz = z + Math.sin(a) * d;
+      if (!blockedAt(this.stage, nx, nz, r)) return { x: nx, z: nz };
+    }
+    return { x, z };
+  }
+
   // ───────── 던전 ─────────
   // 입구 위에 서면: 열쇠가 있으면 들어간다
   checkDungeonGate(dt) {
@@ -358,7 +368,8 @@ export class World {
     if (tier === 'named') actor.setGlow(0x302000);
     if (tier === 'boss') actor.setGlow(0x400800);
     const a = Math.random() * Math.PI * 2;
-    actor.pos.set(sp.x + Math.cos(a) * 1.5, 0, sp.z + Math.sin(a) * 1.5);
+    const fp = this.freeSpot(sp.x + Math.cos(a) * 1.5, sp.z + Math.sin(a) * 1.5, 0.9);
+    actor.pos.set(fp.x, 0, fp.z);
     actor.facing = Math.random() * 6.28;
     actor.root.rotation.y = actor.facing;
     const m = {
@@ -784,6 +795,7 @@ export class World {
   // ───────── 바닥 아이템 ─────────
 
   dropGround(dr, x, z, expires = null) {
+    ({ x, z } = this.freeSpot(x, z, 0.5)); // 언덕 · 물 · 벽 위에는 떨어뜨리지 않는다
     const g = { gid: this.nextGid++, kind: dr.kind, amount: dr.amount, item: dr.item, x, z, expires, born: this.time };
     let look = LOOT_LOOK.gold, color = 0xffd040, beam = false, rank = 0;
     if (dr.kind === 'item') {

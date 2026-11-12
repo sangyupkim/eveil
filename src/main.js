@@ -4,7 +4,7 @@ import { loadAllJson, waitImage, DATA } from './engine2d/sprites.js';
 import { FACES } from './data/flareWorld.js';
 import { World } from './world/world.js';
 import { HUD } from './ui/hud.js';
-import { Windows, toggleFullscreen } from './ui/windows.js';
+import { Windows, toggleFullscreen, setupFullscreenUi } from './ui/windows.js';
 import { setupInput } from './input.js';
 import { newPlayer } from './game/player.js';
 import { CONFIG } from './data/config.js';
@@ -120,7 +120,8 @@ async function boot() {
     await waitImage(portrait(st.look).replace('assets/flare/', ''));
     titleOn = false;
     $('#title').hidden = true;
-    if (isTouch) toggleFullscreen();
+    if (isTouch) toggleFullscreen(true);
+    setupFullscreenUi(isTouch);
     startGame(stage, st);
   };
   $('#btnNew').onclick = () => {
