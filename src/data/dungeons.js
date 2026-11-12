@@ -21,4 +21,4 @@ export function dungeonAt(x, z) {
 export const entranceOf = (zn) => ({ x: zn.x + (zn.x >= 0 ? -1 : 1) * zn.r * 0.45, z: zn.z + (zn.z >= 0 ? -1 : 1) * zn.r * 0.45 });
 
 // 단계마다: 몬스터 강함 · 보상
-export const stageMods = (stage) => ({ level: stage, hp: 1 + 0.18 * stage, dmg: 1 + 0.1 * stage });
+export const stageMods = (stage) => ({ level: Math.ceil(stage / 2), hp: 1 + 0.12 * stage, dmg: 1 + 0.06 * stage });
