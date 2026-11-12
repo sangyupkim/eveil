@@ -1,3 +1,4 @@
+import { TITLE_AT, titleKey, titleName, perkChoices } from '../data/titles.js';
 // 게임 월드: 플레이어 조작 · 몬스터 AI · 전투 · 스킬 · 드랍 · 사망 · 자동 사냥
 import * as THREE from 'three';
 import { CONFIG, TIERS, AP_TABLE } from '../data/config.js';
@@ -145,7 +146,55 @@ export class World {
   buffValues() {
     const b = {};
     for (const k in this.buffs) if (this.buffs[k].t > 0) b[k] = this.buffs[k].v;
+    // 칭호 특성으로 생긴 잠깐 효과 (피해 · 공격 속도 · 받는 피해 감소)
+    for (const k in this.pbuffs || {}) if (this.pbuffs[k].t > 0) b[k] = (b[k] || 0) + this.pbuffs[k].v;
     return b;
+  }
+
+  // ───────── 칭호 특성 ─────────
+  // trig: meleeHit · rangedHit · crit · kill · spell · buff · dodge · hurt · block
+  perk(trig, at = null) {
+    const list = this.st.titles;
+    if (!list?.length || this.dead) return;
+    for (const t of list) {
+      const k = t.perk;
+      if (k.trig !== trig || Math.random() >= k.p) continue;
+      const P = this.player.pos, d = this.d, wd = (d.dmg[0] + d.dmg[1]) / 2;
+      const near = (r) => this.monsters.filter((m) => !m.dead && dist2(m.pos, P) < r * r);
+      const tag = (txt) => this.fx.text(P.clone().setY(3), txt, 'heal');
+      const timed = (key, v) => { (this.pbuffs ||= {})[key] = { v, t: 3 }; this.d = derive(this.st, this.buffValues()); };
+      if (k.eff === 'might') { timed('might', k.v); tag(t.name); }
+      else if (k.eff === 'haste') { timed('haste', k.v); tag(t.name); }
+      else if (k.eff === 'ward') { timed('ward', k.v); tag(t.name); }
+      else if (k.eff === 'mp') this.gainMp(k.v);
+      else if (k.eff === 'shock' || k.eff === 'thorns') {
+        const r = k.eff === 'shock' ? 3 : 2.5;
+        this.fx.decal(0, P.x, P.z, r, 0xffc070, 0.35);
+        for (const m of near(r)) this.hitMonster(m, wd * k.v / 100, { src: 'perk' });
+      } else if (k.eff === 'blast') {
+        const c = at || P;
+        this.fx.burst(c.x, 1, c.z, 0xff8040, 14, 5, 0.4); this.fx.decal(0, c.x, c.z, 2.5, 0xff8040, 0.35);
+        for (const m of this.monsters) if (!m.dead && dist2(m.pos, c) < 6.25) this.hitMonster(m, k.v * d.spellMult, { src: 'perk' });
+      } else if (k.eff === 'chill') {
+        for (const m of near(4)) m.slowT = k.v / 10;
+        this.fx.decal(0, P.x, P.z, 4, 0x9fd8ff, 0.4);
+      } else if (k.eff === 'arrow') {
+        const m = near(10).sort((a, b) => dist2(a.pos, P) - dist2(b.pos, P))[0];
+        if (m) this.fx.projectile({ from: { x: P.x, y: 1.3, z: P.z }, target: m.actor, color: 0xd0e0ff, size: 0.6, speed: 26, bolt: true, onHit: () => this.hitMonster(m, wd * k.v / 100, { src: 'perk' }) });
+      }
+    }
+  }
+
+  // 각성 20 · 40 · 60: 키운 스탯으로 칭호를 받고 특성 하나를 고른다
+  offerTitle(tier) {
+    const st = this.st, key = titleKey(st.stats, CONFIG.startStat);
+    if ((st.titles ||= []).some((t) => t.tier === tier)) return;
+    this.ui.titlePick({ tier, key, name: titleName(key, tier), choices: perkChoices(key, tier) }, (perk) => {
+      st.titles.push({ tier, key, name: titleName(key, tier), perk });
+      sfx('awaken'); this.fx.pillar(this.player.pos.x, this.player.pos.z, 0xffe080, 1.4);
+      this.ui.log(`칭호: ${titleName(key, tier)} — ${perk.text}`, '#ffd860');
+      this.ui.dirty();
+    });
   }
 
   makeNpc() {
@@ -442,6 +491,7 @@ export class World {
       this.fx.text(head, '회피', 'miss');
       sfx('dodge');
       addAP(st, 'dex', AP_TABLE.dodge, apMult);
+      this.perk('dodge');
       return;
     }
     let dmg = raw * (1 - damageReduction(d.armor, m.level));
@@ -451,7 +501,9 @@ export class World {
       sfx('block');
       addAP(st, 'vit', AP_TABLE.blockVit, apMult);
       addAP(st, 'str', AP_TABLE.blockStr, apMult);
+      this.perk('block');
     }
+    if (this.pbuffs?.ward?.t > 0) dmg *= 1 - this.pbuffs.ward.v / 100;
     const sh = this.buffs.shield;
     if (sh && sh.t > 0 && sh.v > 0) {
       const ab = Math.min(sh.v, dmg);
@@ -461,6 +513,7 @@ export class World {
     dmg = Math.max(1, Math.round(dmg));
     st.hp -= dmg;
     addAP(st, 'vit', (dmg / d.maxHp) * AP_TABLE.hurtScale, apMult);
+    this.perk('hurt');
     this.player.hitFlash(0xff2000);
     this.fx.burst(this.player.pos.x, 1.2, this.player.pos.z, 0xff3020, 5, 2.5, 0.3);
     if (dmg > d.maxHp * 0.15) this.fx.shake(0.35);
@@ -484,6 +537,10 @@ export class World {
   // src: melee · ranged · magic(완드 기본공격) · skill
   hitMonster(m, raw, { crit = false, src = 'melee', ctx = null, pierce = 0 } = {}) {
     if (!m || m.dead) return;
+    const kind = this.d.cls.kind;
+    if (src === 'melee' && !ctx && kind === 'melee') this.perk('meleeHit');
+    if ((src === 'ranged' || (src === 'melee' && kind === 'ranged')) && !ctx) this.perk('rangedHit');
+    if (crit) this.perk('crit');
     const st = this.st, d = this.d;
     const rf = rewardFactor(st, m.level);
     const apMult = rf.ap * this.autoMult;
@@ -542,6 +599,7 @@ export class World {
 
   killMonster(m, src, ctx, rf) {
     m.dead = true;
+    if (src !== 'perk') this.perk('kill');
     m.hp = 0;
     const st = this.st, d = this.d;
     st.kills = (st.kills || 0) + 1;
@@ -597,6 +655,8 @@ export class World {
     this.fx.pillar(this.player.pos.x, this.player.pos.z, 0xffd060, 1.6);
     this.fx.burst(this.player.pos.x, 1.5, this.player.pos.z, 0xffe080, 30, 7, 0.5);
     this.ui.awaken(r);
+    const ti = TITLE_AT.indexOf(r.n);
+    if (ti >= 0) this.later(1.2, () => this.offerTitle(ti));
     sfx('awaken');
   }
 
@@ -915,6 +975,7 @@ export class World {
     this.skillUsed = true;
     this.actCd = RECOVER.skill;
     st.mp -= v.mp;
+    this.perk(sk.type === 'buff' ? 'buff' : sk.ap === 'int' ? 'spell' : 'skill', this.target?.pos);
     this.cds[id] = v.cd;
     this.skillExp(id, 1);
     const ctx = { id, mp: v.mp, hits: 0, apGiven: false };
@@ -1305,6 +1366,7 @@ export class World {
     // 버프 · 쿨타임 · 회복
     let buffChanged = false;
     for (const k in this.buffs) { const b = this.buffs[k]; if (b.t > 0) { b.t -= dt; if (b.t <= 0) buffChanged = true; } }
+    for (const k in this.pbuffs || {}) { const b = this.pbuffs[k]; if (b.t > 0) { b.t -= dt; if (b.t <= 0) buffChanged = true; } }
     if (buffChanged) this.d = derive(st, this.buffValues());
     for (const k in this.cds) if (this.cds[k] > 0) this.cds[k] -= dt;
     this.potionCd -= dt; this.atkCd -= dt; this.swing -= dt; this.actCd -= dt;

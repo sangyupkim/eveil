@@ -24,6 +24,8 @@ import { audio } from '../engine/audio.js';
 import { cloud } from '../net/cloud.js';
 import { uiSettings, applyUi, editUi } from './layout.js';
 
+import { TITLE_AT, titleKey, titleName } from '../data/titles.js';
+const nextTitle = (st) => { const i = TITLE_AT.findIndex((n) => st.awakenings < n); return i < 0 ? '' : ` · ${titleName(titleKey(st.stats), i)}까지 각성 ${TITLE_AT[i] - st.awakenings}`; };
 const TITLES = { inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', town: '마을', shop: '상점', menu: '메뉴' };
 const TAB_ORDER = ['inv', 'skills', 'char', 'quest', 'town', 'shop', 'menu'];
 const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '');
@@ -233,10 +235,11 @@ export class Windows {
     const hist = STATS.map((s) => `<span style="color:${STAT_COLORS[s]}">${STAT_NAMES[s]} ${Math.round((st.apTotal[s] / total) * 100)}%</span>`).join(' · ');
     return `<div class="cols"><div class="frame" style="flex:1.25">
         <div class="row" style="border:0;padding-top:0"><div class="portrait"><img src="${portrait(st.look)}" alt="" /></div>
-          <div class="grow"><div class="detail"><div class="nm">${esc(st.name)}</div></div><div class="note">각성 ${st.awakenings}회 · EXP ${Math.floor(st.exp)} / ${need}</div>
+          <div class="grow"><div class="detail"><div class="nm">${esc(st.name)}</div></div><div class="note">${(st.titles || []).length ? `<b style="color:#ffd860">${esc(st.titles[st.titles.length - 1].name)}</b> · ` : ''}각성 ${st.awakenings}회 · EXP ${Math.floor(st.exp)} / ${need}${nextTitle(st)}</div>
           <div class="mini"><i style="width:${Math.min(100, (st.exp / need) * 100)}%;background:linear-gradient(#ffe7a0,#c99a3a)"></i></div></div></div>
         ${rows}
         <div class="note" style="margin-top:6px">누적 성향 ${hist}</div>
+        ${(st.titles || []).map((t) => `<div class="note"><b style="color:#ffd860">${esc(t.name)}</b> ${esc(t.perk.text)}</div>`).join('')}
       </div><div class="frame" style="flex:1">
         <h3>세부 능력치</h3><div class="kv">${kv}</div>
         <h3 style="margin-top:12px">성장</h3>

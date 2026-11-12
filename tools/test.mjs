@@ -18,6 +18,7 @@ import { nextQuest, currentQuest, questKill, questDone, questNeed, questTurnIn }
 import { SKILLS } from '../src/data/skills.js';
 import { BASES } from '../src/data/items.js';
 import { MONSTERS, ZONES } from '../src/data/world.js';
+import { titleKey, perkChoices, titleName, TITLE_NAMES } from '../src/data/titles.js';
 
 let n = 0;
 const test = (name, fn) => { fn(); n++; console.log('  ✓', name); };
@@ -196,6 +197,19 @@ test('지역 · 몬스터 · 스킬 · 장비 데이터가 서로 맞물린다',
     const got = new Set();
     for (let i = 0; i < 4000; i++) got.add(BASES[rollBase(lv)].slot);
     assert.equal(got.size, 9, String(lv));
+  }
+});
+
+test('칭호: 키운 스탯 둘로 갈래 · 특성 셋', () => {
+  assert.equal(titleKey({ str: 40, dex: 12, int: 11, wis: 10, vit: 14 }), 'str');
+  assert.equal(titleKey({ str: 10, dex: 30, int: 28, wis: 10, vit: 12 }), 'dex+int');
+  assert.equal(titleName('dex+int', 0), '마궁사');
+  assert.equal(Object.keys(TITLE_NAMES).length, 15);
+  for (const k of Object.keys(TITLE_NAMES)) for (const t of [0, 1, 2]) {
+    const c = perkChoices(k, t);
+    assert.equal(c.length, 3, k);
+    assert.deepEqual(c, perkChoices(k, t)); // 늘 같은 셋
+    for (const p of c) assert.ok(!/회복/.test(p.text) || /MP/.test(p.text), 'HP 회복 금지: ' + p.text);
   }
 });
 

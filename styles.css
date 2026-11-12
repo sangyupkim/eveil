@@ -345,3 +345,10 @@ body.ui-edit #joyZone { display: none; }
 body.ui-edit #joy, body.ui-edit #br, body.ui-edit #quick, body.ui-edit #tl, body.ui-edit #tr { outline: 2px dashed #ffd860; outline-offset: 4px; pointer-events: auto; cursor: move; }
 body.ui-edit #joy { display: block; }
 #uiEditBar { position: fixed; left: 50%; top: 40%; transform: translateX(-50%); z-index: 50; display: flex; gap: 10px; align-items: center; padding: 8px 14px; background: rgba(12, 10, 9, 0.92); border: 1px solid #b39a6e; color: #ead6a4; }
+
+#titlePick { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); }
+#titlePick[hidden] { display: none; }
+#titlePick .tpBox { text-align: center; padding: calc(var(--u) * 1.2) calc(var(--u) * 2); background: rgba(20,16,12,0.92); border: 1px solid #8a6a30; }
+#titlePick h1 { margin: 0.1em 0 0.5em; font-family: var(--f-title); color: #ffd860; font-size: calc(var(--u) * 2.6); letter-spacing: 0.2em; text-shadow: 0 0 16px #c08010; }
+#titlePick .tpList { display: flex; gap: calc(var(--u) * 0.8); }
+#titlePick .tpPick { width: calc(var(--u) * 14); min-height: calc(var(--u) * 5); font-size: calc(var(--u) * 0.95); line-height: 1.35; white-space: normal; padding: 0.6em; }

@@ -74,7 +74,9 @@ export class HUD {
       .map((s) => `<span style="color:${STAT_COLORS[s]}">${STAT_NAMES[s]} +${r.gains[s]}</span>`).join('');
     const top = STATS.filter((s) => r.shares[s] > 0.005).sort((a, b) => r.shares[b] - r.shares[a])
       .map((s) => `${STAT_NAMES[s]} ${Math.round(r.shares[s] * 100)}%`).join(' · ');
-    el.innerHTML = `<h1>각성</h1><div class="gains">${gains}</div><div class="why">최근 행동: ${top || '없음'}</div>`;
+    const EFF = { str: ['검 피해', 3], dex: ['활 피해 · 공격 속도', 3], int: ['주문 피해', 3.5], wis: ['최대 MP', 4.5, true], vit: ['최대 HP', 6, true] };
+    const eff = STATS.filter((s) => r.gains[s] > 0).map((s) => { const [n, k, flat] = EFF[s]; return `${n} +${flat ? Math.round(r.gains[s] * k) : Math.round(r.gains[s] * k) + '%'}`; }).join(' · ');
+    el.innerHTML = `<h1>각성</h1><div class="gains">${gains}</div><div class="why">${eff}</div><div class="why">최근 행동: ${top || '없음'}</div>`;
     el.hidden = false;
     el.style.animation = 'none';
     void el.offsetWidth;
@@ -83,6 +85,21 @@ export class HUD {
     this.awT = setTimeout(() => { el.hidden = true; }, 3200);
     this.log(`각성 ${r.n}회: ${STATS.filter((s) => r.gains[s]).map((s) => `${STAT_NAMES[s]}+${r.gains[s]}`).join(' ')}`, '#ffd860');
     this.dirty();
+  }
+
+  // 칭호 고르기: 이름 + 특성 셋 중 하나
+  titlePick(o, done) {
+    let el = $('#titlePick');
+    if (!el) { el = document.createElement('div'); el.id = 'titlePick'; document.body.appendChild(el); }
+    const tier = ['1단계', '2단계', '3단계'][o.tier];
+    el.innerHTML = `<div class="tpBox"><div class="note">칭호 ${tier}</div><h1>${o.name}</h1>
+      <div class="tpList">${o.choices.map((c, i) => `<button class="plate tpPick" data-i="${i}">${c.text}</button>`).join('')}</div></div>`;
+    el.hidden = false;
+    const t0 = performance.now();
+    el.querySelectorAll('.tpPick').forEach((b) => b.addEventListener('pointerup', () => {
+      if (performance.now() - t0 < 400) return; // 창을 연 손길이 바로 고르지 않게
+      el.hidden = true; done(o.choices[Number(b.dataset.i)]);
+    }));
   }
 
   death(lostName, color) {

@@ -102,7 +102,7 @@ export function derive(st, buffs = {}) {
     maxHp: Math.round(60 + s.vit * 6 + (g.maxHp || 0)),
     maxMp: Math.round(15 + s.wis * 4.5 + (g.maxMp || 0)),
     dmg: [wd[0] * dmgMult, wd[1] * dmgMult],
-    atkRate: Math.min(2.2, speed * (1 + s.dex * 0.004 + (g.atkSpd || 0) / 100 + berserk / 100)),
+    atkRate: Math.min(2.2, speed * (1 + s.dex * 0.004 + (g.atkSpd || 0) / 100 + berserk / 100 + (buffs.haste || 0) / 100)),
     range: cls.range,
     crit: Math.min(0.75, 0.05 + s.dex * 0.0015 + ((g.crit || 0) + (buffs.focus || 0)) / 100),
     critMult: 1.6,
