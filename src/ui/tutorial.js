@@ -35,8 +35,8 @@ const COACH = [
 ];
 
 class Coach {
-  constructor(w) {
-    this.w = w; this.c = { moved: 0, picked: false, potion: false }; this.last = null;
+  constructor(w, windows) {
+    this.w = w; this.win = windows; this.c = { moved: 0, picked: false, potion: false }; this.last = null;
     this.el = document.createElement('div'); this.el.id = 'coach'; this.el.hidden = true;
     this.el.innerHTML = '<span class="ct"></span><button class="btn ok">확인</button><button class="btn skip">안내 끄기</button>';
     document.body.appendChild(this.el);
@@ -50,7 +50,7 @@ class Coach {
   hide() { this.el.hidden = true; document.querySelectorAll('.coachHi').forEach((e) => e.classList.remove('coachHi')); }
   update() {
     const w = this.w, st = w.st;
-    if (st.tut === 0 || (st.guide || 0) >= COACH.length) { if (!this.el.hidden) this.hide(); return; }
+    if (st.tut === 0 || (st.guide || 0) >= COACH.length || (this.win.open && this.step?.id !== 'town')) { if (!this.el.hidden) this.hide(); return; }
     const P = w.player.pos;
     if (this.last) this.c.moved += Math.hypot(P.x - this.last.x, P.z - this.last.z);
     this.last = { x: P.x, z: P.z };
@@ -90,7 +90,7 @@ export class Tutorial {
       this.show();
       world.ui.dirty();
     };
-    this.coach = new Coach(world);
+    this.coach = new Coach(world, windows);
     this.show();
   }
 

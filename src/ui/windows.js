@@ -1,7 +1,7 @@
 // 창: 가방(장비) · 스킬 · 능력(스탯/성향) · 상점 · 메뉴
 import { STATS, STAT_NAMES, STAT_COLORS, STAT_DESC, CONFIG } from '../data/config.js';
 import { SKILLS, BOOK_TIERS } from '../data/skills.js';
-import { BASES, SLOTS, SLOT_NAMES, RARITY, WEAPON_CLASSES } from '../data/items.js';
+import { BASES, SLOTS, SLOT_NAMES, RARITY, WEAPON_CLASSES, isTwoHandedBase } from '../data/items.js';
 import { itemName, itemColor, itemValue, affixText, isBook, makeItem } from '../game/items.js';
 import { scaledArmor, scaledDmg, totalStats, derive } from '../game/player.js';
 import { addItem } from '../game/inventory.js';
@@ -134,15 +134,40 @@ export class Windows {
     return h;
   }
 
+  // 장비창: 사람 실루엣 위에 부위별 칸 (머리 · 목 · 몸 · 손 · 허리 · 발 · 양손 · 반지)
   equipGrid() {
     const st = this.w.st;
-    let h = '<div class="equipGrid">';
+    const POS = { helm: [50, 9], amulet: [73, 21], weapon: [15, 40], armor: [50, 33], offhand: [85, 40], gloves: [20, 63], belt: [50, 56], ring1: [80, 63], ring2: [80, 80], boots: [50, 84] };
+    let h = `<div class="doll"><svg class="sil" viewBox="0 0 100 110" preserveAspectRatio="none"><path d="M50 6c7 0 12 5 12 12s-5 13-12 13-12-6-12-13 5-12 12-12zM33 34h34c6 0 10 4 11 10l5 27c1 4-5 6-7 2l-6-22v26l3 30c0 4-6 5-7 1l-6-28h-2l-6 28c-1 4-7 3-7-1l3-30V51l-6 22c-2 4-8 2-7-2l5-27c1-6 5-10 11-10z"/></svg>`;
     for (const s of SLOTS) {
-      const it = st.equip[s];
+      const it = st.equip[s], [x, y] = POS[s];
       const sel = this.sel?.from === 'equip' && this.sel.slot === s ? ' sel' : '';
-      h += `<div class="cell${sel}${it ? rar(it) : ''}" data-eq="${s}"><span class="lab">${SLOT_NAMES[s]}</span>${it ? ico(it) : ''}</div>`;
+      h += `<div class="cell dslot${sel}${it ? rar(it) : ''}" data-eq="${s}" style="left:${x}%;top:${y}%"><span class="lab">${SLOT_NAMES[s]}</span>${it ? ico(it) : ''}</div>`;
     }
     return h + '</div>';
+  }
+
+  // 고른 장비를 끼면(낀 것을 고르면 빼면) 전체 능력치가 어떻게 바뀌나
+  statDiff(cur) {
+    const st = this.w.st;
+    if (!cur || cur.book || !BASES[cur.base]?.slot) return '';
+    let slot = BASES[cur.base].slot, eq = { ...st.equip };
+    if (this.sel?.from === 'equip') { slot = this.sel.slot; eq[slot] = null; }
+    else {
+      if (slot === 'ring') slot = !st.equip.ring1 ? 'ring1' : !st.equip.ring2 ? 'ring2' : 'ring1';
+      eq[slot] = cur;
+      if (slot === 'weapon' && isTwoHandedBase(BASES[cur.base])) eq.offhand = null;
+    }
+    const a = derive(st, this.w.buffValues()), b = derive({ ...st, equip: eq }, this.w.buffValues());
+    const rows = [
+      ...STATS.map((k) => [STAT_NAMES[k], a.stats[k], b.stats[k], 0]),
+      ['피해', (a.dmg[0] + a.dmg[1]) / 2, (b.dmg[0] + b.dmg[1]) / 2, 0], ['공격 속도', a.atkRate, b.atkRate, 2], ['치명타 %', a.crit * 100, b.crit * 100, 1],
+      ['회피 %', a.dodge * 100, b.dodge * 100, 1], ['막기 %', a.block * 100, b.block * 100, 1], ['방어력', a.armor, b.armor, 0], ['최대 HP', a.maxHp, b.maxHp, 0], ['최대 MP', a.maxMp, b.maxMp, 0],
+      ['주문 배율', a.spellMult, b.spellMult, 2], ['이동 속도', a.moveSpeed, b.moveSpeed, 1], ['HP 회복', a.hpRegen, b.hpRegen, 1], ['MP 회복', a.mpRegen, b.mpRegen, 1],
+    ];
+    const out = rows.map(([n, x, y, f]) => { const d = y - x; if (Math.abs(d) < (f ? 0.5 / 10 ** f : 0.5)) return ''; const up = d > 0;
+      return `<span>${n}</span><b>${x.toFixed(f)} → <em style="color:${up ? '#7fe07a' : '#ff6a5a'}">${y.toFixed(f)} ${up ? '▲' : '▼'}${Math.abs(d).toFixed(f)}</em></b>`; }).join('');
+    return `<h3 style="margin-top:8px">${this.sel?.from === 'equip' ? '빼면' : '끼면'} 바뀌는 능력치</h3>${out ? `<div class="kv diff">${out}</div>` : '<div class="note">변화 없음</div>'}`;
   }
 
   bagGrid() {
@@ -173,7 +198,8 @@ export class Windows {
   inv() {
     const cur = this.cur();
     return `<div class="cols">
-      <div class="frame" style="flex:0 0 40%"><h3>장비</h3>${this.equipGrid()}<div class="detail">${this.describe(cur, this.sel?.from)}</div>${this.worn(cur)}</div>
+      <div class="frame" style="flex:0 0 30%"><h3>장비</h3>${this.equipGrid()}</div>
+      <div class="frame" style="flex:0 0 30%"><div class="detail">${this.describe(cur, this.sel?.from)}</div>${this.statDiff(cur)}${this.worn(cur)}</div>
       <div class="frame" style="flex:1">${this.bagHead()}${this.bagGrid()}</div></div>`;
   }
 
