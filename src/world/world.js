@@ -271,7 +271,20 @@ export class World {
       if (valid && d < m.def.aggro * (m.tier === 'boss' ? 1.3 : 1)) m.state = 'chase';
     } else if (m.state === 'chase') {
       if (!valid || fromHome > 32) { m.state = 'return'; }
-      else if (d > m.def.range) {
+      else if (m.def.behave === 'charge' && m.tier !== 'boss' && d > 4 && d < 10 && (m.chargeCd = (m.chargeCd ?? 3) - dt) <= 0 && a.lock <= 0) {
+        // 돌진형: 선을 그어 알린 뒤 곧게 달려든다
+        m.chargeCd = 5 + Math.random() * 3;
+        a.face(p.x, p.z); a.lock = 0.7;
+        const dx = p.x - m.pos.x, dz = p.z - m.pos.z, l = Math.hypot(dx, dz) || 1;
+        const to = { x: m.pos.x + (dx / l) * (l + 2.5), z: m.pos.z + (dz / l) * (l + 2.5) };
+        this.fx.lane(m.pos.x, m.pos.z, to.x, to.z, 1.8 * a.scale, 0.7, 0xff4020);
+        this.later(0.7, () => { if (!m.dead) { m.dash = { to, t: 0.45, hit: false }; a.lock = 0; a.play('run', { force: true, speed: 1.6 }); } });
+      } else if (m.def.attack !== 'melee' && d < m.def.range * 0.45 && a.lock <= 0 && m.tier !== 'boss') {
+        // 원거리형: 너무 가까우면 물러선다
+        const away = { x: m.pos.x * 2 - p.x, z: m.pos.z * 2 - p.z };
+        this.stepToward(m.pos, away, spd * 0.8 * dt); a.face(p.x, p.z); moving = 2;
+        if (m.atkT <= 0) this.monsterAttack(m);
+      } else if (d > m.def.range) {
         if (a.lock <= 0) {
           // 앞이 막혔으면 길을 찾아 돌아온다 (0.6초마다 다시 본다)
           m.pathT = (m.pathT || 0) - dt;
@@ -290,9 +303,10 @@ export class World {
         a.face(p.x, p.z);
         if (m.atkT <= 0 && a.lock <= 0) this.monsterAttack(m);
       }
-      if (m.tier === 'boss' && m.def.patterns && valid && d < 16) {
+      const pats = m.tier === 'boss' ? m.def.patterns : m.tier === 'named' ? ['slam', 'charge'] : null;
+      if (pats && valid && d < 16) {
         m.patT = (m.patT ?? 5) - dt * (m.hp < m.maxHp * 0.3 ? 1.6 : 1);
-        if (m.patT <= 0 && a.lock <= 0) { m.patT = 6.5; this.bossPattern(m, m.def.patterns[(m.patI = (m.patI || 0) + 1) % m.def.patterns.length]); }
+        if (m.patT <= 0 && a.lock <= 0) { m.patT = m.tier === 'boss' ? 6.5 : 8.5; this.bossPattern(m, pats[(m.patI = (m.patI || 0) + 1) % pats.length]); }
       }
     } else if (m.state === 'return') {
       this.stepToward(m.pos, m.home, spd * 1.3 * dt);
@@ -419,6 +433,7 @@ export class World {
 
   hurtPlayer(raw, m) {
     if (this.dead) return;
+    if (this.rollT > 0) { this.fx.text(this.player.pos.clone().setY(2.4), '회피', 'miss'); addAP(this.st, 'dex', AP_TABLE.dodge, this.autoMult); return; }
     const st = this.st, d = this.d;
     const rf = rewardFactor(st, m.level);
     const apMult = rf.ap * this.autoMult;
@@ -472,7 +487,11 @@ export class World {
     const st = this.st, d = this.d;
     const rf = rewardFactor(st, m.level);
     const apMult = rf.ap * this.autoMult;
-    const red = m.armor / (m.armor + 60) * (1 - pierce);
+    let red = m.armor / (m.armor + 60) * (1 - pierce);
+    if (m.def.behave === 'shield' && !ctx?.spell) {
+      const P = this.player.pos, f = m.actor.facing, ang = Math.atan2(P.x - m.pos.x, P.z - m.pos.z);
+      if (Math.abs(Math.atan2(Math.sin(ang - f), Math.cos(ang - f))) < 1.0) { red = 1 - (1 - red) * 0.4; if (Math.random() < 0.3) this.fx.text(m.pos.clone().setY(2.2), '막음', 'miss'); }
+    }
     const dmg = Math.max(1, Math.round(raw * (1 - red)));
     m.hp -= dmg;
     m.showHp = 6;
@@ -547,7 +566,12 @@ export class World {
     if (ctx) this.skillExp(ctx.id, 2, rf);
 
     // EXP → 각성
-    const exp = m.exp * rf.exp * this.autoMult;
+    // 처치 연쇄: 2.5초 안에 이어 잡으면 쌓이고, 쌓일수록 경험 +2% (최대 +40%), 10연쇄마다 잠깐 빨라진다
+    this.chain = this.time - (this.lastKillT ?? -9) < 2.5 ? (this.chain || 0) + 1 : 1;
+    this.lastKillT = this.time;
+    if (this.chain >= 3) this.fx.text(this.player.pos.clone().setY(3.2), `연쇄 ${this.chain}`, this.chain >= 10 ? 'crit' : 'heal');
+    if (this.chain % 10 === 0) { this.chainSpdT = 5; sfx('buff', 0.6); }
+    const exp = m.exp * rf.exp * this.autoMult * (1 + Math.min(20, this.chain) * 0.02);
     const results = gainExp(st, exp);
     for (const r of results) this.onAwaken(r);
 
@@ -724,6 +748,21 @@ export class World {
   }
 
   // 공격 단추: 타겟 고정이 켜져 있으면 이동해도 공격하던 대상을 다시 잡는다
+  // 구르기: 짧게 굴러 0.35초 동안 맞지 않는다 (1.2초마다)
+  roll() {
+    if (this.dead || (this.rollCd || 0) > 0 || this.inTown && false) return;
+    const P = this.player;
+    const j = this.joy.lengthSq() > 0.01 ? this.joy.clone().normalize() : null;
+    const ang = j ? Math.atan2(j.x, j.y) : P.facing;
+    this.rollDir = { x: Math.sin(ang), z: Math.cos(ang) };
+    this.rollT = 0.32; this.rollCd = 1.2;
+    this.cancelRecall(); this.pendingSkill = null; this.moveTo = null; this.movePath = null;
+    P.lock = 0; P.facing = ang; P.play('run', { force: true, speed: 2.2 });
+    this.fx.smoke.add({ x: P.pos.x, y: 0.3, z: P.pos.z, vy: 0.4, color: 0x5a4c3a, size: 1.2, size1: 2.6, life: 0.6, cell: 'smoke', alpha: 0.45 });
+    sfx('dodge');
+    this.ui.dirty();
+  }
+
   attackButton() {
     const lock = this.st.settings.targetLock !== false;
     const t = this.target && !this.target.dead ? this.target
@@ -1337,8 +1376,15 @@ export class World {
       if (this.autoThink <= 0) { this.autoThink = 0.2; this.autoBrain(); }
     }
     let moving = false;
-    const speed = d.moveSpeed;
-    if (this.joy.lengthSq() > 0.01) {
+    const speed = d.moveSpeed * ((this.chainSpdT || 0) > 0 ? 1.15 : 1);
+    if (this.rollCd > 0) this.rollCd -= dt;
+    if (this.chainSpdT > 0) this.chainSpdT -= dt;
+    if (this.rollT > 0) {
+      this.rollT -= dt;
+      P.pos.x += this.rollDir.x * 15 * dt; P.pos.z += this.rollDir.z * 15 * dt;
+      resolveCollision(this.stage, P.pos, 0.5);
+      moving = true;
+    } else if (this.joy.lengthSq() > 0.01) {
       // 조이스틱은 공격 동작도 끊는다
       if (P.lock > 0 && this.swing <= 0) P.lock = 0;
       if (P.lock <= 0) {
