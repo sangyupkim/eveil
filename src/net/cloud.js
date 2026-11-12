@@ -66,6 +66,19 @@ export const cloud = {
     try { localStorage.removeItem(KEY); } catch { /* 무시 */ }
   },
 
+  // 오류 보고 (로그인 없이, 한 번 켜는 동안 5개까지)
+  reportError(msg, stack, ver) {
+    if ((this.errN = (this.errN || 0) + 1) > 5) return;
+    post({ type: 'ash_err', msg: String(msg).slice(0, 300), stack: String(stack || '').slice(0, 1500), ver, ua: navigator.userAgent.slice(0, 200) }, true);
+  },
+  // 한 단계 전 저장 (백업)
+  async restore() {
+    if (!account || !(await this.available())) return null;
+    const r = await post({ type: 'ash_restore', token: account.token });
+    if (!r.ok || !r.data) return null;
+    try { return JSON.parse(r.data); } catch { return null; }
+  },
+
   // 서버에 있는 저장 (없으면 null)
   async load() {
     if (!account || !(await this.available())) return null;

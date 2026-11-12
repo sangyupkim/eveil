@@ -5,7 +5,8 @@ import { warmTerrain } from './engine2d/stage.js';
 import { FACES } from './data/flareWorld.js';
 import { World } from './world/world.js';
 import { HUD } from './ui/hud.js';
-import { Windows, toggleFullscreen, setupFullscreenUi } from './ui/windows.js';
+import { Windows, toggleFullscreen, setupFullscreenUi, showNotes } from './ui/windows.js';
+import { GAME_VERSION } from './data/patchnotes.js';
 import { setupInput } from './input.js';
 import { newPlayer } from './game/player.js';
 import { CONFIG } from './data/config.js';
@@ -56,8 +57,11 @@ async function boot() {
   $('#loadBar').hidden = true;
   // 시작 화면이 떠 있는 동안 뒤에서: 다른 땅 · 몬스터 · 효과 그림을 미리 받고, 물가 · 언덕 타일을 미리 만든다
   (async () => {
+    // 데이터를 아끼려고: 땅 · 효과 · 떨어진 물건 전부 + 처음 두 지역(들판 · 숲) 몬스터만. 나머지 몬스터는 갈 때 받는다
     const later = [...new Set(Object.values(DATA.tiles).flatMap((t) => t.imgs))];
-    for (const def of [DATA.enemies, DATA.npcs, DATA.powers, DATA.loot]) for (const v of Object.values(def || {})) if (v?.images) later.push(...Object.values(v.images)); else if (v?.img) later.push(v.img);
+    for (const def of [DATA.npcs, DATA.powers, DATA.loot]) for (const v of Object.values(def || {})) if (v?.images) later.push(...Object.values(v.images));
+    const { ZONES } = await import('./data/world.js'), { MONSTER_LOOK } = await import('./data/flareWorld.js');
+    for (const zn of ZONES.slice(0, 2)) for (const t of [...Object.keys(zn.spawns), zn.named.type, zn.boss.type]) { const e = DATA.enemies[MONSTER_LOOK[t]?.sprite]; if (e?.images) later.push(...Object.values(e.images)); }
     for (const p of later) await waitImage(p).catch(() => {});
     await warmTerrain();
   })();
@@ -128,6 +132,7 @@ async function boot() {
     await waitImage(portrait(st.look).replace('assets/flare/', ''));
     titleOn = false;
     $('#title').hidden = true;
+    if (st.seenVer !== GAME_VERSION) { if (st.seenVer) showNotes(); st.seenVer = GAME_VERSION; }
     if (isTouch) toggleFullscreen(true);
     setupFullscreenUi(isTouch);
     startGame(stage, st);
@@ -202,3 +207,9 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); window.__install = e; document.body.classList.add('canInstall'); });
 window.addEventListener('appinstalled', () => { window.__install = null; document.body.classList.remove('canInstall'); });
 document.getElementById('btnInstall')?.addEventListener('click', async () => { const p = window.__install; if (!p) return; p.prompt(); await p.userChoice.catch(() => {}); window.__install = null; document.body.classList.remove('canInstall'); });
+
+// 오류 보고: 이용자 화면에서 난 오류를 서버로 (직접 못 본 버그도 잡게)
+import('./data/patchnotes.js').then(({ GAME_VERSION }) => {
+  window.addEventListener('error', (e) => cloud.reportError(e.message, e.error?.stack, GAME_VERSION));
+  window.addEventListener('unhandledrejection', (e) => cloud.reportError(e.reason?.message || String(e.reason), e.reason?.stack, GAME_VERSION));
+});

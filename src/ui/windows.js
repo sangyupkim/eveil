@@ -30,6 +30,7 @@ import { TITLE_AT, titleKey, titleName, UNIQUES, perkChoices } from '../data/tit
 import { VARIANTS, variantSlots } from '../game/skills.js';
 import { SCHOOL_NAMES } from '../data/skills.js';
 import { GEMS, GEM_GRADES } from '../data/legends.js';
+import { GAME_VERSION, PATCH_NOTES } from '../data/patchnotes.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { dailyOf, dailyText, dailyReward } from '../game/daily.js';
 // 스탯 오각형: 내가 어느 쪽으로 컸나
@@ -40,6 +41,14 @@ const pentagon = (stats) => {
   const labels = STATS.map((k, i) => { const [x, y] = pt(i, 48).split(','); return `<text x="${x}" y="${y}" fill="${STAT_COLORS[k]}" font-size="8" text-anchor="middle" dominant-baseline="middle">${STAT_NAMES[k]}</text>`; }).join('');
   return `<svg class="penta" viewBox="0 0 100 100">${grid}${shape}${labels}</svg>`;
 };
+// 패치 노트 창 (새 버전이면 처음 한 번 저절로)
+export function showNotes() {
+  let el = document.getElementById('notes');
+  if (!el) { el = document.createElement('div'); el.id = 'notes'; document.body.appendChild(el); }
+  el.innerHTML = `<div class="nbox"><button class="btn nclose">닫기</button>${PATCH_NOTES.map((n) => `<h2>${n.ver} <small>${n.date}</small></h2><p>${n.head}</p><ol>${n.items.map((x) => `<li>${x}</li>`).join('')}</ol>`).join('')}</div>`;
+  el.hidden = false;
+  el.querySelector('.nclose').onclick = () => { el.hidden = true; };
+}
 const repickCost = (t) => 2000 * (t.tier + 1) ** 2;
 const nextTitle = (st) => { const i = TITLE_AT.findIndex((n) => st.awakenings < n); return i < 0 ? '' : ` · ${titleName(titleKey(st.stats), i)}까지 각성 ${TITLE_AT[i] - st.awakenings}`; };
 const TITLES = { inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', town: '마을', shop: '상점', menu: '메뉴' };
@@ -455,7 +464,7 @@ export class Windows {
         <div class="setRow"><span>물약 자동 구매</span><div class="opts">${onoff('autoBuy', set.autoBuy !== false)}</div></div>
         <div class="setRow"><span>전체 화면</span><div class="opts"><button class="btn" data-full="1">전환</button></div></div>
         <div class="setRow"><span>앱으로 설치</span><div class="opts">${matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches ? '<span class="note">설치됨</span>' : window.__install ? '<button class="btn gold" data-install="1">설치</button>' : /iPhone|iPad/.test(navigator.userAgent) ? '<span class="note">공유 → 홈 화면에 추가</span>' : '<span class="note">브라우저 메뉴 → 앱 설치</span>'}</div></div>
-        <div class="btns"><button class="btn" data-save="1">지금 저장</button><button class="btn danger" data-reset="1">캐릭터 삭제</button></div>
+        <div class="btns"><button class="btn" data-notes="1">패치 노트 ${GAME_VERSION}</button>${cloud.id ? '<button class="btn" data-restore="1">백업에서 되살리기</button>' : ''}<button class="btn" data-save="1">지금 저장</button><button class="btn danger" data-reset="1">캐릭터 삭제</button></div>
       </div><div class="frame" style="flex:1">
         <div class="cards">
           ${card('inv', `<img src="${chestIcon()}" alt="" />`, '가방')}
@@ -566,6 +575,15 @@ export class Windows {
       w.ui.dirty(); this.render();
     });
     on('[data-hire]', () => townDone(hire(st), '용병을 고용했습니다'));
+    on('[data-notes]', () => showNotes());
+    on('[data-restore]', async () => {
+      const b = await cloud.restore();
+      if (!b) { w.ui.toast('백업이 없습니다'); return; }
+      if (!confirm(`${new Date(b.savedAt || 0).toLocaleString()} 저장으로 되돌릴까요? 지금 진행은 사라집니다.`)) return;
+      b.savedAt = Date.now(); // 서버의 더 새 저장이 다시 덮지 않게
+      try { localStorage.setItem('ashen-save', JSON.stringify(b)); } catch { /* 무시 */ }
+      location.reload();
+    });
     on('[data-research]', (el) => townDone(researchStart(st, el.dataset.research), '연구를 시작했습니다'));
     on('[data-mgear]', (el) => townDone(mercGear(st, Number(el.dataset.mgear)), '장비를 맡겼습니다 (원정 성과 상승)'));
     on('[data-school]', (el) => { this.skillSchool = el.dataset.school; this.skillSel = null; audio.play('click'); this.render(); });
