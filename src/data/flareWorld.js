@@ -11,7 +11,7 @@ export const ZONE_LOOK = {
   ruins: { set: 'grassland', ground: [32, 47], patch: [16, 31], grade: 'rgba(40,30,20,0.18)' },
   swamp: { set: 'grassland', ground: [16, 31], water: [176, 191], grade: 'rgba(20,40,20,0.3)' },
   frost: { set: 'snowplains', ground: [16, 31], patch: [569, 583], grade: 'rgba(20,40,80,0.18)' },
-  valley: { set: 'cave', ground: [16, 31], patch: [48, 55], grade: 'rgba(60,40,10,0.12)' },
+  valley: { set: 'desert', ground: [24, 39], grade: 'rgba(60,40,10,0.1)' },
   inferno: { set: 'cave', ground: [16, 31], patch: [48, 55], grade: 'rgba(110,20,0,0.32)' },
 };
 
@@ -30,7 +30,7 @@ export const ZONE_PROPS = {
     ['grassland', range(124, 127), 40, 0], ['grassland', [136, 137], 10, 0.8], ['cave', range(132, 135), 14, 0]],
   frost: [['snowplains', range(244, 247), 36, 0.6], ['snowplains', range(552, 567), 36, 1], ['snowplains', range(112, 127), 40, 0], ['snowplains', range(532, 534), 4, 0.7],
     ['snowplains', range(132, 135), 12, 1], ['snowplains', range(535, 538), 8, 0.8], ['snowplains', range(128, 131), 12, 1]],
-  valley: [['cave', range(144, 149), 34, 1], ['cave', range(150, 153), 30, 1], ['grassland', range(128, 135), 20, 1], ['grassland', range(244, 247), 12, 0.6], ['dungeon', range(176, 183), 12, 0]],
+  valley: [['desert', range(120, 127), 40, 0.7], ['desert', range(104, 119), 50, 0], ['desert', [201, 202, 203], 26, 0.5], ['desert', [200], 10, 0], ['desert', range(56, 63), 0, 1], ['grassland', range(132, 135), 14, 1]],
   inferno: [['cave', range(144, 149), 30, 1], ['cave', range(150, 153), 26, 1], ['dungeon', range(176, 183), 26, 0], ['cave', range(132, 135), 10, 0], ['dungeon', [178], 6, 0]],
   wild: [['grassland', range(252, 255), 1, 0.9], ['grassland', range(248, 251), 1, 0.8], ['grassland', range(244, 247), 1, 0.6], ['grassland', range(124, 127), 2, 0], ['grassland', range(128, 131), 1, 1], ['grassland', range(112, 123), 3, 0]],
 };

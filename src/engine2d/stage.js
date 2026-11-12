@@ -36,9 +36,9 @@ function groundAt(i, j) {
   const lake = lakeCell(i, j);
   if (lake) {
     const k = edgeKind((a, b) => !!lakeCell(a, b), i, j);
-    if (!k) return [lake.set, 176 + Math.floor(h * 16), true];
+    if (!k) return [lake.set, wb(lake.set)[1] + Math.floor(h * 16), true];
     if (k === 'bad') return [lake.set, L.ground[0]];
-    return [lake.set, BANK[k][h < 0.5 ? 0 : 1], false];
+    return [lake.set, bankId(lake.set, k, h), false];
   }
   if (L.patch && noise(x * 1.3 + 9, z * 1.3) > 0.68) return [L.set, L.patch[0] + Math.floor(h * (L.patch[1] - L.patch[0] + 1))];
   return [L.set, L.ground[0] + Math.floor(h * (L.ground[1] - L.ground[0] + 1))];
@@ -108,6 +108,9 @@ function edgeKind(inside, i, j) {
   return { '1100': 'NE', '0110': 'ES', '0011': 'SW', '1001': 'NW' }[key] || 'bad';
 }
 // 물가: 물 안쪽 테두리 칸 (땅 쪽 방향 → 타일 두 벌)
+// 묶음마다 물가 · 물 첫 번호 (사막은 옛 Flare 번호라 8 앞선다)
+const WATER_BASE = { desert: [136, 168] }, wb = (set) => WATER_BASE[set] || [144, 176];
+const bankId = (set, k, h) => BANK[k][h < 0.5 ? 0 : 1] - 144 + wb(set)[0];
 const BANK = { W: [144, 148], N: [145, 149], E: [146, 150], S: [147, 151], NW: [152, 156], NE: [153, 157], ES: [154, 158], SW: [155, 159], iNW: [160, 164], iNE: [161, 165], iSE: [162, 166], iSW: [163, 167] };
 // 절벽: 고원 안쪽 테두리 칸 (물건 층)
 const CLIFF = { E: [48, 52], S: [49, 53], W: [50, 54], N: [51, 55], iSE: [56, 60], iSW: [57, 61], iNW: [58, 62], iNE: [59, 63], ES: [64, 68], SW: [65, 69], NW: [66, 70], NE: [67, 71] };
@@ -189,7 +192,7 @@ export function buildWorldProps(stage) {
   for (const [i, j] of cells(LAKES, lakeCell)) { const [x, z] = cellXZ(i, j); stage.colliders.push({ x, z, r: 1.15 }); }
   // 언덕: 윗면은 땅 타일을 한 단 올리고, 둘레는 '바닥이 땅인 물가 타일'을 한 단 올려 절벽을 만든다
   for (const [i, j, q] of cells(MESAS, (a, b) => mesaCell(a, b) || mesaRing(a, b))) {
-    const [x, z] = cellXZ(i, j), h = hash(i, j), set = q.set === 'snowplains' ? 'snowplains' : 'grassland';
+    const [x, z] = cellXZ(i, j), h = hash(i, j), set = q.set;
     const floor = ZONE_LOOK[zoneAt(x, z)?.id || 'wild'].ground;
     if (mesaCell(i, j)) {
       stage.colliders.push({ x, z, r: 1.15 });
@@ -198,7 +201,7 @@ export function buildWorldProps(stage) {
       const k = edgeKind((a, b) => !mesaCell(a, b), i, j);
       if (!k || k === 'bad') continue;
       stage.colliders.push({ x, z, r: 0.95 });
-      const p = { set, id: BANK[k][h < 0.5 ? 0 : 1], x, z, t: DATA.tiles[set].tiles[BANK[k][0]], lift: HILL_LIFT, bank: floor[0] };
+      const id = bankId(set, k, h), p = { set, id, x, z, t: DATA.tiles[set].tiles[id], lift: HILL_LIFT, bank: floor[0] };
       const key = Math.floor(x / CHUNK) + ',' + Math.floor(z / CHUNK);
       if (!stage.props.has(key)) stage.props.set(key, []);
       stage.props.get(key).push(p);
@@ -208,7 +211,7 @@ export function buildWorldProps(stage) {
   for (const q of LAKES) for (let i = 0; i < 22; i++) {
     const a = rng() * 6.28, d = q.r * (1.1 + rng() * 0.25), x = q.x + Math.cos(a) * d, z = q.z + Math.sin(a) * d;
     if (inLake(x, z, 0.6) || inMesa(x, z) || inMesa(x + 1.5, z + 1.5) || inMesa(x - 1.5, z + 1.5)) continue;
-    const shore = q.set === 'snowplains' ? [[552, 567, 0], [112, 115, 0]] : [[114, 115, 0], [124, 127, 0], [128, 131, 0.6]];
+    const shore = q.set === 'snowplains' ? [[552, 567, 0], [112, 115, 0]] : q.set === 'desert' ? [[104, 119, 0], [120, 127, 0.6]] : [[114, 115, 0], [124, 127, 0], [128, 131, 0.6]];
     const [a0, a1, rr] = shore[Math.floor(rng() * shore.length)];
     addProp(stage, q.set, a0 + Math.floor(rng() * (a1 - a0 + 1)), x, z, rr);
   }
@@ -393,7 +396,7 @@ function render(stage, dt) {
     if (Math.hypot(x, z) > WORLD_SIZE + 12) continue;
     const [set, id, wet] = tileAt(i, j);
     const p = stage.toScreen(x, z);
-    if (wet || (id >= 144 && id <= 167 && set !== 'cave')) drawWater(ctx, set, id, p.x, p.y, s); else drawTile(stage, ctx, set, id, p.x, p.y, s);
+    if (wet || (set !== 'cave' && id >= wb(set)[0] && id < wb(set)[0] + 24)) drawWater(ctx, set, id, p.x, p.y, s); else drawTile(stage, ctx, set, id, p.x, p.y, s);
     if (false) {
       const w = 97 * s, h = 48.5 * s, k = 0.5 + 0.5 * Math.sin(stage.time * 1.6 + x * 0.7 + z * 0.9);
       ctx.fillStyle = set === 'snowplains' ? `rgba(120,170,210,${0.32 + k * 0.08})` : `rgba(40,110,140,${0.36 + k * 0.1})`;
