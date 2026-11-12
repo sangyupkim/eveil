@@ -1,4 +1,4 @@
-import { TITLE_AT, titleKey, titleName, perkChoices } from '../data/titles.js';
+import { TITLE_AT, titleKey, titleName, perkChoices, UNIQUES } from '../data/titles.js';
 // 게임 월드: 플레이어 조작 · 몬스터 AI · 전투 · 스킬 · 드랍 · 사망 · 자동 사냥
 import * as THREE from 'three';
 import { CONFIG, TIERS, AP_TABLE } from '../data/config.js';
@@ -138,6 +138,8 @@ export class World {
     this.d = derive(st, this.buffValues());
     const e = st.equip;
     this.player.setLook(heroLook(st));
+    const plus = e.weapon?.plus || 0;
+    this.player.setGlow(plus >= 9 ? 0x402008 : plus >= 7 ? 0x281808 : null);
     st.hp = Math.min(st.hp, this.d.maxHp);
     st.mp = Math.min(st.mp, this.d.maxMp);
     this.ui.dirty();
@@ -154,8 +156,10 @@ export class World {
   // ───────── 칭호 특성 ─────────
   // trig: meleeHit · rangedHit · crit · kill · spell · buff · dodge · hurt · block
   perk(trig, at = null) {
-    const list = this.st.titles;
-    if (!list?.length || this.dead) return;
+    // 칭호 특성 + 끼고 있는 전설 장비의 고유 효과
+    const list = [...(this.st.titles || [])];
+    for (const it of Object.values(this.st.equip)) if (it?.unique != null) list.push({ name: it.title, perk: UNIQUES[it.unique] });
+    if (!list.length || this.dead) return;
     for (const t of list) {
       const k = t.perk;
       if (k.trig !== trig || Math.random() >= k.p) continue;
@@ -640,6 +644,10 @@ export class World {
       const r = drops.length > 1 ? 1.2 + Math.random() : 0.6;
       this.dropGround(dr, m.pos.x + Math.cos(a) * r, m.pos.z + Math.sin(a) * r);
     });
+    // 득템 연출: 영웅은 소리, 전설은 화면이 울리고 알림
+    const best = drops.map((dr) => dr.item?.rarity).find((r) => r === 'legend') || drops.map((dr) => dr.item?.rarity).find((r) => r === 'hero');
+    if (best === 'legend') { this.fx.shake(0.4); this.fx.pillar(m.pos.x, m.pos.z, 0x41e07a, 2.2, 6, 2); sfx('rare'); this.ui.toast('전설 장비!', '#41e07a'); }
+    else if (best === 'hero') { sfx('rare', 0.8); this.fx.pillar(m.pos.x, m.pos.z, 0xff9a3c, 1.2, 4, 1); }
     if (m.tier !== 'normal') this.ui.log(`${m.name} 처치!`, TIERS[m.tier].color);
     const zid = m.sp?.zone?.id, got = zid && !m.noLoot ? dropMats(st, zid, m.tier) : 0;
     if (got) { this.matLog = (this.matLog || 0) + got; this.fx.text(m.pos.clone().setY(2.2), `+${got} ${MATERIALS[zid].name}`, 'heal'); if (m.tier !== 'normal') this.ui.log(`${MATERIALS[zid].name} +${got}`, '#c8e08a'); }

@@ -2,6 +2,7 @@
 import { BASES, AFFIXES, RARITY, RARITY_ORDER, AFFIX_PREFIX, LEGEND_NAMES, WEAPON_CLASSES } from '../data/items.js';
 import { SKILLS, BOOK_TIERS } from '../data/skills.js';
 import { R, randInt, pick, weighted } from './rng.js';
+import { UNIQUES } from '../data/titles.js';
 
 const uid = (st) => (st ? st.nextUid++ : Math.floor(Math.random() * 1e9));
 
@@ -25,7 +26,7 @@ export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1 } = {}, 
     const v = Math.max(a.min, Math.round(a.min + rng() * (max - a.min)));
     it.affixes.push({ id, v });
   }
-  if (rarity === 'legend') it.title = pick(LEGEND_NAMES, rng);
+  if (rarity === 'legend') { it.title = pick(LEGEND_NAMES, rng); it.unique = Math.floor(rng() * UNIQUES.length); }
   return it;
 }
 

@@ -24,7 +24,7 @@ import { audio } from '../engine/audio.js';
 import { cloud } from '../net/cloud.js';
 import { uiSettings, applyUi, editUi } from './layout.js';
 
-import { TITLE_AT, titleKey, titleName } from '../data/titles.js';
+import { TITLE_AT, titleKey, titleName, UNIQUES } from '../data/titles.js';
 const nextTitle = (st) => { const i = TITLE_AT.findIndex((n) => st.awakenings < n); return i < 0 ? '' : ` · ${titleName(titleKey(st.stats), i)}까지 각성 ${TITLE_AT[i] - st.awakenings}`; };
 const TITLES = { inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', town: '마을', shop: '상점', menu: '메뉴' };
 const TAB_ORDER = ['inv', 'skills', 'char', 'quest', 'town', 'shop', 'menu'];
@@ -109,6 +109,7 @@ export class Windows {
       if (b.block) h += `<div>막기 확률 ${Math.round(b.block * 100)}%</div>`;
       if (b.mods) for (const k in b.mods) h += `<div>${k === 'maxMp' ? '최대 MP' : k} +${b.mods[k]}</div>`;
       for (const a of it.affixes) h += `<div class="aff">${affixText(a)}</div>`;
+      if (it.unique != null) h += `<div class="aff" style="color:#41e07a">◆ ${UNIQUES[it.unique].text}</div>`;
       if (it.set) {
         const s = SETS[it.set], n = setCounts(this.w.st.equip)[it.set] || 0;
         const fx = (b) => Object.entries(b).map(([k, v]) => AFFIXES[k].text.replace('{v}', v)).join(' · ');
@@ -154,7 +155,7 @@ export class Windows {
 
   bagHead() {
     const st = this.w.st;
-    return `<h3>가방 <span class="cnt">${st.inv.length}/${CONFIG.inventorySize}</span><span class="goldTxt">${st.gold.toLocaleString()} G</span></h3>`;
+    return `<h3>가방 <span class="cnt">${st.inv.length}/${CONFIG.inventorySize}</span>${this.w.inTown ? '<button class="btn" data-selljunk="1" style="margin-left:auto">일반 · 마법 팔기</button>' : ''}<span class="goldTxt">${st.gold.toLocaleString()} G</span></h3>`;
   }
 
   // 고른 가방 아이템과 같은 칸에 끼고 있는 장비
@@ -490,6 +491,12 @@ export class Windows {
       w.ui.dirty(); this.render();
     });
     on('[data-hire]', () => townDone(hire(st), '용병을 고용했습니다'));
+    on('[data-selljunk]', () => {
+      let g = 0, n = 0;
+      st.inv = st.inv.filter((it) => { if (it.book || !BASES[it.base]?.slot || it.set || !['common', 'magic'].includes(it.rarity)) return true; g += itemValue(it); n++; return false; });
+      if (n) { st.gold += g; audio.play('coin'); w.ui.toast(`장비 ${n}개 판매: +${g.toLocaleString()}G`, '#ffd84a'); }
+      w.ui.dirty(); this.render();
+    });
     on('[data-craft]', (el) => {
       const [z, sl] = el.dataset.craft.split('|'), r = craft(st, z, sl);
       if (r.ok) { audio.play('rankup'); w.ui.toast(`${itemName(r.item)} 제작!`, '#7fe07a'); }
