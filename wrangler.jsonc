@@ -1,7 +1,11 @@
-// Cloudflare Workers 배포 설정 (정적 사이트: 빌드 없이 저장소 파일을 그대로 내보낸다)
-// 주소: https://eveil.<계정>.workers.dev
+// Cloudflare Workers 배포 설정: 게임 파일(빌드 없음)은 정적으로, /api 는 worker/index.ts(서버)가 받는다
+// 주소: https://eveil.weak0416.workers.dev
 {
   "name": "eveil",
+  "main": "worker/index.ts",
   "compatibility_date": "2026-11-01",
-  "assets": { "directory": "./", "not_found_handling": "404-page" }
+  "workers_dev": true,
+  "assets": { "directory": "./", "binding": "ASSETS", "not_found_handling": "404-page", "run_worker_first": ["/api", "/api/*"] },
+  // 계정 · 서버 저장 · 순위: 영겁의 틈새와 같은 D1 (표는 ash_* 로 따로)
+  "d1_databases": [{ "binding": "DB", "database_name": "eonrift", "database_id": "eb6f2d4c-dc40-4e8f-8d4b-58e14be7b420" }]
 }
