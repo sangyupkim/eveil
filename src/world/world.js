@@ -41,6 +41,18 @@ const SPAWN_NEAR = 72;   // 이 안의 자리에만 몬스터를 만든다
 const DESPAWN_FAR = 92;  // 이보다 멀어진 한가한 몬스터는 치운다 (다시 오면 새로 만든다)
 const dist2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
+// 보스 전용 패턴 (보스끼리 겹치지 않는다)
+const BOSS_SIG = { // 첫째 = 그 보스만 쓰는 패턴, 둘째 = 결이 맞는 다른 패턴 하나 (조합은 모두 다르다)
+  mushking: ['sporering', 'webtrail'], orc: ['tricharge', 'fissure'], skel_mage: ['bonespiral', 'grid'], dragon: ['breath', 'meteors'],
+  bog_witch: ['mines', 'sporering'], bog_king: ['tongue', 'quakerings'], frost_stag: ['icelines', 'tricharge'], yeti_king: ['avalanche', 'boulder'],
+  apato: ['quakerings', 'tailsweep'], trex: ['tailsweep', 'tricharge'], flame_lord: ['meteors', 'fissure'], orc_warlord: ['cross', 'tricharge'],
+  troll_king: ['boulder', 'quakerings'], brood_mother: ['webtrail', 'mines'], spider_queen: ['xcross', 'webtrail'], high_mage: ['grid', 'bonespiral'],
+  ghost_captain: ['cannons', 'cross'], pit_lord: ['fissure', 'meteors'], arch_demon: ['hellnova', 'xcross'],
+};
+// 멀리 있는 플레이어를 노리는 패턴 (보스마다 둘)
+const FAR = ['leap', 'snipe', 'fan', 'hail', 'pull'];
+const farOf = (id) => { let h = 0; for (const c of id || '') h = (h * 31 + c.charCodeAt(0)) >>> 0; const i = h % FAR.length; return [FAR[i], FAR[(i + 1 + (h >> 4) % (FAR.length - 1)) % FAR.length]]; };
+
 export class World {
   constructor(stage, st, ui) {
     this.stage = stage;
@@ -737,9 +749,16 @@ export class World {
       }
       const pats = m.tier === 'boss' ? m.def.patterns : m.tier === 'named' ? ['slam', 'charge'] : null;
       if (pats && valid && d < 16) {
+        // 기본 패턴 + 보스 전용 패턴을 번갈아
+        const all = m.tier === 'boss' ? [...pats, ...(BOSS_SIG[m.type] || [])] : pats;
         m.patT = (m.patT ?? 5) - dt * (m.hp < m.maxHp * 0.3 ? 1.6 : 1);
-        if (m.patT <= 0 && a.lock <= 0) { m.patT = m.tier === 'boss' ? 6.5 : 8.5; this.bossPattern(m, pats[(m.patI = (m.patI || 0) + 1) % pats.length]); }
+        if (m.patT <= 0 && a.lock <= 0) { m.patT = m.tier === 'boss' ? 5.5 : 8.5; this.bossPattern(m, all[(m.patI = (m.patI || 0) + 1) % all.length]); }
       }
+      // 멀리서 맴돌며 치면 원거리 응징 패턴
+      if (m.tier === 'boss' && valid && d > 7.5 && d < 24 && !m.dash) {
+        m.farT = (m.farT ?? 2.5) - dt;
+        if (m.farT <= 0 && a.lock <= 0) { m.farT = 3.2; const f = farOf(m.type); this.bossPattern(m, f[(m.farI = (m.farI || 0) + 1) % f.length]); }
+      } else if (m.farT != null && m.farT < 1.2) m.farT = 1.2;
     } else if (m.state === 'return') {
       this.stepToward(m.pos, m.home, spd * 1.3 * dt);
       a.face(m.home.x, m.home.z);
@@ -804,8 +823,23 @@ export class World {
     });
   }
 
+  // 직선 위험 지대: 선분에서 w/2 안이면 맞는다
+  dangerLane(m, x1, z1, x2, z2, w, delay, mult, color = 0xff4020) {
+    this.fx.lane(x1, z1, x2, z2, w, delay, color);
+    this.later(delay, () => {
+      if (m.dead) return;
+      const n = Math.max(2, Math.round(Math.hypot(x2 - x1, z2 - z1) / 2.5));
+      for (let i = 0; i <= n; i++) this.fx.burst(x1 + (x2 - x1) * i / n, 0.6, z1 + (z2 - z1) * i / n, color, 5, 4, 0.4);
+      sfx('boom', 0.5); this.fx.shake(0.25);
+      const P = this.player.pos, dx = x2 - x1, dz = z2 - z1, L = dx * dx + dz * dz || 1;
+      const t = Math.max(0, Math.min(1, ((P.x - x1) * dx + (P.z - z1) * dz) / L));
+      if (!this.dead && Math.hypot(P.x - (x1 + dx * t), P.z - (z1 + dz * t)) < w / 2) this.hurtPlayer(randRange(m.dmg[0], m.dmg[1]) * mult, m);
+    });
+  }
+
   bossPattern(m, name) {
     const a = m.actor, p = this.player.pos;
+    if (this.bossPattern2(m, name)) return;
     const color = { spores: 0x9ad04a, slam: 0xff6a2a, volley: 0xa060ff, charge: 0xff4020 }[name];
     if (name === 'slam') {
       // 제자리에서 크게 내리친다
@@ -849,6 +883,68 @@ export class World {
         });
       }
     }
+  }
+
+  // 보스 전용 · 원거리 응징 패턴. 처리했으면 true
+  bossPattern2(m, name) {
+    const a = m.actor, P = () => this.player.pos, M = m.pos, C = 0xff5030;
+    const toP = () => { const dx = P().x - M.x, dz = P().z - M.z, l = Math.hypot(dx, dz) || 1; return { x: dx / l, z: dz / l, l }; };
+    const D = (x, z, r, t, k, c = C) => this.danger(m, x, z, r, t, k, c);
+    const L = (x1, z1, x2, z2, w, t, k, c = C) => this.dangerLane(m, x1, z1, x2, z2, w, t, k, c);
+    const at = (t, fn) => this.later(t, () => { if (!m.dead && !this.dead) fn(); });
+    const cast = (anim = 'attack2', lock = 1) => { a.act(anim, 0.8); a.lock = lock; a.face(P().x, P().z); };
+    switch (name) {
+      // ── 원거리 응징 (멀리 있을 때) ──
+      case 'leap': { // 플레이어 자리로 뛰어올라 내려찍기
+        cast('attack2', 1.3); const x = P().x, z = P().z;
+        D(x, z, 4.2, 1.1, 1.6, 0xff7a20);
+        at(1.05, () => { M.x = x; M.z = z; this.fx.smoke.add({ x, y: 0.4, z, vy: 0.6, color: 0x4a3c30, size: 2, size1: 5, life: 0.9, cell: 'smoke', alpha: 0.5 }); });
+        return true;
+      }
+      case 'snipe': { // 플레이어를 노리는 빠른 직선 셋
+        cast('attack', 1.4);
+        for (let i = 0; i < 3; i++) at(i * 0.45, () => { const v = toP(); L(M.x, M.z, M.x + v.x * (v.l + 6), M.z + v.z * (v.l + 6), 2, 0.75, 0.9, 0xff3a3a); });
+        return true;
+      }
+      case 'fan': { // 부채꼴로 퍼지는 화살 다섯 줄
+        cast(m.def.atk || 'attack', 1.0);
+        const v = toP(), base = Math.atan2(v.x, v.z), R = v.l + 6;
+        for (let i = -2; i <= 2; i++) { const g = base + i * 0.22; L(M.x, M.z, M.x + Math.sin(g) * R, M.z + Math.cos(g) * R, 1.5, 0.8, 0.8, 0xb070ff); }
+        return true;
+      }
+      case 'hail': { // 플레이어 둘레에 쏟아지는 우박
+        cast('attack2', 0.8);
+        for (let i = 0; i < 8; i++) at(i * 0.18, () => { const ang = Math.random() * 6.28, r = i % 3 === 0 ? 0 : 1.5 + Math.random() * 3.5; D(P().x + Math.cos(ang) * r, P().z + Math.sin(ang) * r, 2.2, 0.9, 0.8, 0x80c8ff); });
+        return true;
+      }
+      case 'pull': { // 끌어당긴 뒤 둘레를 내려친다
+        cast('attack2', 1.6); const v = toP();
+        this.fx.lane(M.x, M.z, P().x, P().z, 1.6, 0.6, 0x9a60ff);
+        at(0.6, () => { const w = toP(), k = Math.max(0, w.l - 3); P().x -= w.x * k; P().z -= w.z * k; resolveCollision(this.stage, P(), 0.4); this.fx.shake(0.3); D(M.x, M.z, 4.5, 0.8, 1.3, 0xff6a2a); });
+        return true;
+      }
+      // ── 보스 전용 ──
+      case 'sporering': { cast(); const x = P().x, z = P().z; for (let i = 0; i < 8; i++) { const g = i / 8 * 6.28; D(x + Math.cos(g) * 4, z + Math.sin(g) * 4, 2.3, 1.2, 1.1, 0x9ad04a); } return true; }
+      case 'tricharge': { for (let i = 0; i < 3; i++) at(i * 1.25, () => this.bossPattern(m, 'charge')); a.lock = 0.5; return true; }
+      case 'bonespiral': { cast(); for (let i = 0; i < 14; i++) { const g = i * 0.9, r = 1.5 + i * 0.6; at(i * 0.09, () => D(M.x + Math.cos(g) * r, M.z + Math.sin(g) * r, 1.9, 0.9, 0.9, 0xd0d0ff)); } return true; }
+      case 'breath': { cast('attack', 1.5); const v = toP(), b = Math.atan2(v.x, v.z); for (const o of [-0.45, 0, 0.45]) L(M.x, M.z, M.x + Math.sin(b + o) * 11, M.z + Math.cos(b + o) * 11, 2.6, 1.0, 1.2, 0xff6a20); return true; }
+      case 'mines': { cast(); for (let w = 0; w < 2; w++) for (let i = 0; i < 6; i++) at(w * 1.1, () => { const g = Math.random() * 6.28, r = 2 + Math.random() * 7; D(P().x + Math.cos(g) * r * 0.6, P().z + Math.sin(g) * r * 0.6, 2, 1.4, 0.9, 0x60c070); }); return true; }
+      case 'tongue': return this.bossPattern2(m, 'pull');
+      case 'icelines': { cast('attack', 1.2); const v = toP(), nx = -v.z, nz = v.x; for (let i = -2; i <= 2; i++) at(Math.abs(i) * 0.25, () => L(M.x + nx * i * 3, M.z + nz * i * 3, M.x + nx * i * 3 + v.x * 14, M.z + nz * i * 3 + v.z * 14, 2, 0.9, 1, 0x80d8ff)); return true; }
+      case 'avalanche': { cast(); const v = toP(), nx = -v.z, nz = v.x; for (let row = 1; row <= 6; row++) at(row * 0.22, () => { for (let j = -3; j <= 3; j++) { if ((j + 3) === (row * 5) % 7) continue; D(M.x + v.x * row * 2.2 + nx * j * 2, M.z + v.z * row * 2.2 + nz * j * 2, 1.3, 0.8, 1, 0xd0f0ff); } }); return true; }
+      case 'quakerings': { cast('attack2', 1.4); for (let k = 0; k < 3; k++) { const r = 3 + k * 3, n = 6 + k * 4; at(k * 0.5, () => { for (let i = 0; i < n; i++) { const g = i / n * 6.28; D(M.x + Math.cos(g) * r, M.z + Math.sin(g) * r, 1.8, 0.9, 1.1, 0xc08040); } }); } return true; }
+      case 'tailsweep': { cast('attack2', 1.1); for (let i = 0; i < 12; i++) { const g = i / 12 * 6.28; D(M.x + Math.cos(g) * 5.5, M.z + Math.sin(g) * 5.5, 2.4, 1.0, 1.3, 0xff8040); } return true; }
+      case 'meteors': { cast(); for (let i = 0; i < 14; i++) at(i * 0.14, () => { const g = Math.random() * 6.28, r = Math.random() * 7; D(P().x + Math.cos(g) * r, P().z + Math.sin(g) * r, 2.2, 1.0, 1, 0xff4010); }); return true; }
+      case 'cross': { cast('attack2', 1.2); for (const [x, z] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) L(M.x, M.z, M.x + x * 13, M.z + z * 13, 2.6, 1.0, 1.2, 0xff6040); return true; }
+      case 'boulder': { cast('attack', 1); const x = P().x, z = P().z; D(x, z, 3.2, 1.2, 1.5, 0xa08060); at(1.2, () => { for (let i = 0; i < 4; i++) { const g = i * 1.57 + 0.78; D(x + Math.cos(g) * 4, z + Math.sin(g) * 4, 2.2, 0.7, 0.8, 0xa08060); } }); return true; }
+      case 'webtrail': { cast(); for (let i = 0; i < 6; i++) at(i * 0.35, () => D(P().x, P().z, 2.1, 0.8, 0.9, 0xd0d0d0)); return true; }
+      case 'xcross': { cast('attack2', 1.8); const d = [[1, 1], [-1, 1], [1, -1], [-1, -1]]; for (const [x, z] of d) L(M.x, M.z, M.x + x * 9, M.z + z * 9, 2.4, 0.9, 1.1, 0xa0ff60); at(1.0, () => { for (const [x, z] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) L(M.x, M.z, M.x + x * 13, M.z + z * 13, 2.4, 0.9, 1.1, 0xa0ff60); }); return true; }
+      case 'grid': { cast(); const x0 = P().x, z0 = P().z; for (let w = 0; w < 2; w++) at(w * 1.1, () => { for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) if ((i + j + w) % 2 === 0) D(x0 + i * 2.6, z0 + j * 2.6, 1.4, 0.9, 1, 0x8080ff); }); return true; }
+      case 'cannons': { cast('attack', 1); for (let i = 0; i < 3; i++) at(i * 0.5, () => { const g = Math.random() * 6.28, x = P().x, z = P().z; L(x - Math.cos(g) * 12, z - Math.sin(g) * 12, x + Math.cos(g) * 12, z + Math.sin(g) * 12, 2.4, 1.0, 1.1, 0x60e0d0); }); return true; }
+      case 'fissure': { cast('attack2', 1.2); const v = toP(); for (let i = 1; i <= 9; i++) at(i * 0.1, () => D(M.x + v.x * i * 1.8, M.z + v.z * i * 1.8, 1.8, 0.8, 1.2, 0xff5010)); return true; }
+      case 'hellnova': { cast('attack2', 2.0); D(M.x, M.z, 9.5, 2.0, 1.8, 0xff2020); return true; }
+    }
+    return false;
   }
 
   dashStep(m, dt) {
