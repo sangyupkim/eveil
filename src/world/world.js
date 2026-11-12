@@ -756,6 +756,7 @@ export class World {
     if (best === 'legend') { this.fx.shake(0.4); this.fx.pillar(m.pos.x, m.pos.z, 0x41e07a, 2.2, 6, 2); sfx('rare'); this.ui.toast('전설 장비!', '#41e07a'); }
     else if (best === 'hero') { sfx('rare', 0.8); this.fx.pillar(m.pos.x, m.pos.z, 0xff9a3c, 1.2, 4, 1); }
     if (m.tier !== 'normal') this.ui.log(`${m.name} 처치!`, TIERS[m.tier].color);
+    if (!m.dungeon && m.tier === 'boss') (st.rec ||= {}).bosses = (st.rec.bosses || 0) + 1;
     if (!m.dungeon && !m.noLoot && (m.tier === 'boss' || (m.tier === 'named' && Math.random() < 0.5))) {
       if (addItem(st, makeItem('dungeon_key', { qty: 1 }, st))) { this.ui.toast('던전 열쇠를 얻었습니다', '#ffd84a'); sfx('rare', 0.7); }
     }
