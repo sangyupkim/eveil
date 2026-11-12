@@ -145,7 +145,7 @@ export class HUD {
       const id = st.quick[i];
       const el = slots[i];
       if (!id || !st.skills[id]) continue;
-      const v = skillValues(id, st.skills[id].rank);
+      const v = skillValues(id, st.skills[id].rank, st.skills[id].var);
       const cd = Math.max(0, w.cds[id] || 0);
       el.querySelector('.cd').style.setProperty('--cd', (cd / v.cd).toFixed(3));
       el.classList.toggle('nomp', st.mp < v.mp);

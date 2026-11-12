@@ -352,3 +352,8 @@ body.ui-edit #joy { display: block; }
 #titlePick h1 { margin: 0.1em 0 0.5em; font-family: var(--f-title); color: #ffd860; font-size: calc(var(--u) * 2.6); letter-spacing: 0.2em; text-shadow: 0 0 16px #c08010; }
 #titlePick .tpList { display: flex; gap: calc(var(--u) * 0.8); }
 #titlePick .tpPick { width: calc(var(--u) * 14); min-height: calc(var(--u) * 5); font-size: calc(var(--u) * 0.95); line-height: 1.35; white-space: normal; padding: 0.6em; }
+
+.achs { display: flex; flex-wrap: wrap; gap: 6px; }
+.ach { padding: 4px 8px; border: 1px solid #4a3a28; color: #6a6052; font-size: .85em; }
+.ach small { display: block; font-size: .75em; }
+.ach.on { color: #ffd860; border-color: #a07a30; background: rgba(160,120,40,0.15); }

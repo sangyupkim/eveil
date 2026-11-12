@@ -53,6 +53,13 @@ export const cloud = {
     return { ok: false, error: r.error || 'offline' };
   },
 
+  // 순위 (각성 · 던전 단계 합)
+  async rank() {
+    if (!(await this.available())) return [];
+    const r = await post({ type: 'ash_rank' });
+    return r.ok ? r.list || [] : [];
+  },
+
   logout() {
     if (account) post({ type: 'ash_logout', token: account.token });
     account = null;

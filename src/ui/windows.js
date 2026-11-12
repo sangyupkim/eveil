@@ -24,8 +24,11 @@ import { audio } from '../engine/audio.js';
 import { cloud } from '../net/cloud.js';
 import { uiSettings, applyUi, editUi } from './layout.js';
 
-import { TITLE_AT, titleKey, titleName, UNIQUES } from '../data/titles.js';
+import { TITLE_AT, titleKey, titleName, UNIQUES, perkChoices } from '../data/titles.js';
+import { VARIANTS, variantSlots } from '../game/skills.js';
+import { ACHIEVEMENTS } from '../data/achievements.js';
 import { dailyOf, dailyText, dailyReward } from '../game/daily.js';
+const repickCost = (t) => 2000 * (t.tier + 1) ** 2;
 const nextTitle = (st) => { const i = TITLE_AT.findIndex((n) => st.awakenings < n); return i < 0 ? '' : ` · ${titleName(titleKey(st.stats), i)}까지 각성 ${TITLE_AT[i] - st.awakenings}`; };
 const TITLES = { inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', town: '마을', shop: '상점', menu: '메뉴' };
 const TAB_ORDER = ['inv', 'skills', 'char', 'quest', 'town', 'shop', 'menu'];
@@ -193,7 +196,7 @@ export class Windows {
     let det = '<div class="note">고른 스킬이 없습니다</div>';
     if (this.skillSel) {
       const id = this.skillSel, sk = SKILLS[id], s = st.skills[id];
-      const v = skillValues(id, s.rank);
+      const v = skillValues(id, s.rank, s.var);
       const max = s.rank >= CONFIG.skillMaxRank;
       const need = skillExpNeeded(s.rank);
       det = `<div class="row" style="border:0">${sicon(id)}<div class="grow"><div class="nm" style="color:${BOOK_TIERS[sk.tier].color}">${sk.name}</div>
@@ -201,6 +204,9 @@ export class Windows {
         <div>${sk.desc}</div>
         <div class="kv" style="margin-top:8px"><span>MP</span><b>${v.mp}</b><span>재사용</span><b>${v.cd.toFixed(1)}초</b><span>숙련</span><b>${max ? '최대' : `${Math.floor(s.exp)} / ${need}`}</b></div>
         ${reqLine(sk.req, stats)}${meetsReq(st, sk.req, stats) ? '' : '<div class="bad">조건 부족</div>'}
+        <h3 style="margin-top:10px">변형 <span class="cnt">${(s.var || []).length} / ${variantSlots(s.rank)}</span></h3><div class="btns" style="flex-wrap:wrap">${Object.entries(VARIANTS).map(([k, x]) => {
+          const on = (s.var || []).includes(k), can = !on && (s.var || []).length < variantSlots(s.rank);
+          return `<button class="btn${on ? ' on' : ''}" data-var="${k}" ${can ? '' : 'disabled'} title="${x.text}">${x.name}<small style="display:block;font-size:.7em;opacity:.8">${x.text}</small></button>`; }).join('')}</div>${s.rank < 3 ? '<div class="note">랭크 3 · 5</div>' : ''}
         <h3 style="margin-top:14px">퀵슬롯</h3><div class="qsRow">`;
       for (let i = 0; i < CONFIG.quickSlots; i++) {
         const q = st.quick[i];
@@ -241,7 +247,7 @@ export class Windows {
           <div class="mini"><i style="width:${Math.min(100, (st.exp / need) * 100)}%;background:linear-gradient(#ffe7a0,#c99a3a)"></i></div></div></div>
         ${rows}
         <div class="note" style="margin-top:6px">누적 성향 ${hist}</div>
-        ${(st.titles || []).map((t) => `<div class="note"><b style="color:#ffd860">${esc(t.name)}</b> ${esc(t.perk.text)}</div>`).join('')}
+        ${(st.titles || []).map((t, i) => `<div class="note"><b style="color:#ffd860">${esc(t.name)}</b> ${esc(t.perk.text)} <button class="btn" data-repick="${i}" ${st.gold < repickCost(t) ? 'disabled' : ''}>다시 고르기 ${repickCost(t).toLocaleString()}G</button></div>`).join('')}
       </div><div class="frame" style="flex:1">
         <h3>세부 능력치</h3><div class="kv">${kv}</div>
         <h3 style="margin-top:12px">성장</h3>
@@ -280,6 +286,8 @@ export class Windows {
         list += `<div class="row qrow${fin ? ' fin' : ''}${cur ? ' on' : ''}"><div class="grow">${fin || cur ? x.name : '???'}</div><span class="note">${fin ? '완료' : cur ? '진행 중' : ''}</span></div>`;
       }
     }
+    const got = st.ach || [];
+    det += `<h3 style="margin-top:14px">업적 <span class="cnt">${got.length} / ${ACHIEVEMENTS.length}</span></h3><div class="achs">${ACHIEVEMENTS.map((a) => `<span class="ach${got.includes(a.id) ? ' on' : ''}" title="${a.text}">${a.name}<small>${a.text}</small></span>`).join('')}</div>`;
     return `<div class="cols"><div class="frame detail" style="flex:1.1">${det}</div><div class="frame" style="flex:1">${list}</div></div>`;
   }
 
@@ -401,6 +409,8 @@ export class Windows {
           <span>자동 저장</span><b>${CONFIG.autosaveInterval}초</b>
           <span>그림</span><b>Flare (CC-BY-SA 3.0)</b>
           <span>서버 저장</span><b>${cloud.id ? `${esc(cloud.id)}${cloud.state === 'error' ? ' · 실패' : cloud.savedAt ? ' · 저장됨' : ''}` : '로그인 안 함'}</b></div>
+        <h3 style="margin-top:12px">순위 <button class="btn" data-rank="1">불러오기</button></h3>
+        ${this.rankList ? (this.rankList.length ? this.rankList.slice(0, 10).map((r, i) => `<div class="row"><b style="width:2em">${i + 1}</b><div class="grow">${esc(r.name)} <small style="color:#ffd860">${esc(r.title || '')}</small></div><span class="note">각성 ${r.aw} · 던전 ${r.dg}</span></div>`).join('') : '<div class="note">기록 없음</div>') : ''}
       </div></div>`;
   }
 
@@ -496,6 +506,13 @@ export class Windows {
       w.ui.dirty(); this.render();
     });
     on('[data-hire]', () => townDone(hire(st), '용병을 고용했습니다'));
+    on('[data-var]', (el) => { const s = st.skills[this.skillSel]; if (!s) return; (s.var ||= []).push(el.dataset.var); audio.play('rankup'); w.ui.dirty(); this.render(); });
+    on('[data-repick]', (el) => {
+      const t = st.titles[Number(el.dataset.repick)], cost = repickCost(t);
+      if (st.gold < cost) return;
+      w.ui.titlePick({ tier: t.tier, key: t.key, name: t.name, choices: perkChoices(t.key, t.tier) }, (perk) => { st.gold -= cost; t.perk = perk; w.ui.toast(`${t.name}: ${perk.text}`, '#ffd860'); w.ui.dirty(); this.render(); });
+    });
+    on('[data-rank]', async () => { this.rankList = await cloud.rank(); this.render(); });
     on('[data-selljunk]', () => {
       let g = 0, n = 0;
       st.inv = st.inv.filter((it) => { if (it.book || !BASES[it.base]?.slot || it.set || !['common', 'magic'].includes(it.rarity)) return true; g += itemValue(it); n++; return false; });

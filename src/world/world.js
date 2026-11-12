@@ -1,5 +1,6 @@
 import { ZONES as ALL_ZONES } from '../data/world.js';
 import { roomCenter, entranceOf, ROOMS, MAX_STAGE, stageMods } from '../data/dungeons.js';
+import { ACHIEVEMENTS } from '../data/achievements.js';
 import { TITLE_AT, titleKey, titleName, perkChoices, UNIQUES } from '../data/titles.js';
 // 게임 월드: 플레이어 조작 · 몬스터 AI · 전투 · 스킬 · 드랍 · 사망 · 자동 사냥
 import * as THREE from 'three';
@@ -9,7 +10,7 @@ import { BASES, WEAPON_CLASSES, RARITY_ORDER } from '../data/items.js';
 import { MONSTERS, ZONES, TOWN } from '../data/world.js';
 import { derive, damageReduction } from '../game/player.js';
 import { addAP, gainExp, rewardFactor } from '../game/growth.js';
-import { addSkillExp, skillValues, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
+import { addSkillExp, skillValues, skillEff, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
 import { rollLoot, rollDeathDrop } from '../game/loot.js';
 import { dropMats, liberateAdd } from '../game/town.js';
 import { dailyProgress, dailyReward, dailyText } from '../game/daily.js';
@@ -192,10 +193,21 @@ export class World {
     }
   }
 
+  // 업적: 새로 이룬 것을 알리고 금화
+  checkAchievements() {
+    const st = this.st, got = (st.ach ||= []);
+    for (const a of ACHIEVEMENTS) {
+      if (got.includes(a.id) || !a.check(st)) continue;
+      got.push(a.id); st.gold += a.gold;
+      this.ui.toast(`업적: ${a.name} — ${a.text} (+${a.gold.toLocaleString()}G)`, '#ffd84a'); sfx('rankup');
+    }
+  }
+
   // 오늘의 의뢰 끝: 보상을 바로 준다
   dailyDone(list) {
     const st = this.st;
     for (const q of list) {
+      (st.rec ||= {}).daily = (st.rec.daily || 0) + 1;
       const r = dailyReward(q, st);
       st.gold += r.gold; if (r.ore) townOf(st).ore += r.ore;
       if (r.key) addItem(st, makeItem('dungeon_key', { qty: r.key }, st));
@@ -712,6 +724,7 @@ export class World {
     // EXP → 각성
     // 처치 연쇄: 2.5초 안에 이어 잡으면 쌓이고, 쌓일수록 경험 +2% (최대 +40%), 10연쇄마다 잠깐 빨라진다
     this.chain = this.time - (this.lastKillT ?? -9) < 2.5 ? (this.chain || 0) + 1 : 1;
+    const rec = (st.rec ||= {}); rec.kills = (rec.kills || 0) + 1; rec.chain = Math.max(rec.chain || 0, this.chain);
     this.lastKillT = this.time;
     if (this.chain >= 3) this.fx.text(this.player.pos.clone().setY(3.2), `연쇄 ${this.chain}`, this.chain >= 10 ? 'crit' : 'heal');
     if (this.chain % 10 === 0) { this.chainSpdT = 5; sfx('buff', 0.6); }
@@ -728,6 +741,7 @@ export class World {
     });
     // 득템 연출: 영웅은 소리, 전설은 화면이 울리고 알림
     const best = drops.map((dr) => dr.item?.rarity).find((r) => r === 'legend') || drops.map((dr) => dr.item?.rarity).find((r) => r === 'hero');
+    if (best === 'legend') (st.rec ||= {}).legends = (st.rec.legends || 0) + 1;
     if (best === 'legend') { this.fx.shake(0.4); this.fx.pillar(m.pos.x, m.pos.z, 0x41e07a, 2.2, 6, 2); sfx('rare'); this.ui.toast('전설 장비!', '#41e07a'); }
     else if (best === 'hero') { sfx('rare', 0.8); this.fx.pillar(m.pos.x, m.pos.z, 0xff9a3c, 1.2, 4, 1); }
     if (m.tier !== 'normal') this.ui.log(`${m.name} 처치!`, TIERS[m.tier].color);
@@ -1033,7 +1047,7 @@ export class World {
     const s = this.st.skills[id];
     if (!s) return { ok: false, why: '배우지 않은 스킬' };
     const sk = SKILLS[id];
-    const v = skillValues(id, s.rank);
+    const v = skillValues(id, s.rank, s.var);
     if ((this.cds[id] || 0) > 0) return { ok: false, why: '재사용 대기 중' };
     if (this.st.mp < v.mp) return { ok: false, why: 'MP가 부족합니다' };
     const kind = this.d.cls.kind;
@@ -1070,7 +1084,7 @@ export class World {
   }
 
   castSkill(id, v) {
-    const st = this.st, d = this.d, sk = SKILLS[id];
+    const st = this.st, d = this.d, sk = skillEff(id, st.skills[id]?.var);
     const P = this.player;
     this.pendingSkill = null;
     this.skillUsed = true;
@@ -1517,6 +1531,7 @@ export class World {
     if (this.townT <= 0) {
       this.townT = 5;
       townTick(st);
+      this.checkAchievements();
       const back = townOf(st).mercs.filter((m) => m.job && Date.now() >= m.job.until && !m.job.told);
       for (const m of back) { m.job.told = true; this.ui.toast(`용병 ${m.name}이(가) 사냥에서 돌아왔습니다`, '#ffd84a'); }
     }

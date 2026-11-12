@@ -1,0 +1,20 @@
+// 업적: 이룬 것마다 금화 + 업적 칭호(이름만). 5초마다 확인한다.
+export const ACHIEVEMENTS = [
+  { id: 'kill100', name: '첫 사냥꾼', text: '몬스터 100마리', check: (st) => (st.rec?.kills || 0) >= 100, gold: 300 },
+  { id: 'kill1000', name: '사냥의 달인', text: '몬스터 1,000마리', check: (st) => (st.rec?.kills || 0) >= 1000, gold: 2000 },
+  { id: 'kill5000', name: '학살자', text: '몬스터 5,000마리', check: (st) => (st.rec?.kills || 0) >= 5000, gold: 10000 },
+  { id: 'chain20', name: '몰아치는 칼날', text: '처치 연쇄 20', check: (st) => (st.rec?.chain || 0) >= 20, gold: 800 },
+  { id: 'aw20', name: '첫 칭호', text: '각성 20', check: (st) => st.awakenings >= 20, gold: 1000 },
+  { id: 'aw40', name: '깨달은 자', text: '각성 40', check: (st) => st.awakenings >= 40, gold: 5000 },
+  { id: 'aw60', name: '초월자', text: '각성 60', check: (st) => st.awakenings >= 60, gold: 20000 },
+  { id: 'skill10', name: '배우는 자', text: '스킬 10개 배우기', check: (st) => Object.keys(st.skills).length >= 10, gold: 1000 },
+  { id: 'skill30', name: '만능', text: '스킬 30개 배우기', check: (st) => Object.keys(st.skills).length >= 30, gold: 8000 },
+  { id: 'legend', name: '전설을 쥔 자', text: '전설 장비 얻기', check: (st) => (st.rec?.legends || 0) >= 1, gold: 2000 },
+  { id: 'plus7', name: '대장장이의 벗', text: '장비 +7 강화', check: (st) => Object.values(st.equip).some((it) => (it?.plus || 0) >= 7), gold: 3000 },
+  { id: 'dg1', name: '던전 탐험가', text: '던전 하나 돌파', check: (st) => Object.keys(st.dungeons || {}).length >= 1, gold: 1500 },
+  { id: 'dg10', name: '심연을 본 자', text: '던전 10단계 돌파', check: (st) => Object.values(st.dungeons || {}).some((v) => v >= 10), gold: 20000 },
+  { id: 'lib1', name: '해방자', text: '지역 하나 해방', check: (st) => Object.values(st.liberate || {}).some((v) => v >= 400), gold: 2000 },
+  { id: 'lib8', name: '땅을 되찾은 자', text: '모든 지역 해방', check: (st) => Object.values(st.liberate || {}).filter((v) => v >= 400).length >= 8, gold: 50000 },
+  { id: 'set4', name: '세트 수집가', text: '지역 세트 4부위', check: (st) => { const n = {}; for (const it of Object.values(st.equip)) if (it?.set) n[it.set] = (n[it.set] || 0) + 1; return Object.values(n).some((v) => v >= 4); }, gold: 5000 },
+  { id: 'daily10', name: '성실한 일꾼', text: '오늘의 의뢰 10개', check: (st) => (st.rec?.daily || 0) >= 10, gold: 3000 },
+];
