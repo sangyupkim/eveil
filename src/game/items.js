@@ -51,6 +51,7 @@ export function itemName(it) {
   return it.plus ? `+${it.plus} ${n}` : n;
 }
 function baseName(it) {
+  if (it.shard) return `능력치 파편: ${AFFIXES[it.shard.id].text.replace('{v}', it.shard.v)}`;
   if (it.book) return `스킬북: ${SKILLS[it.book].name}`;
   const base = BASES[it.base];
   if (base.type === 'potion' || base.stack) return base.name;
@@ -62,12 +63,14 @@ function baseName(it) {
 }
 
 export function itemColor(it) {
+  if (it.shard) return '#c58cff';
   if (it.book) return BOOK_TIERS[SKILLS[it.book].tier].color;
   if (!it.rarity) return '#e8e2d4';
   return RARITY[it.rarity].color;
 }
 
 export function itemValue(it) {
+  if (it.shard) return 120;
   if (it.book) return 40 * SKILLS[it.book].tier ** 2;
   const base = BASES[it.base];
   if (base.type === 'potion' || base.stack) return Math.max(1, Math.floor((base.price || 0) / 4)) * (it.qty || 1);

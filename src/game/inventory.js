@@ -4,6 +4,7 @@ import { BASES, isTwoHandedBase } from '../data/items.js';
 import { isStack } from './items.js';
 import { meetsReq } from './skills.js';
 import { totalStats } from './player.js';
+import { SHARD, shardFrom } from './shards.js';
 
 export const bagSize = (st) => CONFIG.inventorySize + 8 * (st?.town?.research?.bag || 0);
 export function addItem(st, it) {
@@ -46,7 +47,7 @@ export function slotFor(st, it) {
 }
 
 // 가방의 아이템을 장착. 기존 장비는 가방으로.
-export function equip(st, uid) {
+export function equip(st, uid, rng = Math.random) {
   const it = st.inv.find((x) => x.uid === uid);
   if (!it) return { ok: false, why: '아이템이 없습니다' };
   const c = canEquip(st, it);
@@ -61,7 +62,10 @@ export function equip(st, uid) {
   if (slot === 'weapon' && isTwoHanded(it) && st.equip.offhand) { back.push(st.equip.offhand); st.equip.offhand = null; }
   if (slot === 'offhand' && st.equip.weapon && isTwoHanded(st.equip.weapon)) { back.push(st.equip.weapon); st.equip.weapon = null; }
   for (const b of back) st.inv.push(b); // 꺼낸 장비는 칸 수와 상관없이 가방으로
-  return { ok: true, slot, base };
+  // 갈아 끼운 장비에서 낮은 확률로 능력치 파편
+  const shards = [];
+  for (const b of back) if (rng() < SHARD.swapChance) { const sh = shardFrom(b, st, rng); if (sh) { st.inv.push(sh); shards.push(sh); } }
+  return { ok: true, slot, base, shards };
 }
 
 export function unequip(st, slot) {

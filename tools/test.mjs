@@ -16,7 +16,8 @@ import { CONFIG, STATS, AP_TABLE } from '../src/data/config.js';
 import { QUESTS } from '../src/data/quests.js';
 import { nextQuest, currentQuest, questKill, questDone, questNeed, questTurnIn } from '../src/game/quests.js';
 import { SKILLS } from '../src/data/skills.js';
-import { BASES } from '../src/data/items.js';
+import { BASES, AFFIXES } from '../src/data/items.js';
+import { makeShard, shardFrom, applyShard, lockMax, rollShard } from '../src/game/shards.js';
 import { MONSTERS, ZONES } from '../src/data/world.js';
 import { titleKey, perkChoices, titleName, TITLE_NAMES } from '../src/data/titles.js';
 
@@ -282,6 +283,43 @@ test('마을: 짓기 · 생산(꺼 둔 시간) · 강화 · 용병 파견', () =
   townOf(p).mercs[0].hunt = 50; townOf(p).mercs[0].lv = 20;
   const g0 = p.gold, r = claim(p, 0, t0 + 11 * 60000, ((r) => (r(), r))(seeded(3)));
   assert.ok(r && !r.dead && r.gold > 0 && p.gold === g0 + r.gold && townOf(p).mercs[0].job === null);
+});
+
+test('능력치 파편: 갈아 끼울 때 · 보스 드랍 · 대장간에서 잠그고 바꾸기', () => {
+  const st = newPlayer();
+  // 파편은 옵션에서만 나온다 (기본 피해 · 방어력은 옵션이 아니다)
+  const it = makeItem(Object.keys(BASES).find((k) => (BASES[k].slot === 'armor')), { rarity: 'rare', ilvl: 10 }, st);
+  const sh = shardFrom(it, st);
+  assert.ok(sh && AFFIXES[sh.shard.id] && it.affixes.some((a) => a.id === sh.shard.id));
+  // 갈아 끼우면 가끔(항상 X) 파편
+  let got = 0;
+  for (let n = 0; n < 400; n++) {
+    const s2 = newPlayer();
+    const a = makeItem(it.base, { rarity: 'rare', ilvl: 10 }, s2), b = makeItem(it.base, { rarity: 'rare', ilvl: 10 }, s2);
+    addItem(s2, a); equip(s2, a.uid); addItem(s2, b);
+    if (equip(s2, b.uid).shards.length) got++;
+  }
+  assert.ok(got > 5 && got < 80, String(got));
+  // 보스는 가끔 장비 대신 파편
+  let bs = 0;
+  for (let n = 0; n < 3000; n++) bs += rollLoot({ tier: 'boss', level: 20 }, {}, null).filter((d) => d.item?.shard).length;
+  assert.ok(bs > 0);
+  assert.ok(rollShard(20).shard.v >= 1);
+  // 잠금 수 · 잠근 옵션은 바뀌지 않는다
+  assert.equal(lockMax(1), 0); assert.equal(lockMax(3), 1); assert.equal(lockMax(5), 3);
+  st.gold = 1e9; st.town = { plots: {}, ore: 1e6, mercs: [], mats: {} };
+  const base = it.affixes.map((a) => ({ ...a }));
+  const free = Object.keys(AFFIXES).find((id) => !AFFIXES[id].legendOnly && !it.affixes.some((a) => a.id === id) && (!AFFIXES[id].slots || AFFIXES[id].slots.includes('armor')));
+  for (let n = 0; n < 20; n++) {
+    const s = makeShard({ id: free, v: 7 }, st); st.inv.push(s);
+    const locks = [0, 1].slice(0, Math.min(2, it.affixes.length - 1));
+    const r = applyShard(st, it, s.uid, locks, 4);
+    assert.ok(r.ok, r.why);
+    for (const k of locks) assert.deepEqual(it.affixes[k], base[k]);
+    assert.equal(it.affixes.filter((a) => a.id === free).length, 1);
+  }
+  const s3 = makeShard({ id: free, v: 1 }, st); st.inv.push(s3);
+  assert.equal(applyShard(st, it, s3.uid, [0, 1, 2], 4).ok, false);
 });
 
 console.log(`\n${n}개 통과`);

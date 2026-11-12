@@ -27,6 +27,7 @@ export function iconUrl(index, frame = null) {
 
 export function itemIcon(it) {
   if (it.book) return iconUrl(225, BOOK_TIERS[SKILLS[it.book].tier].color);
+  if (it.shard) return iconUrl(68, '#c58cff');
   const L = ITEM_LOOK[it.base];
   if (L) return iconUrl(L.icon);
   const b = BASES[it.base];

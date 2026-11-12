@@ -1092,11 +1092,11 @@ export class World {
     if (dr.kind === 'item') {
       const it = dr.item, b = BASES[it.base];
       color = new THREE.Color(itemColor(it)).getHex();
-      if (isBook(it)) { look = LOOT_LOOK.book; beam = true; }
+      if (isBook(it) || it.shard) { look = LOOT_LOOK.book; beam = true; }
       else if (b.type === 'potion') look = b.restore.hp ? LOOT_LOOK.potion_hp : LOOT_LOOK.potion_mp;
       else if (b.slot === 'weapon') look = LOOT_LOOK.weapon[b.cls] || 'longsword';
       else look = LOOT_LOOK[b.slot] || 'leather_armor';
-      rank = it.rarity ? RARITY_ORDER.indexOf(it.rarity) : isBook(it) ? 3 : 0;
+      rank = it.rarity ? RARITY_ORDER.indexOf(it.rarity) : isBook(it) || it.shard ? 3 : 0;
       if (rank >= 2) beam = true;
       if (rank >= 1) this.fx.decal(0, x, z, 1.2 + rank * 0.6, color, 0.6);
     } else if (dr.amount > 60) look = 'coins100';
@@ -1977,6 +1977,7 @@ export class World {
     } else {
       const r = equipItem(st, uid);
       if (!r.ok) this.ui.toast(r.why);
+      for (const sh of r.shards || []) { this.ui.toast(`벗은 장비에서 ${itemName(sh)}을(를) 얻었습니다`, '#c58cff'); sfx('rare'); }
       this.refreshGear();
     }
     this.ui.dirty();

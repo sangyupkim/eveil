@@ -4,6 +4,7 @@ import { skillsOfTier, SKILLS } from '../data/skills.js';
 import { ZONE_SCHOOLS } from '../data/skills_more.js';
 import { SLOTS } from '../data/items.js';
 import { R, randInt, chance, weighted, pick } from './rng.js';
+import { rollShard, SHARD } from './shards.js';
 import { makeItem, makeBook, rollBase, rollRarity, isStack, makeNamed, namedOf } from './items.js';
 import { NAMED_CHANCE, GEM_DROP, GEMS, GEM_GRADES, gemId, gemGradeFor } from '../data/legends.js';
 
@@ -21,6 +22,8 @@ export function rollLoot(mon, opt = {}, st = null, rng = R) {
   if (chance(t.itemChance * dropMult, rng)) {
     const n = randInt(t.items[0], t.items[1], rng);
     for (let i = 0; i < n; i++) {
+      // 보스는 가끔 장비 대신 능력치 파편
+      if (mon.tier === 'boss' && rng() < SHARD.bossChance) { out.push({ kind: 'item', item: rollShard(mon.level, st, rng) }); continue; }
       const rarity = rollRarity(t.rarity, opt.magicFind || 0, rng);
       out.push({ kind: 'item', item: makeItem(rollBase(mon.level, rng), { rarity, ilvl: mon.level }, st, rng) });
     }

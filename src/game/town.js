@@ -138,13 +138,13 @@ export function reforge(st, it, rng = Math.random) {
 }
 
 // ── 용병 (일꾼 겸 모험가) ──
-// 여관에 매 시간 무작위 용병이 찾아온다. 솜씨: 채광(광산) · 재배(약초밭) · 탐험(파견). 체력이 닳으면 쉰다.
+// 여관에 매 시간 무작위 용병이 찾아온다. 솜씨: 채광(광산) · 재배(약초밭) · 손재주(대장간 · 제작소) · 학식(연구소) · 살림(숙소) · 탐험(여관 · 파견). 체력이 닳으면 쉰다.
 // 시킨 일의 솜씨가 오르고, 레벨 20에서 각성(최대 10). 파견을 나가면 죽을 수도 있다.
 export const MERC = { workSta: 8, restSta: 12, workExp: 3, lvMax: 20, awMax: 10 };
 // 건물마다 쓰는 솜씨. 광산 · 약초밭은 생산, 나머지는 건물 효과(BONUS)를 올린다
-export const SKILL_OF = { mine: 'mine', herb: 'herb', smithy: 'craft', workshop: 'craft', lab: 'lore', inn: 'hunt', house: 'herb' };
-export const SKILL_NAMES = { mine: '채광', herb: '재배', craft: '손재주', lore: '학식', hunt: '탐험' };
-export const SKILLS_ALL = ['mine', 'herb', 'craft', 'lore', 'hunt'];
+export const SKILL_OF = { mine: 'mine', herb: 'herb', smithy: 'craft', workshop: 'craft', lab: 'lore', inn: 'hunt', house: 'care' };
+export const SKILL_NAMES = { mine: '채광', herb: '재배', craft: '손재주', lore: '학식', hunt: '탐험', care: '살림' };
+export const SKILLS_ALL = ['mine', 'herb', 'craft', 'lore', 'hunt', 'care'];
 // 일하는 용병 솜씨 합(10 = 한 사람 몫)마다 효과, 최대치
 export const BONUS = {
   smithy: { k: 0.05, max: 0.3, text: (v) => `강화 금화 -${Math.round(v * 100)}%` },
@@ -176,8 +176,9 @@ export function rollMerc(rng = Math.random, innLv = 1) {
   const main = SKILLS_ALL[Math.floor(rng() * SKILLS_ALL.length)], sk = (k) => Math.round((k === main ? 7 + rng() * 6 : 1 + rng() * 5) * g.k * 10) / 10;
   const m = { id: `m${Date.now().toString(36)}${(uidN++).toString(36)}${Math.floor(rng() * 1e4)}`, name: NA[Math.floor(rng() * NA.length)] + NB[Math.floor(rng() * NB.length)], grade: gi, lv: 1, exp: 0, aw: 0,
     mine: sk('mine'), herb: sk('herb'), craft: sk('craft'), lore: sk('lore'), hunt: sk('hunt'), face: ['m01', 'm02', 'm03', 'm04', 'f01', 'f02', 'f03', 'f04'][Math.floor(rng() * 8)], vit: Math.round(rng() * 20 * g.k), work: null, job: null, tired: false };
+  m.care = sk('care');
   m.sta = staMax(m);
-  m.cost = Math.round((m.mine + m.herb + m.craft + m.lore + m.hunt * 1.5 + m.vit) * 20 * g.k);
+  m.cost = Math.round((m.mine + m.herb + m.craft + m.lore + m.care + m.hunt * 1.5 + m.vit) * 20 * g.k);
   return m;
 }
 // 고용 한도: 숙소 침대 수 (숙소가 없으면 1명)
@@ -226,6 +227,8 @@ export function awakenMerc(st, id) {
 // 예전 저장: 일꾼 수 · 이름만 있던 용병을 새 용병으로
 function migrateMercs(t) {
   t.mercs ||= [];
+  // 숙소 솜씨 「살림」이 생기기 전 용병: 재배와 비슷한 값으로 채운다
+  for (const m of t.mercs) if (m.id && m.care == null) m.care = Math.max(1, Math.round((m.herb || 3) * 0.8 * 10) / 10);
   for (const m of t.mercs) if (m.id && m.craft == null) { m.craft = 1 + Math.round(Math.random() * 40) / 10; m.lore = 1 + Math.round(Math.random() * 40) / 10; m.face ||= 'm01'; }
   for (const m of t.mercs) if (!m.id) { Object.assign(m, { ...rollMerc(Math.random, 1), name: m.name, lv: m.lv || 1, exp: 0, job: m.job, gear: m.gear, cost: 0 }); m.hunt = Math.max(m.hunt, 8); }
   if (t.workers) {

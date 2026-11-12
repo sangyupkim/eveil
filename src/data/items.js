@@ -19,6 +19,7 @@ export const WEAPON_CLASSES = {
 // model: 손에 드는 모델 · icon: 가방 그림(없으면 model)
 // wear: 입었을 때 끼우는 KayKit 조각의 캐릭터 (knight · mage · barbarian) · hat: [캐릭터, 'Hat'|'Helmet'] · tint: 조각 색
 export const BASES = {
+  shard: { name: '능력치 파편', type: 'shard', price: 120 },
   rusty_sword: { name: '낡은 검', slot: 'weapon', cls: 'sword', model: 'w_sword', mtint: 0x9a8a7a, dmg: [4, 7], speed: 1.1, price: 5, minLvl: 99 },
   short_sword: { name: '장검', slot: 'weapon', cls: 'sword', model: 'w_sword', dmg: [6, 10], speed: 1.15, price: 90, shop: true },
   broad_sword: { name: '넓은날 검', slot: 'weapon', cls: 'sword', model: 'w_sword', mtint: 0xc8d0e0, dmg: [9, 14], speed: 1.1, req: { str: 16 }, minLvl: 3 },

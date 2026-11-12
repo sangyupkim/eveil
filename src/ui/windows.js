@@ -34,6 +34,7 @@ import { TITLE_AT, titleKey, titleName, UNIQUES, perkChoices } from '../data/tit
 import { VARIANTS, variantSlots } from '../game/skills.js';
 import { SCHOOL_NAMES } from '../data/skills.js';
 import { GEMS, GEM_GRADES } from '../data/legends.js';
+import { applyShard, canApply, lockMax, shardCost } from '../game/shards.js';
 import { GAME_VERSION, PATCH_NOTES } from '../data/patchnotes.js';
 import { KEY_ACTIONS, keyMap, keyName } from '../data/keys.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
@@ -143,6 +144,8 @@ export class Windows {
       h += `<div class="sub">${BOOK_TIERS[sk.tier].name} 스킬북 · MP ${sk.mp} · 재사용 ${sk.cd}초</div><div>${sk.desc}</div>`;
       h += reqLine(sk.req, totalStats(st));
       if (st.skills[it.book]) h += `<div class="aff">아는 스킬 — 숙련 EXP로 흡수</div>`;
+    } else if (it.shard) {
+      h += `<div class="sub">능력치 파편 · 대장간</div><div class="aff">${affixText(it.shard)}</div>`;
     } else if (b.type === 'gem') {
       h += `<div class="sub">보석 ×${it.qty}</div><div>${STAT_NAMES[GEMS[b.gem].stat]} +${GEM_GRADES[b.grade].v} (구멍 있는 장비를 골라 박기)</div>`;
     } else if (b.type === 'key') {
@@ -172,13 +175,33 @@ export class Windows {
     h += `<div class="sub">판매가 ${itemValue(it)} G</div>`;
     h += '<div class="btns">';
     if (where === 'inv') {
-      h += `<button class="btn gold" data-act="use">${isBook(it) ? '배우기' : b.type === 'potion' ? '사용' : '장착'}</button>`;
+      if (!it.shard) h += `<button class="btn gold" data-act="use">${isBook(it) ? '배우기' : b.type === 'potion' ? '사용' : '장착'}</button>`;
       if (this.w.canShop) h += `<button class="btn" data-act="sell">판매</button>`;
       h += `<button class="btn danger" data-act="drop">버리기</button>`;
     } else if (where === 'equip') {
       h += `<button class="btn" data-act="unequip">해제</button>`;
     }
     h += '</div>';
+    return h;
+  }
+
+  // 대장간: 능력치 파편으로 착용 장비의 옵션 하나를 바꾼다 (잠근 옵션은 그대로)
+  shardPanel(smith) {
+    const st = this.w.st, t = townOf(st);
+    const shards = st.inv.filter((x) => x.shard);
+    let h = `<h3 style="margin-top:8px">능력치 파편 <small>잠금 최대 ${lockMax(smith.lv)}개</small></h3>`;
+    if (!shards.length) return h + '<div class="note">파편 없음</div>';
+    if (!shards.some((x) => x.uid === this.shardSel)) this.shardSel = null;
+    h += `<div class="btns" style="flex-wrap:wrap;margin:0 0 6px">${shards.map((x) => `<button class="btn ${x.uid === this.shardSel ? 'on' : ''}" data-shard="${x.uid}" style="color:#c58cff">${affixText(x.shard)}</button>`).join('')}</div>`;
+    const sh = st.inv.find((x) => x.uid === this.shardSel)?.shard;
+    if (!sh) return h;
+    const targets = SLOTS.filter((sl) => st.equip[sl]?.affixes?.length);
+    if (!targets.includes(this.shardTarget)) { this.shardTarget = targets[0]; this.shardLocks = []; }
+    if (!targets.length) return h + '<div class="note">옵션이 있는 착용 장비 없음</div>';
+    h += `<div class="btns" style="flex-wrap:wrap;margin:0 0 6px">${targets.map((sl) => `<button class="btn ${sl === this.shardTarget ? 'on' : ''}" data-starget="${sl}" style="color:${itemColor(st.equip[sl])}">${esc(itemName(st.equip[sl]))}</button>`).join('')}</div>`;
+    const it = st.equip[this.shardTarget], L = this.shardLocks || [], max = lockMax(smith.lv), c = shardCost(it), ok = canApply(it, sh, L);
+    h += it.affixes.map((a, k) => { const on = L.includes(k); return `<div class="row"><div class="grow aff" style="${on ? 'color:#ffd84a' : ''}">${affixText(a)}</div><button class="btn ${on ? 'on' : ''}" data-slock="${k}" ${!on && L.length >= max ? 'disabled' : ''}>${on ? '잠김' : '잠그기'}</button></div>`; }).join('');
+    h += `<div class="btns"><button class="btn gold" data-sapply="1" ${!ok.ok || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>${ok.ok ? `바꾸기 · ${c.gold.toLocaleString()} G · 강화석 ${c.ore}` : ok.why}</button></div>`;
     return h;
   }
 
@@ -378,10 +401,10 @@ export class Windows {
       ['성장 · 각성', [pic(portrait(st.look), `Lv.${st.level}`)], ['몬스터를 잡아 경험치를 얻고 레벨이 오르면 능력치 점수를 받습니다', '최대 레벨에 닿으면 각성: 레벨은 1로, 능력치 보너스는 남습니다', '각성 횟수에 따라 성향에 맞는 칭호와 특성을 고릅니다']],
       ['스킬', [pic(skillIcon(sk), SKILLS[sk]?.name || '스킬')], ['스킬북을 가방에서 눌러 배웁니다', '쓸수록 스킬 레벨이 오릅니다', '변형: 스킬마다 변형 칸을 열어 효과를 바꿉니다']],
       ['장비', [eq ? pic(itemIcon(eq), itemName(eq)) : '', pic(chestIcon(), '가방')], ['부위: 머리 · 목걸이 · 몸 · 장갑 · 허리 · 무기 · 보조 · 반지 2 · 신발', '등급: 일반 < 마법 < 희귀 < 영웅 < 전설 < 세트', '레벨 제한 1 ~ 200, 깊은 곳 · 높은 세계 단계일수록 높은 장비', '장비를 고르면 능력치 변화가 옆 칸에 보입니다']],
-      ['강화 · 재련 · 분해', [pic(oreIcon(), '광석'), pic(coinIcon(), '골드')], ['강화(대장간): +1 ~ +10, 대장간 레벨이 상한. 단계마다 피해 · 방어 +8%', '확률: +1~3 100%, 그 뒤 90 · 80 · 70 · 55 · 45 · 35 · 25%. 실패해도 단계는 그대로', '비용: 골드 + 광석 (단계 · 아이템 레벨에 비례)', '재련: 가장 약한 옵션 하나를 다시 굴립니다', '분해: 쓰지 않는 장비를 광석 · 재료로']],
+      ['강화 · 재련 · 분해', [pic(oreIcon(), '광석'), pic(coinIcon(), '골드')], ['강화(대장간): +1 ~ +10, 대장간 레벨이 상한. 단계마다 피해 · 방어 +8%', '확률: +1~3 100%, 그 뒤 90 · 80 · 70 · 55 · 45 · 35 · 25%. 실패해도 단계는 그대로', '비용: 골드 + 광석 (단계 · 아이템 레벨에 비례)', '재련: 가장 약한 옵션 하나를 다시 굴립니다', '분해: 쓰지 않는 장비를 광석 · 재료로', '능력치 파편: 장비를 갈아 끼울 때 낮은 확률로, 보스가 가끔 장비 대신 떨어뜨림. 장비의 기본 피해 · 방어력이 아닌 옵션 하나', '파편 쓰기(대장간): 착용 장비 옵션 하나가 무작위로 파편 옵션으로 바뀜. 같은 옵션이 있으면 그것이 바뀜', '옵션 잠그기: 대장간 3단계 1개 · 4단계 2개 · 5단계 3개 — 잠근 옵션은 바뀌지 않음']],
       ['보석', [pic(oreIcon(), '보석')], ['장비 홈에 박아 능력치를 올립니다', '등급 10단계: 조각난 · 흐린 · 보통 · 빛나는 · 완벽한 · 찬란한 · 고대의 · 신성한 · 영원의 · 태초의', '몬스터 레벨이 높을수록 높은 등급이 떨어집니다. 상점은 낮은 등급만']],
       ['던전', [pic(scrollIcon(), '열쇠')], ['지역마다 던전 입구가 하나 (미로 · 방과 복도 · 동굴)', '네임드 · 보스가 주는 열쇠로 입장, 가장 깊은 곳의 우두머리를 잡으면 클리어', '단계를 올릴수록 몬스터가 세지고 보상이 좋아집니다']],
-      ['마을 · 용병 · 연구', [pic(townIcon(), '마을')], ['건물을 지어 생산 · 강화 · 연구를 엽니다', '여관에는 매 시간 다른 용병이 찾아옵니다. 솜씨(채광 · 재배 · 손재주 · 학식 · 탐험)와 등급이 제각각', '숙소 단계가 고용 한도입니다', '건물은 각성 단계에 따라 열립니다: 대장간 · 약초밭 0, 숙소 · 여관 3, 광산 6, 제작소 10, 연구소 15', '모든 건물에 용병을 둘 수 있습니다: 광산 · 약초밭은 생산, 대장간 · 제작소는 금화 절약, 연구소는 연구 시간 단축, 여관은 휴식 회복, 숙소는 체력 소모 감소', '체력이 닳으면 쉬어야 합니다', '시킨 일의 솜씨가 오르고, 레벨 20에서 각성(최대 10번)', '파견은 위험해서 약한 용병은 죽을 수 있습니다', '연구: 가방 칸 등 영구 강화']],
+      ['마을 · 용병 · 연구', [pic(townIcon(), '마을')], ['건물을 지어 생산 · 강화 · 연구를 엽니다', '여관에는 매 시간 다른 용병이 찾아옵니다. 솜씨(채광 · 재배 · 손재주 · 학식 · 살림 · 탐험)와 등급이 제각각', '숙소 단계가 고용 한도입니다', '건물은 각성 단계에 따라 열립니다: 대장간 · 약초밭 0, 숙소 · 여관 3, 광산 6, 제작소 10, 연구소 15', '모든 건물에 용병을 둘 수 있습니다: 광산 · 약초밭은 생산, 대장간 · 제작소는 금화 절약, 연구소는 연구 시간 단축, 여관은 휴식 회복, 숙소는 체력 소모 감소', '체력이 닳으면 쉬어야 합니다', '시킨 일의 솜씨가 오르고, 레벨 20에서 각성(최대 10번)', '파견은 위험해서 약한 용병은 죽을 수 있습니다', '연구: 가방 칸 등 영구 강화']],
       ['야영지 · 지도', [pic(scrollIcon(), '월드맵')], ['세상은 캐릭터마다 새로 만들어집니다', '야영지: 안전 지대, 포탈로 먼 곳 이동, 상인 · 수리', '지도는 가 본 곳만 밝혀집니다']],
       ['세계 단계', [pic(scrollIcon(), TIER_NAMES.join(' · '))], ['평온 → 악몽 → 지옥', '단계가 오르면 같은 지역의 몬스터 레벨이 크게 오르고 더 좋은 장비 · 보석이 나옵니다']],
       ['도감 · 의뢰 · 업적', [pic(bookIcon(), '도감')], ['몬스터를 잡으면 도감이 채워지고 보너스를 받습니다', '퀘스트 · 일일 의뢰 · 업적으로 보상']],
@@ -503,6 +526,7 @@ export class Windows {
             <div class="note">${max ? '상한' : `+${(it.plus || 0) + 1} · ${c.jang >= 1 ? '<b style="color:#ffd84a">100% (장인의 기운)</b>' : `${+(c.chance * 100).toFixed(1)}%`} · 장인의 기운 ${+(c.jang * 100).toFixed(1)}% · ${c.gold.toLocaleString()} G · 강화석 ${c.ore}`}</div></div>
             <button class="btn" data-enh="${slot}" ${max || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>강화</button>${it.affixes?.length ? `<button class="btn" data-reforge="${slot}" title="가장 약한 옵션 다시 굴리기 · ${rc.gold.toLocaleString()}G · 강화석 ${rc.ore}" ${st.gold < rc.gold || t.ore < rc.ore ? 'disabled' : ''}>재련</button>` : ''}</div>`;
         }
+        right += this.shardPanel(b);
         const junk = st.inv.filter((x) => !x.book && BASES[x.base]?.slot && !x.named);
         if (junk.length) right += `<h3 style="margin-top:8px">분해 <button class="btn" data-salvageall="1">일반 · 마법 모두</button></h3>` + junk.map((x) => { const v = salvageValue(x); return `<div class="row"><div class="cell shopIco${rar(x)}">${ico(x)}</div><div class="grow"><b style="color:${itemColor(x)}">${esc(itemName(x))}</b><div class="note">강화석 ${v.ore} · ${MATERIALS[v.mat].name} ${v.matN}</div></div><button class="btn" data-salvage="${x.uid}">분해</button></div>`; }).join('');
       }
@@ -705,6 +729,15 @@ export class Windows {
     on('[data-salvage]', (el) => { const r = salvage(st, Number(el.dataset.salvage)); if (r.ok) { audio.play('coin'); w.ui.toast(`분해: 강화석 ${r.ore} · ${MATERIALS[r.mat].name} ${r.matN}`, '#ffd84a'); } townDone(r); });
     on('[data-salvageall]', () => { let n = 0; for (const x of [...st.inv]) if (!x.book && BASES[x.base]?.slot && ['common', 'magic'].includes(x.rarity) && salvage(st, x.uid).ok) n++; audio.play('coin'); w.ui.toast(`장비 ${n}개 분해`, '#ffd84a'); townDone({ ok: true }); });
     on('[data-reforge]', (el) => { const it = st.equip[el.dataset.reforge], r = reforge(st, it); if (r.ok) { audio.play('rankup'); w.ui.toast(`재련: ${affixText(r.old)} → ${affixText(r.now)}`, '#ffd84a'); w.refreshGear(); } townDone(r); });
+    on('[data-shard]', (el) => { const u = Number(el.dataset.shard); this.shardSel = this.shardSel === u ? null : u; this.shardLocks = []; audio.play('click'); this.render(); });
+    on('[data-starget]', (el) => { this.shardTarget = el.dataset.starget; this.shardLocks = []; audio.play('click'); this.render(); });
+    on('[data-slock]', (el) => { const k = Number(el.dataset.slock), L = this.shardLocks ||= []; const i = L.indexOf(k); if (i >= 0) L.splice(i, 1); else L.push(k); audio.play('click'); this.render(); });
+    on('[data-sapply]', () => {
+      const it = st.equip[this.shardTarget], sm = Object.values(townOf(st).plots).find((q) => q.type === 'smithy');
+      const r = applyShard(st, it, this.shardSel, this.shardLocks || [], sm?.lv || 0);
+      if (r.ok) { audio.play('rankup'); w.ui.toast(`${affixText(r.old)} → ${affixText(r.now)}`, '#c58cff'); this.shardSel = null; w.refreshGear(); }
+      townDone(r);
+    });
     on('[data-notes]', () => showNotes());
     on('[data-restore]', async () => {
       const b = await cloud.restore(st.cid);

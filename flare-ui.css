@@ -123,3 +123,12 @@ body.touch #quick { right: calc(10px + env(safe-area-inset-right)); bottom: calc
 body.touch #quick .slot { position: relative; right: auto; bottom: auto; transform: none; width: calc(var(--u) * 3.6); height: calc(var(--u) * 3.6); }
 body.touch #quick .slot:nth-child(n) { right: auto; bottom: auto; }
 .slot.empty .nm::after { content: ''; }
+
+/* 휴대폰 폭: 탭 줄이 오른쪽에서 잘리지 않게 — 고르지 않은 탭은 그림만 */
+@media (max-width: 960px) {
+  .tabs { gap: 3px; }
+  .tab { padding: 2px 3px; min-width: 0; border-width: 0 8px; height: calc(var(--u) * 3); }
+  .tab:not(.on) span { display: none; }
+  .fs-head { gap: 6px; }
+  .fs-head h2 { font-size: calc(var(--u) * 1.35); }
+}
