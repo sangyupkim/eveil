@@ -146,8 +146,9 @@ async function boot() {
 }
 
 function startGame(stage, st) {
-  // 캐릭터마다 다른 세상: 씨앗으로 지역 자리 · 지형을 새로 만든다
-  if (!st.worldSeed) { st.worldSeed = 1 + Math.floor(Math.random() * 1e9); st.fog = ''; st.camps = {}; }
+  // 접속할 때마다 새 세상: 씨앗으로 지역 자리 · 지형 · 던전을 새로 만든다.
+  // 지도 안개 · 바닥 아이템은 지우고 마을에서 시작. 야영지 투자(상인 · 모닥불)는 지역별로 남긴다
+  st.worldSeed = 1 + Math.floor(Math.random() * 1e9); st.fog = ''; st.ground = []; st.pos = { x: 0, z: 4 };
   generateWorld(st.worldSeed);
   stage.props.clear(); stage.flats.length = 0; stage.colliders.length = 0; stage.grid = null;
   buildWorldProps(stage);
