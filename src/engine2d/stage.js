@@ -12,8 +12,10 @@ export const PX = 64, PZ = 32, PY = 64;
 // 땅 타일(192×96) 한 칸 = 세계 STEP칸 대각
 const STEP = 96 / PX;
 
+// 지역 반지름은 방향마다 다르다 (둥근 원이 아니라 들쭉날쭉한 땅)
+export const zoneRadius = (zn, a) => { const s = zn.x * 0.013 + zn.z * 0.021; return zn.r * (1 + 0.13 * Math.sin(3 * a + s) + 0.08 * Math.sin(5 * a + s * 2.3) + 0.05 * Math.sin(8 * a + s * 4.1)); };
 export function zoneAt(x, z) {
-  for (const zn of ZONES) if (Math.hypot(x - zn.x, z - zn.z) < zn.r) return zn;
+  for (const zn of ZONES) if (Math.hypot(x - zn.x, z - zn.z) < zoneRadius(zn, Math.atan2(z - zn.z, x - zn.x))) return zn;
   return null;
 }
 function distToSeg(px, pz, ax, az, bx, bz) {
@@ -34,7 +36,7 @@ function groundAt(i, j) {
   for (const zn of ZONES) if (distToSeg(x, z, 0, 0, zn.x * 0.72, zn.z * 0.72) < 2.6 + noise(x, z) * 1.5) return pick('town', h);
   // 지역 경계는 들쭉날쭉하게
   let zn = null;
-  for (const z0 of ZONES) if (Math.hypot(x - z0.x, z - z0.z) < z0.r * (1.05 + (noise(x * 2, z * 2) - 0.5) * 0.3)) { zn = z0; break; }
+  for (const z0 of ZONES) if (Math.hypot(x - z0.x, z - z0.z) < zoneRadius(z0, Math.atan2(z - z0.z, x - z0.x)) * (1.02 + (noise(x * 2, z * 2) - 0.5) * 0.08)) { zn = z0; break; }
   const L = ZONE_LOOK[zn ? zn.id : 'wild'];
   const lake = lakeCell(i, j);
   if (lake) {
@@ -53,7 +55,39 @@ const HAS_BANKS = new Set(['grassland', 'snowplains', 'desert']);
 const LAVA_ZONES = new Set(['inferno', 'demongate']);
 {
   const rng = seeded(4242);
-  const clear = (x, z, r) => roadDist(x, z) > r + 5 && !ZONES.some((zn) => { const e = entranceOf(zn); return Math.hypot(e.x - x, e.z - z) < r + 4; }) && ![...LAKES, ...MESAS].some((q) => Math.hypot(q.x - x, q.z - z) < q.r + r + 6);
+  const clear = (x, z, r) => roadDist(x, z) > r + 5 && !ZONES.some((zn) => { const e = entranceOf(zn); return Math.hypot(e.x - x, e.z - z) < r + 4; }) && ![...LAKES, ...MESAS].some((q) => Math.hypot(q.x - x, q.z - z) < q.r + r + (q.ring ? 3 : 6));
+  // ① 지역 경계: 언덕(물 많은 지역은 물)을 고리처럼 두르고, 길목(마을 쪽 길) · 샛길 두세 군데만 뚫는다
+  const nearGate = (x, z, r) => roadDist(x, z) < r + 3.5 || ZONES.some((zn) => { const e = entranceOf(zn); return Math.hypot(e.x - x, e.z - z) < r + 5; }) || Math.hypot(x, z) < TOWN.r + r + 3;
+  for (const zn of ZONES) {
+    const L = ZONE_LOOK[zn.id], wet = ['swamp', 'harbor', 'webwood', 'frost'].includes(zn.id) || LAVA_ZONES.has(zn.id);
+    const bs = HAS_BANKS.has(L.set) ? L.set : 'grassland', top = bs !== L.set ? [L.set, L.ground[0]] : null;
+    const base = { set: bs, top, lava: LAVA_ZONES.has(zn.id), chasm: L.set === 'ruins', floor: [L.set, L.ground[0]], ring: true };
+    const road = Math.atan2(-zn.z, -zn.x), gaps = [road, road + 1.6 + rng() * 1.2, road - 1.8 - rng() * 1.4];
+    if (rng() < 0.5) gaps.pop();
+    const circ = 2 * Math.PI * zn.r * 1.05;
+    for (let k = 0, n = Math.round(circ / 5.2); k < n; k++) {
+      const a = (k / n) * Math.PI * 2 + (rng() - 0.5) * 0.05;
+      if (gaps.some((g) => Math.abs(Math.atan2(Math.sin(a - g), Math.cos(a - g))) < 0.2)) continue;
+      const rr = zoneRadius(zn, a) * (1.02 + (rng() - 0.5) * 0.06), r = 3.4 + rng() * 1.6;
+      const x = zn.x + Math.cos(a) * rr, z = zn.z + Math.sin(a) * rr;
+      if (nearGate(x, z, r)) continue;
+      (wet && rng() < 0.75 ? LAKES : MESAS).push({ x, z, r, ...base, lava: wet && base.lava });
+    }
+  }
+  // ② 지역 사이 황야: 크고 작은 호수 · 언덕을 사슬처럼 이어 불규칙하게
+  for (let k = 0, tries = 0; k < 34 && tries < 600; tries++) {
+    const a = rng() * Math.PI * 2, d = TOWN.r + 12 + rng() * (WORLD_SIZE - TOWN.r - 20), x = Math.cos(a) * d, z = Math.sin(a) * d;
+    if (zoneAt(x, z) || nearGate(x, z, 6)) continue;
+    const isLake = rng() < 0.45, base = { set: 'grassland', top: null, lava: false, chasm: false, floor: ['grassland', 16] };
+    let px = x, pz = z, dir = rng() * Math.PI * 2;
+    for (let c = 0, len = 2 + Math.floor(rng() * 4); c < len; c++) {
+      const r = 3.5 + rng() * 3;
+      if (zoneAt(px, pz) || nearGate(px, pz, r) || Math.hypot(px, pz) > WORLD_SIZE - 8) break;
+      (isLake ? LAKES : MESAS).push({ x: px, z: pz, r, ...base, wild: true });
+      dir += (rng() - 0.5) * 1.4; px += Math.cos(dir) * r * 1.3; pz += Math.sin(dir) * r * 1.3;
+    }
+    k++;
+  }
   for (const zn of ZONES) {
     const L = ZONE_LOOK[zn.id];
     const bs = HAS_BANKS.has(L.set) ? L.set : 'grassland', top = bs !== L.set ? [L.set, L.ground[0]] : null, lava = LAVA_ZONES.has(zn.id);
@@ -72,7 +106,9 @@ const LAVA_ZONES = new Set(['inferno', 'demongate']);
     }
   }
 }
-const blob = (list, x, z, k, pad = 0) => { for (const q of list) if (Math.hypot(x - q.x, z - q.z) < q.r * (1 + (noise(x * k, z * k + 31) - 0.5) * 0.45) + pad) return q; return null; };
+const BK = 16, buckets = new Map();
+for (const list of [LAKES, MESAS]) { const m = new Map(); buckets.set(list, m); for (const q of list) { const R2 = q.r * 1.3 + 3; for (let bx = Math.floor((q.x - R2) / BK); bx <= Math.floor((q.x + R2) / BK); bx++) for (let bz = Math.floor((q.z - R2) / BK); bz <= Math.floor((q.z + R2) / BK); bz++) { const key = bx * 1000 + bz; if (!m.has(key)) m.set(key, []); m.get(key).push(q); } } }
+const blob = (list, x, z, k, pad = 0) => { const b = buckets.get(list).get(Math.floor(x / BK) * 1000 + Math.floor(z / BK)); if (b) for (const q of b) if (Math.hypot(x - q.x, z - q.z) < q.r * (1 + (noise(x * k, z * k + 31) - 0.5) * 0.45) + pad) return q; return null; };
 // 칸(i, j) 단위로 판정해야 물가 · 절벽 타일이 맞물린다
 const cellXZ = (i, j) => [(i - j) * STEP, (i + j) * STEP];
 const lakeRaw = (i, j) => blob(LAKES, ...cellXZ(i, j), 0.9);
@@ -216,7 +252,7 @@ export function buildWorldProps(stage) {
     }
   }
   // 물가 둘레에 갈대 · 바위
-  for (const q of LAKES) for (let i = 0; i < 22; i++) {
+  for (const q of LAKES) for (let i = 0; i < (q.ring || q.wild ? 5 : 22); i++) {
     const a = rng() * 6.28, d = q.r * (1.1 + rng() * 0.25), x = q.x + Math.cos(a) * d, z = q.z + Math.sin(a) * d;
     if (inLake(x, z, 0.6) || inMesa(x, z) || inMesa(x + 1.5, z + 1.5) || inMesa(x - 1.5, z + 1.5)) continue;
     if (q.top) continue; // 폐허 · 동굴은 지역 소품으로 충분

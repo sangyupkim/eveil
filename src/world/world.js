@@ -273,7 +273,7 @@ export class World {
     const day = dayKey();
     const opened = (this.st.chests?.day === day ? this.st.chests.ids : []);
     [...LAKES, ...MESAS].forEach((q, i) => {
-      if (q.x > 500) return;
+      if (q.x > 500 || q.ring || (q.wild && i % 3)) return;
       const p = this.freeSpot(q.x + (i % 2 ? 2 : -2), q.z - q.r - 2.2, 0.8);
       const c = { id: i, x: p.x, z: p.z, open: opened.includes(i) };
       c.draw = { z: p.z, draw: (ctx, stg) => { const def = DATA.tiles.dungeon, tt = def.tiles[c.open ? 160 : 144], src = image(def.imgs[tt[0]]); if (!src.ok || !stg.onScreen(c.x, c.z, 3)) return; const s2 = stg.toScreen(c.x, c.z); drawRect(ctx, src.im, tt.slice(1), s2.x, s2.y, stg.scale()); } };
