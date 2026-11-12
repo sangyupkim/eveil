@@ -13,7 +13,7 @@ const SFX = {
   equip_metal: ['inventory/inventory_metal', 'cc0/chain1', 'cc0/metal1'], equip_leather: ['inventory/inventory_leather', 'cc0/armor_light'], equip_cloth: ['inventory/inventory_cloth', 'cc0/cloth_heavy'], step: ['steps/step_leather1', 'steps/step_leather2', 'steps/step_leather3', 'steps/step_leather4'],
 };
 // 몬스터 무리별 소리 (없으면 해골)
-const FAM = { antlion: 'antlion', fire_ant: 'antlion', ice_ant: 'antlion', goblin: 'goblin', hobgoblin: 'goblin', skeleton: 'skeleton', minotaur: 'minotaur', wyvern: 'wyvern', zombie: 'zombie', cursed: 'grave' };
+const FAM = { x_orc: 'goblin', x_troll: 'minotaur', x_were: 'minotaur', x_spider: 'antlion', x_demon: 'wyvern', x_shadow: 'grave', x_assassin: 'goblin', x_skeleton: 'skeleton', x_pirate: 'grave', antlion: 'antlion', fire_ant: 'antlion', ice_ant: 'antlion', goblin: 'goblin', hobgoblin: 'goblin', skeleton: 'skeleton', minotaur: 'minotaur', wyvern: 'wyvern', zombie: 'zombie', cursed: 'grave' };
 export const familyOf = (sprite = '') => FAM[Object.keys(FAM).find((k) => sprite.startsWith(k))] || 'skeleton';
 const VOICE = {
   antlion: ['slime1', 'slime2', 'slime3', 'slime4', 'slime5'], zombie: ['beast1', 'beast2', 'beast3', 'beast4', 'beast5'],
@@ -33,6 +33,7 @@ const famFile = (fam, kind) => {
 const MUSIC = {
   title: 'title', town: 'town', wild: 'overworld', field: 'overworld', forest: 'forest', grave: 'unrest', ruins: 'dungeon',
   swamp: 'magical', frost: 'wind_ambient', valley: 'battle', inferno: 'cave', boss: 'boss',
+  orcfort: 'battle', webwood: 'forest', harbor: 'unrest', demongate: 'cave',
 };
 
 export class Audio {

@@ -10,6 +10,12 @@ export const NAMED_LEGENDS = {
   valley: [{ id: 'nl_mino', name: '미노타우로스 왕의 도끼', base: 'great_axe', ilvl: 36, affixes: [['str', 14], ['dmgPct', 35]], unique: 0 }],
   inferno: [{ id: 'nl_flame', name: '화염 주술사의 심장', base: 'sun_amulet', ilvl: 42, affixes: [['int', 16], ['spellPct', 30]], unique: 10 }],
 };
+Object.assign(NAMED_LEGENDS, {
+  orcfort: [{ id: 'nl_troll', name: '트롤 왕의 가죽', base: 'dragon_plate', ilvl: 48, affixes: [['vit', 18], ['maxHp', 300]], unique: 3 }],
+  webwood: [{ id: 'nl_spider', name: '아라크네의 독침', base: 'dragon_bow', ilvl: 54, affixes: [['dex', 20], ['crit', 8]], unique: 11 }],
+  harbor: [{ id: 'nl_captain', name: '모르간의 나침반', base: 'star_amulet', ilvl: 60, affixes: [['allStats', 8], ['magicFind', 30]], unique: 7 }],
+  demongate: [{ id: 'nl_demon', name: '벨가로스의 심장', base: 'archmage_staff', ilvl: 66, affixes: [['int', 26], ['spellPct', 45]], unique: 5 }],
+});
 export const NAMED_CHANCE = { boss: 0.12, named: 0.03, dungeon: 0.15 };
 
 export const GEMS = {

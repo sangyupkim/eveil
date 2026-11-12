@@ -50,14 +50,15 @@ function groundAt(i, j) {
 const roadDist = (x, z) => Math.min(Math.hypot(x, z) - TOWN.r, ...ZONES.map((zn) => distToSeg(x, z, 0, 0, zn.x * 0.72, zn.z * 0.72)));
 export const LAKES = [], MESAS = [];
 const HAS_BANKS = new Set(['grassland', 'snowplains', 'desert']);
+const LAVA_ZONES = new Set(['inferno', 'demongate']);
 {
   const rng = seeded(4242);
   const clear = (x, z, r) => roadDist(x, z) > r + 5 && !ZONES.some((zn) => { const e = entranceOf(zn); return Math.hypot(e.x - x, e.z - z) < r + 4; }) && ![...LAKES, ...MESAS].some((q) => Math.hypot(q.x - x, q.z - z) < q.r + r + 6);
   for (const zn of ZONES) {
     const L = ZONE_LOOK[zn.id];
-    const bs = HAS_BANKS.has(L.set) ? L.set : 'grassland', top = bs !== L.set ? [L.set, L.ground[0]] : null, lava = zn.id === 'inferno';
+    const bs = HAS_BANKS.has(L.set) ? L.set : 'grassland', top = bs !== L.set ? [L.set, L.ground[0]] : null, lava = LAVA_ZONES.has(zn.id);
     const base = { set: bs, top, lava, floor: [L.set, L.ground[0]] };
-    const lakes = zn.id === 'swamp' ? 4 : zn.id === 'ruins' ? 0 : zn.id === 'inferno' ? 3 : 1 + (rng() < 0.6 ? 1 : 0);
+    const lakes = zn.id === 'swamp' ? 4 : L.set === 'ruins' ? 0 : LAVA_ZONES.has(zn.id) ? 3 : zn.id === 'harbor' ? 4 : 1 + (rng() < 0.6 ? 1 : 0);
     for (let k = 0, tries = 0; k < lakes && tries < 80; tries++) {
       const a = rng() * 6.28, d = rng() * zn.r * 0.75, r = 6.5 + rng() * 4;
       const x = zn.x + Math.cos(a) * d, z = zn.z + Math.sin(a) * d;

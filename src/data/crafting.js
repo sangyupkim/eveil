@@ -18,6 +18,10 @@ export const SETS = {
   frost: { name: '서리 군주', b2: { maxMp: 60 }, b4: { spellPct: 25, int: 10 } },
   valley: { name: '고대 수호자', b2: { vit: 10 }, b4: { armorPct: 25, maxHp: 300 } },
   inferno: { name: '화염 균열 정복자', b2: { crit: 5 }, b4: { dmgPct: 30, allStats: 6 } },
+  orcfort: { name: '요새 파괴자', b2: { str: 14 }, b4: { armorPct: 30, maxHp: 400 } },
+  webwood: { name: '거미줄 추적자', b2: { dex: 14 }, b4: { atkSpd: 15, crit: 8 } },
+  harbor: { name: '망령 사냥꾼', b2: { wis: 14 }, b4: { spellPct: 35, mpRegen: 6 } },
+  demongate: { name: '관문의 수호자', b2: { allStats: 6 }, b4: { dmgPct: 40, lifeSteal: 4 } },
 };
 // 한 부위 제작 비용
 export const craftCost = (zi) => ({ mats: 12 + zi * 4, gold: 300 * (zi + 1) ** 2 });

@@ -30,7 +30,7 @@ export const BUILDINGS = {
   },
   workshop: {
     name: '제작소', desc: '지역 재료로 세트 장비 제작', max: 5, cost: (lv) => [400, 1500, 5000, 14000, 35000][lv] ?? null,
-    zones: (lv) => [0, 2, 4, 5, 6, 8][lv], // 만들 수 있는 지역 수
+    zones: (lv) => [0, 2, 4, 6, 8, 12][lv], // 만들 수 있는 지역 수
     look: [['grassland', 100, 0, 0], ['grassland', 120, 1.4, 0.6]],
   },
   lab: {

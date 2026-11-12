@@ -89,4 +89,5 @@ export const SCHOOL_ICON = { sword: 5, bow: 16, fire: 34, frost: 38, storm: 7, h
 export const ZONE_SCHOOLS = {
   field: ['sword', 'bow'], forest: ['bow', 'trick'], grave: ['holy', 'frost'], ruins: ['sword', 'guard'],
   swamp: ['storm', 'trick'], frost: ['frost', 'guard'], valley: ['bow', 'storm'], inferno: ['fire', 'sword'],
+  orcfort: ['sword', 'guard'], webwood: ['bow', 'trick'], harbor: ['holy', 'frost'], demongate: ['fire', 'storm'],
 };

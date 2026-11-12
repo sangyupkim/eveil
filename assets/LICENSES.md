@@ -20,3 +20,10 @@
 
 ## 폐허 타일 (assets/flare/tiles/ruins_*)
 - Flare Empyrean Campaign "tileset_ruins" — Flare 팀, CC-BY-SA 3.0: https://github.com/flareteam/flare-game
+
+## 추가 몬스터 (assets/flare/enemies/x_*)
+- flare-mod-noname (igorko) 묶음의 몬스터 그림 · 동작 정의, CC-BY-SA 3.0: https://github.com/igorko/flare-mod-noname
+  - 오크 · 거미 · 늑대인간 · 곰인간: johndh, Mumu, ryan.dansie (OpenGameArt "Orc/Spider/Werebear FLARE sprite sheets", "FLARE Mod - Werewolf")
+  - 트롤 · 그림자 · 해골 기사/고위 마법사/사교도 · 유령 선장/선원: VWolfdog (OpenGameArt "FLARE Model - Troll", "Shadow", "Flare skeleton mod", "Flare zombie mod")
+  - 악마 · 악마 석상: umask007 (OpenGameArt "Animated Daemon", "Daemon statue")
+  - 변환: `node tools/prep-enemies-extra.mjs <new_game_mod 경로>`

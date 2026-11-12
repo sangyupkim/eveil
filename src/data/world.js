@@ -40,7 +40,7 @@ export const MONSTERS = {
   // 안개 늪
   frog: { behave: 'charge', name: '늪 개미귀신', model: 'm_frog', h: 1.6, attack: 'melee', hp: 99, dmg: [12, 16], speed: 2.8, interval: 1.7, range: 2.0, aggro: 9, exp: 28 },
   bog_slime: { name: '늪 새끼 개미귀신', model: 'm_slime_pink', h: 1.5, tint: 0xa0d070, attack: 'melee', hp: 86, dmg: [11, 15], speed: 2.5, interval: 1.6, range: 1.9, aggro: 8, exp: 26 },
-  snake: { name: '늪 갑각 개미귀신', model: 'm_snake', h: 1.1, attack: 'melee', hp: 76, dmg: [14, 18], speed: 3.6, interval: 1.3, range: 2.0, aggro: 10, exp: 27 },
+  snake: { name: '늪 독거미', model: 'm_snake', h: 1.1, attack: 'melee', hp: 76, dmg: [14, 18], speed: 3.6, interval: 1.3, range: 2.0, aggro: 10, exp: 27 },
   squidle: { name: '늪 해골 주술사', model: 'm_squidle', h: 1.8, attack: 'spell', hp: 81, dmg: [14, 20], speed: 2.6, interval: 2.2, range: 9, aggro: 11, exp: 30 },
   mushnub_evo: { behave: 'shield', name: '늪 좀비', model: 'm_mushnub_evo', h: 1.8, attack: 'melee', hp: 117, dmg: [13, 17], speed: 2.4, interval: 1.8, range: 2.0, aggro: 8, exp: 30 },
   bog_witch: { name: '늪의 대주술사', model: 'm_wizard', h: 2.2, attack: 'spell', hp: 120, dmg: [18, 24], speed: 2.4, interval: 2.0, range: 10, aggro: 12, exp: 34,
@@ -48,11 +48,11 @@ export const MONSTERS = {
   bog_king: { name: '물 비룡', model: 'm_frog', h: 2.0, tint: 0x9ab070, attack: 'melee', atk: 'attack2', hp: 140, dmg: [18, 24], speed: 2.8, interval: 1.8, range: 2.6, aggro: 12, exp: 36,
     patterns: ['slam', 'spores', 'charge', 'summon'], minion: 'frog' },
   // 서리 고원
-  yeti: { name: '얼어붙은 좀비', model: 'm_yeti', h: 1.9, attack: 'melee', hp: 144, dmg: [14, 18], speed: 2.6, interval: 1.8, range: 2.1, aggro: 9, exp: 38 },
+  yeti: { name: '설원 곰인간', model: 'm_yeti', h: 1.9, attack: 'melee', hp: 144, dmg: [14, 18], speed: 2.6, interval: 1.8, range: 2.1, aggro: 9, exp: 38 },
   ice_wolf: { behave: 'charge', name: '얼음 개미', model: 'm_husky', h: 1.5, tint: 0xc8d8ff, attack: 'melee', hp: 119, dmg: [14, 19], speed: 4.4, interval: 1.3, range: 2.0, aggro: 11, exp: 37 },
   snow_fox: { behave: 'charge', name: '작은 얼음 개미', model: 'm_fox', h: 1.2, tint: 0xf0f4ff, attack: 'melee', hp: 98, dmg: [13, 16], speed: 4.6, interval: 1.2, range: 1.9, aggro: 10, exp: 34 },
   frost_wraith: { name: '서리 해골 주술사', model: 'm_ghost', h: 1.8, tint: 0x9fd0ff, attack: 'spell', hp: 102, dmg: [16, 21], speed: 3.0, interval: 2.1, range: 9, aggro: 12, exp: 40 },
-  ice_golem: { behave: 'shield', name: '얼어붙은 무덤', model: 'm_goleling', h: 2.0, tint: 0xa8d8ff, attack: 'melee', hp: 204, dmg: [15, 20], speed: 2.1, interval: 2.0, range: 2.2, aggro: 9, exp: 44 },
+  ice_golem: { behave: 'shield', name: '서리 트롤', model: 'm_goleling', h: 2.0, tint: 0xa8d8ff, attack: 'melee', hp: 204, dmg: [15, 20], speed: 2.1, interval: 2.0, range: 2.2, aggro: 9, exp: 44 },
   frost_stag: { name: '바람 비룡', model: 'm_stag', h: 2.4, tint: 0xd8e8ff, attack: 'melee', hp: 200, dmg: [24, 30], speed: 4.0, interval: 1.6, range: 2.4, aggro: 12, exp: 46,
     patterns: ['charge', 'slam'] },
   yeti_king: { name: '폭풍 비룡 우두머리', model: 'm_yeti', h: 2.8, tint: 0xe0eaff, attack: 'melee', hp: 220, dmg: [24, 31], speed: 2.8, interval: 1.9, range: 2.8, aggro: 13, exp: 48,
@@ -61,7 +61,7 @@ export const MONSTERS = {
   raptor: { behave: 'charge', name: '협곡 개미귀신', model: 'm_raptor', h: 1.6, attack: 'melee', hp: 122, dmg: [14, 17], speed: 4.8, interval: 1.2, range: 2.0, aggro: 12, exp: 50 },
   tricer: { behave: 'charge', name: '갑각 개미귀신', model: 'm_tricer', h: 2.0, attack: 'melee', hp: 205, dmg: [14, 18], speed: 2.8, interval: 2.0, range: 2.6, aggro: 9, exp: 56 },
   stego: { behave: 'shield', name: '거대 갑각 개미귀신', model: 'm_stego', h: 2.2, attack: 'melee', hp: 230, dmg: [14, 18], speed: 2.4, interval: 2.1, range: 2.6, aggro: 8, exp: 58 },
-  paraso: { name: '협곡 미노타우로스', model: 'm_paraso', h: 2.4, attack: 'melee', hp: 166, dmg: [14, 18], speed: 3.4, interval: 1.7, range: 2.4, aggro: 10, exp: 54 },
+  paraso: { name: '협곡 오크 약탈자', model: 'm_paraso', h: 2.4, attack: 'melee', hp: 166, dmg: [14, 18], speed: 3.4, interval: 1.7, range: 2.4, aggro: 10, exp: 54 },
   bison: { behave: 'charge', name: '뿔 미노타우로스', model: 'm_bison', h: 2.0, tint: 0x9a7a5a, attack: 'melee', hp: 179, dmg: [14, 18], speed: 3.6, interval: 1.8, range: 2.4, aggro: 10, exp: 54 },
   apato: { name: '늙은 미노타우로스', model: 'm_apato', h: 3.4, attack: 'melee', hp: 400, dmg: [32, 40], speed: 2.4, interval: 2.2, range: 3.2, aggro: 12, exp: 62,
     patterns: ['slam', 'charge'] },
@@ -69,12 +69,40 @@ export const MONSTERS = {
     patterns: ['charge', 'slam', 'summon', 'charge'], minion: 'raptor' },
   // 화염 균열
   flame_imp: { name: '화염 불개미', model: 'm_demon', h: 1.6, tint: 0xff8a60, attack: 'spell', hp: 196, dmg: [27, 34], speed: 3.4, interval: 2.0, range: 9, aggro: 12, exp: 64 },
-  fiend: { name: '불타는 좀비', model: 'm_blue_demon', h: 2.3, tint: 0xff6a4a, attack: 'melee', atk: 'attack2', hp: 357, dmg: [29, 36], speed: 3.0, interval: 1.8, range: 2.4, aggro: 10, exp: 72 },
-  magma_golem: { behave: 'shield', name: '불타는 무덤', model: 'm_goleling', h: 2.2, tint: 0xff7a40, attack: 'melee', hp: 442, dmg: [27, 35], speed: 2.2, interval: 2.0, range: 2.3, aggro: 9, exp: 74 },
+  fiend: { name: '불꽃 악마', model: 'm_blue_demon', h: 2.3, tint: 0xff6a4a, attack: 'melee', atk: 'attack2', hp: 357, dmg: [29, 36], speed: 3.0, interval: 1.8, range: 2.4, aggro: 10, exp: 72 },
+  magma_golem: { behave: 'shield', name: '용암 석상', model: 'm_goleling', h: 2.2, tint: 0xff7a40, attack: 'melee', hp: 442, dmg: [27, 35], speed: 2.2, interval: 2.0, range: 2.3, aggro: 9, exp: 74 },
   ember_skull: { name: '잿불 해골', model: 'm_ghost_skull', h: 1.9, tint: 0xff9a50, attack: 'melee', hp: 255, dmg: [30, 37], speed: 3.6, interval: 1.5, range: 2.0, aggro: 11, exp: 70 },
   drake: { behave: 'charge', name: '불 비룡', model: 'm_dragon', h: 2.4, tint: 0xff7050, attack: 'spell', atk: 'attack2', hp: 289, dmg: [32, 40], speed: 3.2, interval: 2.0, range: 9, aggro: 13, exp: 76 },
   flame_lord: { name: '화염의 대주술사', model: 'm_blue_demon', h: 3.0, tint: 0xff4a2a, attack: 'melee', atk: 'attack2', hp: 500, dmg: [44, 55], speed: 3.0, interval: 1.8, range: 3.0, aggro: 14, exp: 90,
     patterns: ['slam', 'volley', 'charge', 'summon', 'spores'], minion: 'flame_imp' },
+  // ── 9 오크 요새 ──
+  orc_grunt2: { name: '오크 전사', model: 'm_orc', h: 2.0, attack: 'melee', hp: 260, dmg: [31, 38], speed: 3.4, interval: 1.6, range: 2.2, aggro: 11, exp: 80 },
+  orc_archer2: { name: '오크 궁수', model: 'm_orc', h: 2.0, attack: 'ranged', hp: 200, dmg: [30, 37], speed: 3.2, interval: 1.9, range: 10, aggro: 13, exp: 80 },
+  orc_brute: { behave: 'shield', name: '오크 중갑병', model: 'm_orc', h: 2.2, attack: 'melee', hp: 380, dmg: [32, 40], speed: 2.6, interval: 1.9, range: 2.3, aggro: 10, exp: 86 },
+  orc_raider: { behave: 'charge', name: '오크 돌격병', model: 'm_orc', h: 2.0, attack: 'melee', hp: 240, dmg: [33, 40], speed: 4.2, interval: 1.5, range: 2.2, aggro: 12, exp: 84 },
+  orc_warlord: { name: '오크 군주', model: 'm_orc', h: 2.6, attack: 'melee', hp: 560, dmg: [48, 58], speed: 3.2, interval: 1.7, range: 2.6, aggro: 13, exp: 96, patterns: ['charge', 'slam'] },
+  troll_king: { name: '바위 트롤 왕', model: 'm_troll', h: 3.2, attack: 'melee', hp: 620, dmg: [52, 64], speed: 2.8, interval: 2.0, range: 3.2, aggro: 14, exp: 110, patterns: ['slam', 'charge', 'summon', 'slam'], minion: 'orc_grunt2' },
+  // ── 10 거미 숲 ──
+  web_spider: { name: '그물 거미', model: 'm_spider', h: 1.2, attack: 'melee', hp: 230, dmg: [34, 41], speed: 4.4, interval: 1.2, range: 1.8, aggro: 12, exp: 86 },
+  poison_spider: { name: '독거미', model: 'm_spider', h: 1.4, attack: 'spell', hp: 250, dmg: [33, 40], speed: 3.6, interval: 1.9, range: 8, aggro: 12, exp: 88 },
+  cave_spider: { behave: 'charge', name: '굴 거미', model: 'm_spider', h: 1.6, attack: 'melee', hp: 330, dmg: [36, 44], speed: 4.0, interval: 1.5, range: 2.0, aggro: 11, exp: 92 },
+  shade: { name: '숲 그림자', model: 'm_shadow', h: 2.0, attack: 'spell', hp: 270, dmg: [36, 44], speed: 3.4, interval: 1.8, range: 9, aggro: 12, exp: 92 },
+  brood_mother: { name: '거미 여왕의 딸', model: 'm_spider', h: 2.2, attack: 'melee', hp: 600, dmg: [52, 62], speed: 3.4, interval: 1.6, range: 2.6, aggro: 13, exp: 104, patterns: ['spores', 'charge'] },
+  spider_queen: { name: '거미 여왕 아라크네', model: 'm_spider', h: 3.0, attack: 'melee', hp: 700, dmg: [56, 68], speed: 3.2, interval: 1.7, range: 3.0, aggro: 14, exp: 120, patterns: ['spores', 'summon', 'charge', 'volley'], minion: 'web_spider' },
+  // ── 11 망령의 항구 ──
+  ghost_crew: { name: '망령 선원', model: 'm_ghost', h: 2.0, attack: 'melee', hp: 300, dmg: [38, 46], speed: 3.6, interval: 1.5, range: 2.2, aggro: 12, exp: 96 },
+  bone_knight: { behave: 'shield', name: '해골 기사단', model: 'm_skel', h: 2.1, attack: 'melee', hp: 420, dmg: [40, 48], speed: 2.8, interval: 1.8, range: 2.3, aggro: 11, exp: 102 },
+  occultist: { name: '해골 사교도', model: 'm_skel', h: 2.0, attack: 'spell', hp: 280, dmg: [40, 48], speed: 3.0, interval: 2.0, range: 9, aggro: 13, exp: 100 },
+  dock_assassin: { behave: 'charge', name: '부두 암살자', model: 'm_human', h: 1.9, attack: 'melee', hp: 290, dmg: [42, 50], speed: 4.6, interval: 1.2, range: 2.0, aggro: 13, exp: 100 },
+  high_mage: { name: '고위 해골 마법사', model: 'm_skel', h: 2.4, attack: 'spell', hp: 640, dmg: [58, 70], speed: 3.0, interval: 1.8, range: 10, aggro: 14, exp: 112, patterns: ['volley', 'spores'] },
+  ghost_captain: { name: '유령 선장 모르간', model: 'm_ghost', h: 2.8, attack: 'melee', hp: 760, dmg: [62, 74], speed: 3.4, interval: 1.6, range: 3.0, aggro: 15, exp: 130, patterns: ['charge', 'summon', 'slam', 'volley'], minion: 'ghost_crew' },
+  // ── 12 악마의 관문 ──
+  hell_hound: { behave: 'charge', name: '지옥 늑대인간', model: 'm_wolf', h: 2.0, attack: 'melee', hp: 330, dmg: [44, 52], speed: 4.6, interval: 1.3, range: 2.2, aggro: 13, exp: 106 },
+  dread_bear: { behave: 'shield', name: '저주받은 곰인간', model: 'm_bear', h: 2.4, attack: 'melee', hp: 520, dmg: [46, 56], speed: 3.0, interval: 1.8, range: 2.6, aggro: 11, exp: 112 },
+  void_shade: { name: '공허의 그림자', model: 'm_shadow', h: 2.0, attack: 'spell', hp: 340, dmg: [46, 54], speed: 3.6, interval: 1.8, range: 10, aggro: 13, exp: 110 },
+  gargoyle: { behave: 'shield', name: '악마 석상', model: 'm_statue', h: 2.6, attack: 'spell', hp: 600, dmg: [48, 58], speed: 1.6, interval: 2.2, range: 9, aggro: 10, exp: 116 },
+  pit_lord: { name: '구덩이 군주', model: 'm_demon', h: 2.8, attack: 'melee', hp: 800, dmg: [66, 80], speed: 3.2, interval: 1.7, range: 3.0, aggro: 14, exp: 124, patterns: ['slam', 'charge'] },
+  arch_demon: { name: '대악마 벨가로스', model: 'm_demon', h: 3.4, attack: 'melee', hp: 900, dmg: [72, 88], speed: 3.2, interval: 1.6, range: 3.4, aggro: 16, exp: 150, patterns: ['slam', 'volley', 'charge', 'summon', 'spores'], minion: 'hell_hound' },
 };
 
 // 지역: 마을은 원점. levels: 마을에서 가까운 쪽 → 먼 쪽 몬스터 레벨
@@ -137,6 +165,34 @@ export const ZONES = [
     boss: { type: 'flame_lord', name: '화염의 대주술사 바르곤' },
     props: { n_dead1: 20, n_dead2: 18, n_birch_dead: 14, n_rock1: 26, n_rock2: 22, rubble: 10, pillar: 8, skull_candle: 12, bone: 14 },
   },
+  {
+    id: 'orcfort', name: '오크 요새', x: 0, z: 172, r: 40, levels: [43, 48], count: 20, ground: [0.30, 0.24, 0.16], music: 'battle',
+    spawns: { orc_grunt2: 30, orc_archer2: 22, orc_brute: 20, orc_raider: 20 },
+    named: { type: 'orc_warlord', name: '오크 군주 그롬마쉬' },
+    boss: { type: 'troll_king', name: '바위 트롤 왕 구르크' },
+    props: {},
+  },
+  {
+    id: 'webwood', name: '거미줄 숲', x: -172, z: 0, r: 40, levels: [49, 54], count: 21, ground: [0.12, 0.16, 0.12], music: 'forest',
+    spawns: { web_spider: 30, poison_spider: 22, cave_spider: 20, shade: 18 },
+    named: { type: 'brood_mother', name: '거미 여왕의 딸 실크' },
+    boss: { type: 'spider_queen', name: '거미 여왕 아라크네' },
+    props: {},
+  },
+  {
+    id: 'harbor', name: '망령의 항구', x: 0, z: -172, r: 40, levels: [55, 60], count: 21, ground: [0.18, 0.22, 0.26], music: 'unrest',
+    spawns: { ghost_crew: 30, bone_knight: 20, occultist: 22, dock_assassin: 18 },
+    named: { type: 'high_mage', name: '고위 해골 마법사 네크로스' },
+    boss: { type: 'ghost_captain', name: '유령 선장 모르간' },
+    props: {},
+  },
+  {
+    id: 'demongate', name: '악마의 관문', x: 172, z: 0, r: 40, levels: [61, 66], count: 22, ground: [0.26, 0.08, 0.08], music: 'boss',
+    spawns: { hell_hound: 28, dread_bear: 20, void_shade: 22, gargoyle: 14 },
+    named: { type: 'pit_lord', name: '구덩이 군주 모르독' },
+    boss: { type: 'arch_demon', name: '대악마 벨가로스' },
+    props: {},
+  },
 ];
 
-export const WORLD_SIZE = 185; // 맵 반경
+export const WORLD_SIZE = 218; // 맵 반경 (지역 9~12가 바깥 고리)
