@@ -410,6 +410,9 @@ export class World {
     this.guard.facing = 0.4;
     this.guard.play('idle');
     this.guard.name = '경비대장 하겐';
+    // 보석상 (보석 조각 · 열쇠 상점) · 현자 (도감 · 칭호)
+    this.gemNpc = new Actor(this.scene, { npc: 'guild_man' }); this.gemNpc.pos.set(9, 0, -4); this.gemNpc.facing = -0.4; this.gemNpc.play('idle'); this.gemNpc.name = '보석상 리엔';
+    this.sage = new Actor(this.scene, { npc: 'peasant_woman1' }); this.sage.pos.set(-10, 0, -3); this.sage.facing = 0.6; this.sage.play('idle'); this.sage.name = '현자 에라';
   }
 
   get inTown() {
@@ -1611,6 +1614,7 @@ export class World {
     this.player.update(dt);
     this.npc.update(dt);
     this.guard.update(dt);
+    this.gemNpc?.update(dt); this.sage?.update(dt);
     this.updateSpawners(dt);
     const P = this.player.pos;
     // 화면에 보이는 몬스터만 그린다 (뼈대 모델은 스스로 화면 밖을 거르지 못한다)

@@ -269,6 +269,10 @@ export class HUD {
         return el;
       });
     }
+    for (const [k, n, tag] of [['gemNpc', w.gemNpc, '보석 · 열쇠'], ['sage', w.sage, '도감 · 칭호']]) {
+      if (!n || Math.hypot(n.pos.x - P.x, n.pos.z - P.z) >= 22) continue;
+      place(k, n.pos, 2.9, () => { const el = document.createElement('div'); el.className = 'lbl npc'; el.textContent = `${n.name} (${tag})`; return el; });
+    }
     for (const [k, el] of this.labels) if (!seen.has(k)) { el.remove(); this.labels.delete(k); }
   }
 

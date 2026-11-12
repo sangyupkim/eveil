@@ -45,6 +45,13 @@ export function setupInput(world, stage, windows) {
         return;
       }
     }
+    for (const [npc, win] of [[world.gemNpc, 'shop'], [world.sage, 'dex']]) {
+      if (!npc || !pickNpc(e.clientX, e.clientY, npc)) continue;
+      const n = npc.pos;
+      if (Math.hypot(n.x - world.player.pos.x, n.z - world.player.pos.z) < 5) windows.show(win);
+      else world.cmdMove(n.x + 1, n.z + 1.2);
+      return;
+    }
     if (pickNpc(e.clientX, e.clientY, world.guard)) {
       const n = world.guard.pos;
       if (Math.hypot(n.x - world.player.pos.x, n.z - world.player.pos.z) < 5) windows.show('quest');
