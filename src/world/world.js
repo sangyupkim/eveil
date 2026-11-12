@@ -23,7 +23,7 @@ import { addItem, takeOne, countOf, equip as equipItem, unequip as unequipItem }
 import { itemName, itemColor, isBook, makeItem, makeBook, rollBase, itemValue } from '../game/items.js';
 import { seeded, randInt, randRange } from '../game/rng.js';
 import { Actor, makeHero } from '../engine2d/actor.js';
-import { FX } from '../engine2d/fx.js';
+import { FX, drawPowerFrame } from '../engine2d/fx.js';
 import { resolveCollision, zoneAt, clearLine, findPath, blockedAt, LAKES, MESAS, CAMPS, inCamp } from '../engine2d/stage.js';
 import { reveal, saveFog, loadFog } from '../ui/mapimg.js';
 import { DATA, image, animImage, drawRect, frameIndex } from '../engine2d/sprites.js';
@@ -48,25 +48,13 @@ export class World {
     this.st = st;
     this.ui = ui;
     this.fx = new FX(stage, ui.fxLayer);
-    // 마을 빈터 바닥 표시 (아직 안 지은 곳)
-    stage.groundLayers.push((ctx, st) => {
-      const t = townOf(this.st);
-      for (const pl of PLOTS) {
-        if (t.plots[pl.id] || !st.onScreen(pl.x, pl.z, 4)) continue;
-        const p = st.toScreen(pl.x, pl.z), k = st.scale();
-        ctx.strokeStyle = `rgba(230,200,120,${0.35 + Math.sin(this.time * 2) * 0.15})`; ctx.lineWidth = 2; ctx.setLineDash([8, 6]);
-        ctx.beginPath(); ctx.moveTo(p.x, p.y - 64 * k); ctx.lineTo(p.x + 128 * k, p.y); ctx.lineTo(p.x, p.y + 64 * k); ctx.lineTo(p.x - 128 * k, p.y); ctx.closePath(); ctx.stroke();
-        ctx.setLineDash([]);
-      }
-    });
     // 고정한 타겟 발밑 표시
     stage.groundLayers.push((ctx, st) => {
       const t = this.target && !this.target.dead ? this.target : this.locked && !this.locked.dead ? this.locked : null;
       if (!t || !st.onScreen(t.pos.x, t.pos.z, 3)) return;
       const p = st.toScreen(t.pos.x, t.pos.z), k = st.scale() * t.actor.scale, a = 0.6 + Math.sin(this.time * 6) * 0.25;
-      ctx.strokeStyle = this.target === t ? `rgba(255,90,60,${a})` : `rgba(255,200,120,${a * 0.7})`;
-      ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.ellipse(p.x, p.y, 34 * k, 15 * k, 0, 0, 7); ctx.stroke();
+      // 도형 고리 대신 붉은 룬 그림
+      drawPowerFrame(ctx, st, 'runes', t.pos.x, t.pos.z, { scale: 0.55 * t.actor.scale, tint: this.target === t ? 0xff5a3c : 0xffc878, t: this.time, alpha: a });
     });
     this.fx.onShake = (k) => { if (this.st.settings.shake !== false) stage.shake(k); };
     this.timers = [];
@@ -1121,14 +1109,9 @@ export class World {
       ctx.globalAlpha = pulse * (0.4 + rank * 0.15);
       // 좋은 것일수록 크고 밝게 · 전설은 반짝이는 알갱이가 오른다
       if (rank >= 3 && Math.random() < 0.08 + rank * 0.03) this.fx.add.add({ x: x + (Math.random() - 0.5), y: 0.2, z: z + (Math.random() - 0.5) * 0.5, vy: 1.5 + Math.random(), color, size: 0.35, size1: 0.05, life: 0.9, cell: 'spark' });
-      const gr = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, (30 + rank * 10) * k);
-      gr.addColorStop(0, css); gr.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(p.x, p.y, (beam ? 46 : 30) * k, (beam ? 23 : 15) * k, 0, 0, 7); ctx.fill();
-      if (beam) {
-        const h = (90 + rank * 45) * k, lg = ctx.createLinearGradient(0, p.y, 0, p.y - h);
-        lg.addColorStop(0, css); lg.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.globalAlpha = pulse * 0.7; ctx.fillStyle = lg; ctx.fillRect(p.x - (3 + rank * 2) * k, p.y - h, (6 + rank * 4) * k, h);
-      }
+      // 바닥 빛: 도형 대신 빛무리 그림 (좋은 것일수록 크게)
+      if (rank >= 1 || beam) drawPowerFrame(ctx, st, 'sparkle', x, z, { scale: 0.45 + rank * 0.12, tint: color, t: this.time + g.gid, alpha: Math.min(1, pulse * 1.3) });
+      if (beam) drawPowerFrame(ctx, st, 'immunity', x, z, { scale: 0.6 + rank * 0.1, tint: color, t: this.time * 0.6 + g.gid, alpha: pulse * 0.8 }); // 좋은 것: 빛 소용돌이
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;
       if (!def) return;

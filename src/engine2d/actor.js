@@ -120,11 +120,9 @@ export class Actor {
     ctx.globalAlpha = 0.35 * alpha;
     ctx.fillStyle = '#000';
     ctx.beginPath(); ctx.ellipse(p.x, p.y, 26 * s, 11 * s, 0, 0, Math.PI * 2); ctx.fill();
-    if (this.glow) {
-      ctx.globalAlpha = 0.55 * alpha; ctx.strokeStyle = this.glow; ctx.lineWidth = 3 * s;
-      ctx.beginPath(); ctx.ellipse(p.x, p.y, 34 * s, 15 * s, 0, 0, Math.PI * 2); ctx.stroke();
-    }
+
     ctx.globalAlpha = alpha;
+    this.lastDraw = null;
     const name = this.current || 'idle';
     const fl = ANIM_MAP[name] ?? name;
     const y = p.y - fly;
@@ -141,6 +139,7 @@ export class Actor {
         const src = this.tints?.[type] != null ? tinted(path, this.tints[type]) : image(path).ok && image(path).im;
         if (!src) continue;
         drawRect(ctx, src, a.f[this.dir]?.[Math.min(fi, a.frames - 1)], p.x, y, s * (d.px || 1));
+        if (this.flash > 0) (this.lastDraw ||= []).push([src, a.f[this.dir]?.[Math.min(fi, a.frames - 1)], s * (d.px || 1)]);
       }
     } else {
       const anims = this.def.anims;
@@ -148,13 +147,13 @@ export class Actor {
       const path = animImage(this.def, anims[fl] ? fl : 'stance');
       const src = this.tint != null ? tinted(path, this.tint) : image(path).ok && image(path).im;
       if (src && a) drawRect(ctx, src, a.f[this.dir]?.[frameIndex(a, this.t, this.once)], p.x, y, s * (this.def.px || 1));
+      if (src && a && this.flash > 0) (this.lastDraw ||= []).push([src, a.f[this.dir]?.[frameIndex(a, this.t, this.once)], s * (this.def.px || 1)]);
     }
     // 맞았을 때 번쩍: 같은 그림을 밝게 한 번 더 (lighter)
-    if (this.flash > 0) {
+    if (this.flash > 0 && this.lastDraw?.length) {
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = Math.min(1, this.flash * 6) * 0.5;
-      ctx.fillStyle = '#' + new THREE.Color(this.flashColor).getHexString();
-      ctx.beginPath(); ctx.ellipse(p.x, y - 50 * s, 24 * s, 46 * s, 0, 0, Math.PI * 2); ctx.fill();
+      for (const [src2, rect, sc] of this.lastDraw || []) drawRect(ctx, src2, rect, p.x, y, sc); // 같은 그림을 밝게 한 번 더
       ctx.globalCompositeOperation = 'source-over';
     }
     ctx.globalAlpha = 1;

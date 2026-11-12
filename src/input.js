@@ -1,5 +1,5 @@
 // 입력: PC(마우스 · 키보드) + 모바일(조이스틱 · 터치 · 버튼)
-import { isTouch } from './engine2d/stage.js';
+import { isTouch, CAMPS } from './engine2d/stage.js';
 import { PLOTS } from './data/buildings.js';
 import { actionOf, keyMap, bindKey } from './data/keys.js';
 
@@ -36,6 +36,9 @@ export function setupInput(world, stage, windows) {
     const list = [[world.npc, 'shop', '상인'], [world.guard, 'quest', '경비대장'], [world.gemNpc, 'shop', '보석상'], [world.sage, 'dex', '현자'],
       ...(world.campNpcs || []).map((a) => [a, 'shop', '야영지 상인']), ...(world.eventNpc ? [[world.eventNpc, 'shop', '떠돌이 상인']] : [])];
     for (const [npc, win, nm] of list) if (npc && near(npc.pos)) return { name: nm, go: () => windows.show(win) };
+    // 포탈 (마을 차원문 · 발견한 야영지): 공격 버튼으로 탄다
+    const pt = [{ x: 0, z: -2, zone: 'town' }, ...CAMPS.filter((c) => world.st.camps?.[c.zone])].find((q) => near(q, 3));
+    if (pt) return { name: '포탈', go: () => { windows.portalAt = pt.zone; windows.show('map'); } };
     if (world.inTown) {
       const pl = PLOTS.filter((q) => near(q, 3.6)).sort((a, b) => Math.hypot(a.x - world.player.pos.x, a.z - world.player.pos.z) - Math.hypot(b.x - world.player.pos.x, b.z - world.player.pos.z))[0];
       if (pl) return { name: '건물', go: () => { windows.townSel = pl.id; windows.show('town'); } };

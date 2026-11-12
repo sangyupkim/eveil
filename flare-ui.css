@@ -138,3 +138,12 @@ body.touch #quick .slot:nth-child(n) { right: auto; bottom: auto; }
 .herbBar .hb { display: flex; align-items: center; gap: 3px; padding: 1px 6px 1px 2px; border: 1px solid var(--line); border-radius: 6px; background: rgba(0, 0, 0, 0.35); font-size: calc(var(--u) * 0.85); }
 .herbBar .hb img { width: 1.7em; height: 1.7em; }
 #verInfo { color: var(--brass-hi); font-family: var(--f-latin); }
+
+/* 포탈 · 지도: 왼쪽 목적지 목록, 가운데 확대 지도 */
+.destList .btn.dest { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 6px; padding: 0.55em 0.8em; text-align: left; }
+.destList .btn.dest small { color: var(--dim); font-size: 0.8em; }
+.destList .btn.dest.on { opacity: 0.7; }
+.mapZoom { position: sticky; top: 0; left: 0; z-index: 3; display: inline-flex; gap: 6px; align-items: center; margin-bottom: 6px; background: rgba(10, 8, 16, 0.85); padding: 3px 6px; border-radius: 6px; }
+.mapZoom .btn { min-width: 2.2em; padding: 0.2em 0.6em; }
+.wmap.big .pin { font-size: 13px; }
+.wmap.big .pin.go { padding: 4px 8px; }
