@@ -1,6 +1,7 @@
 // 시작점: 타이틀 → 로딩 → 게임 루프 · 자동 저장
 import { createStage, buildWorldProps, isTouch } from './engine2d/stage.js';
 import { loadAllJson, waitImage, DATA } from './engine2d/sprites.js';
+import { warmTerrain } from './engine2d/stage.js';
 import { FACES } from './data/flareWorld.js';
 import { World } from './world/world.js';
 import { HUD } from './ui/hud.js';
@@ -53,6 +54,13 @@ async function boot() {
   await iconsReady();
   buildWorldProps(stage);
   $('#loadBar').hidden = true;
+  // 시작 화면이 떠 있는 동안 뒤에서: 다른 땅 · 몬스터 · 효과 그림을 미리 받고, 물가 · 언덕 타일을 미리 만든다
+  (async () => {
+    const later = [...new Set(Object.values(DATA.tiles).flatMap((t) => t.imgs))];
+    for (const def of [DATA.enemies, DATA.npcs, DATA.powers, DATA.loot]) for (const v of Object.values(def || {})) if (v?.images) later.push(...Object.values(v.images)); else if (v?.img) later.push(v.img);
+    for (const p of later) await waitImage(p).catch(() => {});
+    await warmTerrain();
+  })();
 
   // 타이틀 배경: 마을을 천천히 비춘다
   let titleOn = true;

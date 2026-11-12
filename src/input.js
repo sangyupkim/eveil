@@ -141,7 +141,6 @@ export function setupInput(world, stage, windows) {
   tap('#btnMp', () => world.usePotion('mp'));
   tap('#btnAuto', () => world.toggleAuto());
   tap('#btnRecall', () => world.recall());
-  tap('#btnRoll', () => world.roll());
   document.querySelectorAll('[data-win]').forEach((b) => b.addEventListener('pointerdown', (e) => { e.preventDefault(); windows.toggle(b.dataset.win); }));
   $('#quick').addEventListener('pointerdown', (e) => {
     const s = e.target.closest('.slot');
@@ -172,7 +171,6 @@ export function setupInput(world, stage, windows) {
     if (k === 'e') world.usePotion('mp');
     if (k === 'f') world.toggleAuto();
     if (k === 'r') world.recall();
-    if (k === 'shift' || k === 'v') world.roll();
     if (e.code === 'Space') { e.preventDefault(); world.manual(); world.attackButton(); }
   });
   window.addEventListener('keyup', (e) => keys.delete(e.code));

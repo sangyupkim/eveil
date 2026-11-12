@@ -362,6 +362,20 @@ function drawWater(ctx, set, id, sx, sy, s) {
   ctx.drawImage(c, sx - t[5] * s, sy - t[6] * s, t[3] * s, t[4] * s);
 }
 
+// 호수 · 언덕 테두리 타일을 미리 만들어 둔다 (처음 보일 때 픽셀을 고치느라 멈추지 않게). 조금씩 나눠서
+export async function warmTerrain() {
+  const jobs = [];
+  for (const q of LAKES) for (let id = 0; id < 24; id++) jobs.push(() => {
+    const set = q.set, bid = wb(set)[0] + id;
+    if (q.lava || q.top) drawBank(warmCtx(), set, bid, q.lava ? 'lava' : null, q.top, 0, 0, 1); else drawWater(warmCtx(), set, bid, 0, 0, 1);
+  });
+  for (const q of LAKES) for (let id = 0; id < 16; id++) jobs.push(() => { const set = q.set; if (q.lava || q.top) drawBank(warmCtx(), set, wb(set)[1] + id, q.lava ? 'lava' : null, q.top, 0, 0, 1); else drawWater(warmCtx(), set, wb(set)[1] + id, 0, 0, 1); });
+  for (const q of MESAS) for (let id = 0; id < 24; id++) jobs.push(() => { const L = ZONE_LOOK[zoneAt(q.x, q.z)?.id || 'wild']; drawBank(warmCtx(), q.set, wb(q.set)[0] + id, [L.set, L.ground[0]], q.top, 0, 0, 1); });
+  for (const j of jobs) { j(); await new Promise((r) => setTimeout(r, 0)); }
+}
+let wc = null;
+const warmCtx = () => (wc ||= document.createElement('canvas').getContext('2d'));
+
 // 물가 타일 고쳐 그리기: 물 픽셀(low) → 땅 무늬 · 용암 · 물빛, 윗면 풀(top) → 그 지역 땅 무늬. 격자에 맞춰 이어진다
 // 무늬 판: 칸 중심이 (96 + 96m, 48 + 48n), m + n 짝수 — 그림의 칸 중심은 판의 (288, 144)에 맞춘다
 const patternCache = new Map();

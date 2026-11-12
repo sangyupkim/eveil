@@ -591,7 +591,6 @@ export class World {
 
   hurtPlayer(raw, m) {
     if (this.dead) return;
-    if (this.rollT > 0) { this.fx.text(this.player.pos.clone().setY(2.4), '회피', 'miss'); addAP(this.st, 'dex', AP_TABLE.dodge, this.autoMult); return; }
     const st = this.st, d = this.d;
     const rf = rewardFactor(st, m.level);
     const apMult = rf.ap * this.autoMult;
@@ -936,21 +935,6 @@ export class World {
   }
 
   // 공격 단추: 타겟 고정이 켜져 있으면 이동해도 공격하던 대상을 다시 잡는다
-  // 구르기: 짧게 굴러 0.35초 동안 맞지 않는다 (1.2초마다)
-  roll() {
-    if (this.dead || (this.rollCd || 0) > 0 || this.inTown && false) return;
-    const P = this.player;
-    const j = this.joy.lengthSq() > 0.01 ? this.joy.clone().normalize() : null;
-    const ang = j ? Math.atan2(j.x, j.y) : P.facing;
-    this.rollDir = { x: Math.sin(ang), z: Math.cos(ang) };
-    this.rollT = 0.32; this.rollCd = 1.2;
-    this.cancelRecall(); this.pendingSkill = null; this.moveTo = null; this.movePath = null;
-    P.lock = 0; P.facing = ang; P.play('run', { force: true, speed: 2.2 });
-    this.fx.smoke.add({ x: P.pos.x, y: 0.3, z: P.pos.z, vy: 0.4, color: 0x5a4c3a, size: 1.2, size1: 2.6, life: 0.6, cell: 'smoke', alpha: 0.45 });
-    sfx('dodge');
-    this.ui.dirty();
-  }
-
   attackButton() {
     const lock = this.st.settings.targetLock !== false;
     const t = this.target && !this.target.dead ? this.target
@@ -1574,14 +1558,8 @@ export class World {
     }
     let moving = false;
     const speed = d.moveSpeed * ((this.chainSpdT || 0) > 0 ? 1.15 : 1);
-    if (this.rollCd > 0) this.rollCd -= dt;
     if (this.chainSpdT > 0) this.chainSpdT -= dt;
-    if (this.rollT > 0) {
-      this.rollT -= dt;
-      P.pos.x += this.rollDir.x * 15 * dt; P.pos.z += this.rollDir.z * 15 * dt;
-      resolveCollision(this.stage, P.pos, 0.5);
-      moving = true;
-    } else if (this.joy.lengthSq() > 0.01) {
+    if (this.joy.lengthSq() > 0.01) {
       // 조이스틱은 공격 동작도 끊는다
       if (P.lock > 0 && this.swing <= 0) P.lock = 0;
       if (P.lock <= 0) {

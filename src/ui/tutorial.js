@@ -20,7 +20,6 @@ const touch = matchMedia('(pointer: coarse)').matches;
 const COACH = [
   { id: 'move', t: touch ? '왼쪽 아래 조이스틱을 끌어 움직이세요' : '땅을 클릭하거나 WASD로 움직이세요', hi: touch ? '#joyZone' : null, done: (w, c) => c.moved > 6 },
   { id: 'attack', t: touch ? '몬스터 가까이에서 [공격]을 누르세요 (몬스터를 눌러도 됩니다)' : '몬스터를 클릭하면 공격합니다 (Space: 가까운 적)', hi: '#btnAttack', done: (w) => !!w.lastHit },
-  { id: 'roll', t: touch ? '[구르기]로 공격을 피하세요 — 구르는 동안은 맞지 않습니다' : 'Shift(또는 V)로 구르기 — 구르는 동안은 맞지 않습니다', hi: '#btnRoll', done: (w) => w.rollCd > 0 },
   { id: 'loot', t: '떨어진 금화 · 아이템 위로 걸어가면 줍습니다', done: (w, c) => c.picked },
   { id: 'potion', t: touch ? '체력이 줄면 빨간 물약을 누르세요' : '체력이 줄면 Q(체력) · E(마나) 물약', hi: '#btnHp', when: (w) => w.st.hp < w.d.maxHp * 0.7, done: (w, c) => c.potion },
   { id: 'skill', t: touch ? '오른쪽 스킬 칸을 눌러 스킬을 쓰세요' : '1~6 키로 스킬을 씁니다', hi: '#quick', when: (w) => Object.keys(w.st.skills).length > 0, done: (w) => w.skillUsed },
