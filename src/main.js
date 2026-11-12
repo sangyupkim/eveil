@@ -17,15 +17,15 @@ import { portrait, iconsReady } from './ui/icons.js';
 import { Tutorial } from './ui/tutorial.js';
 import { applyUi } from './ui/layout.js';
 import { cloud, cloudError } from './net/cloud.js';
+import { charIds, loadChar, saveChar, deleteChar, keyOf, newCid, CHAR_MAX, NICK_RE } from './game/chars.js';
 
-const SAVE_KEY = 'ashen-save';
+const LAST_KEY = 'ashen-last'; // 마지막에 한 캐릭터
 const $ = (s) => document.querySelector(s);
 
 const clock = { last: performance.now(), getDelta() { const n = performance.now(), d = (n - this.last) / 1000; this.last = n; return d; } };
 
-function loadSave() {
-  try { return fixSave(JSON.parse(localStorage.getItem(SAVE_KEY))); } catch { return null; }
-}
+const getLast = () => { try { return localStorage.getItem(LAST_KEY); } catch { return null; } };
+const setLast = (cid) => { try { localStorage.setItem(LAST_KEY, cid); } catch { /* 무시 */ } };
 
 // 저장(기기 · 서버)을 지금 판에 맞춘다
 function fixSave(s) {
@@ -81,9 +81,34 @@ async function boot() {
   };
   titleLoop();
 
-  let saved = loadSave();
-  if (saved) audio.setVolumes(saved.settings.music, saved.settings.sfx);
-  const look = { face: FACES.some((f) => f[0] === saved?.look?.face) ? saved.look.face : FACES[0][0] };
+  // ───── 캐릭터 고르기: 기기 저장 + (로그인하면) 서버 저장을 합친 목록 ─────
+  let chars = [];       // [{ cid, st (기기 저장, 없으면 null), remote ({ at, nick, name, aw } 또는 null) }]
+  let sel = getLast();
+  const look = { face: FACES[0][0] };
+  const nameOf = (c) => c.st?.nick || c.remote?.nick || '';
+  const label = (c) => nameOf(c) || (c.st?.name || c.remote?.name ? `${c.st?.name || c.remote?.name} (닉네임 없음)` : '닉네임 없음');
+  const awOf = (c) => Math.max(c.st?.awakenings || 0, c.remote?.aw || 0);
+  const refreshChars = async () => {
+    const local = charIds().map((cid) => ({ cid, st: fixSave(loadChar(cid)), remote: null })).filter((c) => c.st);
+    const map = new Map(local.map((c) => [c.cid, c]));
+    for (const r of await cloud.chars()) { const c = map.get(r.cid); if (c) c.remote = r; else map.set(r.cid, { cid: r.cid, st: null, remote: r }); }
+    chars = [...map.values()];
+    if (!chars.some((c) => c.cid === sel)) sel = chars[0]?.cid || null;
+    drawChars();
+  };
+  const drawChars = () => {
+    const el = $('#charList');
+    el.innerHTML = chars.map((c) => {
+      const face = c.st?.look || { face: FACES[0][0] };
+      return `<button class="charCard${c.cid === sel ? ' on' : ''}" data-cid="${c.cid}"><img src="${portrait(face)}" alt="" /><b>${label(c)}</b><small>각성 ${awOf(c)}${c.st ? '' : ' · 서버'}</small></button>`;
+    }).join('') || '<div class="note">캐릭터가 없습니다</div>';
+    el.querySelectorAll('[data-cid]').forEach((b) => { b.onclick = () => { audio.play('click'); sel = b.dataset.cid; drawChars(); }; });
+    $('#btnPlay').disabled = !sel;
+    $('#btnDelChar').disabled = !sel;
+    $('#btnNewChar').disabled = chars.length >= CHAR_MAX;
+    const s0 = chars.find((c) => c.cid === sel)?.st;
+    if (s0) audio.setVolumes(s0.settings.music, s0.settings.sfx);
+  };
   const looks = $('.looks');
   const drawLooks = () => {
     looks.innerHTML = `<div class="lgroup">${FACES.map(([k]) => `<button data-face="${k}" class="${look.face === k ? 'on' : ''}"><img src="${portrait({ face: k })}" alt="" /></button>`).join('')}</div>`;
@@ -91,26 +116,20 @@ async function boot() {
   };
   drawLooks();
   $('#titleMenu').hidden = false;
-  const showContinue = () => {
-    $('#btnContinue').hidden = !saved;
-    if (saved) $('#btnContinue').textContent = `이어하기 (${saved.name} · 각성 ${saved.awakenings})`;
+  const showNew = (on) => { $('#newChar').hidden = !on; $('#charList').hidden = on; $('#newMsg').textContent = ''; document.querySelectorAll('#titleMenu > .charBtns').forEach((x) => { x.hidden = on; }); };
+  $('#btnNewChar').onclick = () => { audio.play('click'); showNew(true); };
+  $('#btnNewCancel').onclick = () => { audio.play('click'); showNew(false); };
+  $('#btnDelChar').onclick = async () => {
+    const c = chars.find((x) => x.cid === sel);
+    if (!c || !confirm(`${nameOf(c) || '이 캐릭터'}를 지울까요? 되돌릴 수 없습니다.`)) return;
+    deleteChar(c.cid);
+    await cloud.delChar(c.cid);
+    sel = null;
+    await refreshChars();
   };
-  showContinue();
 
-  // 계정: 로그인하면 서버 저장과 기기 저장 중 더 새 것으로 이어 한다
+  // 계정: 로그인하면 서버의 캐릭터도 목록에 나온다
   const acc = $('#account');
-  const pull = async () => {
-    const remote = fixSave(await cloud.load());
-    if (remote && (!saved || (remote.savedAt || 0) > (saved.savedAt || 0))) {
-      saved = remote;
-      try { localStorage.setItem(SAVE_KEY, JSON.stringify(saved)); } catch { /* 무시 */ }
-      look.face = FACES.some((f) => f[0] === saved.look?.face) ? saved.look.face : FACES[0][0];
-      drawLooks();
-      showContinue();
-      return true;
-    }
-    return false;
-  };
   const drawAccount = (msg = '') => {
     acc.innerHTML = cloud.id
       ? `<span class="who"><b>${cloud.id}</b> 서버 저장</span><button class="btn" data-acc="out">로그아웃</button><span class="msg">${msg}</span>`
@@ -119,27 +138,32 @@ async function boot() {
     acc.querySelectorAll('[data-acc]').forEach((b) => {
       b.onclick = async () => {
         audio.play('click');
-        if (b.dataset.acc === 'out') { cloud.logout(); drawAccount(); return; }
+        if (b.dataset.acc === 'out') { cloud.logout(); drawAccount(); refreshChars(); return; }
         const id = $('#accId').value.trim(), pw = $('#accPw').value;
         drawAccount('…');
         const r = await cloud.sign(b.dataset.acc, id, pw);
         if (!r.ok) { drawAccount(cloudError(r.error)); $('#accId').value = id; return; }
-        drawAccount((await pull()) ? '서버 저장을 불러왔습니다' : '');
+        drawAccount();
+        await refreshChars();
       };
     });
   };
   drawAccount();
-  if (cloud.id) pull().then((got) => { if (got) drawAccount('서버 저장을 불러왔습니다'); });
+  await refreshChars();
+
   const start = async (st, fresh = false) => {
     // 계정이면 이 기기를 '지금 하는 기기'로 정하고, 그 순간 서버의 최신 저장으로 이어 한다
     // (다른 기기에서 방금까지 하던 진행). 새 캐릭터는 서버 저장을 덮어쓴다
     if (cloud.id) {
-      $('#btnContinue').disabled = true;
-      const c = await cloud.claim();
-      $('#btnContinue').disabled = false;
+      $('#btnPlay').disabled = true;
+      const c = await cloud.claim(st?.cid || sel);
+      $('#btnPlay').disabled = false;
       const remote = c.ok && !fresh ? fixSave(c.data) : null;
-      if (remote && (remote.savedAt || 0) > (st.savedAt || 0)) { st = remote; try { localStorage.setItem(SAVE_KEY, JSON.stringify(st)); } catch { /* 무시 */ } }
+      if (remote && (!st || (remote.savedAt || 0) > (st.savedAt || 0))) { remote.cid ||= sel; st = remote; saveChar(st); }
     }
+    if (!st) { alert('저장을 불러오지 못했습니다'); return; }
+    setLast(st.cid);
+    audio.setVolumes(st.settings.music, st.settings.sfx);
     await waitImage(portrait(st.look).replace('assets/flare/', ''));
     titleOn = false;
     $('#title').hidden = true;
@@ -148,11 +172,21 @@ async function boot() {
     setupFullscreenUi(isTouch);
     startGame(stage, st);
   };
-  $('#btnNew').onclick = () => {
-    if (saved && !confirm('저장된 캐릭터가 있습니다. 새로 시작하면 지워집니다. 계속할까요?')) return;
-    start(newPlayer($('#nameInput').value.trim() || '방랑자', { ...look }, null), true);
+  $('#btnPlay').onclick = () => { const c = chars.find((x) => x.cid === sel); if (c) start(c.st, false); };
+  $('#btnNew').onclick = async () => {
+    const nick = $('#nameInput').value.trim();
+    const msg = (t) => { $('#newMsg').textContent = t; };
+    if (nick && !NICK_RE.test(nick)) { msg(cloudError('bad_nick')); return; }
+    const st = newPlayer(nick || '방랑자', { ...look }, null);
+    st.cid = newCid();
+    st.nick = '';
+    if (nick) {
+      if (cloud.id) { const r = await cloud.nick(st.cid, nick); if (!r.ok) { msg(cloudError(r.error)); return; } st.nickOk = true; }
+      st.nick = nick; st.name = nick;
+    }
+    saveChar(st);
+    start(st, true);
   };
-  $('#btnContinue').onclick = () => start(saved);
 }
 
 function startGame(stage, st) {
@@ -173,7 +207,7 @@ function startGame(stage, st) {
     if (window.__noSave) return;
     world.saveGround();
     st.savedAt = Date.now();
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(st)); } catch (e) { console.warn('저장 실패', e); }
+    if (!saveChar(st)) console.warn('저장 실패');
     cloud.save(st, force === true);
   };
   const windows = new Windows(world, save);
@@ -184,6 +218,28 @@ function startGame(stage, st) {
   $('#hud').hidden = false;
   stage.follow(world.player.pos.x, world.player.pos.z, 1);
   hud.log(`${st.name}, 여명 초소에 왔다.`, '#e8c36a');
+  // 닉네임: 없으면 정하게 하고, 로그인했는데 서버에 아직 차지하지 않았으면 차지한다 (중복이면 다시 정한다)
+  const askNick = (why = '') => {
+    document.getElementById('nickBox')?.remove();
+    const el = document.createElement('div');
+    el.id = 'nickBox';
+    el.innerHTML = `<div><b>닉네임</b><p class="msg">${why}</p><input maxlength="10" placeholder="한글 · 영문 · 숫자 2~10자" value="${st.nick || (st.name !== "방랑자" ? st.name : "")}" /><button class="plate gold">정하기</button></div>`;
+    const inp = el.querySelector('input'), msg = el.querySelector('.msg');
+    el.querySelector('button').onclick = async () => {
+      const nick = inp.value.trim();
+      if (!NICK_RE.test(nick)) { msg.textContent = cloudError('bad_nick'); return; }
+      if (cloud.id) { msg.textContent = '…'; const r = await cloud.nick(st.cid, nick); if (!r.ok) { msg.textContent = cloudError(r.error); return; } st.nickOk = true; }
+      st.nick = nick; st.name = nick;
+      el.remove(); audio.play('rankup'); hud.toast?.(`닉네임: ${nick}`, '#ffd84a'); world.ui.dirty(); save(true);
+    };
+    inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') el.querySelector('button').click(); });
+    document.body.appendChild(el);
+    setTimeout(() => inp.focus(), 50);
+  };
+  // 첫 무기를 고르는 중이면 고른 뒤에 묻는다
+  if (!st.nick) { const wait = setInterval(() => { if (st.tut !== 0) { clearInterval(wait); askNick(); } }, 300); }
+  else if (cloud.id && !st.nickOk) cloud.nick(st.cid, st.nick).then((r) => { if (r.ok) { st.nickOk = true; save(true); } else if (r.error === 'nick_taken' || r.error === 'bad_nick') askNick(cloudError(r.error)); });
+  window.__askNick = askNick;
 
   let saveT = CONFIG.autosaveInterval;
   let fpsT = 0, frames = 0, slow = 0, fast = 0;
@@ -215,7 +271,7 @@ function startGame(stage, st) {
   cloud.onMoved = () => {
     window.__noSave = true; window.__stop = true;
     // 이 기기의 저장은 낡은 것으로 표시: 다음에 켜면 서버(새 기기) 저장을 받는다
-    try { const L = JSON.parse(localStorage.getItem(SAVE_KEY)); if (L) { L.savedAt = 0; localStorage.setItem(SAVE_KEY, JSON.stringify(L)); } } catch { /* 무시 */ }
+    try { const L = loadChar(st.cid); if (L) { L.savedAt = 0; localStorage.setItem(keyOf(st.cid), JSON.stringify(L)); } } catch { /* 무시 */ }
     const el = document.createElement('div');
     el.id = 'movedBox';
     el.innerHTML = '<div><b>다른 기기에서 접속했습니다</b><p>이 기기의 게임은 멈췄습니다. 진행은 새로 접속한 기기에서 이어집니다.</p><button class="plate gold">처음 화면으로</button></div>';

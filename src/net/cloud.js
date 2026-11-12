@@ -14,6 +14,8 @@ const ERR = {
   auth: '다시 로그인해 주세요',
   offline: '서버에 닿지 않습니다',
   no_server: '서버 저장이 아직 열리지 않았습니다',
+  nick_taken: '이미 쓰는 닉네임입니다',
+  bad_nick: '닉네임은 한글 · 영문 · 숫자 2~10자',
   moved: '다른 기기에서 접속했습니다',
 };
 export const cloudError = (code) => ERR[code] || '실패했습니다';
@@ -72,18 +74,34 @@ export const cloud = {
     if ((this.errN = (this.errN || 0) + 1) > 5) return;
     post({ type: 'ash_err', msg: String(msg).slice(0, 300), stack: String(stack || '').slice(0, 1500), ver, ua: navigator.userAgent.slice(0, 200) }, true);
   },
+  // 서버에 있는 내 캐릭터 목록 [{ cid, at, name, nick, aw }]
+  async chars() {
+    if (!account || !(await this.available())) return [];
+    const r = await post({ type: 'ash_chars', token: account.token });
+    if (r.error === 'auth') { this.logout(); return []; }
+    return r.ok ? r.list || [] : [];
+  },
+  // 닉네임 차지 (중복이면 nick_taken)
+  async nick(cid, nick) {
+    if (!account || !(await this.available())) return { ok: false, error: 'offline' };
+    return post({ type: 'ash_nick', token: account.token, cid, nick });
+  },
+  async delChar(cid) {
+    if (!account || !(await this.available())) return;
+    await post({ type: 'ash_delchar', token: account.token, cid });
+  },
   // 한 단계 전 저장 (백업)
-  async restore() {
+  async restore(cid) {
     if (!account || !(await this.available())) return null;
-    const r = await post({ type: 'ash_restore', token: account.token });
+    const r = await post({ type: 'ash_restore', token: account.token, cid });
     if (!r.ok || !r.data) return null;
     try { return JSON.parse(r.data); } catch { return null; }
   },
 
   // 서버에 있는 저장 (없으면 null)
-  async load() {
+  async load(cid) {
     if (!account || !(await this.available())) return null;
-    const r = await post({ type: 'ash_load', token: account.token });
+    const r = await post({ type: 'ash_load', token: account.token, cid });
     if (r.error === 'auth') { this.logout(); return null; }
     if (!r.ok || !r.data) return null;
     try { return JSON.parse(r.data); } catch { return null; }
@@ -93,9 +111,9 @@ export const cloud = {
   // 그 뒤 다른 기기가 접속하면 이 기기의 저장은 서버가 거절하고(moved) onMoved가 불린다
   moved: false,
   onMoved: null,
-  async claim() {
+  async claim(cid) {
     if (!account || !(await this.available())) return { ok: false };
-    const r = await post({ type: 'ash_claim', token: account.token });
+    const r = await post({ type: 'ash_claim', token: account.token, cid });
     if (r.error === 'auth') { this.logout(); return { ok: false }; }
     if (!r.ok) return { ok: false, error: r.error };
     this.moved = false;
@@ -124,7 +142,7 @@ export const cloud = {
     if (!force && (pending || now - lastPut < GAP * 1000)) return;
     if (!(await this.available())) return;
     lastPut = now; lastAt = st.savedAt;
-    pending = post({ type: 'ash_save', token: account.token, data: JSON.stringify(st), at: st.savedAt }, force);
+    pending = post({ type: 'ash_save', token: account.token, cid: st.cid, data: JSON.stringify(st), at: st.savedAt }, force);
     const r = await pending;
     pending = null;
     this.state = r.ok ? 'saved' : 'error';

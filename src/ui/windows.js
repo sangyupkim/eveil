@@ -565,7 +565,8 @@ export class Windows {
     const vol = (key) => `<input type="range" min="0" max="100" step="5" value="${Math.round(set[key] * 100)}" data-vol="${key}" /><span class="volv">${Math.round(set[key] * 100)}</span>`;
     const card = (win, img, name, dis) => `<button class="card" data-go="${win}" ${dis ? 'disabled' : ''}>${img}<span>${name}</span></button>`;
     return `<div class="cols"><div class="frame" style="flex:1.1">
-        <button class="plate gold" data-close="1">계속하기</button>
+        <div class="btns" style="margin:0 0 6px"><button class="plate gold" data-close="1">계속하기</button><button class="plate" data-title="1">메인 화면으로</button></div>
+        <div class="setRow"><span>닉네임</span><div class="opts"><b>${esc(st.nick || '없음')}</b><button class="btn" data-nick="1">바꾸기</button></div></div>
         <div class="setRow"><span>배경음</span><div class="opts">${vol('music')}</div></div>
         <div class="setRow"><span>효과음</span><div class="opts">${vol('sfx')}</div></div>
         <div class="setRow"><span>어둠 · 조명</span><div class="opts">${onoff('shadows', set.shadows)}</div></div>
@@ -706,11 +707,12 @@ export class Windows {
     on('[data-reforge]', (el) => { const it = st.equip[el.dataset.reforge], r = reforge(st, it); if (r.ok) { audio.play('rankup'); w.ui.toast(`재련: ${affixText(r.old)} → ${affixText(r.now)}`, '#ffd84a'); w.refreshGear(); } townDone(r); });
     on('[data-notes]', () => showNotes());
     on('[data-restore]', async () => {
-      const b = await cloud.restore();
+      const b = await cloud.restore(st.cid);
       if (!b) { w.ui.toast('백업이 없습니다'); return; }
       if (!confirm(`${new Date(b.savedAt || 0).toLocaleString()} 저장으로 되돌릴까요? 지금 진행은 사라집니다.`)) return;
       b.savedAt = Date.now(); // 서버의 더 새 저장이 다시 덮지 않게
-      try { localStorage.setItem('ashen-save', JSON.stringify(b)); } catch { /* 무시 */ }
+      b.cid = st.cid;
+      try { localStorage.setItem(`ashen-save-${st.cid}`, JSON.stringify(b)); } catch { /* 무시 */ }
       location.reload();
     });
     on('[data-research]', (el) => townDone(researchStart(st, el.dataset.research), '연구를 시작했습니다'));
@@ -755,13 +757,18 @@ export class Windows {
     on('[data-full]', () => toggleFullscreen());
     on('[data-install]', async () => { const p = window.__install; if (!p) return; p.prompt(); await p.userChoice.catch(() => {}); window.__install = null; this.render(); });
     on('[data-save]', () => { this.save(true); w.ui.toast('저장했습니다'); });
-    on('[data-reset]', () => {
-      if (confirm('정말 캐릭터를 지우고 처음부터 시작할까요? 되돌릴 수 없습니다.')) {
-        localStorage.removeItem('ashen-save');
+    on('[data-reset]', async () => {
+      if (confirm('정말 이 캐릭터를 지울까요? 되돌릴 수 없습니다.')) {
         window.__noSave = true;
+        const { deleteChar } = await import('../game/chars.js');
+        deleteChar(st.cid);
+        await cloud.delChar(st.cid);
         location.reload();
       }
     });
+    // 메인 화면(캐릭터 고르기)으로: 저장하고 다시 연다
+    on('[data-title]', () => { this.save(true); window.__noSave = true; setTimeout(() => location.reload(), 400); });
+    on('[data-nick]', () => { this.close(); window.__askNick?.(); });
   }
 }
 

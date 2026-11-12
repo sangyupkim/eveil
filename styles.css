@@ -439,3 +439,18 @@ html.force-land #rotate { display: none !important; }
 #winAlert > div { min-width: 18em; padding: 1.2em 1.6em; border: 1px solid #c9a050; background: #15111c; box-shadow: 0 0 24px rgba(0,0,0,.6); }
 #winAlert b { font-size: 1.15em; color: #ffb060; display: block; margin-bottom: .4em; }
 #winAlert .plate { margin-top: .8em; min-width: 8em; }
+
+.charList { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 6px 0; max-width: 92vw; }
+.charCard { display: flex; flex-direction: column; align-items: center; gap: 2px; width: calc(var(--u) * 7.5); padding: 5px 4px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; color: var(--ink, #e8dcc0); }
+.charCard img { width: calc(var(--u) * 4.4); height: calc(var(--u) * 4.4); border-radius: 6px; }
+.charCard b { font-size: calc(var(--u) * 0.95); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.charCard small { color: var(--dim); font-size: calc(var(--u) * 0.8); }
+.charCard.on { border-color: var(--brass-hi); box-shadow: 0 0 14px rgba(232, 195, 106, 0.35); }
+.charBtns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.charBtns .plate { margin-top: 6px; width: auto; min-width: 8em; padding-left: 1.2em; padding-right: 1.2em; }
+#newMsg { color: #ff9a7a; min-height: 1.2em; font-size: .9em; }
+#nickBox { position: fixed; inset: 0; z-index: 160; display: flex; align-items: center; justify-content: center; background: rgba(8, 6, 12, 0.7); color: #e8dcc0; text-align: center; }
+#nickBox > div { min-width: 18em; padding: 1.2em 1.6em; border: 1px solid #c9a050; background: #15111c; display: flex; flex-direction: column; gap: .5em; align-items: center; }
+#nickBox b { font-size: 1.15em; color: #ffd84a; }
+#nickBox .msg { color: #ff9a7a; min-height: 1.1em; margin: 0; font-size: .9em; }
+#nickBox input { font-size: 1.05em; padding: .4em .6em; width: 12em; text-align: center; background: #0d0a12; color: #fff; border: 1px solid #6a5430; }

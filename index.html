@@ -106,11 +106,14 @@
       <p class="sub">레벨은 없다. 네가 싸운 방식이 너를 만든다.</p>
       <div id="loadBar"><i></i></div>
       <div id="titleMenu" hidden>
-        <div class="looks"></div>
-        <input id="nameInput" maxlength="10" placeholder="이름" value="방랑자" />
-        <button id="btnNew" class="plate gold">새로 시작</button>
-        <button id="btnContinue" class="plate" hidden>이어하기</button>
-        <button id="btnInstall" class="plate">앱으로 설치</button>
+        <div id="charList" class="charList"></div>
+        <div class="charBtns"><button id="btnPlay" class="plate gold">게임 시작</button><button id="btnNewChar" class="plate">새 캐릭터</button><button id="btnDelChar" class="plate">삭제</button><button id="btnInstall" class="plate">앱으로 설치</button></div>
+        <div id="newChar" hidden>
+          <div class="looks"></div>
+          <input id="nameInput" maxlength="10" placeholder="닉네임 (나중에 정해도 됨)" />
+          <div class="charBtns"><button id="btnNew" class="plate gold">만들기</button><button id="btnNewCancel" class="plate">취소</button></div>
+          <div class="msg" id="newMsg"></div>
+        </div>
         <div id="account"></div>
         <p class="hint">PC: 클릭 이동/공격 · WASD · 1~6 스킬 · Q/E 물약 · F 자동사냥 · I/K/C/J 창 · 휠 줌<br>모바일: 가로 화면 · 왼쪽 조이스틱 · 오른쪽 버튼</p>
       </div>
