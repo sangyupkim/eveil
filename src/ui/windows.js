@@ -454,13 +454,13 @@ export class Windows {
         <div class="btns"><button class="btn gold" data-collect="1" ${b.stock < 1 ? 'disabled' : ''}>거두기</button></div>`;
       if (b.type === 'smithy') {
         const cap = enhanceCap(st);
-        right += `<div class="note">강화 상한 +${cap} · 실패해도 단계는 떨어지지 않는다</div>`;
+        right += `<div class="note">강화 상한 +${cap} · 실패해도 단계 유지 · 실패하면 장인의 기운이 쌓이고 100%면 반드시 성공</div>`;
         for (const slot of SLOTS) {
           const it = st.equip[slot];
           if (!it) continue;
           const c = enhanceCost(it), max = (it.plus || 0) >= cap, rc = reforgeCost(it);
           right += `<div class="row"><div class="cell shopIco${rar(it)}">${ico(it)}</div><div class="grow"><b style="color:${itemColor(it)}">${esc(itemName(it))}</b>
-            <div class="note">${max ? '상한' : `+${(it.plus || 0) + 1} · ${Math.round(c.chance * 100)}% · ${c.gold.toLocaleString()} G · 강화석 ${c.ore}`}</div></div>
+            <div class="note">${max ? '상한' : `+${(it.plus || 0) + 1} · ${c.jang >= 1 ? '<b style="color:#ffd84a">100% (장인의 기운)</b>' : `${+(c.chance * 100).toFixed(1)}%`} · 장인의 기운 ${+(c.jang * 100).toFixed(1)}% · ${c.gold.toLocaleString()} G · 강화석 ${c.ore}`}</div></div>
             <button class="btn" data-enh="${slot}" ${max || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>강화</button>${it.affixes?.length ? `<button class="btn" data-reforge="${slot}" title="가장 약한 옵션 다시 굴리기 · ${rc.gold.toLocaleString()}G · 강화석 ${rc.ore}" ${st.gold < rc.gold || t.ore < rc.ore ? 'disabled' : ''}>재련</button>` : ''}</div>`;
         }
         const junk = st.inv.filter((x) => !x.book && BASES[x.base]?.slot && !x.named);
@@ -645,7 +645,7 @@ export class Windows {
       const it = st.equip[el.dataset.enh], r = enhance(st, it);
       if (!r.ok) { w.ui.toast(r.why); audio.play('error'); }
       else if (r.success) { audio.play('awaken'); w.fx.pillar(w.player.pos.x, w.player.pos.z, 0xffd060, 0.8); w.ui.toast(`강화 성공! +${r.plus}`, '#ffd84a'); w.refreshGear(); }
-      else { audio.play('error'); w.ui.toast('강화 실패 (단계는 그대로)'); }
+      else { audio.play('error'); w.ui.toast(`강화 실패 · 장인의 기운 ${+((r.jang || 0) * 100).toFixed(1)}%`); }
       w.ui.dirty(); this.render();
     });
     on('[data-hire]', () => townDone(hire(st), '용병을 고용했습니다'));

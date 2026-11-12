@@ -71,12 +71,12 @@ export const TIERS = {
 // 몬스터 등급별 드랍
 // 드랍: 장비는 드물게 — 천천히 잡아 가며 하나씩 얻고 강화한다 (v2 기본 방향)
 export const LOOT = {
-  normal: { itemChance: 0.02, items: [1, 1], gold: [0.5, 1], potion: 0.03, book: 0.005, bookTiers: { 1: 1 },
+  normal: { itemChance: 0.01, items: [1, 1], gold: [0.5, 1], potion: 0.03, book: 0.005, bookTiers: { 1: 1 },
     rarity: { common: 70, magic: 26, rare: 3.8, hero: 0.2, legend: 0 } },
-  elite: { itemChance: 0.3, items: [1, 1], gold: [1, 3], potion: 0.25, book: 0.04, bookTiers: { 1: 70, 2: 30 },
+  elite: { itemChance: 0.08, items: [1, 1], gold: [1, 3], potion: 0.25, book: 0.04, bookTiers: { 1: 70, 2: 30 },
     rarity: { common: 10, magic: 55, rare: 30, hero: 4.5, legend: 0.5 } },
-  named: { itemChance: 1, items: [1, 1], gold: [1, 8], potion: 0.5, book: 0.2, bookTiers: { 2: 60, 3: 40 },
+  named: { itemChance: 0.25, items: [1, 1], gold: [1, 8], potion: 0.5, book: 0.2, bookTiers: { 2: 60, 3: 40 },
     rarity: { common: 0, magic: 20, rare: 50, hero: 26, legend: 4 } },
-  boss: { itemChance: 1, items: [1, 2], gold: [1, 20], potion: 1, book: 0.8, bookTiers: { 3: 60, 4: 35, 5: 5 },
+  boss: { itemChance: 0.4, items: [1, 2], gold: [1, 20], potion: 1, book: 0.8, bookTiers: { 3: 60, 4: 35, 5: 5 },
     rarity: { common: 0, magic: 0, rare: 40, hero: 48, legend: 12 } },
 };

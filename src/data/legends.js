@@ -16,7 +16,7 @@ Object.assign(NAMED_LEGENDS, {
   harbor: [{ id: 'nl_captain', name: '모르간의 나침반', base: 'star_amulet', ilvl: 60, affixes: [['allStats', 8], ['magicFind', 30]], unique: 7 }],
   demongate: [{ id: 'nl_demon', name: '벨가로스의 심장', base: 'archmage_staff', ilvl: 66, affixes: [['int', 26], ['spellPct', 45]], unique: 5 }],
 });
-export const NAMED_CHANCE = { boss: 0.12, named: 0.03, dungeon: 0.15 };
+export const NAMED_CHANCE = { boss: 0.06, named: 0.015, dungeon: 0.08 };
 
 export const GEMS = {
   ruby: { name: '홍옥', stat: 'str', icon: 70 },

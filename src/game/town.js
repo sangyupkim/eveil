@@ -72,7 +72,14 @@ export function collect(st, plot) {
 
 // ── 강화 ──
 export const enhanceCap = (st) => { const s = findBuilding(st, 'smithy'); return s ? BUILDINGS.smithy.cap(s.lv) : 0; };
-export function enhanceCost(it) { const n = it.plus || 0; return { gold: ENHANCE.gold(n, it.ilvl || 1), ore: ENHANCE.ore(n), chance: ENHANCE.chance(n) }; }
+// 장인의 기운: 실패할 때마다 (그 시도 확률 × 0.465)만큼 쌓이고 100%면 다음은 반드시 성공.
+// 실패마다 기본 확률의 10%씩 올라 최대 2배 (성공하면 둘 다 0으로)
+export const jangOf = (it) => it.jang || 0;
+export function enhanceCost(it) {
+  const n = it.plus || 0, base = ENHANCE.chance(n), up = Math.min(base, base * 0.1 * (it.fails || 0));
+  const chance = jangOf(it) >= 1 ? 1 : Math.min(1, base + up);
+  return { gold: ENHANCE.gold(n, it.ilvl || 1), ore: ENHANCE.ore(n), chance, base, jang: jangOf(it) };
+}
 // rng: 0~1. 실패해도 단계가 떨어지지는 않는다 (재료만 사라진다)
 export function enhance(st, it, rng = Math.random) {
   const n = it.plus || 0;
@@ -81,8 +88,10 @@ export function enhance(st, it, rng = Math.random) {
   if (st.gold < c.gold) return { ok: false, why: '금화가 모자랍니다' };
   if (t.ore < c.ore) return { ok: false, why: '강화석이 모자랍니다' };
   st.gold -= c.gold; t.ore -= c.ore;
-  if (rng() < c.chance) { it.plus = n + 1; return { ok: true, success: true, plus: it.plus }; }
-  return { ok: true, success: false, plus: n };
+  if (rng() < c.chance) { it.plus = n + 1; it.jang = 0; it.fails = 0; return { ok: true, success: true, plus: it.plus }; }
+  it.fails = (it.fails || 0) + 1;
+  it.jang = Math.min(1, jangOf(it) + c.chance * 0.465);
+  return { ok: true, success: false, plus: n, jang: it.jang };
 }
 
 // ── 분해 · 재련 ──
