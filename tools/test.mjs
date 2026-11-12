@@ -219,6 +219,7 @@ test('재료 · 제작소 · 세트 효과', () => {
   assert.equal(dropMats(p, 'field', 'boss'), 8);
   assert.equal(dropMats(p, 'field', 'normal', () => 0.9), 0);
   assert.equal(craft(p, 'field', 'helm').ok, false); // 제작소 없음
+  p.awakenings = 20;
   assert.ok(build(p, 'p5', 'workshop').ok);
   assert.equal(craftZones(p).length, 2);
   for (const z of ZONES) for (const sl of ['helm', 'armor', 'gloves', 'boots']) assert.ok(setBase(ZONES.indexOf(z), sl), z.id + sl);
@@ -239,6 +240,8 @@ test('마을: 짓기 · 생산(꺼 둔 시간) · 강화 · 용병 파견', () =
   const t0 = 1_000_000_000_000;
   p.gold = 100000;
   townOf(p, t0);
+  assert.equal(build(p, 'p1', 'mine').ok, false);  // 각성 6 전에는 광산을 못 짓는다
+  p.awakenings = 20;
   assert.ok(build(p, 'p1', 'mine').ok);
   assert.equal(build(p, 'p2', 'mine').ok, false); // 같은 건물은 하나
   assert.ok(build(p, 'p2', 'smithy').ok && build(p, 'p3', 'inn').ok && build(p, 'p4', 'herb').ok);

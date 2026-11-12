@@ -106,7 +106,7 @@ export const MONSTERS = {
 };
 
 // 지역: 마을은 원점. levels: 마을에서 가까운 쪽 → 먼 쪽 몬스터 레벨
-export const TOWN = { id: 'town', name: '여명 초소', x: 0, z: 0, r: 24 };
+export const TOWN = { id: 'town', name: '여명 초소', x: 0, z: 0, r: 30 };
 
 export const ZONES = [
   {

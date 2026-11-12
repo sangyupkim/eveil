@@ -19,6 +19,7 @@ export const findBuilding = (st, type) => Object.values(townOf(st).plots).find((
 export function build(st, plot, type) {
   const t = townOf(st);
   if (t.plots[plot] || !BUILDINGS[type] || findBuilding(st, type)) return { ok: false, why: '지을 수 없습니다' };
+  if ((st.awakenings || 0) < (BUILDINGS[type].need || 0)) return { ok: false, why: `각성 ${BUILDINGS[type].need} 필요` };
   const cost = BUILDINGS[type].cost(0);
   if (st.gold < cost) return { ok: false, why: '금화가 모자랍니다' };
   st.gold -= cost;

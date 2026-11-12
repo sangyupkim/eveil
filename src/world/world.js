@@ -135,40 +135,44 @@ export class World {
       this.stage.add(d); this.townDraw.push(d);
       for (let u = -r; u <= r; u += 1.2) for (let v = -r; v <= r; v += 1.2) if (Math.abs(u) + Math.abs(v) <= r) col(x + u, z + v, 0.8);
     };
-    // 통나무집: 세로로 잘린 네 조각을 이어 붙인다 (Flare 오두막 조각, 칸 (tx,ty) → 세계 (tx-ty, tx+ty))
-    const cabin = (dx, dz, filter) => {
-      const def = DATA.tiles.grassland;
-      for (const [id, tx, ty] of [[208, 0, 1], [209, 1, 1], [211, 1, 0], [215, 2, 0]]) {
+    // 통나무집: Flare 오두막은 화면 세로 띠 네 장으로 잘려 있다. 띠 기준점(px)을 이음매 색이 맞는 자리로 잇는다
+    // A = 창문 집(208 · 209 · 210 · 211), B = 문 집(212 · 213 · 214 · 215). 1 세계 칸 = 가로 64px · 세로 32px
+    const CABIN = { A: [[208, 0, 0], [209, 96, 48], [210, 192, 0], [211, 288, -48]], B: [[212, 0, 0], [213, 96, 48], [214, 192, 96], [215, 288, 48]] };
+    const cabin = (kind, dx, dz, filter) => {
+      const def = DATA.tiles.grassland, cx = 146 / 64, cz = kind === 'B' ? 1.5 : 0;
+      for (const [id, px, py] of CABIN[kind]) {
         const tt = def.tiles[id]; if (!tt) continue;
         image(def.imgs[tt[0]]);
-        const x = cur.x + dx + (tx - ty) - 0.5, z = cur.z + dz + (tx + ty) - 1.8;
-        const d = { z, draw: (ctx, stg) => { const src = image(def.imgs[tt[0]]); if (!src.ok || !stg.onScreen(x, z, 8)) return; const p = stg.toScreen(x, z); if (filter) { ctx.save(); ctx.filter = filter; } drawRect(ctx, src.im, tt.slice(1), p.x, p.y, stg.scale()); if (filter) ctx.restore(); } };
+        const x = cur.x + dx + px / 64 - cx, z = cur.z + dz + py / 32 - cz;
+        const d = { z: cur.z + dz + 1.6, draw: (ctx, stg) => { const src = image(def.imgs[tt[0]]); if (!src.ok || !stg.onScreen(x, z, 10)) return; const p = stg.toScreen(x, z); if (filter) { ctx.save(); ctx.filter = filter; } drawRect(ctx, src.im, tt.slice(1), p.x, p.y, stg.scale()); if (filter) ctx.restore(); } };
         this.stage.add(d); this.townDraw.push(d);
       }
-      for (let u = -2.2; u <= 2.2; u += 1) for (let v = -2.4; v <= 1.6; v += 1) col(cur.x + dx + u, cur.z + dz + v, 0.8);
+      // 바닥 차지: 가로 약 7.4칸 · 세로 약 3칸 (지붕 아래 벽 안쪽)
+      for (let u = -3.2; u <= 3.2; u += 0.9) for (let v = -1.6; v <= 1.4; v += 0.9) col(cur.x + dx + u, cur.z + dz + v, 0.6);
     };
-    // 건물마다 다른 모양: 대장간 = 그을린 오두막 + 화로, 여관 = 큰 오두막, 광산 = 땅속 계단 + 바위, 연구소 = 돌탑 + 마법진, 제작소 = 돌 작업장 + 상자
+    // 건물 설계: 그림 · 바닥 크기(가로 반 w, 세로 반 h)는 그림 크기에서 잰 값. 소품은 바닥 밖 앞쪽에
+    //  대장간 = 그을린 돌오두막(가로 7.6) + 화로 · 모루    여관 = 큰 돌오두막(가로 8.6) + 통 · 상자 · 횃불
+    //  광산 = 땅속 갱도 계단(가로 9) + 바위 · 종유석      연구소 = 마법진(가로 6) + 돌기둥 넷 · 석상
+    //  제작소 = 창문 통나무집(가로 7.4) + 통나무 · 모루     숙소 = 문 통나무집, 3단계부터 한 채 더
+    //  약초밭 = 작물 7 × 4 줄
     const LOOK = {
-      smithy: () => { big('grassland', 296, 0, 0, 0.52, -7.3, 2.2, 'brightness(0.78) sepia(0.35) saturate(1.2)'); return [['dungeon', 167, 2.8, 3.0], ['grassland', 103, -2.6, 3.2], ['dungeon', 167, -1.0, 3.6]]; },
-      inn: () => { big('grassland', 296, 0.6, 0.6, 0.56, -7.3, 2.2, 'saturate(1.35) hue-rotate(-12deg) brightness(1.08)', 4.4); return [['grassland', 98, 3.2, 3.4], ['grassland', 96, -3.2, 3.2], ['dungeon', 167, 0, 4.4]]; },
-      mine: () => { big('dungeon', 286, 0, 0, 1.0, 0, 0, 'sepia(0.4) brightness(0.9)', 2.4); return [['cave', 148, 3.4, -1.6], ['cave', 130, -3.4, 1.0], ['cave', 131, 2.6, 2.8], ['cave', 151, -2.4, -2.6]]; },
-      // 연구소: 돌기둥 넷이 둘러싼 마법진 성소 + 뒤쪽 석상 벽감
-      lab: () => { big('ruins', 380, 0, 0.6, 0.9, 0, 0, '', 0); return [['ruins', 243, 0.0, -2.8], ['ruins', 223, -3.2, -1.4], ['ruins', 231, 3.2, -1.4], ['ruins', 152, -3.4, 2.6], ['ruins', 223, 3.4, 2.6], ['ruins', 241, 0.0, 3.8], ['dungeon', 167, -1.6, 3.6], ['dungeon', 167, 1.6, 3.6]]; },
-      // 제작소: 짙은 통나무 작업장 + 통나무 · 모루 · 상자
-      workshop: () => { cabin(0, -0.4, 'brightness(0.82) sepia(0.25)'); return [['grassland', 76, 3.4, 1.8], ['grassland', 103, -3.0, 2.6], ['grassland', 100, 2.0, 3.6], ['grassland', 101, -1.6, 3.8]]; },
-      // 숙소: 밝은 통나무집 + 꽃 · 통
-      house: () => { cabin(0, -0.4, 'saturate(1.15) brightness(1.08)'); return [['grassland', 98, 3.0, 2.4], ['grassland', 122, -3.0, 2.6], ['grassland', 121, -2.2, 3.4]]; },
+      smithy: (b) => { big('grassland', 296, 0, 0, 0.55, -7.3, 2.2, 'brightness(0.78) sepia(0.35) saturate(1.2)', 3.6); return [['dungeon', 167, 3.6, 3.4], ['grassland', 103, -3.4, 3.6], ['dungeon', 167, -1.2, 4.4], ['grassland', 100, 4.4, 1.0]]; },
+      inn: (b) => { big('grassland', 296, 0, 0, 0.62, -7.3, 2.2, 'saturate(1.35) hue-rotate(-12deg) brightness(1.08)', 4.2); return [['grassland', 98, 4.2, 3.6], ['grassland', 96, -4.2, 3.4], ['dungeon', 167, -1.4, 4.8], ['dungeon', 167, 1.4, 4.8]]; },
+      mine: (b) => { big('dungeon', 286, 0, -0.6, 0.75, 0, 0, 'sepia(0.4) brightness(0.9)', 2.8); return [['cave', 148, 4.6, -1.8], ['cave', 130, -4.4, 1.2], ['cave', 131, 3.8, 3.2], ['cave', 151, -3.6, -2.8], ['grassland', 100, -4.6, 3.6]]; },
+      lab: (b) => { big('ruins', 380, 0, 0.4, 1.0, 0, 0, '', 0); return [['ruins', 243, 0.0, -3.0], ['ruins', 223, -3.6, -1.6], ['ruins', 231, 3.6, -1.6], ['ruins', 152, -3.8, 2.8], ['ruins', 223, 3.8, 2.8], ['ruins', 241, 0.0, 4.2], ['dungeon', 167, -1.8, 4.0], ['dungeon', 167, 1.8, 4.0]]; },
+      workshop: (b) => { cabin('A', 0, -0.6, 'brightness(0.86) sepia(0.2)'); return [['grassland', 76, 4.6, 2.2], ['grassland', 103, -4.2, 2.8], ['grassland', 100, 2.2, 3.8], ['grassland', 101, -1.8, 4.0]]; },
+      house: (b) => { cabin('B', b.lv >= 3 ? -2.2 : 0, -0.6, 'saturate(1.15) brightness(1.08)'); if (b.lv >= 3) cabin('A', 3.4, -3.6, 'saturate(1.1) brightness(1.04)'); return [['grassland', 98, 4.4, 2.8], ['grassland', 122, -4.4, 2.8], ['grassland', 121, -3.4, 3.8]]; },
     };
     for (const pl of PLOTS) {
       const b = t.plots[pl.id];
       if (!b) { tile('grassland', 138, pl.x, pl.z); continue; }
       cur = pl;
-      if (b.type === 'herb') { // 밭: 작물 줄 (울타리 없음)
-        for (let u = -2; u <= 2; u++) for (let v = -1; v <= 1; v++) tile('grassland', 120 + ((u + v + 4) % 4), pl.x + u * 1.6, pl.z + v * 1.8);
+      if (b.type === 'herb') { // 밭: 작물 7 × 4 줄 (울타리 없음)
+        for (let u = -3; u <= 3; u++) for (let v = -1.5; v <= 1.5; v++) tile('grassland', 120 + ((u + Math.round(v + 1.5) + 4) % 4), pl.x + u * 1.5, pl.z + v * 1.7);
       } else {
-        for (const [set, id, dx, dz] of (LOOK[b.type] || LOOK.smithy)()) { tile(set, id, pl.x + dx, pl.z + dz); col(pl.x + dx, pl.z + dz, 0.7); }
+        for (const [set, id, dx, dz] of (LOOK[b.type] || LOOK.smithy)(b)) { tile(set, id, pl.x + dx, pl.z + dz); col(pl.x + dx, pl.z + dz, 0.7); }
       }
-      for (let lv = 2; lv <= b.lv; lv++) for (const [set, id, dx, dz] of LEVEL_DECOR[lv] || []) tile(set, id, pl.x + dx * 1.6, pl.z + dz + 3.8);
+      for (let lv = 2; lv <= b.lv; lv++) for (const [set, id, dx, dz] of LEVEL_DECOR[lv] || []) tile(set, id, pl.x + dx * 2.0, pl.z + dz + 4.8);
     }
   }
 
@@ -182,12 +186,12 @@ export class World {
     for (const w of this.workers || []) w.a.dispose();
     this.workers = [];
     const TOOL = { mine: 'hand_axe', herb: 'dagger', smithy: 'hand_axe', workshop: 'hand_axe', lab: 'rod', inn: null, house: null };
-    const SPOT = { herb: (i) => [(i % 3 - 1) * 2.4, (Math.floor(i / 3) - 0.5) * 1.8], mine: (i) => [-1.6 + i * 1.6, 3.0], lab: (i) => [Math.cos(i * 1.6) * 1.8, 0.6 + Math.sin(i * 1.6) * 1.0] };
+    const SPOT = { herb: (i) => [(i % 3 - 1) * 3.0, (Math.floor(i / 3) - 0.5) * 2.2], mine: (i) => [-2.0 + i * 1.6, 4.6], lab: (i) => [-1.2 + i * 1.2, 2.2], smithy: (i) => [5.2 + (i % 2) * 1.2, 2.4 + i * 1.0], inn: (i) => [5.6 + (i % 2) * 1.2, 2.6 + i * 1.0] };
     const count = {};
     for (const m of want) {
       const b = t.plots[m.work], pl = PLOTS.find((q) => q.id === m.work); if (!pl) continue;
       const i = (count[m.work] = (count[m.work] ?? -1) + 1);
-      const [dx, dz] = (SPOT[b.type] || ((k) => [-2 + k * 1.4, 3.6]))(i);
+      const [dx, dz] = (SPOT[b.type] || ((k) => [-2.4 + k * 1.6, 5.6]))(i);
       const a = new Actor(this.scene, makeHero({ face: m.face }));
       const tool = TOOL[b.type];
       a.setLook({ layers: { ...(tool ? { main: tool } : {}), ...(b.type === 'lab' ? { chest: 'mage_vest', legs: 'mage_skirt' } : b.type === 'smithy' || b.type === 'mine' ? { chest: 'leather_chest' } : {}) } });

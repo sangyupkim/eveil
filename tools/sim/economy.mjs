@@ -27,7 +27,7 @@ for (const zn of ZONES) {
   const huntG = (g / N) * 900;
   const matH = 900 * ((1 - CONFIG.eliteChance) * MAT_DROP.normal[0] * MAT_DROP.normal[1] + CONFIG.eliteChance * MAT_DROP.elite[1]);
   const merc = (lv) => {
-    const st = newPlayer('e', { face: 'm01' }, 'sword'); st.gold = 1e9; townOf(st, 0); build(st, 'p1', 'inn'); hire(st, null, 0); for (const z of ZONES) for (let i = 0; i < 400; i++) liberateAdd(st, z.id, 'normal');
+    const st = newPlayer('e', { face: 'm01' }, 'sword'); st.gold = 1e9; st.awakenings = 99; townOf(st, 0); build(st, 'p1', 'inn'); hire(st, null, 0); for (const z of ZONES) for (let i = 0; i < 400; i++) liberateAdd(st, z.id, 'normal');
     st.inv = []; let g = 0; const reps = Math.max(20, N / 50), rng = seeded(11);
     for (let i = 0; i < reps; i++) {
       const m = townOf(st).mercs[0]; m.lv = lv; m.exp = 0; m.sta = 999; m.hunt = 10;
