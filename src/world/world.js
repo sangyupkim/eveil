@@ -1366,7 +1366,7 @@ export class World {
     const clipDur = P.action(anim)?.getClip().duration || 1;
     const speed = Math.max(0.9, Math.min(2.6, clipDur / (interval * 0.92)));
     P.act(anim, speed, 0.9);
-    sfx(cls.kind === 'ranged' ? 'shoot' : cls.kind === 'magic' ? 'magic' : d.two ? 'heavy' : 'swing', 0.8);
+    sfx(cls.kind === 'ranged' ? 'shoot' : cls.kind === 'magic' ? 'magic' : d.two ? 'heavy' : 'swing', cls.kind === 'magic' ? 0.6 : 0.8);
     this.swing = interval * 0.5;
     this.later(interval * 0.42, () => {
       if (this.dead || t.dead) return;

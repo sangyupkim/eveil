@@ -368,3 +368,6 @@ img { -webkit-user-drag: none; user-drag: none; pointer-events: none; }
 @keyframes rot { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
 @media (orientation: portrait) and (pointer: coarse) { #rotate { display: flex; } }
 #rotate .plate { width: auto; min-width: 12em; padding: 0.6em 1.6em; }
+
+#btnInstall { display: none; }
+body.canInstall #btnInstall { display: inline-block; }

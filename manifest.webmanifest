@@ -1,10 +1,17 @@
 {
   "name": "잿빛 연대기",
   "short_name": "잿빛 연대기",
+  "description": "싸운 방식대로 자라는 쿼터뷰 액션 RPG",
+  "id": "./",
   "start_url": "./",
+  "scope": "./",
   "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
   "orientation": "landscape",
-  "background_color": "#0e1114",
-  "theme_color": "#0e1114",
-  "icons": []
+  "background_color": "#0e0b08",
+  "theme_color": "#0e0b08",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
 }

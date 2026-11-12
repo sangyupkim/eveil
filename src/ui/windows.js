@@ -395,6 +395,7 @@ export class Windows {
         <div class="setRow"><span>자동 물약</span><div class="opts">${[0.3, 0.4, 0.5, 0.6].map((v) => `<button class="btn${set.autoPotion === v ? ' on' : ''}" data-pot="${v}">${v * 100}%</button>`).join('')}</div></div>
         <div class="setRow"><span>물약 자동 구매</span><div class="opts">${onoff('autoBuy', set.autoBuy !== false)}</div></div>
         <div class="setRow"><span>전체 화면</span><div class="opts"><button class="btn" data-full="1">전환</button></div></div>
+        <div class="setRow"><span>앱으로 설치</span><div class="opts">${matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches ? '<span class="note">설치됨</span>' : window.__install ? '<button class="btn gold" data-install="1">설치</button>' : /iPhone|iPad/.test(navigator.userAgent) ? '<span class="note">공유 → 홈 화면에 추가</span>' : '<span class="note">브라우저 메뉴 → 앱 설치</span>'}</div></div>
         <div class="btns"><button class="btn" data-save="1">지금 저장</button><button class="btn danger" data-reset="1">캐릭터 삭제</button></div>
       </div><div class="frame" style="flex:1">
         <div class="cards">
@@ -537,6 +538,7 @@ export class Windows {
     on('[data-go]', (el) => this.show(el.dataset.go));
     on('[data-close]', () => { audio.play('click'); this.close(); });
     on('[data-full]', () => toggleFullscreen());
+    on('[data-install]', async () => { const p = window.__install; if (!p) return; p.prompt(); await p.userChoice.catch(() => {}); window.__install = null; this.render(); });
     on('[data-save]', () => { this.save(true); w.ui.toast('저장했습니다'); });
     on('[data-reset]', () => {
       if (confirm('정말 캐릭터를 지우고 처음부터 시작할까요? 되돌릴 수 없습니다.')) {
