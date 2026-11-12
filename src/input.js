@@ -1,6 +1,7 @@
 // 입력: PC(마우스 · 키보드) + 모바일(조이스틱 · 터치 · 버튼)
 import { isTouch } from './engine2d/stage.js';
 import { PLOTS } from './data/buildings.js';
+import { actionOf, keyMap, bindKey } from './data/keys.js';
 
 const $ = (s) => document.querySelector(s);
 
@@ -26,6 +27,31 @@ export function setupInput(world, stage, windows) {
   const pickNpc = (cx, cy, npc = world.npc) => {
     const s = stage.toScreen(npc.pos.x, npc.pos.z, 1);
     return Math.hypot(s.x - cx, s.y - cy) < 50;
+  };
+
+  // ── 가까운 상호작용 대상 (NPC · 건물 터) → { name, go } ──
+  const near = (n, r = 4) => n && Math.hypot(n.x - world.player.pos.x, n.z - world.player.pos.z) < r;
+  const interactTarget = () => {
+    if (world.dead) return null;
+    const list = [[world.npc, 'shop', '상인'], [world.guard, 'quest', '경비대장'], [world.gemNpc, 'shop', '보석상'], [world.sage, 'dex', '현자'],
+      ...(world.campNpcs || []).map((a) => [a, 'shop', '야영지 상인']), ...(world.eventNpc ? [[world.eventNpc, 'shop', '떠돌이 상인']] : [])];
+    for (const [npc, win, nm] of list) if (npc && near(npc.pos)) return { name: nm, go: () => windows.show(win) };
+    if (world.inTown) {
+      const pl = PLOTS.filter((q) => near(q, 3.6)).sort((a, b) => Math.hypot(a.x - world.player.pos.x, a.z - world.player.pos.z) - Math.hypot(b.x - world.player.pos.x, b.z - world.player.pos.z))[0];
+      if (pl) return { name: '건물', go: () => { windows.townSel = pl.id; windows.show('town'); } };
+    }
+    return null;
+  };
+  const attackOrInteract = () => { const t = interactTarget(); if (t) { t.go(); return; } world.manual(); world.attackButton(); };
+  const atkBtn = $('#btnAttack'), atkLabel = atkBtn.querySelector('span'), atkImg = atkBtn.querySelector('img');
+  let lastInter = null;
+  const refreshAttack = () => {
+    const t = interactTarget(), k = t ? t.name : null;
+    if (k === lastInter) return;
+    lastInter = k;
+    atkBtn.classList.toggle('interact', !!t);
+    atkLabel.textContent = t ? t.name : '공격';
+    atkImg.style.visibility = t ? 'hidden' : '';
   };
 
   // ── 화면 클릭/탭: 몬스터면 공격, 땅이면 이동 ──
@@ -143,7 +169,7 @@ export function setupInput(world, stage, windows) {
 
   // ── 버튼 ──
   const tap = (sel, fn) => $(sel).addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); fn(); });
-  tap('#btnAttack', () => { world.manual(); world.attackButton(); });
+  tap('#btnAttack', attackOrInteract);
   tap('#btnHp', () => world.usePotion('hp'));
   tap('#btnMp', () => world.usePotion('mp'));
   tap('#btnAuto', () => world.toggleAuto());
@@ -161,25 +187,23 @@ export function setupInput(world, stage, windows) {
   const keys = new Set();
   window.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT') return;
-    const k = e.key.toLowerCase();
+    // 메뉴에서 단축키를 바꾸는 중이면 이 키를 지정
+    if (windows.waitKey) { e.preventDefault(); if (e.code !== 'Escape') bindKey(world.st, windows.waitKey, e.code); windows.waitKey = null; windows.refresh(); return; }
     keys.add(e.code);
     if (world.st.tut === 0) return;
-    if (k === 'escape') { if (windows.open) windows.close(); else if (!world.dead) windows.show('menu'); return; }
-    if (k === 'i' || k === 'b') windows.toggle('inv');
-    if (k === 'k') windows.toggle('skills');
-    if (k === 'c') windows.toggle('char');
-    if (k === 'm') windows.toggle('menu');
-    if (k === 'j') windows.toggle('quest');
-    if (k === 'n') windows.toggle('map');
-    if (k === 't') windows.toggle('town');
-    if (k === 'p' && world.canShop) windows.toggle('shop');
+    if (e.code === 'Escape') { if (windows.open) windows.close(); else if (!world.dead) windows.show('menu'); return; }
+    const a = actionOf(world.st, e.code);
+    if (!a) return;
+    if (['inv', 'skills', 'char', 'quest', 'map', 'town', 'guide', 'menu'].includes(a)) { windows.toggle(a); return; }
+    if (a === 'shop') { if (world.canShop) windows.toggle('shop'); return; }
     if (windows.open || e.repeat) return;
-    if (k >= '1' && k <= '6') { world.manual(); world.useSkill(world.st.quick[Number(k) - 1]); }
-    if (k === 'q') world.usePotion('hp');
-    if (k === 'e') world.usePotion('mp');
-    if (k === 'f') world.toggleAuto();
-    if (k === 'r') world.recall();
-    if (e.code === 'Space') { e.preventDefault(); world.manual(); world.attackButton(); }
+    if (/^s[1-6]$/.test(a)) { world.manual(); world.useSkill(world.st.quick[Number(a[1]) - 1]); }
+    if (a === 'hp') world.usePotion('hp');
+    if (a === 'mp') world.usePotion('mp');
+    if (a === 'auto') world.toggleAuto();
+    if (a === 'recall') world.recall();
+    if (a === 'attack') { e.preventDefault(); attackOrInteract(); }
+    if (a === 'interact') { const t = interactTarget(); if (t) t.go(); }
   });
   window.addEventListener('keyup', (e) => keys.delete(e.code));
   window.addEventListener('blur', () => keys.clear());
@@ -187,15 +211,17 @@ export function setupInput(world, stage, windows) {
   return {
     // WASD 이동 (카메라가 북쪽을 보고 있으므로 W = -z)
     update() {
+      refreshAttack();
       // 1.5초 넘게 움직임 신호가 없는데 손가락도 없으면 (신호 유실) 멈춘다
       if (joyId !== null && performance.now() - lastJoyMove > 1500 && !(navigator.maxTouchPoints && document.querySelector(':active'))) { /* 누르고 가만히 있는 것일 수 있어 그대로 둔다 */ }
       if (windows.open && joyId !== null) joyEnd({ pointerId: joyId });
       if (joyId !== null || windows.open) return;
       let x = 0, y = 0;
-      if (keys.has('KeyW') || keys.has('ArrowUp')) y -= 1;
-      if (keys.has('KeyS') || keys.has('ArrowDown')) y += 1;
-      if (keys.has('KeyA') || keys.has('ArrowLeft')) x -= 1;
-      if (keys.has('KeyD') || keys.has('ArrowRight')) x += 1;
+      const m = keyMap(world.st);
+      if (keys.has(m.up) || keys.has('ArrowUp')) y -= 1;
+      if (keys.has(m.down) || keys.has('ArrowDown')) y += 1;
+      if (keys.has(m.left) || keys.has('ArrowLeft')) x -= 1;
+      if (keys.has(m.right) || keys.has('ArrowRight')) x += 1;
       if (x || y) { const l = Math.hypot(x, y); world.setJoy(x / l, y / l); this.kb = true; }
       else if (this.kb) { world.setJoy(0, 0); this.kb = false; }
     },

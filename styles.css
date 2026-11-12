@@ -425,3 +425,8 @@ body.canInstall #btnInstall { display: inline-block; }
 html.force-land { --vw: 1vh; --vh: 1vw; --vmin: 1vw; }
 html.force-land body { position: fixed; top: 0; left: 0; width: 100vh; height: 100vw; transform-origin: top left; transform: rotate(90deg) translateY(-100%); overflow: hidden; }
 html.force-land #rotate { display: none !important; }
+
+.keygrid { display: grid; grid-template-columns: 1fr auto 1fr auto; gap: 4px 8px; align-items: center; font-size: .9em; }
+.keygrid .btn { min-width: 6em; }
+#btnAttack.interact { background: radial-gradient(circle at 40% 35%, #3d6a9a, #142338 80%); border-color: #8fc8ff; }
+#btnAttack.interact span { font-size: 1.05em; color: #e6f3ff; }

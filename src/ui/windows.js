@@ -36,6 +36,7 @@ import { VARIANTS, variantSlots } from '../game/skills.js';
 import { SCHOOL_NAMES } from '../data/skills.js';
 import { GEMS, GEM_GRADES } from '../data/legends.js';
 import { GAME_VERSION, PATCH_NOTES } from '../data/patchnotes.js';
+import { KEY_ACTIONS, keyMap, keyName } from '../data/keys.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { dailyOf, dailyText, dailyReward } from '../game/daily.js';
 // 스탯 오각형: 내가 어느 쪽으로 컸나
@@ -90,6 +91,7 @@ export class Windows {
   }
 
   close() {
+    this.waitKey = null;
     this.portalAt = null;
     this.el.hidden = true;
     this.kind = null;
@@ -113,6 +115,9 @@ export class Windows {
     if (wc) { const g = wc.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(terrain, 0, 0, wc.width, wc.height); g.imageSmoothingEnabled = true; g.drawImage(fogCan, 0, 0, wc.width, wc.height); }
     body.querySelectorAll('.frame').forEach((f, i) => { f.scrollTop = keep[i] || 0; });
     this.bind(body);
+    body.querySelectorAll('[data-keyedit]').forEach((b) => { b.onclick = () => { this.keyEdit = !this.keyEdit; this.waitKey = null; this.render(); }; });
+    body.querySelectorAll('[data-bind]').forEach((b) => { b.onclick = () => { this.waitKey = b.dataset.bind; this.render(); }; });
+    body.querySelectorAll('[data-keyreset]').forEach((b) => { b.onclick = () => { this.w.st.settings.keys = {}; this.waitKey = null; this.render(); }; });
     body.querySelectorAll('[data-gsec]').forEach((b) => { b.onclick = () => { this.gsec = +b.dataset.gsec; audio.play('click'); this.render(); }; });
   }
 
@@ -382,6 +387,12 @@ export class Windows {
       <div class="frame" style="flex:1"><h3>${t}</h3><div class="gwrap"><div class="gimgs">${imgs.join('')}</div><ul class="glist">${lines.map((l) => `<li>${l}</li>`).join('')}</ul></div></div></div>`;
   }
 
+  keysPanel() {
+    const m = keyMap(this.w.st);
+    return `<h3>단축키 <button class="btn" data-keyreset="1">처음대로</button></h3><div class="keygrid">${KEY_ACTIONS.map(([id, nm]) =>
+      `<span>${nm}</span><button class="btn${this.waitKey === id ? ' gold' : ''}" data-bind="${id}">${this.waitKey === id ? '키 입력…' : keyName(m[id])}</button>`).join('')}</div>`;
+  }
+
   map() {
     const w = this.w, st = w.st, P = w.player.pos, here = this.portalAt;
     const V = Math.max(240, Math.min(560, window.innerHeight - 110)), k = V / MAP_W, X = (x) => ((x + MAP_R) * k).toFixed(1), Y = (z) => ((z + MAP_R) * k).toFixed(1);
@@ -536,11 +547,12 @@ export class Windows {
         <div class="setRow"><span>화면 흔들림</span><div class="opts">${onoff('shake', set.shake !== false)}</div></div>
         <div class="setRow"><span>자동 물약</span><div class="opts">${[0.3, 0.4, 0.5, 0.6].map((v) => `<button class="btn${set.autoPotion === v ? ' on' : ''}" data-pot="${v}">${v * 100}%</button>`).join('')}</div></div>
         <div class="setRow"><span>물약 자동 구매</span><div class="opts">${onoff('autoBuy', set.autoBuy !== false)}</div></div>
+        <div class="setRow"><span>단축키 (PC)</span><div class="opts"><button class="btn${this.keyEdit ? ' on' : ''}" data-keyedit="1">단축키 지정</button></div></div>
         <div class="setRow"><span>전체 화면</span><div class="opts"><button class="btn" data-full="1">전환</button></div></div>
         <div class="setRow"><span>앱으로 설치</span><div class="opts">${matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches ? '<span class="note">설치됨</span>' : window.__install ? '<button class="btn gold" data-install="1">설치</button>' : /iPhone|iPad/.test(navigator.userAgent) ? '<span class="note">공유 → 홈 화면에 추가</span>' : '<span class="note">브라우저 메뉴 → 앱 설치</span>'}</div></div>
         <div class="btns"><button class="btn" data-notes="1">패치 노트 ${GAME_VERSION}</button>${cloud.id ? '<button class="btn" data-restore="1">백업에서 되살리기</button>' : ''}<button class="btn" data-save="1">지금 저장</button><button class="btn danger" data-reset="1">캐릭터 삭제</button></div>
-      </div><div class="frame" style="flex:1">
-        <div class="cards">
+      </div><div class="frame" style="flex:1">${this.keyEdit ? this.keysPanel() : ''}
+        <div class="cards"${this.keyEdit ? ' hidden' : ''}>
           ${card('inv', `<img src="${chestIcon()}" alt="" />`, '가방')}
           ${card('skills', `<img src="${bookIcon()}" alt="" />`, '스킬')}
           ${card('char', `<img src="${portrait(st.look)}" alt="" />`, '능력')}
