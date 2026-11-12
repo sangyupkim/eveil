@@ -2,6 +2,7 @@
 import { BASES } from '../data/items.js';
 import { SKILLS, BOOK_TIERS } from '../data/skills.js';
 import { ITEM_LOOK, SKILL_ICON, faceOf } from '../data/flareWorld.js';
+import { SCHOOL_ICON } from '../data/skills_more.js';
 import { image } from '../engine2d/sprites.js';
 
 const SHEET = 'icons.webp', S = 64;
@@ -31,7 +32,7 @@ export function itemIcon(it) {
   const b = BASES[it.base];
   return iconUrl(b?.type === 'potion' ? 64 : 0);
 }
-export const skillIcon = (id) => iconUrl(SKILL_ICON[id] ?? 0);
+export const skillIcon = (id) => iconUrl(SKILL_ICON[id] ?? SCHOOL_ICON[SKILLS[id]?.school] ?? 0);
 export const portrait = (look) => 'assets/flare/portraits/' + faceOf(look?.face)[1] + '.webp';
 export const chestIcon = () => iconUrl(30);
 export const bookIcon = () => iconUrl(28);

@@ -1,6 +1,7 @@
 // 몬스터 드랍과 사망 시 아이템 드랍
 import { CONFIG, LOOT } from '../data/config.js';
-import { skillsOfTier } from '../data/skills.js';
+import { skillsOfTier, SKILLS } from '../data/skills.js';
+import { ZONE_SCHOOLS } from '../data/skills_more.js';
 import { SLOTS } from '../data/items.js';
 import { R, randInt, chance, weighted, pick } from './rng.js';
 import { makeItem, makeBook, rollBase, rollRarity, isStack } from './items.js';
@@ -32,7 +33,9 @@ export function rollLoot(mon, opt = {}, st = null, rng = R) {
   // 스킬북 — 강한 몬스터일수록 높은 등급
   if (chance(Math.min(1, t.book * dropMult), rng)) {
     const tier = Number(weighted(t.bookTiers, rng));
-    const pool = skillsOfTier(tier);
+    const zs = ZONE_SCHOOLS[mon.sp?.zone?.id] || [];
+    const big = mon.tier === 'named' || mon.tier === 'boss';
+    const pool = skillsOfTier(tier).filter((id) => big || SKILLS[id].school !== 'mix').flatMap((id) => (zs.includes(SKILLS[id].school) ? [id, id, id] : [id]));
     if (pool.length) out.push({ kind: 'item', item: makeBook(pick(pool, rng), st) });
   }
   return out;

@@ -1,3 +1,4 @@
+import { MORE_SKILLS } from './skills_more.js';
 // 스킬 정의. 상점에서 팔지 않는다 — 몬스터가 떨어뜨리는 스킬북으로만 배운다.
 // tier: 1 하급 · 2 중급 · 3 상급 · 4 고대 · 5 전설
 // type: melee(단일) · spin(주변) · cleave(전방 부채꼴) · bolt(투사체 주문) · arrow(투사체 사격)
@@ -145,6 +146,15 @@ export const SKILLS = {
     desc: '눈보라를 불러 넓은 곳을 얼리고 계속 깎는다.',
   },
 };
+
+// 원래 스킬의 갈래
+const SCHOOL_OF = { power_strike: 'sword', whirlwind: 'sword', earth_cleave: 'sword', judgement: 'sword', dash_strike: 'sword', blade_storm: 'sword', war_cry: 'sword', berserk: 'guard',
+  aimed_shot: 'bow', multishot: 'bow', piercing_arrow: 'bow', arrow_rain: 'bow', storm_volley: 'bow', phantom_arrow: 'bow', eagle_eye: 'trick',
+  fire_bolt: 'fire', fireball: 'fire', meteor: 'fire', flame_wave: 'fire', frost_bolt: 'frost', blizzard: 'frost', absolute_zero: 'frost',
+  chain_lightning: 'storm', iron_skin: 'guard', divine_shield: 'holy' };
+for (const id in SCHOOL_OF) if (SKILLS[id]) SKILLS[id].school = SCHOOL_OF[id];
+for (const [id, sk] of Object.entries(MORE_SKILLS)) SKILLS[id] = { glyph: sk.name[0], ...sk };
+export const SCHOOL_NAMES = { sword: '검술', bow: '궁술', fire: '화염', frost: '냉기', storm: '번개', holy: '신성', guard: '수호', trick: '기교', mix: '혼합' };
 
 export const SKILL_IDS = Object.keys(SKILLS);
 export function skillsOfTier(t) {

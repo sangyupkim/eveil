@@ -578,7 +578,7 @@ export class World {
     }
     if (ctx) {
       const sk = SKILLS[ctx.id];
-      if (sk.ap === 'int' && !ctx.apGiven) { addAP(st, 'int', ctx.mp * AP_TABLE.spellPerMp, apMult); ctx.apGiven = true; }
+      if (sk.ap === 'int' && !ctx.apGiven) { addAP(st, sk.apStat || 'int', ctx.mp * AP_TABLE.spellPerMp, apMult); ctx.apGiven = true; }
       if (ctx.hits++ < 3) this.skillExp(ctx.id, 1, rf);
     }
     if (m.hp <= 0) this.killMonster(m, src, ctx, rf);
@@ -981,7 +981,11 @@ export class World {
     const ctx = { id, mp: v.mp, hits: 0, apGiven: false };
     const t = this.target;
     if (t) P.face(t.pos.x, t.pos.z);
-    const pw = v.power;
+    // 혼합 기술: 둘째 스탯 1점당 피해 +1.2%, 쓸 때 그 스탯 행동 기록
+    const mixK = sk.mix ? 1 + d.stats[sk.mix] * 0.012 : 1;
+    if (sk.mix) addAP(st, sk.mix, v.mp * AP_TABLE.supportPerMp, this.autoMult);
+    if (sk.apStat && sk.ap === 'weapon') addAP(st, sk.apStat, v.mp * AP_TABLE.supportPerMp, this.autoMult);
+    const pw = v.power * mixK;
     const spell = () => randRange(0.9, 1.1) * pw * d.spellMult;
     const spellCrit = () => Math.random() < d.crit * 0.5;
     const weaponHit = () => { const w = this.rollWeapon(); return { v: w.v * pw, crit: w.crit }; };
