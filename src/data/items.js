@@ -146,7 +146,7 @@ export const AFFIX_PREFIX = {
   mpRegen: '샘솟는', moveSpd: '바람의', lifeSteal: '흡혈의', skillExp: '수련자의', goldFind: '탐욕의',
   magicFind: '행운의', allStats: '고대의',
 };
-export const LEGEND_NAMES = ['잿빛 왕의', '망자의', '서리 군주의', '타락한 성기사의', '피의 서약', '그림자 군단의', '잊힌 신의'];
+export const LEGEND_NAMES = ['잠든 왕의', '망자의', '서리 군주의', '타락한 성기사의', '피의 서약', '그림자 군단의', '잊힌 신의'];
 
 // 처음 고르는 무기 — 무기 + 주 스탯 +2 + 첫 스킬북(안내 보상)
 export const STARTS = {

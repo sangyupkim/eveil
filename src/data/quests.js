@@ -32,7 +32,7 @@ export const QUESTS = [
     reward: { gold: 1200, gear: ['helm', 'hero', 15] } },
   { id: 'r3', zone: 'ruins', name: '약탈단장 하르겐', goal: { named: 'ruins' }, text: '성채 안뜰.',
     reward: { gold: 1600, gear: ['armor', 'hero', 16] } },
-  { id: 'r4', zone: 'ruins', name: '잿빛 비룡 베르크', goal: { boss: 'ruins' }, text: '연대기 첫 장의 끝.',
+  { id: 'r4', zone: 'ruins', name: '황혼 비룡 베르크', goal: { boss: 'ruins' }, text: '첫 장의 끝.',
     reward: { gold: 4000, book: 3, gear: ['weapon', 'legend', 18] } },
   { id: 's1', zone: 'swamp', name: '안개 속의 개미귀신', goal: { kill: 'frog', n: 12 }, text: '남서쪽 늪에 개미귀신이 들끓는다.',
     reward: { gold: 1800, gear: ['boots', 'rare', 20] } },

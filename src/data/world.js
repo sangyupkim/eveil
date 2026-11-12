@@ -35,7 +35,7 @@ export const MONSTERS = {
   imp: { name: '불개미', model: 'm_demon', h: 1.6, attack: 'spell', atk: 'attack2', hp: 42, dmg: [10, 14], speed: 3.2, interval: 2.2, range: 9, aggro: 12, exp: 20 },
   blue_demon: { name: '저주받은 좀비', model: 'm_blue_demon', h: 2.3, attack: 'melee', atk: 'attack2', hp: 81, dmg: [10, 14], speed: 2.9, interval: 1.8, range: 2.3, aggro: 10, exp: 24 },
   goleling: { behave: 'shield', name: '저주받은 무덤', model: 'm_goleling', h: 1.9, attack: 'melee', hp: 102, dmg: [9, 13], speed: 2.2, interval: 2.0, range: 2.1, aggro: 9, exp: 24 },
-  dragon: { name: '잿빛 비룡', model: 'm_dragon', h: 3.0, attack: 'spell', atk: 'attack2', hp: 110, dmg: [13, 18], speed: 3.0, interval: 2.0, range: 9, aggro: 14, exp: 30,
+  dragon: { name: '황혼 비룡', model: 'm_dragon', h: 3.0, attack: 'spell', atk: 'attack2', hp: 110, dmg: [13, 18], speed: 3.0, interval: 2.0, range: 9, aggro: 14, exp: 30,
     patterns: ['volley', 'spores', 'charge', 'summon'], minion: 'imp' },
   // 안개 늪
   frog: { behave: 'charge', name: '늪 개미귀신', model: 'm_frog', h: 1.6, attack: 'melee', hp: 99, dmg: [12, 16], speed: 2.8, interval: 1.7, range: 2.0, aggro: 9, exp: 28 },
@@ -78,7 +78,7 @@ export const MONSTERS = {
 };
 
 // 지역: 마을은 원점. levels: 마을에서 가까운 쪽 → 먼 쪽 몬스터 레벨
-export const TOWN = { id: 'town', name: '잿빛 초소', x: 0, z: 0, r: 24 };
+export const TOWN = { id: 'town', name: '여명 초소', x: 0, z: 0, r: 24 };
 
 export const ZONES = [
   {
@@ -106,7 +106,7 @@ export const ZONES = [
     id: 'ruins', name: '무너진 성채', x: 74, z: -4, r: 40, levels: [13, 18], count: 20, ground: [0.25, 0.19, 0.15],
     spawns: { raider: 22, fallen_knight: 18, imp: 22, blue_demon: 20, goleling: 18 },
     named: { type: 'blue_demon', name: '약탈단장 하르겐' },
-    boss: { type: 'dragon', name: '잿빛 비룡 베르크' },
+    boss: { type: 'dragon', name: '황혼 비룡 베르크' },
     props: { ruin: 14, rubble: 10, pillar: 18, barrel: 14, crates: 10, banner: 8, tree_dead_l: 14, rock: 20 },
   },
   {

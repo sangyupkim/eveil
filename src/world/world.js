@@ -1563,7 +1563,7 @@ export class World {
         this.fx.portal(0, 2.2, 1.2);
         this.fx.arrive(0, 4);
         P.play('idle', { force: true });
-        this.ui.toast('잿빛 초소에 도착했습니다');
+        this.ui.toast('여명 초소에 도착했습니다');
       }
       return;
     }

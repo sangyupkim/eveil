@@ -266,7 +266,7 @@ export function buildWorldProps(stage) {
   buildTown(stage, rng);
 }
 
-// 잿빛 초소: 천막 · 모닥불 · 대장간 모루 · 상자 · 울타리 · 귀환 차원문
+// 여명 초소: 천막 · 모닥불 · 대장간 모루 · 상자 · 울타리 · 귀환 차원문
 function buildTown(stage, rng) {
   addProp(stage, 'grassland', 265, 0, -2, 0);
   for (const [id, x, z, r] of [[296, -20, -12, 0], [296, 6, -15, 0], [100, -15, 3, 1.1], [101, 14, 4, 1.1], [76, -6, -13, 0.8], [102, -4, 6, 0.8], [103, 7, -6, 0.9],

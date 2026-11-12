@@ -151,7 +151,7 @@ function startGame(stage, st) {
   const tut = new Tutorial(world, windows);
   $('#hud').hidden = false;
   stage.follow(world.player.pos.x, world.player.pos.z, 1);
-  hud.log(`${st.name}, 잿빛 초소에 왔다.`, '#e8c36a');
+  hud.log(`${st.name}, 여명 초소에 왔다.`, '#e8c36a');
 
   let saveT = CONFIG.autosaveInterval;
   let fpsT = 0, frames = 0, slow = 0, fast = 0;
