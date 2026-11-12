@@ -72,6 +72,11 @@ export class Windows {
     this.sel = null;     // 선택한 아이템 { from: 'inv'|'equip', uid|slot }
     this.skillSel = null;
     $('.close', this.el).onclick = () => { audio.play('click'); this.close(); };
+    // 누르고 있는 동안 다시 그리면 버튼이 바뀌어 눌림(click)이 사라진다 → 손을 뗀 뒤로 미룬다
+    this.el.addEventListener('pointerdown', () => { this.pressing = true; }, true);
+    const up = () => { if (!this.pressing) return; this.pressing = false; if (this.pending) { this.pending = false; setTimeout(() => this.refresh(), 60); } };
+    window.addEventListener('pointerup', up, true);
+    window.addEventListener('pointercancel', up, true);
   }
 
   get open() { return !this.el.hidden; }
@@ -98,7 +103,7 @@ export class Windows {
     this.sel = null;
   }
 
-  refresh() { if (this.open) this.render(); }
+  refresh() { if (!this.open) return; if (this.pressing) { this.pending = true; return; } this.render(); }
 
   render() {
     $('h2', this.el).textContent = TITLES[this.kind];
