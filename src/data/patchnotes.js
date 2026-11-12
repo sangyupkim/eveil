@@ -1,6 +1,11 @@
 // 패치 노트 (게임 안 [메뉴 → 패치 노트]에서 본다). 새 버전이 나오면 맨 위에 더한다.
-export const GAME_VERSION = '0.19.1';
+export const GAME_VERSION = '0.19.2';
 export const PATCH_NOTES = [
+  {
+    ver: '0.19.2', date: '2026-11-12',
+    head: '가방이 가득 차도 퀘스트를 완료할 수 있습니다.',
+    items: ['1. 가방에 들어가지 않는 퀘스트 보상은 발밑에 떨어집니다.'],
+  },
   {
     ver: '0.19.1', date: '2026-11-12',
     head: '한 계정은 한 기기에서만 플레이됩니다.',

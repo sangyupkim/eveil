@@ -54,16 +54,14 @@ export function rewardItems(st, q) {
   return out;
 }
 
-// 보고: 보상을 주고 다음 퀘스트로. 가방이 모자라면 실패
+// 보고: 보상을 주고 다음 퀘스트로. 가방에 안 들어간 보상은 overflow로 돌려준다 (화면이 발밑에 떨어뜨린다)
 export function questTurnIn(st, size) {
   const q = currentQuest(st);
   if (!q || !questDone(st)) return { ok: false };
   const items = rewardItems(st, q);
-  const need = items.filter((it) => !(BASES[it.base]?.stack && st.inv.some((x) => x.base === it.base))).length;
-  if (st.inv.length + need > size) return { ok: false, why: '가방이 가득 찼습니다' };
-  for (const it of items) addItem(st, it);
+  const overflow = items.filter((it) => !addItem(st, it));
   st.gold += q.reward.gold || 0;
   st.questsDone.push(q.id);
   st.quest = null;
-  return { ok: true, q, items, next: nextQuest(st) };
+  return { ok: true, q, items, overflow, next: nextQuest(st) };
 }

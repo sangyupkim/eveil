@@ -661,6 +661,9 @@ export class Windows {
       if (!r.ok) { if (r.why) w.ui.toast(r.why); audio.play('error'); return; }
       audio.play('awaken');
       w.fx.pillar(w.player.pos.x, w.player.pos.z, 0xffd860, 1.2);
+      // 가방이 가득하면 남은 보상은 발밑에
+      (r.overflow || []).forEach((it, k) => w.dropGround({ kind: 'item', item: it }, w.player.pos.x + Math.cos(k * 2.1) * 1.2, w.player.pos.z + Math.sin(k * 2.1) * 1.2));
+      if (r.overflow?.length) w.ui.toast('가방이 가득 차서 보상을 발밑에 떨어뜨렸습니다', '#ffb060');
       w.ui.toast(`보상: ${r.q.reward.gold} G${r.items.length ? ` · ${r.items.map((it) => itemName(it)).join(' · ')}` : ''}`, '#ffd84a');
       w.ui.log(`퀘스트 완료: ${r.q.name}`, '#ffd84a');
       w.ui.dirty();
