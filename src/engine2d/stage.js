@@ -54,25 +54,35 @@ export const LAKES = [], MESAS = [];
     if (L.set === 'cave') continue;
     const lakes = zn.id === 'swamp' ? 4 : 1 + (rng() < 0.6 ? 1 : 0);
     for (let k = 0, tries = 0; k < lakes && tries < 80; tries++) {
-      const a = rng() * 6.28, d = rng() * zn.r * 0.75, r = 5 + rng() * 4.5;
+      const a = rng() * 6.28, d = rng() * zn.r * 0.75, r = 6.5 + rng() * 4;
       const x = zn.x + Math.cos(a) * d, z = zn.z + Math.sin(a) * d;
       if (clear(x, z, r)) { LAKES.push({ x, z, r, set: L.set }); k++; }
     }
-    for (let k = 0, tries = 0; k < 2 && tries < 80; tries++) {
+    for (let k = 0, tries = 0; k < 0 && tries < 80; tries++) { // 고원: Flare 절벽은 뒤쪽 테두리 그림이 없어 접었다
       const a = rng() * 6.28, d = zn.r * (0.25 + rng() * 0.55), r = 4.5 + rng() * 3.5;
       const x = zn.x + Math.cos(a) * d, z = zn.z + Math.sin(a) * d;
       if (clear(x, z, r)) { MESAS.push({ x, z, r, set: L.set }); k++; }
     }
   }
 }
-const blob = (list, x, z, k) => { for (const q of list) if (Math.hypot(x - q.x, z - q.z) < q.r * (1 + (noise(x * k, z * k + 31) - 0.5) * 0.45)) return q; return null; };
+const blob = (list, x, z, k, pad = 0) => { for (const q of list) if (Math.hypot(x - q.x, z - q.z) < q.r * (1 + (noise(x * k, z * k + 31) - 0.5) * 0.45) + pad) return q; return null; };
 // 칸(i, j) 단위로 판정해야 물가 · 절벽 타일이 맞물린다
 const cellXZ = (i, j) => [(i - j) * STEP, (i + j) * STEP];
-const lakeCell = (i, j) => blob(LAKES, ...cellXZ(i, j), 0.9);
+const lakeRaw = (i, j) => blob(LAKES, ...cellXZ(i, j), 0.9);
+// 물가 타일로 못 그리는 모양(가는 목 · 마주 보는 땅)은 땅으로 메운다 — 두 번 다듬기
+const lakeTrim1 = (i, j) => { const q = lakeRaw(i, j); return q && edgeKind((a, b) => !!lakeRaw(a, b), i, j) !== 'bad' ? q : null; };
+const lakeMemo = new Map();
+const lakeCell = (i, j) => {
+  const key = i * 100003 + j;
+  if (lakeMemo.has(key)) return lakeMemo.get(key);
+  const q = lakeTrim1(i, j), v = q && edgeKind((a, b) => !!lakeTrim1(a, b), i, j) !== 'bad' ? q : null;
+  lakeMemo.set(key, v);
+  return v;
+};
 const mesaCell = (i, j) => blob(MESAS, ...cellXZ(i, j), 0.8);
 export function inLake(x, z, pad = 0) {
   const i = Math.round((x + z) / (2 * STEP)), j = Math.round((z - x) / (2 * STEP));
-  return lakeCell(i, j) || (pad > 0 ? blob(LAKES, x, z, 0.9) : null);
+  return lakeCell(i, j) || (pad > 0 ? blob(LAKES, x, z, 0.9, pad + 1.5) : null);
 }
 export const inMesa = (x, z) => mesaCell(Math.round((x + z) / (2 * STEP)), Math.round((z - x) / (2 * STEP)));
 // 테두리 칸 종류: 네 방향(북 j-1 · 동 i+1 · 남 j+1 · 서 i-1) 중 바깥(땅)인 쪽으로 고른다
@@ -286,8 +296,16 @@ function drawWater(ctx, set, id, sx, sy, s) {
     c = document.createElement('canvas'); c.width = t[3]; c.height = t[4];
     const g = c.getContext('2d');
     g.drawImage(src.im, t[1], t[2], t[3], t[4], 0, 0, t[3], t[4]);
-    g.globalCompositeOperation = 'source-atop';
-    g.fillStyle = set === 'snowplains' ? 'rgba(120,170,210,0.38)' : 'rgba(40,115,140,0.45)'; g.fillRect(0, 0, t[3], t[4]);
+    // 물 빛깔: 어두운 물 픽셀만 (물가 바위 · 풀 · 그늘의 순수한 검정은 그대로)
+    const im = g.getImageData(0, 0, t[3], t[4]), d = im.data, [tr, tg, tb] = set === 'snowplains' ? [120, 170, 210] : [40, 115, 140];
+    for (let q = 0; q < d.length; q += 4) {
+      if (!d[q + 3]) continue;
+      const r = d[q], gg = d[q + 1], b = d[q + 2], lum = (r + gg + b) / 3;
+      if (lum > 50 || lum < 2 || r > b + 7 || r > gg + 7) continue; // 물은 푸르스름한 어둠: 붉은 · 갈색 바위 그늘은 두기
+      const k = 0.5;
+      d[q] = r + (tr - r) * k * 0.9; d[q + 1] = gg + (tg - gg) * k * 0.9; d[q + 2] = b + (tb - b) * k;
+    }
+    g.putImageData(im, 0, 0);
     c.t = t; waterCache.set(key, c);
   }
   const t = c.t;
@@ -317,7 +335,7 @@ function render(stage, dt) {
     if (Math.hypot(x, z) > WORLD_SIZE + 12) continue;
     const [set, id, wet] = tileAt(i, j);
     const p = stage.toScreen(x, z);
-    if (wet) drawWater(ctx, set, id, p.x, p.y, s); else drawTile(stage, ctx, set, id, p.x, p.y, s);
+    if (wet || (id >= 144 && id <= 167 && set !== 'cave')) drawWater(ctx, set, id, p.x, p.y, s); else drawTile(stage, ctx, set, id, p.x, p.y, s);
     if (false) {
       const w = 97 * s, h = 48.5 * s, k = 0.5 + 0.5 * Math.sin(stage.time * 1.6 + x * 0.7 + z * 0.9);
       ctx.fillStyle = set === 'snowplains' ? `rgba(120,170,210,${0.32 + k * 0.08})` : `rgba(40,110,140,${0.36 + k * 0.1})`;
