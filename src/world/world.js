@@ -350,7 +350,8 @@ export class World {
     if (c && camps[c.zone]?.fire && !this.dead) { st.hp = Math.min(this.d.maxHp, st.hp + this.d.maxHp * 0.08 * dt); st.mp = Math.min(this.d.maxMp, st.mp + this.d.maxMp * 0.08 * dt); }
     // 포탈 위에 서면 지도 (마을 포탈 · 야영지 포탈)
     const pt = [{ x: 0, z: -2, zone: 'town' }, ...CAMPS].find((q) => Math.hypot(P.x - q.x, P.z - q.z) < 1.3);
-    if (pt && this.portalAway !== pt.zone) { this.portalAway = pt.zone; this.moveTo = null; this.target = null; this.onPortal?.(pt.zone); }
+    // 밟기만 해서는 열리지 않는다 — 포탈 앞에서 [포탈] 버튼으로 (input.js interactTarget)
+    if (pt && this.portalAway !== pt.zone) this.portalAway = pt.zone;
     else if (!pt && this.portalAway) { const q = [{ x: 0, z: -2, zone: 'town' }, ...CAMPS].find((x) => x.zone === this.portalAway); if (!q || Math.hypot(P.x - q.x, P.z - q.z) > 3) this.portalAway = null; }
   }
   // 포탈로 이동 (발견한 야영지 · 마을)
@@ -1938,7 +1939,9 @@ export class World {
     this.townT = (this.townT || 0) - dt;
     if (this.townT <= 0) {
       this.townT = 5;
+      const bl = Object.values(townOf(st).plots).filter((b) => b.bld).length;
       townTick(st);
+      if (Object.values(townOf(st).plots).filter((b) => b.bld).length < bl) { this.refreshTown(); this.ui.toast('공사가 끝났습니다', '#ffd84a'); sfx('rankup'); }
       this.syncWorkers();
       const done = researchTick(st);
       if (done) this.ui.toast(`연구 완료: ${RESEARCH[done].name} ${researchLv(st, done)}단계`, '#7fe07a');

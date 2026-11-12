@@ -289,7 +289,7 @@ export class HUD {
       });
     }
     if (w.inTown) for (const pl of PLOTS) {
-      const b = w.st.town?.plots?.[pl.id], nm = b ? `${BUILDINGS[b.type].name} ${b.lv}단계` : '빈 집터';
+      const b = w.st.town?.plots?.[pl.id], nm = b ? `${BUILDINGS[b.type].name} ${b.bld ? '공사 중' : `${b.lv}단계`}` : '빈 집터';
       place('plot' + pl.id + nm, { x: pl.x, y: 0, z: pl.z }, b && b.type !== 'herb' ? 4.2 : 1.6, () => { const el = document.createElement('div'); el.className = 'lbl npc'; el.textContent = nm; return el; });
     }
     for (const [k, n, tag] of [['gemNpc', w.gemNpc, ''], ['sage', w.sage, '']]) {

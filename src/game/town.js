@@ -25,13 +25,22 @@ export function build(st, plot, type) {
   const cost = BUILDINGS[type].cost(0);
   if (st.gold < cost) return { ok: false, why: '금화가 모자랍니다' };
   st.gold -= cost;
-  t.plots[plot] = { type, lv: 1, stock: 0, since: Date.now() };
+  const now = Date.now();
+  t.plots[plot] = { type, lv: 1, stock: 0, since: now, bld: { to: 1, from: now, until: now + buildTime(1) } };
   return { ok: true };
+}
+// 짓기 · 단계 올리기에 드는 시간 (목표 단계마다)
+export const buildTime = (to) => [0, 60, 300, 900, 1800, 3600][to] * 1000 || 3600000 * (to - 4);
+export const building = (b) => !!b?.bld; // 공사 중
+// 다 된 공사 마치기
+export function finishBuilds(st, now = Date.now()) {
+  for (const b of Object.values(townOf(st).plots)) if (b.bld && now >= b.bld.until) { b.lv = b.bld.to; b.bld = null; }
 }
 
 export function upgrade(st, plot) {
   const b = buildingAt(st, plot);
   if (!b) return { ok: false };
+  if (b.bld) return { ok: false, why: '공사 중입니다' };
   const def = BUILDINGS[b.type], cost = def.cost(b.lv);
   if (b.lv >= def.max || cost == null) return { ok: false, why: '최고 단계입니다' };
   const an = def.up?.[b.lv - 1] ?? 0;
@@ -41,7 +50,8 @@ export function upgrade(st, plot) {
   if (um && (mats[um.zone] || 0) < um.n) return { ok: false, why: `${MATERIALS[um.zone].name} ${um.n}개가 필요합니다` };
   st.gold -= cost;
   if (um) mats[um.zone] -= um.n;
-  b.lv++;
+  const now = Date.now();
+  b.bld = { to: b.lv + 1, from: now, until: now + buildTime(b.lv + 1) };
   return { ok: true };
 }
 
@@ -50,12 +60,14 @@ export function tick(st, now = Date.now()) {
   const t = townOf(st, now);
   const hours = Math.max(0, (now - (t.last || now)) / 3600000);
   t.last = now;
+  finishBuilds(st, now);
   let left = Math.min(hours, 72);
   while (left > 1e-9) {
     const h = Math.min(0.25, left); left -= h;
     const save = 1 - bonusOf(st, 'house'), rest = 1 + bonusOf(st, 'inn');
     for (const [pid, b] of Object.entries(t.plots)) {
       const def = BUILDINGS[b.type];
+      if (b.bld?.to === 1) continue; // 새로 짓는 중이면 아직 일하지 않는다
       const crew = t.mercs.filter((m) => m.work === pid && !m.tired && !m.job);
       if (def.rate) {
         const eff = crew.reduce((a, m) => a + workEff(m, b.type), 0) / b.lv;

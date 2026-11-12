@@ -7,10 +7,12 @@ import { learn, addSkillExp, canLearn } from '../src/game/skills.js';
 import { rollLoot, rollDeathDrop } from '../src/game/loot.js';
 import { makeItem, itemName, rollBase } from '../src/game/items.js';
 import * as await_fs from 'node:fs';
-import { brew, brewCollect, dispatchParty, shelterUp, deathChance, rollMerc, researchStart } from '../src/game/town.js';
+import { finishBuilds, brew, brewCollect, dispatchParty, shelterUp, deathChance, rollMerc, researchStart } from '../src/game/town.js';
 import { HERBS } from '../src/data/potions.js';
 import { countOf } from '../src/game/inventory.js';
-import { townOf, build, tick, collect, enhance, hire, dispatch, claim, buildingAt, dropMats, craft, craftZones, upgrade, setBase, liberateAdd, assignMerc, recruits, mercSlots, awakenMerc, MERC } from '../src/game/town.js';
+import { townOf, build as build0, tick, collect, enhance, hire, dispatch, claim, buildingAt, dropMats, craft, craftZones, upgrade, setBase, liberateAdd, assignMerc, recruits, mercSlots, awakenMerc, MERC } from '../src/game/town.js';
+// 테스트에서는 공사를 바로 끝낸다
+const build = (...a) => { const r = build0(...a); finishBuilds(a[0], Date.now() + 864e5); return r; };
 import { BUILDINGS } from '../src/data/buildings.js';
 import { MONSTER_LOOK, ITEM_LOOK, SKILL_ICON } from '../src/data/flareWorld.js';
 import { addItem, equip } from '../src/game/inventory.js';
@@ -237,6 +239,8 @@ test('재료 · 제작소 · 세트 효과', () => {
   assert.equal(upgrade(p, 'p5').ok, false);
   p.awakenings = aw;
   assert.ok(upgrade(p, 'p5').ok); // 1 → 2는 금화만
+  assert.equal(buildingAt(p, 'p5').lv, 1); assert.equal(upgrade(p, 'p5').ok, false); // 공사 중
+  finishBuilds(p, Date.now() + 864e5); assert.equal(buildingAt(p, 'p5').lv, 2);
   townOf(p).mats.field = 0;
   assert.equal(upgrade(p, 'p5').ok, false); // 2 → 3은 들판 재료
   townOf(p).mats.field = 8;
