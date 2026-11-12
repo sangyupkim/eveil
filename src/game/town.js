@@ -48,15 +48,17 @@ export function tick(st, now = Date.now()) {
   let left = Math.min(hours, 72);
   while (left > 1e-9) {
     const h = Math.min(0.25, left); left -= h;
+    const save = 1 - bonusOf(st, 'house'), rest = 1 + bonusOf(st, 'inn');
     for (const [pid, b] of Object.entries(t.plots)) {
       const def = BUILDINGS[b.type];
-      if (!def.rate) continue;
       const crew = t.mercs.filter((m) => m.work === pid && !m.tired && !m.job);
-      const eff = crew.reduce((a, m) => a + workEff(m, b.type), 0) / b.lv;
-      b.stock = Math.min(def.store(b.lv), (b.stock || 0) + def.rate(b.lv) * Math.min(2, eff) * h);
-      for (const m of crew) { m.sta -= MERC.workSta * h; growSkill(m, SKILL_OF[b.type], h); gainExp(m, MERC.workExp * h); if (m.sta <= 0) { m.sta = 0; m.tired = true; } }
+      if (def.rate) {
+        const eff = crew.reduce((a, m) => a + workEff(m, b.type), 0) / b.lv;
+        b.stock = Math.min(def.store(b.lv), (b.stock || 0) + def.rate(b.lv) * Math.min(2, eff) * h);
+      }
+      for (const m of crew) { m.sta -= MERC.workSta * save * h; growSkill(m, SKILL_OF[b.type], h); gainExp(m, MERC.workExp * h); if (m.sta <= 0) { m.sta = 0; m.tired = true; } }
     }
-    for (const m of t.mercs) if (!m.job && (m.tired || !m.work)) { m.sta = Math.min(staMax(m), m.sta + MERC.restSta * h); if (m.sta >= staMax(m)) m.tired = false; }
+    for (const m of t.mercs) if (!m.job && (m.tired || !m.work)) { m.sta = Math.min(staMax(m), m.sta + MERC.restSta * rest * h); if (m.sta >= staMax(m)) m.tired = false; }
   }
   return hours;
 }
@@ -84,16 +86,16 @@ export const enhanceCap = (st) => { const s = findBuilding(st, 'smithy'); return
 // 장인의 기운: 실패할 때마다 (그 시도 확률 × 0.465)만큼 쌓이고 100%면 다음은 반드시 성공.
 // 실패마다 기본 확률의 10%씩 올라 최대 2배 (성공하면 둘 다 0으로)
 export const jangOf = (it) => it.jang || 0;
-export function enhanceCost(it) {
+export function enhanceCost(it, st = null) {
   const n = it.plus || 0, base = ENHANCE.chance(n), up = Math.min(base, base * 0.1 * (it.fails || 0));
   const chance = jangOf(it) >= 1 ? 1 : Math.min(1, base + up);
-  return { gold: ENHANCE.gold(n, it.ilvl || 1), ore: ENHANCE.ore(n), chance, base, jang: jangOf(it) };
+  return { gold: Math.round(ENHANCE.gold(n, it.ilvl || 1) * (1 - (st ? bonusOf(st, 'smithy') : 0))), ore: ENHANCE.ore(n), chance, base, jang: jangOf(it) };
 }
 // rng: 0~1. 실패해도 단계가 떨어지지는 않는다 (재료만 사라진다)
 export function enhance(st, it, rng = Math.random) {
   const n = it.plus || 0;
   if (n >= enhanceCap(st)) return { ok: false, why: '대장간 단계를 올려야 합니다' };
-  const c = enhanceCost(it), t = townOf(st);
+  const c = enhanceCost(it, st), t = townOf(st);
   if (st.gold < c.gold) return { ok: false, why: '금화가 모자랍니다' };
   if (t.ore < c.ore) return { ok: false, why: '강화석이 모자랍니다' };
   st.gold -= c.gold; t.ore -= c.ore;
@@ -138,13 +140,29 @@ export function reforge(st, it, rng = Math.random) {
 // 여관에 매 시간 무작위 용병이 찾아온다. 솜씨: 채광(광산) · 재배(약초밭) · 탐험(파견). 체력이 닳으면 쉰다.
 // 시킨 일의 솜씨가 오르고, 레벨 20에서 각성(최대 10). 파견을 나가면 죽을 수도 있다.
 export const MERC = { workSta: 8, restSta: 12, workExp: 3, lvMax: 20, awMax: 10 };
-export const SKILL_OF = { mine: 'mine', herb: 'herb' };
-export const SKILL_NAMES = { mine: '채광', herb: '재배', hunt: '탐험' };
+// 건물마다 쓰는 솜씨. 광산 · 약초밭은 생산, 나머지는 건물 효과(BONUS)를 올린다
+export const SKILL_OF = { mine: 'mine', herb: 'herb', smithy: 'craft', workshop: 'craft', lab: 'lore', inn: 'hunt', house: 'herb' };
+export const SKILL_NAMES = { mine: '채광', herb: '재배', craft: '손재주', lore: '학식', hunt: '탐험' };
+export const SKILLS_ALL = ['mine', 'herb', 'craft', 'lore', 'hunt'];
+// 일하는 용병 솜씨 합(10 = 한 사람 몫)마다 효과, 최대치
+export const BONUS = {
+  smithy: { k: 0.05, max: 0.3, text: (v) => `강화 금화 -${Math.round(v * 100)}%` },
+  workshop: { k: 0.05, max: 0.3, text: (v) => `제작 금화 -${Math.round(v * 100)}%` },
+  lab: { k: 0.08, max: 0.5, text: (v) => `연구 시간 -${Math.round(v * 100)}%` },
+  inn: { k: 0.2, max: 1, text: (v) => `용병 휴식 회복 +${Math.round(v * 100)}%` },
+  house: { k: 0.15, max: 0.6, text: (v) => `용병 체력 소모 -${Math.round(v * 100)}%` },
+};
+export function bonusOf(st, type) {
+  const t = townOf(st), e = Object.entries(t.plots).find(([, b]) => b.type === type);
+  if (!e || !BONUS[type]) return 0;
+  const sum = t.mercs.filter((m) => m.work === e[0] && !m.tired && !m.job).reduce((a, m) => a + workEff(m, type), 0);
+  return Math.min(BONUS[type].max, sum * BONUS[type].k);
+}
 export const GRADES = [{ name: '평범', color: '#c8c0b0', k: 1 }, { name: '숙련', color: '#6aa8ff', k: 1.5 }, { name: '정예', color: '#d080ff', k: 2.2 }, { name: '전설', color: '#ffb040', k: 3.2 }];
 const NA = ['브', '셀', '오', '이', '케', '도', '미', '하', '유', '바', '로', '카', '테', '루', '자', '에', '실', '아', '고', '네'], NB = ['란', '마', '덴', '라', '일', '르', '나', '스', '크', '린', '온', '벨', '렌', '드', '아', '토'];
 export const staMax = (m) => 40 + m.lv * 2 + (m.aw || 0) * 8 + (m.vit || 0);
 export const workEff = (m, type) => (m[SKILL_OF[type]] || 0) / 10;  // 솜씨 10 = 한 자리 몫
-const growSkill = (m, k, h) => { const cap = 30 + (m.aw || 0) * 6; m[k] = Math.min(cap, m[k] + 0.12 * h * (1 - m[k] / (cap + 5))); };
+const growSkill = (m, k, h) => { m[k] ??= 1; const cap = 30 + (m.aw || 0) * 6; m[k] = Math.min(cap, m[k] + 0.12 * h * (1 - m[k] / (cap + 5))); };
 function gainExp(m, n) {
   if (m.lv >= MERC.lvMax) { m.exp = 0; return; }
   m.exp += n;
@@ -154,14 +172,15 @@ let uidN = 0;
 export function rollMerc(rng = Math.random, innLv = 1) {
   const r = rng(), gi = r < 0.02 * innLv ? 3 : r < 0.1 + 0.03 * innLv ? 2 : r < 0.4 + 0.04 * innLv ? 1 : 0, g = GRADES[gi];
   // 셋 중 하나는 뛰어나게 (일 잘하는 용병 · 탐험 잘하는 용병)
-  const main = ['mine', 'herb', 'hunt'][Math.floor(rng() * 3)], sk = (k) => Math.round((k === main ? 7 + rng() * 6 : 1 + rng() * 5) * g.k * 10) / 10;
+  const main = SKILLS_ALL[Math.floor(rng() * SKILLS_ALL.length)], sk = (k) => Math.round((k === main ? 7 + rng() * 6 : 1 + rng() * 5) * g.k * 10) / 10;
   const m = { id: `m${Date.now().toString(36)}${(uidN++).toString(36)}${Math.floor(rng() * 1e4)}`, name: NA[Math.floor(rng() * NA.length)] + NB[Math.floor(rng() * NB.length)], grade: gi, lv: 1, exp: 0, aw: 0,
-    mine: sk('mine'), herb: sk('herb'), hunt: sk('hunt'), vit: Math.round(rng() * 20 * g.k), work: null, job: null, tired: false };
+    mine: sk('mine'), herb: sk('herb'), craft: sk('craft'), lore: sk('lore'), hunt: sk('hunt'), face: ['m01', 'm02', 'm03', 'm04', 'f01', 'f02', 'f03', 'f04'][Math.floor(rng() * 8)], vit: Math.round(rng() * 20 * g.k), work: null, job: null, tired: false };
   m.sta = staMax(m);
-  m.cost = Math.round((m.mine + m.herb + m.hunt * 1.5 + m.vit) * 25 * g.k);
+  m.cost = Math.round((m.mine + m.herb + m.craft + m.lore + m.hunt * 1.5 + m.vit) * 20 * g.k);
   return m;
 }
-export const mercSlots = (st) => { const inn = findBuilding(st, 'inn'); return inn ? 2 + inn.lv * 2 : 0; };
+// 고용 한도: 숙소 침대 수 (숙소가 없으면 1명)
+export const mercSlots = (st) => { const h = findBuilding(st, 'house'); return 1 + (h ? BUILDINGS.house.beds(h.lv) : 0); };
 // 이번 시간에 찾아온 용병 (여관 단계만큼 더 많이 · 좋게)
 export function recruits(st, now = Date.now(), rng = Math.random) {
   const t = townOf(st), inn = findBuilding(st, 'inn'), hr = Math.floor(now / 3600000);
@@ -185,7 +204,7 @@ export function assignMerc(st, id, plot) {
   if (!m || m.job) return { ok: false, why: '파견 중입니다' };
   if (plot) {
     const b = t.plots[plot];
-    if (!b || !BUILDINGS[b.type].rate) return { ok: false };
+    if (!b || !SKILL_OF[b.type]) return { ok: false };
     if (t.mercs.filter((x) => x.work === plot && x !== m).length >= b.lv) return { ok: false, why: '자리가 없습니다 (단계를 올리세요)' };
   }
   m.work = plot || null;
@@ -200,12 +219,13 @@ export function awakenMerc(st, id) {
   const c = awakenCost(m);
   if (st.gold < c) return { ok: false, why: '금화가 모자랍니다' };
   st.gold -= c; m.aw = (m.aw || 0) + 1; m.lv = 1; m.exp = 0;
-  for (const k of ['mine', 'herb', 'hunt']) m[k] = Math.round(m[k] * 1.15 * 10) / 10;
+  for (const k of SKILLS_ALL) m[k] = Math.round((m[k] || 1) * 1.15 * 10) / 10;
   return { ok: true };
 }
 // 예전 저장: 일꾼 수 · 이름만 있던 용병을 새 용병으로
 function migrateMercs(t) {
   t.mercs ||= [];
+  for (const m of t.mercs) if (m.id && m.craft == null) { m.craft = 1 + Math.round(Math.random() * 40) / 10; m.lore = 1 + Math.round(Math.random() * 40) / 10; m.face ||= 'm01'; }
   for (const m of t.mercs) if (!m.id) { Object.assign(m, { ...rollMerc(Math.random, 1), name: m.name, lv: m.lv || 1, exp: 0, job: m.job, gear: m.gear, cost: 0 }); m.hunt = Math.max(m.hunt, 8); }
   if (t.workers) {
     const want = Object.entries(t.plots).flatMap(([pid, b]) => Array(b.workers || 0).fill(pid));
@@ -280,7 +300,7 @@ export function setBase(zi, slot) {
 export function craft(st, zoneId, slot, rng = Math.random) {
   const zi = ZONES.findIndex((z) => z.id === zoneId);
   if (!craftZones(st).some((z) => z.id === zoneId) || !SET_SLOTS.includes(slot)) return { ok: false, why: '제작소 단계를 올려야 합니다' };
-  const c = craftCost(zi), m = townOf(st).mats;
+  const c0 = craftCost(zi), c = { ...c0, gold: Math.round(c0.gold * (1 - bonusOf(st, 'workshop'))) }, m = townOf(st).mats;
   if ((m[zoneId] || 0) < c.mats) return { ok: false, why: `${MATERIALS[zoneId].name}이(가) 모자랍니다` };
   if (st.gold < c.gold) return { ok: false, why: '금화가 모자랍니다' };
   const it = makeItem(setBase(zi, slot), { rarity: 'rare', ilvl: ZONES[zi].levels[1] }, st, rng);
@@ -313,7 +333,7 @@ export function researchStart(st, id, now = Date.now()) {
   if (lv >= BUILDINGS.lab.slots(lab.lv)) return { ok: false, why: '연구소 단계를 올려야 합니다' };
   const c = researchCost(lv);
   if (st.gold < c.gold) return { ok: false, why: '금화가 모자랍니다' };
-  st.gold -= c.gold; t.lab = { id, until: now + c.min * 60000 };
+  st.gold -= c.gold; t.lab = { id, until: now + c.min * 60000 * (1 - bonusOf(st, 'lab')) };
   return { ok: true };
 }
 export function researchTick(st, now = Date.now()) {

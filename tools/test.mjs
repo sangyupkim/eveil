@@ -243,6 +243,8 @@ test('마을: 짓기 · 생산(꺼 둔 시간) · 강화 · 용병 파견', () =
   assert.equal(build(p, 'p2', 'mine').ok, false); // 같은 건물은 하나
   assert.ok(build(p, 'p2', 'smithy').ok && build(p, 'p3', 'inn').ok && build(p, 'p4', 'herb').ok);
   // 여관에 찾아온 용병을 고용해 광산에 맡긴다 (솜씨 10 = 한 자리 몫)
+  assert.equal(mercSlots(p), 1);                            // 숙소가 없으면 1명
+  assert.ok(build(p, 'p5', 'house').ok);
   assert.equal(mercSlots(p), 4);
   const rec = recruits(p, t0, seeded(1));
   assert.ok(rec.length >= 3);

@@ -6,6 +6,7 @@ export const PLOTS = [
   { id: 'p4', x: 11.0, z: -11.0, name: '북동쪽 집터' },
   { id: 'p5', x: 15.5, z: 0.0, name: '동쪽 집터' },
   { id: 'p6', x: -11.9, z: 10.0, name: '남서쪽 집터' },
+  { id: 'p7', x: 12.4, z: 10.4, name: '남동쪽 집터' },
 ];
 
 // cost(lv): 다음 단계 금화 · max: 최고 단계
@@ -38,8 +39,13 @@ export const BUILDINGS = {
     slots: (lv) => lv, // 연구 단계 상한
     look: [['ruins', 278, 0, 0], ['ruins', 279, 1.4, 0.4], ['ruins', 283, -1.2, 0.8]],
   },
+  house: {
+    name: '숙소', desc: '용병이 묵는 곳 (고용 한도)', max: 5, cost: (lv) => [300, 1500, 5000, 14000, 32000][lv] ?? null,
+    beds: (lv) => [0, 3, 5, 7, 10, 14][lv],
+    look: [],
+  },
   inn: {
-    name: '여관', desc: '용병 고용 · 사냥 파견', max: 5, cost: (lv) => [500, 2000, 6000, 16000, 40000][lv] ?? null,
+    name: '여관', desc: '매 시간 용병이 찾아옴 · 사냥 파견', max: 5, cost: (lv) => [500, 2000, 6000, 16000, 40000][lv] ?? null,
     slots: (lv) => [0, 1, 2, 3, 4, 5][lv],      // 용병 수
     look: [['grassland', 296, -7, 1]],
   },

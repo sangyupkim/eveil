@@ -109,6 +109,7 @@ export class World {
   refreshTown() {
     for (const d of this.townDraw) this.stage.remove(d);
     this.townDraw = [];
+    this.workerSig = null; setTimeout(() => this.syncWorkers(), 0);
     // 건물 부딪힘 판정도 다시 깐다
     const C = this.stage.colliders;
     for (const c of this.townCols || []) { const i = C.indexOf(c); if (i >= 0) C.splice(i, 1); }
@@ -134,13 +135,29 @@ export class World {
       this.stage.add(d); this.townDraw.push(d);
       for (let u = -r; u <= r; u += 1.2) for (let v = -r; v <= r; v += 1.2) if (Math.abs(u) + Math.abs(v) <= r) col(x + u, z + v, 0.8);
     };
+    // 통나무집: 세로로 잘린 네 조각을 이어 붙인다 (Flare 오두막 조각, 칸 (tx,ty) → 세계 (tx-ty, tx+ty))
+    const cabin = (dx, dz, filter) => {
+      const def = DATA.tiles.grassland;
+      for (const [id, tx, ty] of [[208, 0, 1], [209, 1, 1], [211, 1, 0], [215, 2, 0]]) {
+        const tt = def.tiles[id]; if (!tt) continue;
+        image(def.imgs[tt[0]]);
+        const x = cur.x + dx + (tx - ty) - 0.5, z = cur.z + dz + (tx + ty) - 1.8;
+        const d = { z, draw: (ctx, stg) => { const src = image(def.imgs[tt[0]]); if (!src.ok || !stg.onScreen(x, z, 8)) return; const p = stg.toScreen(x, z); if (filter) { ctx.save(); ctx.filter = filter; } drawRect(ctx, src.im, tt.slice(1), p.x, p.y, stg.scale()); if (filter) ctx.restore(); } };
+        this.stage.add(d); this.townDraw.push(d);
+      }
+      for (let u = -2.2; u <= 2.2; u += 1) for (let v = -2.4; v <= 1.6; v += 1) col(cur.x + dx + u, cur.z + dz + v, 0.8);
+    };
     // 건물마다 다른 모양: 대장간 = 그을린 오두막 + 화로, 여관 = 큰 오두막, 광산 = 땅속 계단 + 바위, 연구소 = 돌탑 + 마법진, 제작소 = 돌 작업장 + 상자
     const LOOK = {
       smithy: () => { big('grassland', 296, 0, 0, 0.52, -7.3, 2.2, 'brightness(0.78) sepia(0.35) saturate(1.2)'); return [['dungeon', 167, 2.8, 3.0], ['grassland', 103, -2.6, 3.2], ['dungeon', 167, -1.0, 3.6]]; },
       inn: () => { big('grassland', 296, 0.6, 0.6, 0.56, -7.3, 2.2, 'saturate(1.35) hue-rotate(-12deg) brightness(1.08)', 4.4); return [['grassland', 98, 3.2, 3.4], ['grassland', 96, -3.2, 3.2], ['dungeon', 167, 0, 4.4]]; },
       mine: () => { big('dungeon', 286, 0, 0, 1.0, 0, 0, 'sepia(0.4) brightness(0.9)', 2.4); return [['cave', 148, 3.4, -1.6], ['cave', 130, -3.4, 1.0], ['cave', 131, 2.6, 2.8], ['cave', 151, -2.4, -2.6]]; },
-      lab: () => { big('ruins', 380, 0, 1.2, 1.0, 0, 0, '', 0); big('dungeon', 284, -0.6, -1.2, 0.55, 0, 0, 'hue-rotate(200deg) saturate(0.6) brightness(1.05)', 2.6); return [['ruins', 278, 3.0, 2.4], ['ruins', 283, -3.2, 2.0]]; },
-      workshop: () => { big('dungeon', 285, 0, -0.6, 0.6, 0, 0, 'sepia(0.55) saturate(1.3) brightness(0.95)', 3); return [['grassland', 100, 3.0, 2.6], ['grassland', 101, -3.0, 2.8], ['grassland', 96, 2.0, 3.6]]; },
+      // 연구소: 돌기둥 넷이 둘러싼 마법진 성소 + 뒤쪽 석상 벽감
+      lab: () => { big('ruins', 380, 0, 0.6, 0.9, 0, 0, '', 0); return [['ruins', 243, 0.0, -2.8], ['ruins', 223, -3.2, -1.4], ['ruins', 231, 3.2, -1.4], ['ruins', 152, -3.4, 2.6], ['ruins', 223, 3.4, 2.6], ['ruins', 241, 0.0, 3.8], ['dungeon', 167, -1.6, 3.6], ['dungeon', 167, 1.6, 3.6]]; },
+      // 제작소: 짙은 통나무 작업장 + 통나무 · 모루 · 상자
+      workshop: () => { cabin(0, -0.4, 'brightness(0.82) sepia(0.25)'); return [['grassland', 76, 3.4, 1.8], ['grassland', 103, -3.0, 2.6], ['grassland', 100, 2.0, 3.6], ['grassland', 101, -1.6, 3.8]]; },
+      // 숙소: 밝은 통나무집 + 꽃 · 통
+      house: () => { cabin(0, -0.4, 'saturate(1.15) brightness(1.08)'); return [['grassland', 98, 3.0, 2.4], ['grassland', 122, -3.0, 2.6], ['grassland', 121, -2.2, 3.4]]; },
     };
     for (const pl of PLOTS) {
       const b = t.plots[pl.id];
@@ -152,6 +169,49 @@ export class World {
         for (const [set, id, dx, dz] of (LOOK[b.type] || LOOK.smithy)()) { tile(set, id, pl.x + dx, pl.z + dz); col(pl.x + dx, pl.z + dz, 0.7); }
       }
       for (let lv = 2; lv <= b.lv; lv++) for (const [set, id, dx, dz] of LEVEL_DECOR[lv] || []) tile(set, id, pl.x + dx * 1.6, pl.z + dz + 3.8);
+    }
+  }
+
+  // ───────── 일하는 용병 ─────────
+  // 일을 맡은 용병을 그 건물 앞에 세우고 일하는 몸짓(연장 휘두르기 · 주문)을 되풀이한다
+  syncWorkers() {
+    const t = townOf(this.st), want = t.mercs.filter((m) => m.work && t.plots[m.work] && !m.job);
+    const sig = want.map((m) => m.id + m.work + (m.tired ? 1 : 0)).join(',');
+    if (sig === this.workerSig) return;
+    this.workerSig = sig;
+    for (const w of this.workers || []) w.a.dispose();
+    this.workers = [];
+    const TOOL = { mine: 'hand_axe', herb: 'dagger', smithy: 'hand_axe', workshop: 'hand_axe', lab: 'rod', inn: null, house: null };
+    const SPOT = { herb: (i) => [(i % 3 - 1) * 2.4, (Math.floor(i / 3) - 0.5) * 1.8], mine: (i) => [-1.6 + i * 1.6, 3.0], lab: (i) => [Math.cos(i * 1.6) * 1.8, 0.6 + Math.sin(i * 1.6) * 1.0] };
+    const count = {};
+    for (const m of want) {
+      const b = t.plots[m.work], pl = PLOTS.find((q) => q.id === m.work); if (!pl) continue;
+      const i = (count[m.work] = (count[m.work] ?? -1) + 1);
+      const [dx, dz] = (SPOT[b.type] || ((k) => [-2 + k * 1.4, 3.6]))(i);
+      const a = new Actor(this.scene, makeHero({ face: m.face }));
+      const tool = TOOL[b.type];
+      a.setLook({ layers: { ...(tool ? { main: tool } : {}), ...(b.type === 'lab' ? { chest: 'mage_vest', legs: 'mage_skirt' } : b.type === 'smithy' || b.type === 'mine' ? { chest: 'leather_chest' } : {}) } });
+      a.pos.set(pl.x + dx, 0, pl.z + dz);
+      a.facing = b.type === 'herb' ? Math.PI * (0.25 + (i % 2) * 0.5) : Math.PI; // 밭은 이리저리, 나머지는 건물 쪽
+      a.name = m.name;
+      a.play('idle');
+      this.workers.push({ a, m, kind: b.type, t: Math.random() * 1.5 });
+    }
+  }
+  updateWorkers(dt) {
+    for (const w of this.workers || []) {
+      w.a.update(dt);
+      if (w.m.tired) { if (w.a.current !== 'idle') w.a.play('idle'); continue; }
+      w.t -= dt;
+      if (w.back > 0 && (w.back -= dt) <= 0) w.a.play('idle');
+      if (w.t > 0) continue;
+      w.back = 0.75;
+      // 밭: 낫질하고 한 걸음 옆으로 · 연구소: 주문 · 나머지: 연장질
+      const act = w.kind === 'lab' ? 'cast' : 'swing';
+      w.a.act ? w.a.act(act) : w.a.play(act, { once: true, force: true });
+      w.t = w.kind === 'herb' ? 1.1 + Math.random() * 0.6 : w.kind === 'lab' ? 2.4 : w.kind === 'inn' || w.kind === 'house' ? 9 : 0.9 + Math.random() * 0.3;
+      if (w.kind === 'herb' && Math.random() < 0.35) w.a.facing += (Math.random() - 0.5) * 1.2;
+      if ((w.kind === 'smithy' || w.kind === 'mine') && this.fx?.spark && Math.random() < 0.5) this.fx.spark(w.a.pos.x, w.a.pos.z);
     }
   }
 
@@ -1732,6 +1792,7 @@ export class World {
     this.guard.update(dt);
     this.gemNpc?.update(dt); this.sage?.update(dt);
     for (const a of this.campNpcs || []) a.update(dt);
+    this.updateWorkers(dt);
     this.updateSpawners(dt);
     const P = this.player.pos;
     // 화면에 보이는 몬스터만 그린다 (뼈대 모델은 스스로 화면 밖을 거르지 못한다)
@@ -1765,6 +1826,7 @@ export class World {
     if (this.townT <= 0) {
       this.townT = 5;
       townTick(st);
+      this.syncWorkers();
       const done = researchTick(st);
       if (done) this.ui.toast(`연구 완료: ${RESEARCH[done].name} ${researchLv(st, done)}단계`, '#7fe07a');
       this.checkAchievements();

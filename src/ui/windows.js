@@ -18,7 +18,7 @@ import { CAMPS, inCamp } from '../engine2d/stage.js';
 import { TIER_NAMES } from '../world/world.js';
 import { entranceOf } from '../data/dungeons.js';
 import { MATERIALS, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
-import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, recruits, assignMerc, awakenMerc, awakenCost, dismiss, staMax, SKILL_NAMES, GRADES, MERC, EXP_STA, deathChance, salvage, salvageValue, reforge, reforgeCost } from '../game/town.js';
+import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, recruits, assignMerc, SKILL_OF, SKILLS_ALL, BONUS, bonusOf, awakenMerc, awakenCost, dismiss, staMax, SKILL_NAMES, GRADES, MERC, EXP_STA, deathChance, salvage, salvageValue, reforge, reforgeCost } from '../game/town.js';
 import { RESEARCH, researchCost } from '../data/buildings.js';
 import { AFFIXES } from '../data/items.js';
 import { PLOTS, BUILDINGS, EXPEDITIONS, townOf, buildingAt, build, upgrade, collect, enhance, enhanceCap, enhanceCost, hire, mercSlots, dispatch, claim, tick } from '../game/town.js';
@@ -381,7 +381,7 @@ export class Windows {
       ['강화 · 재련 · 분해', [pic(oreIcon(), '광석'), pic(coinIcon(), '골드')], ['강화(대장간): +1 ~ +10, 대장간 레벨이 상한. 단계마다 피해 · 방어 +8%', '확률: +1~3 100%, 그 뒤 90 · 80 · 70 · 55 · 45 · 35 · 25%. 실패해도 단계는 그대로', '비용: 골드 + 광석 (단계 · 아이템 레벨에 비례)', '재련: 가장 약한 옵션 하나를 다시 굴립니다', '분해: 쓰지 않는 장비를 광석 · 재료로']],
       ['보석', [pic(oreIcon(), '보석')], ['장비 홈에 박아 능력치를 올립니다', '등급 10단계: 조각난 · 흐린 · 보통 · 빛나는 · 완벽한 · 찬란한 · 고대의 · 신성한 · 영원의 · 태초의', '몬스터 레벨이 높을수록 높은 등급이 떨어집니다. 상점은 낮은 등급만']],
       ['던전', [pic(scrollIcon(), '열쇠')], ['지역마다 던전 입구가 하나 (미로 · 방과 복도 · 동굴)', '네임드 · 보스가 주는 열쇠로 입장, 가장 깊은 곳의 우두머리를 잡으면 클리어', '단계를 올릴수록 몬스터가 세지고 보상이 좋아집니다']],
-      ['마을 · 용병 · 연구', [pic(townIcon(), '마을')], ['건물을 지어 생산 · 강화 · 연구를 엽니다', '여관에는 매 시간 다른 용병이 찾아옵니다. 솜씨(채광 · 재배 · 탐험)와 등급이 제각각', '용병에게 광산 · 약초밭 일을 맡기거나 파견을 보냅니다. 체력이 닳으면 쉬어야 합니다', '시킨 일의 솜씨가 오르고, 레벨 20에서 각성(최대 10번)', '파견은 위험해서 약한 용병은 죽을 수 있습니다', '연구: 가방 칸 등 영구 강화']],
+      ['마을 · 용병 · 연구', [pic(townIcon(), '마을')], ['건물을 지어 생산 · 강화 · 연구를 엽니다', '여관에는 매 시간 다른 용병이 찾아옵니다. 솜씨(채광 · 재배 · 손재주 · 학식 · 탐험)와 등급이 제각각', '숙소 단계가 고용 한도입니다', '모든 건물에 용병을 둘 수 있습니다: 광산 · 약초밭은 생산, 대장간 · 제작소는 금화 절약, 연구소는 연구 시간 단축, 여관은 휴식 회복, 숙소는 체력 소모 감소', '체력이 닳으면 쉬어야 합니다', '시킨 일의 솜씨가 오르고, 레벨 20에서 각성(최대 10번)', '파견은 위험해서 약한 용병은 죽을 수 있습니다', '연구: 가방 칸 등 영구 강화']],
       ['야영지 · 지도', [pic(scrollIcon(), '월드맵')], ['세상은 캐릭터마다 새로 만들어집니다', '야영지: 안전 지대, 포탈로 먼 곳 이동, 상인 · 수리', '지도는 가 본 곳만 밝혀집니다']],
       ['세계 단계', [pic(scrollIcon(), TIER_NAMES.join(' · '))], ['평온 → 악몽 → 지옥', '단계가 오르면 같은 지역의 몬스터 레벨이 크게 오르고 더 좋은 장비 · 보석이 나옵니다']],
       ['도감 · 의뢰 · 업적', [pic(bookIcon(), '도감')], ['몬스터를 잡으면 도감이 채워지고 보너스를 받습니다', '퀘스트 · 일일 의뢰 · 업적으로 보상']],
@@ -394,7 +394,7 @@ export class Windows {
   // 용병 한 줄: 이름 · 등급 · 레벨 · 각성 · 솜씨 · 체력
   mercLine(m, hi) {
     const g = GRADES[m.grade || 0], sm = staMax(m);
-    const sk = ['mine', 'herb', 'hunt'].map((k) => `<span style="${k === hi ? 'color:#ffd84a;font-weight:700' : ''}">${SKILL_NAMES[k]} ${m[k].toFixed(1)}</span>`).join(' · ');
+    const sk = SKILLS_ALL.map((k) => `<span style="${k === hi ? 'color:#ffd84a;font-weight:700' : ''}">${SKILL_NAMES[k]} ${(m[k] || 0).toFixed(1)}</span>`).join(' · ');
     return `<div class="grow"><b style="color:${g.color}">${esc(m.name)}</b> <small>${g.name} · Lv ${m.lv}${m.aw ? ` · 각성 ${m.aw}` : ''}${m.gear ? ` · 장비 ${m.gear.ilvl}` : ''}</small>
       <div class="note">${sk}</div><div class="mini" style="height:5px;max-width:12em"><i style="width:${Math.round((m.sta / sm) * 100)}%;background:#6ad07a"></i></div></div>`;
   }
@@ -472,12 +472,12 @@ export class Windows {
             ${SET_SLOTS.map((sl) => `<button class="btn" data-craft="${zn.id}|${sl}" ${have < c.mats || st.gold < c.gold ? 'disabled' : ''}>${BASES[setBase(zi, sl)].name}</button>`).join('')}</div>`;
         }
       }
-      if (def.rate) {
-        const crew = t.mercs.filter((m) => m.work === sel), idle = t.mercs.filter((m) => !m.work && !m.job), sk = b.type;
-        const eff = crew.filter((m) => !m.tired).reduce((a, m) => a + m[sk] / 10, 0) / b.lv;
-        right += `<h3>일하는 용병 ${crew.length} / ${b.lv} <small>생산 ${Math.round(Math.min(2, eff) * 100)}%</small></h3>`;
-        right += crew.map((m) => `<div class="row">${this.mercLine(m, sk)}<button class="btn" data-mwork="${m.id}|">쉬게</button></div>`).join('') || '<div class="note">일하는 용병이 없으면 생산하지 않습니다</div>';
-        if (crew.length < b.lv && idle.length) right += `<div class="note" style="margin-top:6px">쉬는 용병</div>` + idle.sort((a, c) => c[sk] - a[sk]).map((m) => `<div class="row">${this.mercLine(m, sk)}<button class="btn" data-mwork="${m.id}|${sel}">일 맡기기</button></div>`).join('');
+      if (SKILL_OF[b.type]) {
+        const sk = SKILL_OF[b.type], crew = t.mercs.filter((m) => m.work === sel), idle = t.mercs.filter((m) => !m.work && !m.job);
+        const eff = crew.filter((m) => !m.tired).reduce((a, m) => a + (m[sk] || 0) / 10, 0) / b.lv;
+        right += `<h3>일하는 용병 ${crew.length} / ${b.lv} <small>${SKILL_NAMES[sk]} · ${def.rate ? `생산 ${Math.round(Math.min(2, eff) * 100)}%` : BONUS[b.type].text(bonusOf(st, b.type))}</small></h3>`;
+        right += crew.map((m) => `<div class="row">${this.mercLine(m, sk)}<button class="btn" data-mwork="${m.id}|">쉬게</button></div>`).join('') || `<div class="note">${def.rate ? '일하는 용병이 없으면 생산하지 않습니다' : '없음'}</div>`;
+        if (crew.length < b.lv && idle.length) right += `<div class="note" style="margin-top:6px">쉬는 용병</div>` + idle.sort((a, c) => (c[sk] || 0) - (a[sk] || 0)).map((m) => `<div class="row">${this.mercLine(m, sk)}<button class="btn" data-mwork="${m.id}|${sel}">일 맡기기</button></div>`).join('');
       }
       if (def.rate) right += `<div class="kv"><span>생산</span><b>시간당 ${Math.round(def.rate(b.lv) * Math.min(1, t.mercs.filter((m) => m.work === sel && !m.tired).reduce((a, m) => a + m[b.type] / 10, 0) / b.lv) * 1)}</b><span>쌓인 양</span><b>${Math.floor(b.stock)} / ${def.store(b.lv)}</b></div>
         <div class="btns"><button class="btn gold" data-collect="1" ${b.stock < 1 ? 'disabled' : ''}>거두기</button></div>`;
@@ -487,7 +487,7 @@ export class Windows {
         for (const slot of SLOTS) {
           const it = st.equip[slot];
           if (!it) continue;
-          const c = enhanceCost(it), max = (it.plus || 0) >= cap, rc = reforgeCost(it);
+          const c = enhanceCost(it, st), max = (it.plus || 0) >= cap, rc = reforgeCost(it);
           right += `<div class="row"><div class="cell shopIco${rar(it)}">${ico(it)}</div><div class="grow"><b style="color:${itemColor(it)}">${esc(itemName(it))}</b>
             <div class="note">${max ? '상한' : `+${(it.plus || 0) + 1} · ${c.jang >= 1 ? '<b style="color:#ffd84a">100% (장인의 기운)</b>' : `${+(c.chance * 100).toFixed(1)}%`} · 장인의 기운 ${+(c.jang * 100).toFixed(1)}% · ${c.gold.toLocaleString()} G · 강화석 ${c.ore}`}</div></div>
             <button class="btn" data-enh="${slot}" ${max || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>강화</button>${it.affixes?.length ? `<button class="btn" data-reforge="${slot}" title="가장 약한 옵션 다시 굴리기 · ${rc.gold.toLocaleString()}G · 강화석 ${rc.ore}" ${st.gold < rc.gold || t.ore < rc.ore ? 'disabled' : ''}>재련</button>` : ''}</div>`;
@@ -504,6 +504,7 @@ export class Windows {
             <button class="btn" data-research="${id}" ${max || t.lab || st.gold < c.gold ? 'disabled' : ''}>${max ? '상한' : `${c.gold.toLocaleString()}G · ${c.min}분`}</button></div>`;
         }
       }
+      if (b.type === 'house') right += `<div class="kv"><span>고용 한도</span><b>${mercSlots(st)}명</b><span>지금</span><b>${t.mercs.length}명</b></div>`;
       if (b.type === 'inn') {
         const zones = ZONES.filter((z) => isLiberated(st, z.id)), rec = recruits(st), slots = mercSlots(st);
         const nextH = Math.ceil((3600000 - (Date.now() % 3600000)) / 60000);
