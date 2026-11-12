@@ -7,7 +7,7 @@ import { learn, addSkillExp, canLearn } from '../src/game/skills.js';
 import { rollLoot, rollDeathDrop } from '../src/game/loot.js';
 import { makeItem, itemName, rollBase } from '../src/game/items.js';
 import * as await_fs from 'node:fs';
-import { townOf, build, tick, collect, enhance, hire, dispatch, claim, buildingAt, dropMats, craft, craftZones, upgrade, setBase, liberateAdd, hireWorker, assignWorker } from '../src/game/town.js';
+import { townOf, build, tick, collect, enhance, hire, dispatch, claim, buildingAt, dropMats, craft, craftZones, upgrade, setBase, liberateAdd, assignMerc, recruits, mercSlots, awakenMerc, MERC } from '../src/game/town.js';
 import { BUILDINGS } from '../src/data/buildings.js';
 import { MONSTER_LOOK, ITEM_LOOK, SKILL_ICON } from '../src/data/flareWorld.js';
 import { addItem, equip } from '../src/game/inventory.js';
@@ -242,12 +242,25 @@ test('마을: 짓기 · 생산(꺼 둔 시간) · 강화 · 용병 파견', () =
   assert.ok(build(p, 'p1', 'mine').ok);
   assert.equal(build(p, 'p2', 'mine').ok, false); // 같은 건물은 하나
   assert.ok(build(p, 'p2', 'smithy').ok && build(p, 'p3', 'inn').ok && build(p, 'p4', 'herb').ok);
-  assert.equal(assignWorker(p, 'p1', 1).ok, false); // 일꾼이 없으면 못 둔다
-  assert.ok(hireWorker(p).ok && assignWorker(p, 'p1', 1).ok);
-  tick(p, t0 + 2 * 3600000);                       // 2시간 꺼 둠
-  assert.equal(Math.floor(buildingAt(p, 'p1').stock), 12);
-  tick(p, t0 + 100 * 3600000);                     // 오래 꺼 둬도 창고만큼만
+  // 여관에 찾아온 용병을 고용해 광산에 맡긴다 (솜씨 10 = 한 자리 몫)
+  assert.equal(mercSlots(p), 4);
+  const rec = recruits(p, t0, seeded(1));
+  assert.ok(rec.length >= 3);
+  assert.equal(recruits(p, t0 + 60000), rec);                 // 같은 시간엔 그대로
+  assert.ok(hire(p, rec[0].id, t0).ok);
+  const m = townOf(p).mercs[0]; m.mine = 10;
+  tick(p, t0 + 1);
+  assert.equal(Math.floor(buildingAt(p, 'p1').stock), 0);   // 일꾼이 없으면 생산 없음
+  assert.ok(assignMerc(p, m.id, 'p1').ok);
+  const ex = { ...m }; void ex;
+  tick(p, t0 + 2 * 3600000);
+  assert.ok(buildingAt(p, 'p1').stock > 10);
+  assert.ok(m.sta < 60 && m.mine > 10);                     // 체력이 닳고 솜씨가 오른다
+  tick(p, t0 + 100 * 3600000);                              // 오래 꺼 둬도 창고만큼만
   assert.equal(buildingAt(p, 'p1').stock, BUILDINGS.mine.store(1));
+  assert.ok(m.lv > 1);
+  m.lv = MERC.lvMax; p.gold += 1e6; assert.ok(awakenMerc(p, m.id).ok && m.aw === 1 && m.lv === 1);
+  townOf(p).mercs.length = 0;
   assert.equal(collect(p, 'p1').n, 30);
   assert.equal(townOf(p).ore, 30);
   const w = p.equip.weapon;
@@ -256,13 +269,14 @@ test('마을: 짓기 · 생산(꺼 둔 시간) · 강화 · 용병 파견', () =
   assert.equal(w.plus, 4); assert.equal(enhance(p, w, () => 0).ok, false); // 대장간 1단계 상한 +4
   assert.ok(derive(p).dmg[1] > d0 * 1.2);
   assert.ok(itemName(w).startsWith('+4 '));
-  assert.ok(hire(p).ok); assert.equal(hire(p).ok, false);               // 여관 1단계 = 1명
+  assert.ok(hire(p, null, t0).ok);
   assert.equal(dispatch(p, 0, 'field', 'short', t0).ok, false); // 해방 전에는 못 보낸다
   for (let i = 0; i < 400; i++) liberateAdd(p, 'field', 'normal');
   assert.ok(dispatch(p, 0, 'field', 'short', t0).ok);
   assert.equal(claim(p, 0, t0 + 5 * 60000), null);                       // 아직
-  const g0 = p.gold, r = claim(p, 0, t0 + 11 * 60000, seeded(3));
-  assert.ok(r && r.gold > 0 && p.gold === g0 + r.gold && townOf(p).mercs[0].job === null);
+  townOf(p).mercs[0].hunt = 50; townOf(p).mercs[0].lv = 20;
+  const g0 = p.gold, r = claim(p, 0, t0 + 11 * 60000, ((r) => (r(), r))(seeded(3)));
+  assert.ok(r && !r.dead && r.gold > 0 && p.gold === g0 + r.gold && townOf(p).mercs[0].job === null);
 });
 
 console.log(`\n${n}개 통과`);

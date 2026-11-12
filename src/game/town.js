@@ -1,5 +1,5 @@
 // 마을 규칙 (화면과 무관): 짓기 · 단계 올리기 · 생산 쌓기 · 강화 · 용병 파견
-import { BUILDINGS, PLOTS, ENHANCE, EXPEDITIONS, MERC_NAMES, mercCost, RESEARCH, researchCost, workerCost, WORKER_MAX } from '../data/buildings.js';
+import { BUILDINGS, PLOTS, ENHANCE, EXPEDITIONS, RESEARCH, researchCost } from '../data/buildings.js';
 import { ZONES } from '../data/world.js';
 import { rollLoot } from './loot.js';
 import { addItem } from './inventory.js';
@@ -10,6 +10,7 @@ import { BASES } from '../data/items.js';
 export function townOf(st, now = Date.now()) {
   st.town ||= { plots: {}, ore: 0, mercs: [], last: now };
   st.town.mats ||= {};
+  migrateMercs(st.town);
   return st.town;
 }
 export const buildingAt = (st, plot) => townOf(st).plots[plot] || null;
@@ -39,15 +40,23 @@ export function upgrade(st, plot) {
   return { ok: true };
 }
 
-// 시간이 흘러 생산이 쌓인다 (꺼 둔 동안 포함). 반환: 이번에 쌓인 양
+// 시간이 흘러 생산이 쌓인다 (꺼 둔 동안 포함). 일하는 용병만큼 · 솜씨만큼, 체력이 닳으면 쉰다
 export function tick(st, now = Date.now()) {
   const t = townOf(st, now);
   const hours = Math.max(0, (now - (t.last || now)) / 3600000);
   t.last = now;
-  for (const b of Object.values(t.plots)) {
-    const def = BUILDINGS[b.type];
-    if (!def.rate) continue;
-    b.stock = Math.min(def.store(b.lv), (b.stock || 0) + def.rate(b.lv) * Math.min(1, (b.workers || 0) / b.lv) * hours);
+  let left = Math.min(hours, 72);
+  while (left > 1e-9) {
+    const h = Math.min(0.25, left); left -= h;
+    for (const [pid, b] of Object.entries(t.plots)) {
+      const def = BUILDINGS[b.type];
+      if (!def.rate) continue;
+      const crew = t.mercs.filter((m) => m.work === pid && !m.tired && !m.job);
+      const eff = crew.reduce((a, m) => a + workEff(m, b.type), 0) / b.lv;
+      b.stock = Math.min(def.store(b.lv), (b.stock || 0) + def.rate(b.lv) * Math.min(2, eff) * h);
+      for (const m of crew) { m.sta -= MERC.workSta * h; growSkill(m, SKILL_OF[b.type], h); gainExp(m, MERC.workExp * h); if (m.sta <= 0) { m.sta = 0; m.tired = true; } }
+    }
+    for (const m of t.mercs) if (!m.job && (m.tired || !m.work)) { m.sta = Math.min(staMax(m), m.sta + MERC.restSta * h); if (m.sta >= staMax(m)) m.tired = false; }
   }
   return hours;
 }
@@ -125,35 +134,85 @@ export function reforge(st, it, rng = Math.random) {
   return { ok: true, old, now: it.affixes[k] };
 }
 
-// ── 일꾼 ──
-export const freeWorkers = (st) => { const t = townOf(st); return (t.workers || 0) - Object.values(t.plots).reduce((a, b) => a + (b.workers || 0), 0); };
-export function hireWorker(st) {
-  const t = townOf(st), n = t.workers || 0;
-  if (n >= WORKER_MAX) return { ok: false, why: '더 고용할 수 없습니다' };
-  const c = workerCost(n);
-  if (st.gold < c) return { ok: false, why: '금화가 모자랍니다' };
-  st.gold -= c; t.workers = n + 1;
-  return { ok: true };
+// ── 용병 (일꾼 겸 모험가) ──
+// 여관에 매 시간 무작위 용병이 찾아온다. 솜씨: 채광(광산) · 재배(약초밭) · 탐험(파견). 체력이 닳으면 쉰다.
+// 시킨 일의 솜씨가 오르고, 레벨 20에서 각성(최대 10). 파견을 나가면 죽을 수도 있다.
+export const MERC = { workSta: 8, restSta: 12, workExp: 3, lvMax: 20, awMax: 10 };
+export const SKILL_OF = { mine: 'mine', herb: 'herb' };
+export const SKILL_NAMES = { mine: '채광', herb: '재배', hunt: '탐험' };
+export const GRADES = [{ name: '평범', color: '#c8c0b0', k: 1 }, { name: '숙련', color: '#6aa8ff', k: 1.5 }, { name: '정예', color: '#d080ff', k: 2.2 }, { name: '전설', color: '#ffb040', k: 3.2 }];
+const NA = ['브', '셀', '오', '이', '케', '도', '미', '하', '유', '바', '로', '카', '테', '루', '자', '에', '실', '아', '고', '네'], NB = ['란', '마', '덴', '라', '일', '르', '나', '스', '크', '린', '온', '벨', '렌', '드', '아', '토'];
+export const staMax = (m) => 40 + m.lv * 2 + (m.aw || 0) * 8 + (m.vit || 0);
+export const workEff = (m, type) => (m[SKILL_OF[type]] || 0) / 10;  // 솜씨 10 = 한 자리 몫
+const growSkill = (m, k, h) => { const cap = 30 + (m.aw || 0) * 6; m[k] = Math.min(cap, m[k] + 0.12 * h * (1 - m[k] / (cap + 5))); };
+function gainExp(m, n) {
+  if (m.lv >= MERC.lvMax) { m.exp = 0; return; }
+  m.exp += n;
+  while (m.lv < MERC.lvMax && m.exp >= m.lv * 25) { m.exp -= m.lv * 25; m.lv++; }
 }
-export function assignWorker(st, plot, d) {
-  const b = buildingAt(st, plot);
-  if (!b || !BUILDINGS[b.type].rate) return { ok: false };
-  const v = (b.workers || 0) + d;
-  if (v < 0 || v > b.lv || (d > 0 && freeWorkers(st) <= 0)) return { ok: false, why: d > 0 ? (v > b.lv ? '자리가 없습니다 (단계를 올리세요)' : '쉬는 일꾼이 없습니다') : '' };
-  b.workers = v;
-  return { ok: true };
+let uidN = 0;
+export function rollMerc(rng = Math.random, innLv = 1) {
+  const r = rng(), gi = r < 0.02 * innLv ? 3 : r < 0.1 + 0.03 * innLv ? 2 : r < 0.4 + 0.04 * innLv ? 1 : 0, g = GRADES[gi];
+  // 셋 중 하나는 뛰어나게 (일 잘하는 용병 · 탐험 잘하는 용병)
+  const main = ['mine', 'herb', 'hunt'][Math.floor(rng() * 3)], sk = (k) => Math.round((k === main ? 7 + rng() * 6 : 1 + rng() * 5) * g.k * 10) / 10;
+  const m = { id: `m${Date.now().toString(36)}${(uidN++).toString(36)}${Math.floor(rng() * 1e4)}`, name: NA[Math.floor(rng() * NA.length)] + NB[Math.floor(rng() * NB.length)], grade: gi, lv: 1, exp: 0, aw: 0,
+    mine: sk('mine'), herb: sk('herb'), hunt: sk('hunt'), vit: Math.round(rng() * 20 * g.k), work: null, job: null, tired: false };
+  m.sta = staMax(m);
+  m.cost = Math.round((m.mine + m.herb + m.hunt * 1.5 + m.vit) * 25 * g.k);
+  return m;
 }
-
-// ── 용병 ──
-export const mercSlots = (st) => { const inn = findBuilding(st, 'inn'); return inn ? BUILDINGS.inn.slots(inn.lv) : 0; };
-export function hire(st) {
-  const t = townOf(st);
+export const mercSlots = (st) => { const inn = findBuilding(st, 'inn'); return inn ? 2 + inn.lv * 2 : 0; };
+// 이번 시간에 찾아온 용병 (여관 단계만큼 더 많이 · 좋게)
+export function recruits(st, now = Date.now(), rng = Math.random) {
+  const t = townOf(st), inn = findBuilding(st, 'inn'), hr = Math.floor(now / 3600000);
+  if (!inn) return [];
+  if (!t.rec || t.rec.hr !== hr) t.rec = { hr, list: Array.from({ length: 2 + inn.lv }, () => rollMerc(rng, inn.lv)) };
+  return t.rec.list;
+}
+export function hire(st, id, now = Date.now()) {
+  const t = townOf(st), list = recruits(st, now), m = id ? list.find((x) => x.id === id) : list[0];
+  if (!m) return { ok: false, why: '찾아온 용병이 없습니다' };
   if (t.mercs.length >= mercSlots(st)) return { ok: false, why: '여관 단계를 올려야 합니다' };
-  const cost = Math.round(mercCost(t.mercs.length));
-  if (st.gold < cost) return { ok: false, why: '금화가 모자랍니다' };
-  st.gold -= cost;
-  t.mercs.push({ name: MERC_NAMES[t.mercs.length % MERC_NAMES.length], lv: 1, exp: 0, job: null });
+  if (st.gold < m.cost) return { ok: false, why: '금화가 모자랍니다' };
+  st.gold -= m.cost; list.splice(list.indexOf(m), 1); t.mercs.push(m);
+  return { ok: true, m };
+}
+export const mercById = (st, id) => townOf(st).mercs.find((m) => m.id === id) || null;
+export function dismiss(st, id) { const t = townOf(st), i = t.mercs.findIndex((m) => m.id === id); if (i < 0 || t.mercs[i].job) return { ok: false }; t.mercs.splice(i, 1); return { ok: true }; }
+// 일 맡기기: 광산 · 약초밭 (건물 단계만큼 자리). plot = null이면 쉬게
+export function assignMerc(st, id, plot) {
+  const t = townOf(st), m = mercById(st, id);
+  if (!m || m.job) return { ok: false, why: '파견 중입니다' };
+  if (plot) {
+    const b = t.plots[plot];
+    if (!b || !BUILDINGS[b.type].rate) return { ok: false };
+    if (t.mercs.filter((x) => x.work === plot && x !== m).length >= b.lv) return { ok: false, why: '자리가 없습니다 (단계를 올리세요)' };
+  }
+  m.work = plot || null;
   return { ok: true };
+}
+// 각성: 레벨 20에서 레벨 1로, 솜씨 +15% · 체력 · 솜씨 상한이 오른다 (최대 10번)
+export const awakenCost = (m) => 2000 * ((m.aw || 0) + 1) ** 2;
+export function awakenMerc(st, id) {
+  const m = mercById(st, id);
+  if (!m || m.lv < MERC.lvMax) return { ok: false, why: `레벨 ${MERC.lvMax}이 되어야 합니다` };
+  if ((m.aw || 0) >= MERC.awMax) return { ok: false, why: '더 각성할 수 없습니다' };
+  const c = awakenCost(m);
+  if (st.gold < c) return { ok: false, why: '금화가 모자랍니다' };
+  st.gold -= c; m.aw = (m.aw || 0) + 1; m.lv = 1; m.exp = 0;
+  for (const k of ['mine', 'herb', 'hunt']) m[k] = Math.round(m[k] * 1.15 * 10) / 10;
+  return { ok: true };
+}
+// 예전 저장: 일꾼 수 · 이름만 있던 용병을 새 용병으로
+function migrateMercs(t) {
+  t.mercs ||= [];
+  for (const m of t.mercs) if (!m.id) { Object.assign(m, { ...rollMerc(Math.random, 1), name: m.name, lv: m.lv || 1, exp: 0, job: m.job, gear: m.gear, cost: 0 }); m.hunt = Math.max(m.hunt, 8); }
+  if (t.workers) {
+    const want = Object.entries(t.plots).flatMap(([pid, b]) => Array(b.workers || 0).fill(pid));
+    for (let i = 0; i < t.workers; i++) { const m = rollMerc(Math.random, 1); m.mine = m.herb = 10; m.work = want[i] || null; t.mercs.push(m); }
+    for (const b of Object.values(t.plots)) delete b.workers;
+    delete t.workers;
+  }
 }
 // ── 지역 해방 ── 직접 잡아 오염을 걷어 내면 해방 → 그곳에만 용병을 보낼 수 있다
 export const LIBERATE_NEED = 400;
@@ -165,35 +224,40 @@ export function liberateAdd(st, zoneId, tier) {
   return L[zoneId] >= LIBERATE_NEED; // 이번에 해방됐나
 }
 export const isLiberated = (st, zoneId) => (st.liberate?.[zoneId] || 0) >= LIBERATE_NEED;
-// 파견: 해방한 지역에만
-export function dispatch(st, i, zoneId, expId, now = Date.now()) {
-  const m = townOf(st).mercs[i], ex = EXPEDITIONS.find((e) => e.id === expId), zn = ZONES.find((z) => z.id === zoneId);
+// 파견: 해방한 지역에만. 체력을 쓰고, 약하면 죽을 수도 있다
+export const EXP_STA = { short: 12, mid: 35, long: 70 };
+export const EXP_RISK = { short: 0.02, mid: 0.05, long: 0.1 };
+const zoneLvl = (zn) => Math.round((zn.levels[0] + zn.levels[1]) / 2);
+export function mercPower(m, zn) {
+  const gearK = m.gear ? 1 + m.gear.ilvl * 0.012 * ({ magic: 1, rare: 1.3, hero: 1.6, legend: 2 }[m.gear.rarity] || 0.8) : 1;
+  return Math.max(0.25, Math.min(1.8, (m.lv * 2 + (m.aw || 0) * 6 + m.hunt * 1.5) / Math.max(1, zoneLvl(zn)))) * gearK;
+}
+export const deathChance = (m, zn, expId) => Math.min(0.5, EXP_RISK[expId] * Math.max(0.2, 1 / mercPower(m, zn)) ** 2);
+export function dispatch(st, id, zoneId, expId, now = Date.now()) {
+  const m = typeof id === 'number' ? townOf(st).mercs[id] : mercById(st, id), ex = EXPEDITIONS.find((e) => e.id === expId), zn = ZONES.find((z) => z.id === zoneId);
   if (!m || m.job || !ex || !zn) return { ok: false };
   if (!isLiberated(st, zoneId)) return { ok: false, why: '해방한 지역에만 보낼 수 있습니다' };
+  if (m.sta < EXP_STA[expId]) return { ok: false, why: '체력이 모자랍니다' };
+  m.sta -= EXP_STA[expId]; m.work = null;
   m.job = { zone: zoneId, exp: expId, until: now + ex.min * 60000 * (1 - researchK(st, 'merc')) };
   return { ok: true };
 }
-// 돌아온 용병의 전리품을 받는다
-export function claim(st, i, now = Date.now(), rng = Math.random) {
-  const t = townOf(st), m = t.mercs[i];
+// 돌아온 용병의 전리품을 받는다 (죽었으면 dead: true, 전리품 없음)
+export function claim(st, id, now = Date.now(), rng = Math.random) {
+  const t = townOf(st), m = typeof id === 'number' ? t.mercs[id] : mercById(st, id);
   if (!m?.job || now < m.job.until) return null;
   const ex = EXPEDITIONS.find((e) => e.id === m.job.exp), zn = ZONES.find((z) => z.id === m.job.zone);
-  const lvl = Math.round((zn.levels[0] + zn.levels[1]) / 2);
-  // 용병 강함: 레벨이 지역보다 낮으면 성과가 줄어든다
-  // 맡긴 장비가 좋을수록 성과가 오른다
-  const gearK = m.gear ? 1 + m.gear.ilvl * 0.012 * ({ magic: 1, rare: 1.3, hero: 1.6, legend: 2 }[m.gear.rarity] || 0.8) : 1;
-  const eff = Math.max(0.25, Math.min(1.5, (m.lv * 3) / Math.max(1, lvl))) * gearK;
+  const lvl = zoneLvl(zn), eff = mercPower(m, zn);
+  if (rng() < deathChance(m, zn, ex.id)) { t.mercs.splice(t.mercs.indexOf(m), 1); return { dead: true, name: m.name, gold: 0, ore: 0, mats: 0, items: [] }; }
   const out = { gold: Math.round(lvl * 25 * ex.mult * eff), ore: Math.round(2 * ex.mult * eff), items: [] };
   const rolls = Math.round(ex.mult * eff * 1.5);
   for (let k = 0; k < rolls; k++) for (const d of rollLoot({ tier: k % 6 === 5 ? 'elite' : 'normal', level: lvl }, {}, st, rng)) if (d.kind === 'item' && d.item.base && !d.item.book) out.items.push(d.item);
-  // 그 지역 재료도 가져온다
   out.mats = Math.round(ex.mult * 3 * eff);
   t.mats ||= {}; t.mats[zn.id] = (t.mats[zn.id] || 0) + out.mats;
   st.gold += out.gold; t.ore += out.ore;
-  const kept = out.items.filter((it) => addItem(st, it));
-  out.items = kept;
-  m.exp += ex.mult * 10;
-  while (m.exp >= m.lv * 20) { m.exp -= m.lv * 20; m.lv++; }
+  out.items = out.items.filter((it) => addItem(st, it));
+  gainExp(m, ex.mult * 10);
+  growSkill(m, 'hunt', ex.mult * 1.5);
   m.job = null;
   return out;
 }
@@ -259,8 +323,8 @@ export function researchTick(st, now = Date.now()) {
   return id;
 }
 // 용병 장비: 가방에서 가장 좋은 (끼지 않은) 장비 하나를 맡긴다 (돌려받지 않는다)
-export function mercGear(st, i) {
-  const m = townOf(st).mercs[i];
+export function mercGear(st, id) {
+  const m = mercById(st, id);
   const it = st.inv.filter((x) => BASES[x.base]?.slot && !x.book && x.ilvl).sort((a, b) => b.ilvl - a.ilvl)[0];
   if (!m || !it) return { ok: false, why: '맡길 장비가 없습니다' };
   st.inv.splice(st.inv.indexOf(it), 1);

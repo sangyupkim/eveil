@@ -342,8 +342,8 @@ export function buildWorldProps(stage) {
 function buildTown(stage, rng) {
   addProp(stage, 'grassland', 265, 0, -2, 0);
   for (const [id, x, z, r] of [[100, -6, 6, 1.1], [101, 6, 6, 1.1], [102, -4, 9, 0.8], [96, 3, -7, 0.9], [98, 4.5, -7.5, 0.9], [76, -2.5, -7, 0.8], [139, 9, 9, 0.3]]) addProp(stage, 'grassland', id, x, z, r);
-  // 울타리 (길 쪽 네 방향은 비운다)
-  for (let i = 0; i < 72; i++) {
+  // 울타리는 없앴다 (조잡해 보여서)
+  for (let i = 0; i < 0; i++) {
     const a = (i / 72) * Math.PI * 2;
     const gate = [Math.PI / 2, -Math.PI / 2, Math.PI, 0].some((g) => Math.abs(Math.atan2(Math.sin(a - g), Math.cos(a - g))) < 0.17);
     if (gate) continue;

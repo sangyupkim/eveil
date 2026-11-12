@@ -122,26 +122,34 @@ export class World {
       const d = { z, draw: (ctx, st) => { const src = image(def.imgs[tt[0]]); if (!src.ok) return; const p = st.toScreen(x, z); drawRect(ctx, src.im, tt.slice(1), p.x, p.y, st.scale()); } };
       this.stage.add(d); this.townDraw.push(d);
     };
-    // 집: 오두막(296)을 줄여 그린다. 그림 기준점에서 바닥 가운데는 (+7.3, −2.2) → 집터 가운데에 맞춘다
-    const house = (x, z, k, tint) => {
-      const def = DATA.tiles.grassland, tt = def.tiles[296];
-      const ax = x - 7.3 * k, az = z + 2.2 * k;
-      const d = { z: z + 2 * k, draw: (ctx, stg) => { const src = image(def.imgs[tt[0]]); if (!src.ok || !stg.onScreen(x, z, 8)) return; const p = stg.toScreen(ax, az); drawRect(ctx, src.im, tt.slice(1), p.x, p.y, stg.scale() * k);
-        if (tint) { ctx.save(); ctx.globalCompositeOperation = 'source-atop'; ctx.restore(); } } };
+    // 큰 그림 하나를 집터 가운데에 (기준점 보정 ax · az, 크기 k, 색 필터)
+    let cur = null;
+    const big = (set, id, dx, dz, k, ox, oz, filter, r = 4.2) => {
+      const x = cur.x + dx, z = cur.z + dz;
+      const def = DATA.tiles[set], tt = def.tiles[id];
+      if (!tt) return;
+      image(def.imgs[tt[0]]);
+      const d = { z: z + 2 * k, draw: (ctx, stg) => { const src = image(def.imgs[tt[0]]); if (!src.ok || !stg.onScreen(x, z, 8)) return; const p = stg.toScreen(x + ox * k, z + oz * k);
+        if (filter) { ctx.save(); ctx.filter = filter; } drawRect(ctx, src.im, tt.slice(1), p.x, p.y, stg.scale() * k); if (filter) ctx.restore(); } };
       this.stage.add(d); this.townDraw.push(d);
-      for (let u = -5; u <= 5; u += 1.2) for (let v = -5; v <= 5; v += 1.2) if (Math.abs(u) + Math.abs(v) <= 5.2) col(x + u * k * 1.15, z + v * k * 1.15, 0.8);
+      for (let u = -r; u <= r; u += 1.2) for (let v = -r; v <= r; v += 1.2) if (Math.abs(u) + Math.abs(v) <= r) col(x + u, z + v, 0.8);
     };
-    const SIGN = { smithy: [['grassland', 103, 2.6, 3.2], ['dungeon', 167, -2.6, 3.4]], mine: [['cave', 130, 2.8, 3.0], ['cave', 131, -2.8, 3.2]], workshop: [['grassland', 100, 2.6, 3.2], ['grassland', 96, -2.6, 3.0]],
-      lab: [['ruins', 278, 2.6, 3.2], ['ruins', 293, -2.6, 3.0]], inn: [['grassland', 98, 2.8, 3.2], ['dungeon', 167, -2.8, 3.2]] };
+    // 건물마다 다른 모양: 대장간 = 그을린 오두막 + 화로, 여관 = 큰 오두막, 광산 = 땅속 계단 + 바위, 연구소 = 돌탑 + 마법진, 제작소 = 돌 작업장 + 상자
+    const LOOK = {
+      smithy: () => { big('grassland', 296, 0, 0, 0.52, -7.3, 2.2, 'brightness(0.78) sepia(0.35) saturate(1.2)'); return [['dungeon', 167, 2.8, 3.0], ['grassland', 103, -2.6, 3.2], ['dungeon', 167, -1.0, 3.6]]; },
+      inn: () => { big('grassland', 296, 0.6, 0.6, 0.56, -7.3, 2.2, 'saturate(1.35) hue-rotate(-12deg) brightness(1.08)', 4.4); return [['grassland', 98, 3.2, 3.4], ['grassland', 96, -3.2, 3.2], ['dungeon', 167, 0, 4.4]]; },
+      mine: () => { big('dungeon', 286, 0, 0, 1.0, 0, 0, 'sepia(0.4) brightness(0.9)', 2.4); return [['cave', 148, 3.4, -1.6], ['cave', 130, -3.4, 1.0], ['cave', 131, 2.6, 2.8], ['cave', 151, -2.4, -2.6]]; },
+      lab: () => { big('ruins', 380, 0, 1.2, 1.0, 0, 0, '', 0); big('dungeon', 284, -0.6, -1.2, 0.55, 0, 0, 'hue-rotate(200deg) saturate(0.6) brightness(1.05)', 2.6); return [['ruins', 278, 3.0, 2.4], ['ruins', 283, -3.2, 2.0]]; },
+      workshop: () => { big('dungeon', 285, 0, -0.6, 0.6, 0, 0, 'sepia(0.55) saturate(1.3) brightness(0.95)', 3); return [['grassland', 100, 3.0, 2.6], ['grassland', 101, -3.0, 2.8], ['grassland', 96, 2.0, 3.6]]; },
+    };
     for (const pl of PLOTS) {
       const b = t.plots[pl.id];
       if (!b) { tile('grassland', 138, pl.x, pl.z); continue; }
-      if (b.type === 'herb') { // 밭: 작물 줄 + 울타리
+      cur = pl;
+      if (b.type === 'herb') { // 밭: 작물 줄 (울타리 없음)
         for (let u = -2; u <= 2; u++) for (let v = -1; v <= 1; v++) tile('grassland', 120 + ((u + v + 4) % 4), pl.x + u * 1.6, pl.z + v * 1.8);
-        for (const [a2, b2] of [[-4.2, -3], [4.2, -3], [-4.2, 3], [4.2, 3]]) { tile('grassland', 104, pl.x + a2, pl.z + b2); col(pl.x + a2, pl.z + b2, 0.6); }
       } else {
-        house(pl.x, pl.z, b.type === 'inn' ? 0.62 : 0.5 + b.lv * 0.02);
-        for (const [set, id, dx, dz] of SIGN[b.type] || []) { tile(set, id, pl.x + dx, pl.z + dz); col(pl.x + dx, pl.z + dz, 0.7); }
+        for (const [set, id, dx, dz] of (LOOK[b.type] || LOOK.smithy)()) { tile(set, id, pl.x + dx, pl.z + dz); col(pl.x + dx, pl.z + dz, 0.7); }
       }
       for (let lv = 2; lv <= b.lv; lv++) for (const [set, id, dx, dz] of LEVEL_DECOR[lv] || []) tile(set, id, pl.x + dx * 1.6, pl.z + dz + 3.8);
     }
@@ -1663,6 +1671,7 @@ export class World {
 
   // 마을 울타리를 드나들 때는 가까운 문을 거친다
   waypoint(p, dest) {
+    return dest; // 울타리를 없애서 문을 거칠 필요가 없다
     const R = TOWN.r;
     const inside = Math.hypot(p.x, p.z) < R;
     if (inside === Math.hypot(dest.x, dest.z) < R) return dest;

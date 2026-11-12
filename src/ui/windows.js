@@ -18,11 +18,10 @@ import { CAMPS, inCamp } from '../engine2d/stage.js';
 import { TIER_NAMES } from '../world/world.js';
 import { entranceOf } from '../data/dungeons.js';
 import { MATERIALS, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
-import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, hireWorker, assignWorker, freeWorkers, salvage, salvageValue, reforge, reforgeCost } from '../game/town.js';
-import { RESEARCH, researchCost, workerCost, WORKER_MAX } from '../data/buildings.js';
+import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, recruits, assignMerc, awakenMerc, awakenCost, dismiss, staMax, SKILL_NAMES, GRADES, MERC, EXP_STA, deathChance, salvage, salvageValue, reforge, reforgeCost } from '../game/town.js';
+import { RESEARCH, researchCost } from '../data/buildings.js';
 import { AFFIXES } from '../data/items.js';
 import { PLOTS, BUILDINGS, EXPEDITIONS, townOf, buildingAt, build, upgrade, collect, enhance, enhanceCap, enhanceCost, hire, mercSlots, dispatch, claim, tick } from '../game/town.js';
-import { mercCost } from '../data/buildings.js';
 import { QUESTS, QUEST_BOOKS } from '../data/quests.js';
 import { ZONES, MONSTERS } from '../data/world.js';
 import { nextQuest, questDone, questNeed, goalText, questTurnIn } from '../game/quests.js';
@@ -382,7 +381,7 @@ export class Windows {
       ['강화 · 재련 · 분해', [pic(oreIcon(), '광석'), pic(coinIcon(), '골드')], ['강화(대장간): +1 ~ +10, 대장간 레벨이 상한. 단계마다 피해 · 방어 +8%', '확률: +1~3 100%, 그 뒤 90 · 80 · 70 · 55 · 45 · 35 · 25%. 실패해도 단계는 그대로', '비용: 골드 + 광석 (단계 · 아이템 레벨에 비례)', '재련: 가장 약한 옵션 하나를 다시 굴립니다', '분해: 쓰지 않는 장비를 광석 · 재료로']],
       ['보석', [pic(oreIcon(), '보석')], ['장비 홈에 박아 능력치를 올립니다', '등급 10단계: 조각난 · 흐린 · 보통 · 빛나는 · 완벽한 · 찬란한 · 고대의 · 신성한 · 영원의 · 태초의', '몬스터 레벨이 높을수록 높은 등급이 떨어집니다. 상점은 낮은 등급만']],
       ['던전', [pic(scrollIcon(), '열쇠')], ['지역마다 던전 입구가 하나 (미로 · 방과 복도 · 동굴)', '네임드 · 보스가 주는 열쇠로 입장, 가장 깊은 곳의 우두머리를 잡으면 클리어', '단계를 올릴수록 몬스터가 세지고 보상이 좋아집니다']],
-      ['마을 · 일꾼 · 연구', [pic(townIcon(), '마을')], ['건물을 지어 생산 · 강화 · 상점을 엽니다', '생산 건물은 일꾼을 배치해야 돌아갑니다', '연구: 가방 칸 등 영구 강화', '용병: 고용해 원정을 보냅니다']],
+      ['마을 · 용병 · 연구', [pic(townIcon(), '마을')], ['건물을 지어 생산 · 강화 · 연구를 엽니다', '여관에는 매 시간 다른 용병이 찾아옵니다. 솜씨(채광 · 재배 · 탐험)와 등급이 제각각', '용병에게 광산 · 약초밭 일을 맡기거나 파견을 보냅니다. 체력이 닳으면 쉬어야 합니다', '시킨 일의 솜씨가 오르고, 레벨 20에서 각성(최대 10번)', '파견은 위험해서 약한 용병은 죽을 수 있습니다', '연구: 가방 칸 등 영구 강화']],
       ['야영지 · 지도', [pic(scrollIcon(), '월드맵')], ['세상은 캐릭터마다 새로 만들어집니다', '야영지: 안전 지대, 포탈로 먼 곳 이동, 상인 · 수리', '지도는 가 본 곳만 밝혀집니다']],
       ['세계 단계', [pic(scrollIcon(), TIER_NAMES.join(' · '))], ['평온 → 악몽 → 지옥', '단계가 오르면 같은 지역의 몬스터 레벨이 크게 오르고 더 좋은 장비 · 보석이 나옵니다']],
       ['도감 · 의뢰 · 업적', [pic(bookIcon(), '도감')], ['몬스터를 잡으면 도감이 채워지고 보너스를 받습니다', '퀘스트 · 일일 의뢰 · 업적으로 보상']],
@@ -390,6 +389,14 @@ export class Windows {
     const [t, imgs, lines] = S[Math.min(k, S.length - 1)];
     return `<div class="cols"><div class="frame" style="flex:0 0 26%">${S.map((x, i) => `<button class="btn gsec${i === k ? ' on' : ''}" data-gsec="${i}">${x[0]}</button>`).join('')}</div>
       <div class="frame" style="flex:1"><h3>${t}</h3><div class="gwrap"><div class="gimgs">${imgs.join('')}</div><ul class="glist">${lines.map((l) => `<li>${l}</li>`).join('')}</ul></div></div></div>`;
+  }
+
+  // 용병 한 줄: 이름 · 등급 · 레벨 · 각성 · 솜씨 · 체력
+  mercLine(m, hi) {
+    const g = GRADES[m.grade || 0], sm = staMax(m);
+    const sk = ['mine', 'herb', 'hunt'].map((k) => `<span style="${k === hi ? 'color:#ffd84a;font-weight:700' : ''}">${SKILL_NAMES[k]} ${m[k].toFixed(1)}</span>`).join(' · ');
+    return `<div class="grow"><b style="color:${g.color}">${esc(m.name)}</b> <small>${g.name} · Lv ${m.lv}${m.aw ? ` · 각성 ${m.aw}` : ''}${m.gear ? ` · 장비 ${m.gear.ilvl}` : ''}</small>
+      <div class="note">${sk}</div><div class="mini" style="height:5px;max-width:12em"><i style="width:${Math.round((m.sta / sm) * 100)}%;background:#6ad07a"></i></div></div>`;
   }
 
   keysPanel() {
@@ -465,8 +472,14 @@ export class Windows {
             ${SET_SLOTS.map((sl) => `<button class="btn" data-craft="${zn.id}|${sl}" ${have < c.mats || st.gold < c.gold ? 'disabled' : ''}>${BASES[setBase(zi, sl)].name}</button>`).join('')}</div>`;
         }
       }
-      if (def.rate) right += `<div class="row"><div class="grow"><b>일꾼 ${b.workers || 0} / ${b.lv}</b><div class="note">${b.workers ? `생산 ${Math.round(((b.workers || 0) / b.lv) * 100)}%` : '일꾼이 없으면 생산하지 않습니다'}</div></div><button class="btn" data-work="-1">−</button><button class="btn" data-work="1">+</button></div>`;
-      if (def.rate) right += `<div class="kv"><span>생산</span><b>시간당 ${Math.round(def.rate(b.lv) * Math.min(1, (b.workers || 0) / b.lv))}</b><span>쌓인 양</span><b>${Math.floor(b.stock)} / ${def.store(b.lv)}</b></div>
+      if (def.rate) {
+        const crew = t.mercs.filter((m) => m.work === sel), idle = t.mercs.filter((m) => !m.work && !m.job), sk = b.type;
+        const eff = crew.filter((m) => !m.tired).reduce((a, m) => a + m[sk] / 10, 0) / b.lv;
+        right += `<h3>일하는 용병 ${crew.length} / ${b.lv} <small>생산 ${Math.round(Math.min(2, eff) * 100)}%</small></h3>`;
+        right += crew.map((m) => `<div class="row">${this.mercLine(m, sk)}<button class="btn" data-mwork="${m.id}|">쉬게</button></div>`).join('') || '<div class="note">일하는 용병이 없으면 생산하지 않습니다</div>';
+        if (crew.length < b.lv && idle.length) right += `<div class="note" style="margin-top:6px">쉬는 용병</div>` + idle.sort((a, c) => c[sk] - a[sk]).map((m) => `<div class="row">${this.mercLine(m, sk)}<button class="btn" data-mwork="${m.id}|${sel}">일 맡기기</button></div>`).join('');
+      }
+      if (def.rate) right += `<div class="kv"><span>생산</span><b>시간당 ${Math.round(def.rate(b.lv) * Math.min(1, t.mercs.filter((m) => m.work === sel && !m.tired).reduce((a, m) => a + m[b.type] / 10, 0) / b.lv) * 1)}</b><span>쌓인 양</span><b>${Math.floor(b.stock)} / ${def.store(b.lv)}</b></div>
         <div class="btns"><button class="btn gold" data-collect="1" ${b.stock < 1 ? 'disabled' : ''}>거두기</button></div>`;
       if (b.type === 'smithy') {
         const cap = enhanceCap(st);
@@ -492,21 +505,24 @@ export class Windows {
         }
       }
       if (b.type === 'inn') {
-        const zones = ZONES.filter((z) => isLiberated(st, z.id));
-        right += `<div class="note">해방 ${ZONES.map((z) => `${z.name} ${Math.floor(((st.liberate?.[z.id] || 0) / LIBERATE_NEED) * 100)}%`).join(' · ')}</div>`;
-        t.mercs.forEach((m, i) => {
-          const left = m.job ? Math.max(0, m.job.until - Date.now()) : 0;
-          right += `<div class="row"><div class="grow"><b>${m.name}</b> <small>Lv ${m.lv}${m.gear ? ` · 장비 ${BASES[m.gear.name]?.name || ''}(${m.gear.ilvl})` : ''}</small> <button class="btn" data-mgear="${i}">장비 맡기기</button><div class="note">${m.job ? (left > 0 ? `${ZONES.find((z) => z.id === m.job.zone).name} · ${Math.ceil(left / 60000)}분 남음` : '돌아옴') : '쉬는 중'}</div></div>
-            ${m.job && left <= 0 ? `<button class="btn gold" data-claim="${i}">전리품</button>` : ''}</div>`;
-          if (!m.job && !zones.length) right += `<div class="note">해방한 지역 없음</div>`;
-          else if (!m.job) right += `<div class="btns" style="margin:0 0 8px"><select data-zone="${i}" class="btn">${zones.map((z) => `<option value="${z.id}">${z.name}</option>`).join('')}</select>${EXPEDITIONS.map((e) => `<button class="btn" data-go-exp="${i}|${e.id}">${e.name} ${e.min}분</button>`).join('')}</div>`;
+        const zones = ZONES.filter((z) => isLiberated(st, z.id)), rec = recruits(st), slots = mercSlots(st);
+        const nextH = Math.ceil((3600000 - (Date.now() % 3600000)) / 60000);
+        right += `<h3>찾아온 용병 <small>${nextH}분 뒤 바뀜 · 고용 ${t.mercs.length} / ${slots}</small></h3>`;
+        right += rec.map((m) => `<div class="row">${this.mercLine(m)}<button class="btn gold" data-hirem="${m.id}" ${t.mercs.length >= slots || st.gold < m.cost ? 'disabled' : ''}>${m.cost.toLocaleString()} G</button></div>`).join('') || '<div class="note">없음</div>';
+        right += `<h3 style="margin-top:8px">내 용병</h3>`;
+        t.mercs.forEach((m) => {
+          const left = m.job ? Math.max(0, m.job.until - Date.now()) : 0, where = m.work && t.plots[m.work] ? BUILDINGS[t.plots[m.work].type].name : '';
+          const state = m.job ? (left > 0 ? `${ZONES.find((z) => z.id === m.job.zone).name} 파견 · ${Math.ceil(left / 60000)}분` : '돌아옴') : m.tired ? '지쳐서 쉬는 중' : where ? `${where}에서 일함` : '쉬는 중';
+          right += `<div class="row">${this.mercLine(m)}<div class="note" style="min-width:7em">${state}</div>
+            ${m.job && left <= 0 ? `<button class="btn gold" data-claim="${m.id}">전리품</button>` : ''}
+            ${m.lv >= MERC.lvMax && (m.aw || 0) < MERC.awMax ? `<button class="btn gold" data-mawk="${m.id}" ${st.gold < awakenCost(m) ? 'disabled' : ''}>각성 ${awakenCost(m).toLocaleString()}G</button>` : ''}
+            ${!m.job ? `<button class="btn" data-mgear="${m.id}">장비</button><button class="btn danger" data-mfire="${m.id}">내보내기</button>` : ''}</div>`;
+          if (!m.job && zones.length) right += `<div class="btns" style="margin:0 0 8px"><select data-zone="${m.id}" class="btn">${zones.map((z) => `<option value="${z.id}">${z.name} (사망 ${Math.round(deathChance(m, z, 'mid') * 100)}%)</option>`).join('')}</select>${EXPEDITIONS.map((e) => `<button class="btn" data-go-exp="${m.id}|${e.id}" ${m.sta < EXP_STA[e.id] ? 'disabled' : ''}>${e.name} ${e.min}분 · 체력 ${EXP_STA[e.id]}</button>`).join('')}</div>`;
         });
-        const n = t.mercs.length, slots = mercSlots(st);
-        if (n < slots) right += `<div class="btns"><button class="btn" data-hire="1" ${st.gold < mercCost(n) ? 'disabled' : ''}>용병 고용 ${Math.round(mercCost(n)).toLocaleString()} G</button></div>`;
-        else right += `<div class="note">용병 ${n} / ${slots} · 여관 단계를 올리면 더 고용</div>`;
+        if (!zones.length) right += `<div class="note">해방한 지역이 없어 파견할 수 없음</div>`;
       }
     }
-    return `<div class="cols"><div class="frame" style="flex:0 0 40%"><h3>마을 <span class="goldTxt">${st.gold.toLocaleString()} G</span></h3><div class="note" style="display:flex;gap:6px;align-items:center"><img src="${oreIcon()}" style="width:1.6em" alt="" />강화석 ${t.ore}</div><div class="row"><div class="grow"><b>일꾼 ${t.workers || 0}</b> <small>쉬는 ${freeWorkers(st)}</small></div><button class="btn" data-hireworker="1" ${(t.workers || 0) >= WORKER_MAX || st.gold < workerCost(t.workers || 0) ? 'disabled' : ''}>고용 ${workerCost(t.workers || 0).toLocaleString()}G</button></div><div class="note">${Object.entries(t.mats).filter(([, n]) => n > 0).map(([k, n]) => `${MATERIALS[k].name} ${n}`).join(' · ')}</div>${left}</div>
+    return `<div class="cols"><div class="frame" style="flex:0 0 40%"><h3>마을 <span class="goldTxt">${st.gold.toLocaleString()} G</span></h3><div class="note" style="display:flex;gap:6px;align-items:center"><img src="${oreIcon()}" style="width:1.6em" alt="" />강화석 ${t.ore}</div><div class="note">용병 ${t.mercs.length} / ${mercSlots(st)} · 쉬는 ${t.mercs.filter((m) => !m.work && !m.job).length}</div><div class="note">${Object.entries(t.mats).filter(([, n]) => n > 0).map(([k, n]) => `${MATERIALS[k].name} ${n}`).join(' · ')}</div>${left}</div>
       <div class="frame detail" style="flex:1">${right}</div></div>`;
   }
 
@@ -665,10 +681,11 @@ export class Windows {
       else { audio.play('error'); w.ui.toast(`강화 실패 · 장인의 기운 ${+((r.jang || 0) * 100).toFixed(1)}%`); }
       w.ui.dirty(); this.render();
     });
-    on('[data-hire]', () => townDone(hire(st), '용병을 고용했습니다'));
+    on('[data-hirem]', (el) => townDone(hire(st, el.dataset.hirem), '용병을 고용했습니다'));
+    on('[data-mwork]', (el) => { const [id, pl] = el.dataset.mwork.split('|'); townDone(assignMerc(st, id, pl || null)); });
+    on('[data-mawk]', (el) => { const r = awakenMerc(st, el.dataset.mawk); if (r.ok) audio.play('awaken'); townDone(r, '용병이 각성했습니다'); });
+    on('[data-mfire]', (el) => { if (confirm('이 용병을 내보낼까요?')) townDone(dismiss(st, el.dataset.mfire)); });
     on('[data-tier]', (el) => { w.setTier(Number(el.dataset.tier)); this.render(); });
-    on('[data-hireworker]', () => townDone(hireWorker(st), '일꾼을 고용했습니다'));
-    on('[data-work]', (el) => townDone(assignWorker(st, this.townSel, Number(el.dataset.work))));
     on('[data-travel]', (el) => { this.portalAt = null; this.close(); w.travel(el.dataset.travel); });
     on('[data-camp]', (el) => { const [z, what] = el.dataset.camp.split('|'); const r = w.buildCamp(z, what); if (!r.ok && r.why) w.ui.toast(r.why); w.ui.dirty(); this.render(); });
     on('[data-salvage]', (el) => { const r = salvage(st, Number(el.dataset.salvage)); if (r.ok) { audio.play('coin'); w.ui.toast(`분해: 강화석 ${r.ore} · ${MATERIALS[r.mat].name} ${r.matN}`, '#ffd84a'); } townDone(r); });
@@ -684,7 +701,7 @@ export class Windows {
       location.reload();
     });
     on('[data-research]', (el) => townDone(researchStart(st, el.dataset.research), '연구를 시작했습니다'));
-    on('[data-mgear]', (el) => townDone(mercGear(st, Number(el.dataset.mgear)), '장비를 맡겼습니다 (원정 성과 상승)'));
+    on('[data-mgear]', (el) => townDone(mercGear(st, el.dataset.mgear), '장비를 맡겼습니다 (원정 성과 상승)'));
     on('[data-school]', (el) => { this.skillSchool = el.dataset.school; this.skillSel = null; audio.play('click'); this.render(); });
     on('[data-socket]', (el) => {
       const it = this.cur(); if (!it?.sockets || it.gems.length >= it.sockets) return;
@@ -712,11 +729,12 @@ export class Windows {
     on('[data-go-exp]', (el) => {
       const [i, ex] = el.dataset.goExp.split('|');
       const zone = body.querySelector(`[data-zone="${i}"]`)?.value;
-      townDone(dispatch(st, Number(i), zone, ex), '용병이 사냥을 떠났습니다');
+      townDone(dispatch(st, i, zone, ex), '용병이 사냥을 떠났습니다');
     });
     on('[data-claim]', (el) => {
-      const r = claim(st, Number(el.dataset.claim));
-      if (r) { audio.play('coin'); w.ui.toast(`전리품: ${r.gold.toLocaleString()} G · 강화석 ${r.ore} · 재료 ${r.mats}${r.items.length ? ` · 장비 ${r.items.length}개` : ''}`, '#ffd84a'); }
+      const r = claim(st, el.dataset.claim);
+      if (r?.dead) { audio.play('error'); w.ui.toast(`용병 ${r.name}이(가) 돌아오지 못했습니다…`, '#ff7060'); }
+      else if (r) { audio.play('coin'); w.ui.toast(`전리품: ${r.gold.toLocaleString()} G · 강화석 ${r.ore} · 재료 ${r.mats}${r.items.length ? ` · 장비 ${r.items.length}개` : ''}`, '#ffd84a'); }
       w.ui.dirty(); this.render();
     });
     on('[data-go]', (el) => this.show(el.dataset.go));

@@ -27,11 +27,11 @@ for (const zn of ZONES) {
   const huntG = (g / N) * 900;
   const matH = 900 * ((1 - CONFIG.eliteChance) * MAT_DROP.normal[0] * MAT_DROP.normal[1] + CONFIG.eliteChance * MAT_DROP.elite[1]);
   const merc = (lv) => {
-    const st = newPlayer('e', { face: 'm01' }, 'sword'); st.gold = 1e9; townOf(st, 0); build(st, 'p1', 'inn'); hire(st); for (const z of ZONES) for (let i = 0; i < 400; i++) liberateAdd(st, z.id, 'normal');
+    const st = newPlayer('e', { face: 'm01' }, 'sword'); st.gold = 1e9; townOf(st, 0); build(st, 'p1', 'inn'); hire(st, null, 0); for (const z of ZONES) for (let i = 0; i < 400; i++) liberateAdd(st, z.id, 'normal');
     st.inv = []; let g = 0; const reps = Math.max(20, N / 50), rng = seeded(11);
     for (let i = 0; i < reps; i++) {
-      const m = townOf(st).mercs[0]; m.lv = lv; m.exp = 0;
-      dispatch(st, 0, zn.id, 'long', 0); const g0 = st.gold; const r = claim(st, 0, 1e15, rng);
+      const m = townOf(st).mercs[0]; m.lv = lv; m.exp = 0; m.sta = 999; m.hunt = 10;
+      dispatch(st, 0, zn.id, 'long', 0); const g0 = st.gold; const r = claim(st, 0, 1e15, () => 0.99) || { items: [] };
       g += st.gold - g0 + r.items.reduce((a, it) => a + itemValue(it), 0); st.inv = [];
     }
     return (g / reps) / (EXPEDITIONS[2].min / 60);
@@ -68,9 +68,9 @@ out.push('', '## 4. 사냥 없이 방치만 7일 (하루 2번 접속, 모든 건
     t += 12 * H; tick(st, t);
     ['mine', 'smithy', 'herb', 'inn', 'workshop'].forEach((ty, i) => build(st, 'p' + (i + 1), ty));
     for (const p of Object.keys(townOf(st).plots)) { collect(st, p); upgrade(st, p); }
-    while (hire(st).ok);
+    while (hire(st, null, t).ok);
     if (day === 1 && !half) for (let i = 0; i < 400; i++) liberateAdd(st, 'ruins', 'normal'); // 성채는 직접 해방했다고 친다
-    townOf(st).mercs.forEach((m, i) => { claim(st, i, t); dispatch(st, i, 'ruins', 'long', t); });
+    [...townOf(st).mercs].forEach((m) => { claim(st, m.id, t); m.sta = 999; dispatch(st, m.id, 'ruins', 'long', t); });
     st.inv = st.inv.filter((x) => !x.base || !x.base.includes('potion')).slice(0, 0);
     if (half) log.push(`- ${day}일: 금화 ${Math.round(st.gold).toLocaleString()} · 강화석 ${townOf(st).ore} · 건물 ${Object.values(townOf(st).plots).map((b) => BUILDINGS[b.type].name + b.lv).join(' ')} · 용병 ${townOf(st).mercs.map((m) => 'Lv' + m.lv).join(' ')}`);
   }
