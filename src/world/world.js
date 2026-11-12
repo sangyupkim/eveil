@@ -13,14 +13,14 @@ import { addAP, gainExp, rewardFactor } from '../game/growth.js';
 import { addSkillExp, skillValues, skillEff, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
 import { rollLoot, rollDeathDrop } from '../game/loot.js';
 import { dropMats, liberateAdd } from '../game/town.js';
-import { dailyProgress, dailyReward, dailyText } from '../game/daily.js';
+import { dailyProgress, dailyReward, dailyText, dayKey } from '../game/daily.js';
 import { MATERIALS } from '../data/crafting.js';
 import { addItem, takeOne, countOf, equip as equipItem, unequip as unequipItem } from '../game/inventory.js';
 import { itemName, itemColor, isBook, makeItem, makeBook, rollBase, itemValue } from '../game/items.js';
 import { seeded, randInt, randRange } from '../game/rng.js';
 import { Actor, makeHero } from '../engine2d/actor.js';
 import { FX } from '../engine2d/fx.js';
-import { resolveCollision, zoneAt, clearLine, findPath, blockedAt } from '../engine2d/stage.js';
+import { resolveCollision, zoneAt, clearLine, findPath, blockedAt, LAKES, MESAS } from '../engine2d/stage.js';
 import { DATA, image, animImage, drawRect, frameIndex } from '../engine2d/sprites.js';
 import { MONSTER_LOOK, ITEM_LOOK, LOOT_LOOK } from '../data/flareWorld.js';
 import { PLOTS, BUILDINGS } from '../data/buildings.js';
@@ -92,6 +92,7 @@ export class World {
     this.restoreGround();
     this.townDraw = [];
     this.refreshTown();
+    this.makeChests();
     // 자리를 비운 동안 쌓인 것 알려 주기
     const away = townTick(st);
     if (away > 0.05 && Object.keys(townOf(st).plots).length) setTimeout(() => this.ui.log(`자리를 비운 ${away >= 1 ? Math.floor(away) + '시간' : Math.round(away * 60) + '분'} 동안 마을이 일했습니다 (마을 창에서 거두기)`, '#ffd84a'), 500);
@@ -226,6 +227,60 @@ export class World {
       if (!blockedAt(this.stage, nx, nz, r)) return { x: nx, z: nz };
     }
     return { x, z };
+  }
+
+  // ───────── 숨은 보물 상자 ─────────
+  // 언덕 · 호수 뒤쪽(화면 위쪽, 잘 안 보이는 곳)에 하나씩. 날마다 다시 찬다
+  makeChests() {
+    this.chests = [];
+    const day = dayKey();
+    const opened = (this.st.chests?.day === day ? this.st.chests.ids : []);
+    [...LAKES, ...MESAS].forEach((q, i) => {
+      if (q.x > 500) return;
+      const p = this.freeSpot(q.x + (i % 2 ? 2 : -2), q.z - q.r - 2.2, 0.8);
+      const c = { id: i, x: p.x, z: p.z, open: opened.includes(i) };
+      c.draw = { z: p.z, draw: (ctx, stg) => { const def = DATA.tiles.dungeon, tt = def.tiles[c.open ? 160 : 144], src = image(def.imgs[tt[0]]); if (!src.ok || !stg.onScreen(c.x, c.z, 3)) return; const s2 = stg.toScreen(c.x, c.z); drawRect(ctx, src.im, tt.slice(1), s2.x, s2.y, stg.scale()); } };
+      this.stage.add(c.draw); this.chests.push(c);
+    });
+  }
+  checkChests() {
+    const P = this.player.pos, st = this.st;
+    for (const c of this.chests || []) {
+      if (c.open || Math.hypot(P.x - c.x, P.z - c.z) > 1.6) continue;
+      c.open = true;
+      const day = dayKey(); if (st.chests?.day !== day) st.chests = { day, ids: [] }; st.chests.ids.push(c.id);
+      const zn = zoneAt(c.x, c.z) || ALL_ZONES[0], lv = zn.levels[1];
+      this.dropGround({ kind: 'item', item: makeItem(rollBase(lv), { rarity: Math.random() < 0.25 ? 'hero' : 'rare', ilvl: lv }, st) }, c.x + 1, c.z + 0.5);
+      this.dropGround({ kind: 'gold', amount: lv * 40 }, c.x - 1, c.z + 0.5);
+      if (Math.random() < 0.5) this.dropGround({ kind: 'item', item: makeItem(`gem_${['ruby', 'emerald', 'sapphire', 'amethyst', 'diamond'][Math.floor(Math.random() * 5)]}_${lv >= 30 ? 1 : 0}`, { qty: 1 }, st) }, c.x, c.z + 1.2);
+      this.fx.pillar(c.x, c.z, 0xffd060, 1.4, 5, 1.5); sfx('rare'); this.ui.toast('숨은 보물 상자!', '#ffd84a');
+    }
+  }
+
+  // ───────── 지역 습격 ─────────
+  // 사냥터에 10~15분마다 무리가 몰려온다. 90초 안에 다 잡으면 보상
+  raidStep(dt) {
+    const st = this.st, P = this.player.pos;
+    if (this.raid) {
+      this.raid.t -= dt;
+      const left = this.raid.mons.filter((m) => !m.dead).length;
+      if (!left) { const lv = this.raid.zone.levels[1]; this.dropGround({ kind: 'item', item: makeItem(rollBase(lv), { rarity: Math.random() < 0.3 ? 'hero' : 'rare', ilvl: lv }, st) }, P.x + 1, P.z); this.dropGround({ kind: 'gold', amount: lv * 60 }, P.x - 1, P.z); this.ui.toast('습격을 막아 냈습니다!', '#ffd84a'); sfx('rankup'); this.raid = null; }
+      else if (this.raid.t <= 0) { this.ui.toast('습격 무리가 물러갔습니다'); for (const m of this.raid.mons) if (!m.dead) m.state = 'return'; this.raid = null; }
+      return;
+    }
+    this.raidT = (this.raidT ?? 600 + Math.random() * 300) - dt;
+    const zn = zoneAt(P.x, P.z);
+    if (this.raidT > 0 || !zn || this.dungeon || this.dead || this.inTown) return;
+    this.raidT = 600 + Math.random() * 300;
+    const mons = [];
+    const a0 = Math.random() * 6.28;
+    for (let i = 0; i < 10; i++) {
+      const a = a0 + (i - 5) * 0.12, x = P.x + Math.cos(a) * 11, z = P.z + Math.sin(a) * 11;
+      const m = this.spawn({ zone: zn, x, z, level: zn.levels[1], tier: i < 2 ? 'elite' : 'normal', timer: 0, mon: null });
+      m.state = 'chase'; m.noLoot = i >= 2; mons.push(m);
+    }
+    this.raid = { zone: zn, mons, t: 90 };
+    this.fx.shake(0.3); sfx('buff'); this.ui.toast(`${zn.name}에 습격! 90초 안에 막아 내세요`, '#ff9a6a');
   }
 
   // ───────── 던전 ─────────
@@ -1477,6 +1532,8 @@ export class World {
     const st = this.st;
     st.playTime += dt;
     this.checkDungeonGate(dt);
+    this.checkChests();
+    this.raidStep(dt);
     // 자동 사냥 중 죽으면 잠시 뒤 마을에서 일어나 다시 사냥
     if (this.dead && this.auto) { this.autoReviveT = (this.autoReviveT ?? 6) - dt; if (this.autoReviveT <= 0) { this.autoReviveT = null; this.revive(); this.ui.closeDeath?.(); this.ui.log('자동 사냥: 마을에서 다시 출발합니다', '#9a917f'); } }
     for (let i = this.timers.length - 1; i >= 0; i--) {
