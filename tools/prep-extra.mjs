@@ -9,6 +9,8 @@ const tiles = JSON.parse(fs.readFileSync(J, 'utf8'));
 const SETS = [
   // 이름 · 타일 정의 · 배율 — 사막: Stefan Beller, CC-BY-SA 3.0 (OpenGameArt "Desert Tileset")
   { name: 'desert', def: 'tools/extra/desert/tileset_desert.txt', dir: 'tools/extra/desert', k: 3 },
+  // 폐허: Flare empyrean campaign (CC-BY-SA 3.0), 원래 크기
+  { name: 'ruins', def: 'tools/extra/ruins/tileset_ruins.txt', dir: 'tools/extra/ruins', k: 1 },
 ];
 for (const S of SETS) {
   const def = { imgs: [], tiles: {} };

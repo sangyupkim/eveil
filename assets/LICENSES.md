@@ -17,3 +17,6 @@
 ## 사막 타일 (assets/flare/tiles/desert_*)
 - "Desert Tileset" — Stefan Beller (Flare 그래스랜드 기반), CC-BY-SA 3.0: https://opengameart.org/content/desert-tileset
   - 타일 정의는 Smujb/fallen-kingdom의 tilesetdefs/tileset_desert.txt (같은 라이선스). 3배로 키워 씀 (`tools/prep-extra.mjs`).
+
+## 폐허 타일 (assets/flare/tiles/ruins_*)
+- Flare Empyrean Campaign "tileset_ruins" — Flare 팀, CC-BY-SA 3.0: https://github.com/flareteam/flare-game
