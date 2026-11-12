@@ -57,8 +57,9 @@ const LAVA_ZONES = new Set(['inferno', 'demongate']);
   for (const zn of ZONES) {
     const L = ZONE_LOOK[zn.id];
     const bs = HAS_BANKS.has(L.set) ? L.set : 'grassland', top = bs !== L.set ? [L.set, L.ground[0]] : null, lava = LAVA_ZONES.has(zn.id);
-    const base = { set: bs, top, lava, floor: [L.set, L.ground[0]] };
-    const lakes = zn.id === 'swamp' ? 4 : L.set === 'ruins' ? 0 : LAVA_ZONES.has(zn.id) ? 3 : zn.id === 'harbor' ? 4 : 1 + (rng() < 0.6 ? 1 : 0);
+    const chasm = L.set === 'ruins'; // 폐허는 물 대신 밑이 안 보이는 낭떠러지
+    const base = { set: bs, top, lava, chasm, floor: [L.set, L.ground[0]] };
+    const lakes = zn.id === 'swamp' ? 4 : L.set === 'ruins' ? 2 : LAVA_ZONES.has(zn.id) ? 3 : zn.id === 'harbor' ? 4 : 1 + (rng() < 0.6 ? 1 : 0);
     for (let k = 0, tries = 0; k < lakes && tries < 80; tries++) {
       const a = rng() * 6.28, d = rng() * zn.r * 0.75, r = 6.5 + rng() * 4;
       const x = zn.x + Math.cos(a) * d, z = zn.z + Math.sin(a) * d;
@@ -381,7 +382,7 @@ const warmCtx = () => (wc ||= document.createElement('canvas').getContext('2d'))
 // 무늬 판: 칸 중심이 (96 + 96m, 48 + 48n), m + n 짝수 — 그림의 칸 중심은 판의 (288, 144)에 맞춘다
 const patternCache = new Map();
 function pattern(set, id, lava) {
-  const key = set + id + (lava ? 'L' : '');
+  const key = set + id + (lava ? String(lava) : '');
   if (patternCache.has(key)) return patternCache.get(key);
   const def = DATA.tiles[set], ft = def?.tiles[id], fsrc = ft && image(def.imgs[ft[0]]);
   if (!fsrc?.ok) return null;
@@ -391,7 +392,16 @@ function pattern(set, id, lava) {
   const dy = ft[6] < 0 ? -96 : 0;
   for (let m = -1; m <= 6; m++) for (let n = -2; n <= 9; n++) if ((m + n) % 2 === 0) fg.drawImage(fsrc.im, ft[1], ft[2], ft[3], ft[4], 96 + 96 * m - ft[5], 48 + 48 * n - ft[6] + dy, ft[3], ft[4]);
   const im = fg.getImageData(0, 0, 576, 384);
-  if (lava) { // 용암: 물 무늬의 밝기를 붉은 · 주황 · 노랑으로
+  if (lava === 'chasm') { // 낭떠러지: 밑이 안 보이게 검게, 물 무늬를 옅은 안개처럼만 남긴다
+    const d = im.data;
+    for (let q = 0; q < d.length; q += 4) {
+      const px = (q / 4) % 576, py = Math.floor(q / 4 / 576);
+      const fog = 0.5 + 0.5 * Math.sin(px * 0.021 + Math.sin(py * 0.05) * 2) * Math.sin(py * 0.033);
+      const l = ((d[q] + d[q + 1] + d[q + 2]) / 3) / 60;
+      const v = 4 + fog * 14 + l * 6;
+      d[q] = v * 0.8; d[q + 1] = v * 0.8; d[q + 2] = v * 1.05; d[q + 3] = 255;
+    }
+  } else if (lava) { // 용암: 물 무늬의 밝기를 붉은 · 주황 · 노랑으로
     const d = im.data;
     for (let q = 0; q < d.length; q += 4) {
       const l = Math.min(1, ((d[q] + d[q + 1] + d[q + 2]) / 3) / 45), w = 0.5 + 0.5 * Math.sin((q / 4 % 576) * 0.05 + Math.floor(q / 4 / 576) * 0.08);
@@ -409,7 +419,7 @@ function drawBank(ctx, set, id, low, top, sx, sy, s) {
   if (!c) {
     const def = DATA.tiles[set], t = def?.tiles[id], src = t && image(def.imgs[t[0]]);
     if (!src?.ok) return;
-    const lowP = low === 'lava' ? pattern(set, wb(set)[1], true) : low ? pattern(low[0], low[1]) : null;
+    const lowP = low === 'lava' ? pattern(set, wb(set)[1], true) : low === 'chasm' ? pattern(set, wb(set)[1], 'chasm') : low ? pattern(low[0], low[1]) : null;
     const topP = top ? pattern(top[0], top[1]) : null;
     if ((low && !lowP) || (top && !topP)) return;
     c = document.createElement('canvas'); c.width = t[3]; c.height = t[4];
@@ -427,6 +437,15 @@ function drawBank(ctx, set, id, low, top, sx, sy, s) {
       const px = (q / 4) % W, py = Math.floor(q / 4 / W), f = ((py + oy) * 576 + px + ox) * 4;
       if (f < 0 || f >= P.length) continue;
       d[q] = P[f]; d[q + 1] = P[f + 1]; d[q + 2] = P[f + 2]; d[q + 3] = 255;
+    }
+    if (low === 'chasm') { // 절벽 아랫부분은 아래로 갈수록 어둠 속으로 흐리게
+      const H = t[4];
+      for (let q = 0; q < d.length; q += 4) {
+        const py = Math.floor(q / 4 / W), k = (py - t[6] - 10) / (H - t[6] - 10);
+        if (k <= 0 || !d[q + 3]) continue;
+        const f = Math.max(0, 1 - k * 1.6);
+        d[q] *= f; d[q + 1] *= f; d[q + 2] *= f * 1.05;
+      }
     }
     g.putImageData(im, 0, 0);
     c.t = t; bankCache.set(key, c);
@@ -459,7 +478,7 @@ function render(stage, dt) {
     const [set, id, wet, lake] = tileAt(i, j);
     if (set === 'void') continue;
     const p = stage.toScreen(x, z);
-    if (lake && (lake.lava || lake.top)) drawBank(ctx, set, id, lake.lava ? 'lava' : null, lake.top, p.x, p.y, s);
+    if (lake && (lake.lava || lake.top)) drawBank(ctx, set, id, lake.lava ? 'lava' : lake.chasm ? 'chasm' : null, lake.top, p.x, p.y, s);
     else if (wet || (set !== 'cave' && id >= wb(set)[0] && id < wb(set)[0] + 24)) drawWater(ctx, set, id, p.x, p.y, s); else drawTile(stage, ctx, set, id, p.x, p.y, s);
     if (false) {
       const w = 97 * s, h = 48.5 * s, k = 0.5 + 0.5 * Math.sin(stage.time * 1.6 + x * 0.7 + z * 0.9);
