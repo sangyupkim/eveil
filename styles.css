@@ -430,3 +430,7 @@ html.force-land #rotate { display: none !important; }
 .keygrid .btn { min-width: 6em; }
 #btnAttack.interact { background: radial-gradient(circle at 40% 35%, #3d6a9a, #142338 80%); border-color: #8fc8ff; }
 #btnAttack.interact span { font-size: 1.05em; color: #e6f3ff; }
+
+#movedBox { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; background: rgba(8, 6, 12, 0.88); color: #e8dcc0; text-align: center; }
+#movedBox > div { max-width: 26em; padding: 1.4em 1.8em; border: 1px solid #c9a050; background: #15111c; }
+#movedBox b { font-size: 1.2em; color: #ffd84a; }

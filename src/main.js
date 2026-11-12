@@ -130,7 +130,16 @@ async function boot() {
   };
   drawAccount();
   if (cloud.id) pull().then((got) => { if (got) drawAccount('서버 저장을 불러왔습니다'); });
-  const start = async (st) => {
+  const start = async (st, fresh = false) => {
+    // 계정이면 이 기기를 '지금 하는 기기'로 정하고, 그 순간 서버의 최신 저장으로 이어 한다
+    // (다른 기기에서 방금까지 하던 진행). 새 캐릭터는 서버 저장을 덮어쓴다
+    if (cloud.id) {
+      $('#btnContinue').disabled = true;
+      const c = await cloud.claim();
+      $('#btnContinue').disabled = false;
+      const remote = c.ok && !fresh ? fixSave(c.data) : null;
+      if (remote && (remote.savedAt || 0) > (st.savedAt || 0)) { st = remote; try { localStorage.setItem(SAVE_KEY, JSON.stringify(st)); } catch { /* 무시 */ } }
+    }
     await waitImage(portrait(st.look).replace('assets/flare/', ''));
     titleOn = false;
     $('#title').hidden = true;
@@ -141,7 +150,7 @@ async function boot() {
   };
   $('#btnNew').onclick = () => {
     if (saved && !confirm('저장된 캐릭터가 있습니다. 새로 시작하면 지워집니다. 계속할까요?')) return;
-    start(newPlayer($('#nameInput').value.trim() || '방랑자', { ...look }, null));
+    start(newPlayer($('#nameInput').value.trim() || '방랑자', { ...look }, null), true);
   };
   $('#btnContinue').onclick = () => start(saved);
 }
@@ -202,6 +211,17 @@ function startGame(stage, st) {
     requestAnimationFrame(loop);
   };
   loop();
+  // 다른 기기에서 같은 계정으로 들어오면 여기는 멈춘다 (저장도 더 하지 않는다 — 두 기기가 서로 덮어쓰지 않게)
+  cloud.onMoved = () => {
+    window.__noSave = true; window.__stop = true;
+    // 이 기기의 저장은 낡은 것으로 표시: 다음에 켜면 서버(새 기기) 저장을 받는다
+    try { const L = JSON.parse(localStorage.getItem(SAVE_KEY)); if (L) { L.savedAt = 0; localStorage.setItem(SAVE_KEY, JSON.stringify(L)); } } catch { /* 무시 */ }
+    const el = document.createElement('div');
+    el.id = 'movedBox';
+    el.innerHTML = '<div><b>다른 기기에서 접속했습니다</b><p>이 기기의 게임은 멈췄습니다. 진행은 새로 접속한 기기에서 이어집니다.</p><button class="plate gold">처음 화면으로</button></div>';
+    el.querySelector('button').onclick = () => location.reload();
+    document.body.appendChild(el);
+  };
   window.addEventListener('beforeunload', () => save(true));
   document.addEventListener('visibilitychange', () => { if (document.hidden) save(true); });
   window.__game = { world, stage, st, save, tut, windows };

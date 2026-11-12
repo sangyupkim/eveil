@@ -3,7 +3,7 @@
 // 영겁의 틈새 테스트 서버(dev 브랜치). 같은 D1을 쓴다. 영겁의 틈새가 출시(main)되면 본 주소로 바꿔도 된다
 const API = 'https://dev-eonrift.weak0416.workers.dev/api';
 const KEY = 'ashen-account';
-const GAP = 45; // 서버 저장 사이 최소 간격(초)
+const GAP = 20; // 서버 저장 사이 최소 간격(초)
 
 const ERR = {
   bad_id: '아이디는 영문 소문자 · 숫자 · _ 4~20자',
@@ -14,6 +14,7 @@ const ERR = {
   auth: '다시 로그인해 주세요',
   offline: '서버에 닿지 않습니다',
   no_server: '서버 저장이 아직 열리지 않았습니다',
+  moved: '다른 기기에서 접속했습니다',
 };
 export const cloudError = (code) => ERR[code] || '실패했습니다';
 
@@ -88,9 +89,37 @@ export const cloud = {
     try { return JSON.parse(r.data); } catch { return null; }
   },
 
+  // 게임을 시작할 때: 이 기기를 '지금 하는 기기'로 정하고 서버의 최신 저장을 받는다.
+  // 그 뒤 다른 기기가 접속하면 이 기기의 저장은 서버가 거절하고(moved) onMoved가 불린다
+  moved: false,
+  onMoved: null,
+  async claim() {
+    if (!account || !(await this.available())) return { ok: false };
+    const r = await post({ type: 'ash_claim', token: account.token });
+    if (r.error === 'auth') { this.logout(); return { ok: false }; }
+    if (!r.ok) return { ok: false, error: r.error };
+    this.moved = false;
+    clearInterval(this.pingT);
+    // 다른 기기가 가져갔는지 15초마다 확인 (저장이 없을 때도 빨리 알아채게)
+    this.pingT = setInterval(async () => {
+      if (!account || this.moved || document.hidden) return;
+      const p = await post({ type: 'ash_ping', token: account.token });
+      if (p.ok && p.moved) this.kick();
+    }, 15000);
+    let data = null;
+    try { data = r.data ? JSON.parse(r.data) : null; } catch { /* 깨진 저장 */ }
+    return { ok: true, data };
+  },
+  kick() {
+    if (this.moved) return;
+    this.moved = true;
+    clearInterval(this.pingT);
+    this.onMoved?.();
+  },
+
   // 저장을 서버에도 올린다. 너무 잦으면 건너뛰고, force면 바로 (창을 닫을 때)
   async save(st, force = false) {
-    if (!account || st.savedAt === lastAt) return;
+    if (!account || this.moved || st.savedAt === lastAt) return;
     const now = Date.now();
     if (!force && (pending || now - lastPut < GAP * 1000)) return;
     if (!(await this.available())) return;
@@ -101,5 +130,6 @@ export const cloud = {
     this.state = r.ok ? 'saved' : 'error';
     if (r.ok) this.savedAt = now;
     if (r.error === 'auth') this.logout();
+    if (r.error === 'moved') this.kick();
   },
 };
