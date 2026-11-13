@@ -28,7 +28,7 @@ import { resolveCollision, zoneAt, clearLine, findPath, blockedAt, LAKES, MESAS,
 import { reveal, saveFog, loadFog } from '../ui/mapimg.js';
 import { DATA, image, animImage, drawRect, frameIndex } from '../engine2d/sprites.js';
 import { MONSTER_LOOK, ITEM_LOOK, LOOT_LOOK } from '../data/flareWorld.js';
-import { PLOTS, BUILDINGS } from '../data/buildings.js';
+import { PLOTS, BUILDINGS, VAULT_SPOT } from '../data/buildings.js';
 import { townOf, tick as townTick, researchK, researchTick, researchLv } from '../game/town.js';
 import { RESEARCH, LEVEL_DECOR } from '../data/buildings.js';
 import { audio, familyOf } from '../engine/audio.js';
@@ -179,6 +179,8 @@ export class World {
       guild: (b) => { tent('A', -2.0, -0.8, 0.95, 'brightness(0.92) sepia(0.15)'); tent('B', 2.6, 0.4, 0.85, 'saturate(1.2) hue-rotate(-10deg)'); if (b.lv >= 3) tent('A', 0.2, -3.4, 0.8, 'brightness(0.85)'); return [['dungeon', 167, 4.2, 3.4], ['dungeon', 167, -4.2, 3.4], ['grassland', 96, 0.4, 4.0], ['grassland', 98, -3.0, 4.2]]; },
       house: (b) => { cabin('B', b.lv >= 3 ? -2.2 : 0, -0.6, 'saturate(1.15) brightness(1.08)'); if (b.lv >= 3) cabin('A', 3.4, -3.6, 'saturate(1.1) brightness(1.04)'); return [['grassland', 98, 4.4, 2.8], ['grassland', 122, -4.4, 2.8], ['grassland', 121, -3.4, 3.8]]; },
     };
+    // 공용 창고 상자
+    tile('grassland', 76, VAULT_SPOT.x, VAULT_SPOT.z); col(VAULT_SPOT.x, VAULT_SPOT.z, 0.7);
     for (const pl of PLOTS) {
       const b = t.plots[pl.id];
       if (!b) { tile('grassland', 138, pl.x, pl.z); continue; }

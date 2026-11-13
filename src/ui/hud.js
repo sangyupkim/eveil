@@ -6,7 +6,7 @@ import { ZONES, TOWN, WORLD_SIZE } from '../data/world.js';
 import { entranceOf, layout as dungeonLayout, cellPos, N, T } from '../data/dungeons.js';
 import { terrain, fogCan, MAP_R, FOG_C, seen as seenAt } from './mapimg.js';
 import { CAMPS } from '../engine2d/stage.js';
-import { PLOTS, BUILDINGS } from '../data/buildings.js';
+import { PLOTS, BUILDINGS, VAULT_SPOT } from '../data/buildings.js';
 import { expNeeded, powerLevel } from '../game/growth.js';
 import { countOf } from '../game/inventory.js';
 import { skillValues, modsOf } from '../game/skills.js';
@@ -288,6 +288,7 @@ export class HUD {
         return el;
       });
     }
+    if (w.inTown) place('vaultLbl', { x: VAULT_SPOT.x, y: 0, z: VAULT_SPOT.z }, 1.6, () => { const el = document.createElement('div'); el.className = 'lbl npc'; el.textContent = '공용 창고'; return el; });
     if (w.inTown) for (const pl of PLOTS) {
       const b = w.st.town?.plots?.[pl.id], nm = b ? `${BUILDINGS[b.type].name} ${b.bld ? '공사 중' : `${b.lv}단계`}` : '빈 집터';
       place('plot' + pl.id + nm, { x: pl.x, y: 0, z: pl.z }, b && b.type !== 'herb' ? 4.2 : 1.6, () => { const el = document.createElement('div'); el.className = 'lbl npc'; el.textContent = nm; return el; });

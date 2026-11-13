@@ -1,6 +1,6 @@
 // 입력: PC(마우스 · 키보드) + 모바일(조이스틱 · 터치 · 버튼)
 import { isTouch, CAMPS } from './engine2d/stage.js';
-import { PLOTS, BUILDINGS } from './data/buildings.js';
+import { PLOTS, BUILDINGS, VAULT_SPOT } from './data/buildings.js';
 import { actionOf, keyMap, bindKey } from './data/keys.js';
 
 const $ = (s) => document.querySelector(s);
@@ -33,7 +33,7 @@ export function setupInput(world, stage, windows) {
   const near = (n, r = 4) => n && Math.hypot(n.x - world.player.pos.x, n.z - world.player.pos.z) < r;
   // NPC와 대화: 상인 = 상점 · 창고, 경비대장 = 퀘스트 · 건물 짓기, 건물 앞 = 그 건물만
   const talk = (npc) => {
-    if (npc === world.npc) windows.talkTo(['shop', 'vault'], 'shop');
+    if (npc === world.npc) windows.talkTo(['shop'], 'shop');
     else if (npc === world.guard) windows.talkTo(['town'], 'quest', 'build');
     else if (npc === world.sage) windows.show('dex');
     else windows.talkTo(['shop'], 'shop');
@@ -46,8 +46,9 @@ export function setupInput(world, stage, windows) {
     // 포탈 (마을 차원문 · 발견한 야영지): 공격 버튼으로 탄다
     const pt = [{ x: 0, z: -2, zone: 'town' }, ...CAMPS.filter((c) => world.st.camps?.[c.zone])].find((q) => near(q, 3));
     if (pt) return { name: '포탈', go: () => { windows.portalAt = pt.zone; windows.show('map'); } };
+    if (world.inTown && near(VAULT_SPOT, 2.6)) return { name: '창고', go: () => windows.talkTo(['vault'], 'vault') };
     if (world.inTown) {
-      const pl = PLOTS.filter((q) => near(q, 3.6)).sort((a, b) => Math.hypot(a.x - world.player.pos.x, a.z - world.player.pos.z) - Math.hypot(b.x - world.player.pos.x, b.z - world.player.pos.z))[0];
+      const pl = PLOTS.filter((q) => near(q, 7.5)).sort((a, b) => Math.hypot(a.x - world.player.pos.x, a.z - world.player.pos.z) - Math.hypot(b.x - world.player.pos.x, b.z - world.player.pos.z))[0];
       const b = pl && world.st.town?.plots?.[pl.id];
       if (b) return { name: BUILDINGS[b.type]?.name || '건물', go: () => useBuilding(pl.id) };
     }
