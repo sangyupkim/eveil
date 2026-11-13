@@ -109,7 +109,7 @@ export class Windows {
   talkTo(kinds, first, mode = null) { this.talk = kinds; this.townMode = mode; this.show(first); }
 
   close() {
-    this.talk = null; this.townMode = null;
+    this.talk = null; this.townMode = null; this.vsel = null;
     this.waitKey = null;
     this.portalAt = null; this.mapZoom = null; this.mapCenter = true;
     this.el.hidden = true;
@@ -299,15 +299,20 @@ export class Windows {
   }
 
   // 창고: 계정 공용 (같은 계정의 캐릭터끼리 나눈다). 누르면 바로 옮긴다
+  // 창고 | 고른 아이템 정보 + 넣기/빼기 | 가방. 누르면 고르고, 가운데 버튼으로 옮긴다
   vault() {
-    const st = this.w.st, V = vault(), n = vaultSize(st);
+    const st = this.w.st, V = vault(), n = vaultSize(st), sel = this.vsel;
+    const cur = sel?.from === 'v' ? V.items[sel.i] : sel?.from === 'b' ? st.inv.find((x) => x.uid === sel.uid) : null;
+    if (sel && !cur) this.vsel = null;
+    const on = (f, k) => (sel && sel.from === f && (f === 'v' ? sel.i === k : sel.uid === k) ? ' sel' : '');
     let left = `<h3>창고 <span class="cnt">${V.items.length}/${n}</span></h3><div class="grid">`;
-    for (let i = 0; i < n; i++) { const it = V.items[i]; left += it ? `<div class="cell${rar(it)}" data-vtake="${i}" title="${esc(itemName(it))}">${ico(it)}${it.qty > 1 ? `<span class="q">${it.qty}</span>` : ''}</div>` : '<div class="cell"></div>'; }
+    for (let i = 0; i < n; i++) { const it = V.items[i]; left += it ? `<div class="cell${rar(it)}${on('v', i)}" data-vsel="v|${i}">${ico(it)}${it.qty > 1 ? `<span class="q">${it.qty}</span>` : ''}</div>` : '<div class="cell"></div>'; }
     left += '</div>';
     let right = `<h3>가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span></h3><div class="grid">`;
-    for (let i = 0; i < bagSize(st); i++) { const it = st.inv[i]; right += it ? `<div class="cell${rar(it)}" data-vput="${it.uid}" title="${esc(itemName(it))}">${ico(it)}${it.qty > 1 ? `<span class="q">${it.qty}</span>` : ''}</div>` : '<div class="cell"></div>'; }
+    for (let i = 0; i < bagSize(st); i++) { const it = st.inv[i]; right += it ? `<div class="cell${rar(it)}${on('b', it.uid)}" data-vsel="b|${it.uid}">${ico(it)}${it.qty > 1 ? `<span class="q">${it.qty}</span>` : ''}</div>` : '<div class="cell"></div>'; }
     right += '</div>';
-    return `<div class="cols"><div class="frame" style="flex:1;overflow:auto">${left}</div><div class="frame" style="flex:1;overflow:auto">${right}</div></div>`;
+    const mid = cur ? `<div class="detail">${this.describe(cur, 'vault')}</div><div class="btns">${sel.from === 'v' ? `<button class="plate gold" data-vtake="${sel.i}">가방으로</button>` : `<button class="plate gold" data-vput="${sel.uid}">창고에 넣기</button>`}</div>` : '<div class="note">고른 아이템이 없습니다</div>';
+    return `<div class="cols"><div class="frame" style="flex:1;overflow:auto">${left}</div><div class="frame" style="flex:0 0 28%">${mid}</div><div class="frame" style="flex:1;overflow:auto">${right}</div></div>`;
   }
 
   bagHead() {
@@ -479,7 +484,7 @@ export class Windows {
       ['건물 쓰기', 'building', ['지은 건물', '건물 앞에서 버튼이 건물 이름으로 바뀝니다. 누르면 그 건물 창이 열립니다']],
       ['포탈', 'portal', ['마을 · 발견한 야영지의 포탈', '포탈 위에서 버튼을 눌러 갈 곳을 고릅니다']],
       ['공용 창고', 'vaultspot', ['상인 옆 공용 창고 상자', '상자 앞에서 버튼을 누르면 창고가 열립니다']],
-      ['창고', 'vault', ['창고: 같은 계정의 캐릭터끼리 함께 씁니다. 100칸, 연구 「큰 창고」로 늘어납니다', '가방: 누르면 창고로 옮깁니다']],
+      ['창고', 'vault', ['창고: 같은 계정의 캐릭터끼리 함께 씁니다. 100칸, 연구 「큰 창고」로 늘어납니다', '가방'], ['아이템을 누르면 가운데에 정보가 보이고, 버튼으로 옮깁니다']],
       ['가방 · 장비', 'inv', ['착용 장비', '고른 아이템 정보 · 능력치 변화', '모은 재료: 마을에 쌓여 건물 단계 올리기에 쓰입니다', '금화 · 강화석', '창 탭']],
       ['스킬', 'skills', ['배운 스킬. 쓸수록 랭크가 오릅니다. 랭크 제한은 없고 50부터 느려집니다', '위력 · 다음 랭크 · MP · 재사용 · 범위', '변형: 랭크 25 · 50에서 하나씩 고릅니다', '퀵슬롯: 칸을 누르면 넣습니다. 이미 있는 스킬은 자리가 바뀝니다']],
       ['능력 · 각성', 'char', ['능력치: 행동에 따라 오릅니다. 칼을 휘두르면 힘, 주문을 쓰면 지능, 맞으면 체력', '세부 능력치. 각성마다 성향에 맞는 칭호와 특성을 고릅니다']],
@@ -855,8 +860,9 @@ export class Windows {
       if (r.ok) { audio.play('rankup'); w.ui.toast(`${affixText(r.old)} → ${affixText(r.now)}`, '#c58cff'); this.shardSel = null; w.refreshGear(); }
       townDone(r);
     });
-    on('[data-vput]', (el) => { const r = vaultPut(st, Number(el.dataset.vput)); if (!r.ok && r.why) { w.ui.toast(r.why); audio.play('error'); } else audio.play('click'); w.ui.dirty(); this.render(); });
-    on('[data-vtake]', (el) => { const r = vaultTake(st, Number(el.dataset.vtake)); if (!r.ok && r.why) { w.ui.toast(r.why); audio.play('error'); } else audio.play('click'); w.ui.dirty(); this.render(); });
+    on('[data-vsel]', (el) => { const [f, k] = el.dataset.vsel.split('|'); this.vsel = f === 'v' ? { from: 'v', i: Number(k) } : { from: 'b', uid: Number(k) }; audio.play('click'); this.render(); });
+    on('[data-vput]', (el) => { this.vsel = null; const r = vaultPut(st, Number(el.dataset.vput)); if (!r.ok && r.why) { w.ui.toast(r.why); audio.play('error'); } else audio.play('click'); w.ui.dirty(); this.render(); });
+    on('[data-vtake]', (el) => { this.vsel = null; const r = vaultTake(st, Number(el.dataset.vtake)); if (!r.ok && r.why) { w.ui.toast(r.why); audio.play('error'); } else audio.play('click'); w.ui.dirty(); this.render(); });
     on('[data-notes]', () => showNotes());
     on('[data-restore]', async () => {
       const b = await cloud.restore(st.cid);
