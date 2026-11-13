@@ -42,6 +42,7 @@ export function setupInput(world, stage, windows) {
   const useBuilding = (id) => { windows.townSel = id; windows.talkTo(['town'], 'town', 'one'); };
   const interactTarget = () => {
     if (world.dead) return null;
+    if (world.dungeon?.cleared && !world.monsters.some((m) => !m.dead && m.dungeon && Math.hypot(m.pos.x - world.player.pos.x, m.pos.z - world.player.pos.z) < 6)) return { name: '나가기', exit: true, go: () => world.askLeave() };
     for (const [npc, nm] of [[world.npc, '상인'], [world.guard, '경비대장'], [world.gemNpc, '보석상'], [world.sage, '현자'], ...(world.campNpcs || []).map((a) => [a, '야영지 상인']), ...(world.eventNpc ? [[world.eventNpc, '떠돌이 상인']] : [])])
       if (npc && near(npc.pos)) return { name: nm, go: () => talk(npc) };
     // 포탈 (마을 차원문 · 발견한 야영지): 공격 버튼으로 탄다
@@ -66,7 +67,7 @@ export function setupInput(world, stage, windows) {
     atkLabel.textContent = t ? t.name : '공격';
     // 대상마다 그림: 사람 = 두루마리(대화), 건물 = 망치, 창고 = 상자, 포탈 = 귀환 그림
     if (!atkImg.dataset.sword) atkImg.dataset.sword = atkImg.src;
-    atkImg.src = !t ? atkImg.dataset.sword : iconCut(t.name === '포탈' ? 19 : t.name === '창고' ? 30 : t.bld ? 103 : 224);
+    atkImg.src = !t ? atkImg.dataset.sword : iconCut(t.exit || t.name === '포탈' ? 19 : t.name === '창고' ? 30 : t.bld ? 103 : 224);
     atkImg.style.visibility = '';
   };
 

@@ -552,6 +552,12 @@ export class World {
     this.dungeon = null;
     if (!silent) { const e = entranceOf(zn); this.player.pos.set(e.x + 2, 0, e.z + 2); this.gateCd = 4; this.fx.arrive(e.x + 2, e.z + 2); }
   }
+  // 던전 나가기: 묻고 나간다
+  askLeave() {
+    if (!this.dungeon) return;
+    const left = this.ground.filter((g) => !g.deathDrop && dist2(g, this.player.pos) < 400).length;
+    this.ui.ask('던전 나가기', left ? `주변에 줍지 않은 물건이 ${left}개 있습니다. 나갈까요?` : '밖으로 나갈까요?', '나가기', (yes) => { if (yes) this.leaveDungeon(); });
+  }
   dungeonCleared(m) {
     const st = this.st, dg = this.dungeon, zn = dg.zone;
     st.dungeons[zn.id] = Math.max(st.dungeons[zn.id] || 0, dg.stage);
@@ -565,9 +571,9 @@ export class World {
     const tier = dg.stage >= 7 ? 5 : dg.stage >= 4 ? 4 : 3, pool = Object.keys(SKILLS).filter((id) => SKILLS[id].tier === tier);
     this.dropGround({ kind: 'item', item: makeBook(pool[Math.floor(Math.random() * pool.length)], st) }, m.pos.x - 1.2, m.pos.z + 1);
     this.dropGround({ kind: 'gold', amount: Math.round(lv * 60 * (1 + dg.stage * 0.2)) }, m.pos.x, m.pos.z - 1);
-    this.ui.toast(`던전 ${dg.stage}단계 돌파! 15초 뒤 밖으로 나갑니다`, '#ffd84a');
+    this.ui.toast(`던전 ${dg.stage}단계 돌파!`, '#ffd84a');
     sfx('awaken');
-    this.later(15, () => { if (this.dungeon === dg) this.leaveDungeon(); });
+    dg.cleared = true; // 공격 버튼이 「나가기」로 바뀐다 (input.js). 전리품을 다 줍고 나간다
   }
 
   // 각성 20 · 40 · 60: 키운 스탯으로 칭호를 받고 특성 하나를 고른다
