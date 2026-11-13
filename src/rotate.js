@@ -2,8 +2,14 @@
 // 돌린 동안 window.innerWidth/innerHeight는 바꿔 돌려주고, 터치 좌표(clientX/Y)는 게임 안 좌표로 바꾼다.
 const realW = () => document.documentElement.clientWidth || screen.width, realH = () => document.documentElement.clientHeight || screen.height;
 let rotated = false;
-const nativeW = () => window.visualViewport ? window.visualViewport.width : realW();
-const nativeH = () => window.visualViewport ? window.visualViewport.height : realH();
+// 화면 크기는 바뀔 때만 다시 잰다 (매 프레임 읽으면 레이아웃을 다시 계산해 느렸다)
+let cw = 0, ch = 0;
+const measure = () => { cw = window.visualViewport ? window.visualViewport.width : realW(); ch = window.visualViewport ? window.visualViewport.height : realH(); };
+const nativeW = () => { if (!cw) measure(); return cw; };
+const nativeH = () => { if (!ch) measure(); return ch; };
+window.addEventListener('resize', () => { cw = 0; ch = 0; });
+window.visualViewport?.addEventListener('resize', () => { cw = 0; ch = 0; });
+window.addEventListener('orientationchange', () => { cw = 0; ch = 0; });
 export const forcedLandscape = () => rotated;
 // 세로가 가로보다 이만큼 길 때만 돌린다. 폴드를 펼친 화면처럼 정사각형에 가까우면 돌리지 않고 그대로 쓴다
 export const TALL = 1.3;

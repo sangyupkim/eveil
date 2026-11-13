@@ -121,7 +121,7 @@ export class World {
       const def = DATA.tiles[set], tt = def?.tiles[id];
       if (!tt) return;
       image(def.imgs[tt[0]]);
-      const d = { z, draw: (ctx, st) => { const src = image(def.imgs[tt[0]]); if (!src.ok) return; const p = st.toScreen(x, z); drawRect(ctx, src.im, tt.slice(1), p.x, p.y, st.scale()); } };
+      const d = { z, draw: (ctx, st) => { const src = image(def.imgs[tt[0]]); if (!src.ok || !st.onScreen(x, z, 6)) return; const p = st.toScreen(x, z); drawRect(ctx, src.im, tt.slice(1), p.x, p.y, st.scale()); } };
       this.stage.add(d); this.townDraw.push(d);
     };
     // 큰 그림 하나를 집터 가운데에 (기준점 보정 ax · az, 크기 k, 색 필터)
@@ -1947,6 +1947,9 @@ export class World {
     if (this.townT <= 0) {
       this.townT = 5;
       const bl = Object.values(townOf(st).plots).filter((b) => b.bld).length;
+      const br = (townOf(st).brew || []).filter((b) => b.until <= Date.now()).length;
+      if (br > (this.brewReady || 0)) { this.ui.toast('제작소: 다 만든 물건이 있습니다', '#7fe07a'); sfx('coin'); }
+      this.brewReady = br;
       townTick(st);
       if (Object.values(townOf(st).plots).filter((b) => b.bld).length < bl) { this.refreshTown(); this.ui.toast('공사가 끝났습니다', '#ffd84a'); sfx('rankup'); }
       this.syncWorkers();

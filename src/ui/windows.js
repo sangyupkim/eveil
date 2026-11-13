@@ -39,7 +39,7 @@ import { HERBS, HERB_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
 import { buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
 import { RESEARCH_MAX, SHELTER } from '../data/buildings.js';
 import { herbIcon, homeIcon } from './icons.js';
-import { vault, vaultSize, vaultPut, vaultTake } from '../game/vault.js';
+import { vault, vaultSize, vaultPut, vaultTake, vaultAdd } from '../game/vault.js';
 import { GAME_VERSION, PATCH_NOTES } from '../data/patchnotes.js';
 import { KEY_ACTIONS, keyMap, keyName } from '../data/keys.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
@@ -597,7 +597,7 @@ export class Windows {
       if (b.type === 'workshop') {
         right += `<div class="herbBar">${HERB_IDS.map((h) => `<span class="hb" title="${HERBS[h].name}"><img src="${herbIcon(h)}" alt="" />${t.herbs[h] || 0}</span>`).join('')}</div>`;
         const q = t.brew || [], ready = q.filter((x) => x.until <= Date.now()).length;
-        if (q.length) right += `<h3>제작 중 <span class="cnt">${q.length} / ${BREW_QUEUE}</span>${ready ? '<button class="btn gold" data-brewget="1" style="margin-left:auto">받기</button>' : ''}</h3>` + q.map((x) => `<div class="row"><div class="cell shopIco">${ico({ base: x.id })}</div><div class="grow"><b>${BASES[x.id].name} ×${x.n}</b> <small class="note">${x.until <= Date.now() ? '완성' : `${Math.ceil((x.until - Date.now()) / 1000)}초`}</small>${gauge(x.from, x.until, 60000, '#7fe07a')}</div></div>`).join('');
+        if (q.length) right += `<h3>제작 중 <span class="cnt">${q.length} / ${BREW_QUEUE}</span>${ready ? '<button class="btn gold" data-brewget="bag" style="margin-left:auto">가방으로</button><button class="btn gold" data-brewget="vault">창고로</button>' : ''}</h3>` + q.map((x) => `<div class="row"><div class="cell shopIco">${ico({ base: x.id })}</div><div class="grow"><b>${BASES[x.id].name} ×${x.n}</b> <small class="note">${x.until <= Date.now() ? '완성' : `${Math.ceil((x.until - Date.now()) / 1000)}초`}</small>${gauge(x.from, x.until, 60000, '#7fe07a')}</div></div>`).join('');
         for (const rc of RECIPES) {
           const open = rc.lv <= b.lv, can = (k) => open && Object.entries(rc.herbs).every(([h, q]) => (t.herbs[h] || 0) >= q * k) && st.gold >= brewGold(st, rc) * k;
           const it = { base: rc.id }, E = ELIXIRS[rc.id], fx = E ? E.text : BASES[rc.id].restore.hp ? `HP ${BASES[rc.id].restore.hp}` : `MP ${BASES[rc.id].restore.mp}`;
@@ -758,8 +758,9 @@ export class Windows {
       const i = Number(el.dataset.qs);
       const id = this.skillSel;
       const cur = st.quick.indexOf(id);
-      if (cur >= 0) st.quick[cur] = null;
-      if (i >= 0) st.quick[i] = id;
+      if (i < 0) { if (cur >= 0) st.quick[cur] = null; } // 빼기: 그 칸만 비운다 (뒤 칸이 밀리지 않는다)
+      else if (cur >= 0) { const o = st.quick[i]; st.quick[i] = id; st.quick[cur] = o ?? null; } // 이미 퀵슬롯에 있으면 자리 바꾸기
+      else st.quick[i] = id;
       audio.play('click');
       w.ui.dirty();
       this.render();
@@ -881,7 +882,7 @@ export class Windows {
       townDone(r);
     });
     on('[data-brew]', (el) => { const [id, k] = el.dataset.brew.split('|'), r = brew(st, id, Number(k)); if (r.ok) audio.play('click'); townDone(r); });
-    on('[data-brewget]', () => { const r = brewCollect(st); if (r.n) { audio.play('potion'); w.ui.toast(`물약 ${r.n}개를 받았습니다`, '#7fe07a'); } townDone(r); });
+    on('[data-brewget]', (el) => { const v = el.dataset.brewget === 'vault', r = brewCollect(st, Date.now(), v ? vaultAdd : null); if (r.n) { audio.play('potion'); w.ui.toast(`${r.n}개를 ${v ? '창고' : '가방'}에 넣었습니다`, '#7fe07a'); } townDone(r); });
     on('[data-pm]', (el) => { const id = el.dataset.pm, P = (this.party ||= { ids: [], pack: {} }); const i = P.ids.indexOf(id); if (i >= 0) P.ids.splice(i, 1); else if (P.ids.length < partyMax(st)) P.ids.push(id); audio.play('click'); this.render(); });
     on('[data-pzone]', (el) => { (this.party ||= { ids: [], pack: {} }).zone = el.dataset.pzone; audio.play('click'); this.render(); });
     on('[data-pexp]', (el) => { (this.party ||= { ids: [], pack: {} }).exp = el.dataset.pexp; audio.play('click'); this.render(); });

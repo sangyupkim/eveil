@@ -392,11 +392,12 @@ export function brew(st, id, times = 1, now = Date.now()) {
   return { ok: true, n: r.n * times, queued: true };
 }
 // 다 된 것을 가방으로
-export function brewCollect(st, now = Date.now()) {
+// to = 'bag' | 'vault' (vault는 창고에 바로 넣는 함수)
+export function brewCollect(st, now = Date.now(), put = null) {
   const t = townOf(st); let n = 0;
   while (t.brew?.length && t.brew[0].until <= now) {
-    const b = t.brew[0];
-    if (!addItem(st, makeItem(b.id, { qty: b.n }, st))) return { ok: n > 0, n, why: '가방이 가득 찼습니다' };
+    const b = t.brew[0], it = makeItem(b.id, { qty: b.n }, st);
+    if (!(put ? put(st, it) : addItem(st, it))) return { ok: n > 0, n, why: put ? '창고가 가득 찼습니다' : '가방이 가득 찼습니다' };
     n += b.n; t.brew.shift();
   }
   return { ok: n > 0, n };

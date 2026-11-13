@@ -22,7 +22,7 @@ export function applyUi(st) {
     el.style.transformOrigin = origin;
     el.style.translate = `${p.x}px ${p.y}px`;
     el.style.scale = String(u[size]);
-    el.style.opacity = key === 'tl' || key === 'tr' ? '' : String(u.alpha);
+    el.style.opacity = key === 'tl' || key === 'tr' || key === 'joy' ? '' : String(u.alpha); // 조이스틱은 만질 때만 보이게 (CSS)
   }
 }
 

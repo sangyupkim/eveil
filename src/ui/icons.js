@@ -65,3 +65,29 @@ export function petIcon(kind) {
   cache.set(key, url);
   return url;
 }
+
+// 검은 뒷배경을 지운 아이콘: 가장자리에서 이어진 아주 어두운 칸만 투명하게 (퀵슬롯 물약처럼 그림만 보여야 할 때)
+export function iconCut(index) {
+  const key = 'cut|' + index;
+  if (cache.has(key)) return cache.get(key);
+  const src = image(SHEET);
+  if (!src.ok) return '';
+  const c = document.createElement('canvas'); c.width = c.height = S;
+  const g = c.getContext('2d');
+  g.drawImage(src.im, (index % 8) * S, Math.floor(index / 8) * S, S, S, 0, 0, S, S);
+  const im = g.getImageData(0, 0, S, S), d = im.data, seen = new Uint8Array(S * S), q = [];
+  const dark = (k) => d[k + 3] < 20 || d[k] + d[k + 1] + d[k + 2] < 48;
+  for (let i = 0; i < S; i++) q.push([i, 0], [i, S - 1], [0, i], [S - 1, i]);
+  while (q.length) {
+    const [x, y] = q.pop();
+    if (x < 0 || y < 0 || x >= S || y >= S || seen[y * S + x]) continue;
+    seen[y * S + x] = 1;
+    const k = (y * S + x) * 4;
+    if (!dark(k)) continue;
+    d[k + 3] = 0;
+    q.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+  }
+  g.putImageData(im, 0, 0);
+  const url = c.toDataURL(); cache.set(key, url); return url;
+}
+export const itemIconCut = (base) => iconCut(ITEM_LOOK[base]?.icon ?? 64);

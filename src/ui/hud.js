@@ -12,7 +12,7 @@ import { expNeeded, powerLevel } from '../game/growth.js';
 import { countOf } from '../game/inventory.js';
 import { skillValues, modsOf } from '../game/skills.js';
 import { ELIXIRS } from '../data/potions.js';
-import { portrait, chestIcon, bookIcon, coinIcon, swordIcon, itemIcon, skillIcon, homeIcon, duelIcon, scrollIcon, townIcon, oreIcon } from './icons.js';
+import { portrait, chestIcon, bookIcon, coinIcon, swordIcon, itemIcon, skillIcon, homeIcon, duelIcon, scrollIcon, townIcon, oreIcon, itemIconCut } from './icons.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 
@@ -34,7 +34,7 @@ export class HUD {
     const face = portrait(world.st.look);
     $('#face').src = face;
     const icons = { chest: chestIcon(), book: bookIcon(), coin: coinIcon(), face, sword: swordIcon(), home: homeIcon(), duel: duelIcon(),
-      hpot: itemIcon({ base: 'hp_potion' }), mpot: itemIcon({ base: 'mp_potion' }), scroll: scrollIcon(), town: townIcon(), boots: itemIcon({ base: 'leather_boots' }) };
+      hpot: itemIconCut('hp_potion'), mpot: itemIconCut('mp_potion'), scroll: scrollIcon(), town: townIcon(), boots: itemIcon({ base: 'leather_boots' }) };
     document.querySelectorAll('img[data-ico]').forEach((im) => { im.src = icons[im.dataset.ico] || ''; });
     $('#menuToggle').onclick = () => $('.menuCol').classList.toggle('closed');
     $('#qToggle').onclick = () => $('#questBox').classList.toggle('min');

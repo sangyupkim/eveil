@@ -67,6 +67,7 @@ export function tintedRect(path, color, rect) {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const g = c.getContext('2d');
   g.drawImage(src.im, x, y, w, h, 0, 0, w, h);
+  if (color == null) { v = [c, [0, 0, w, h, ox, oy]]; if (tintRects.size > 3000) tintRects.clear(); tintRects.set(key, v); return v; }
   g.globalCompositeOperation = 'multiply';
   g.fillStyle = '#' + color.toString(16).padStart(6, '0');
   g.fillRect(0, 0, w, h);

@@ -40,6 +40,14 @@ export function vaultPut(st, uid) {
   save();
   return { ok: true };
 }
+// 새 아이템을 창고에 바로 (제작소 결과물)
+export function vaultAdd(st, it) {
+  const same = stack(it) && V.items.find((x) => x.base === it.base);
+  if (!same && V.items.length >= vaultSize(st)) return false;
+  if (same) same.qty += it.qty; else V.items.push(it);
+  save();
+  return true;
+}
 // 창고 → 가방 (다른 캐릭터가 넣은 것일 수 있으니 번호를 새로 준다)
 export function vaultTake(st, idx) {
   const it = V.items[idx];

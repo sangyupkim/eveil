@@ -1,6 +1,7 @@
 // 입력: PC(마우스 · 키보드) + 모바일(조이스틱 · 터치 · 버튼)
 import { isTouch, CAMPS } from './engine2d/stage.js';
 import { PLOTS, BUILDINGS, VAULT_SPOT } from './data/buildings.js';
+import { iconCut } from './ui/icons.js';
 import { actionOf, keyMap, bindKey } from './data/keys.js';
 
 const $ = (s) => document.querySelector(s);
@@ -50,7 +51,7 @@ export function setupInput(world, stage, windows) {
     if (world.inTown) {
       const pl = PLOTS.filter((q) => near(q, 7.5)).sort((a, b) => Math.hypot(a.x - world.player.pos.x, a.z - world.player.pos.z) - Math.hypot(b.x - world.player.pos.x, b.z - world.player.pos.z))[0];
       const b = pl && world.st.town?.plots?.[pl.id];
-      if (b) return { name: BUILDINGS[b.type]?.name || '건물', go: () => useBuilding(pl.id) };
+      if (b) return { name: BUILDINGS[b.type]?.name || '건물', bld: true, go: () => useBuilding(pl.id) };
     }
     return null;
   };
@@ -63,7 +64,10 @@ export function setupInput(world, stage, windows) {
     lastInter = k;
     atkBtn.classList.toggle('interact', !!t);
     atkLabel.textContent = t ? t.name : '공격';
-    atkImg.style.visibility = t ? 'hidden' : '';
+    // 대상마다 그림: 사람 = 두루마리(대화), 건물 = 망치, 창고 = 상자, 포탈 = 귀환 그림
+    if (!atkImg.dataset.sword) atkImg.dataset.sword = atkImg.src;
+    atkImg.src = !t ? atkImg.dataset.sword : iconCut(t.name === '포탈' ? 19 : t.name === '창고' ? 30 : t.bld ? 103 : 224);
+    atkImg.style.visibility = '';
   };
 
   // ── 화면 클릭/탭: 몬스터면 공격, 땅이면 이동 ──

@@ -19,6 +19,14 @@ export function makeHero(look = {}) {
 
 let nextId = 1;
 
+let SHADOW = null;
+const shadowImg = () => {
+  if (SHADOW) return SHADOW;
+  SHADOW = document.createElement('canvas'); SHADOW.width = 104; SHADOW.height = 44;
+  const g = SHADOW.getContext('2d'); g.fillStyle = '#000'; g.beginPath(); g.ellipse(52, 22, 52, 22, 0, 0, Math.PI * 2); g.fill();
+  const c = SHADOW; createImageBitmap?.(c).then((b) => { SHADOW = b; }); // 비트맵이 캔버스보다 훨씬 빨리 그려진다
+  return c;
+};
 export class Actor {
   // model: makeHero() · { enemy: 이름 } · { npc: 이름 }
   constructor(stage, model, { tint = null, scale = 1, size = 1 } = {}) {
@@ -114,12 +122,12 @@ export class Actor {
     const s = st.scale() * this.drawScale;
     const fly = (this.model.position.y || 0) * PY * st.scale();
     const p = st.toScreen(this.pos.x, this.pos.z);
+    if (p.x < -300 || p.x > st.W + 300 || p.y < -80 || p.y > st.H + 420) return; // 화면 밖
     const alpha = this.alpha * Math.max(0, Math.min(1, 1 + this.root.position.y));
     if (alpha <= 0.01) return;
-    // 그림자 · 정예 테두리
+    // 그림자: 미리 만든 타원 그림 (경로 채우기는 몬스터가 많으면 무거웠다)
     ctx.globalAlpha = 0.35 * alpha;
-    ctx.fillStyle = '#000';
-    ctx.beginPath(); ctx.ellipse(p.x, p.y, 26 * s, 11 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.drawImage(shadowImg(), p.x - 26 * s, p.y - 11 * s, 52 * s, 22 * s);
 
     ctx.globalAlpha = alpha;
     this.lastDraw = null;
@@ -145,8 +153,9 @@ export class Actor {
       const anims = this.def.anims;
       const a = anims[fl] || (fl === 'swing' && anims.melee) || anims.stance || Object.values(anims)[0];
       const path = animImage(this.def, anims[fl] ? fl : 'stance');
-      let src = this.tint != null ? null : image(path).ok && image(path).im, rect = a && a.f[this.dir]?.[frameIndex(a, this.t, this.once)];
-      if (this.tint != null) { const tr = tintedRect(path, this.tint, rect); if (tr) [src, rect] = tr; }
+      // 큰 시트에서 바로 그리지 않고 동작 칸을 작은 판으로 떼어 둔다 (휴대폰 GPU가 큰 시트 여럿을 매 프레임 다시 올리며 느려졌다)
+      let src = null, rect = a && a.f[this.dir]?.[frameIndex(a, this.t, this.once)];
+      const tr = tintedRect(path, this.tint ?? null, rect); if (tr) [src, rect] = tr;
       if (src && a) drawRect(ctx, src, rect, p.x, y, s * (this.def.px || 1));
       if (src && a && this.flash > 0) (this.lastDraw ||= []).push([src, rect, s * (this.def.px || 1)]);
     }
