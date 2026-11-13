@@ -461,3 +461,14 @@ html.force-land #rotate { display: none !important; }
 #dailyBox .dq { font-size: calc(var(--u) * 0.78); color: #d8cfb8; text-shadow: 0 1px 2px #000; line-height: 1.45; }
 #dailyBox .dq b { color: #ffe7a0; font-weight: 600; }
 #dailyBox .dq.fin b { color: #7fe07a; }
+/* 내 캐릭터 머리 위 */
+.lbl.me { display: flex; flex-direction: column; align-items: center; gap: 1px; pointer-events: none; }
+.lbl.me .ttl { color: #ffd860; font-size: 0.78em; line-height: 1; }
+.lbl.me .nm { color: #f2ead6; font-weight: 600; font-size: 0.9em; line-height: 1.1; }
+.lbl.me .hb, .lbl.me .mb { display: block; width: 58px; height: 5px; background: rgba(0, 0, 0, 0.75); border: 1px solid rgba(0, 0, 0, 0.9); border-radius: 2px; overflow: hidden; }
+.lbl.me .mb { height: 3px; width: 58px; }
+.lbl.me i { display: block; height: 100%; transform-origin: left; }
+.lbl.me .hb i { background: linear-gradient(#ff6a5a, #c21a14); }
+.lbl.me .mb i { background: linear-gradient(#7ab8ff, #2a5ac8); }
+.lbl.me.low .hb { box-shadow: 0 0 6px #ff3020; animation: lowhp 0.8s infinite alternate; }
+@keyframes lowhp { from { border-color: #000; } to { border-color: #ff4030; } }

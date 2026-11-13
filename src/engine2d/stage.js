@@ -157,7 +157,7 @@ export function generateWorld(seed) {
   genTerrain(rng);
   dungeonHills();
   makeBuckets();
-  lakeMemo.clear(); mesaMemo.clear(); tileCache.clear();
+  lakeMemo.clear(); mesaMemo.clear(); tileCache.clear(); groundVer++;
 }
 const lakeCell = (i, j) => {
   const key = i * 100003 + j;
@@ -550,17 +550,11 @@ function drawBank(ctx, set, id, low, top, sx, sy, s) {
   ctx.drawImage(c, sx - t[5] * s, sy - t[6] * s, t[3] * s, t[4] * s);
 }
 
-function render(stage, dt) {
-  stage.time += dt;
-  const { ctx, W, H } = stage;
-  const s = stage.scale();
-  ctx.setTransform(stage.pr, 0, 0, stage.pr, 0, 0);
-  // 흔들림
-  if (stage.shakeK > 0.001) { const k = stage.shakeK * stage.shakeK * 10; ctx.translate((Math.random() - 0.5) * k, (Math.random() - 0.5) * k); }
-  ctx.fillStyle = '#0d0c0b';
-  ctx.fillRect(-20, -20, W + 40, H + 40);
-  // 땅: 화면 네 귀퉁이를 타일 좌표로 바꿔 그 안만
-  const c0 = stage.toWorld(-100, -100), c1 = stage.toWorld(W + 100, H + 160);
+export let groundVer = 1; // 세상이 바뀌면 올려 땅 판을 다시 그린다
+export const groundDirty = () => { groundVer++; };
+// 땅 타일 그리기 (판에 한 번)
+function drawGround(stage, ctx, W, H, s, M) {
+  const c0 = stage.toWorld(-100 - M, -100 - M), c1 = stage.toWorld(W + 100 + M, H + 160 + M);
   const ti = (x, z) => [(x + z) / (2 * STEP), (z - x) / (2 * STEP)];
   const pts = [ti(c0.x, c0.z), ti(c1.x, c0.z), ti(c0.x, c1.z), ti(c1.x, c1.z)];
   const i0 = Math.floor(Math.min(...pts.map((p) => p[0]))), i1 = Math.ceil(Math.max(...pts.map((p) => p[0])));
@@ -584,6 +578,32 @@ function render(stage, dt) {
       if (k > 0.85) { ctx.fillStyle = 'rgba(200,235,255,0.12)'; ctx.fillRect(p.x - w * 0.3, wy - 2 * s, w * 0.5, 2 * s); }
     }
   }
+}
+
+function render(stage, dt) {
+  stage.time += dt;
+  const { ctx, W, H } = stage;
+  const s = stage.scale();
+  ctx.setTransform(stage.pr, 0, 0, stage.pr, 0, 0);
+  // 흔들림
+  if (stage.shakeK > 0.001) { const k = stage.shakeK * stage.shakeK * 10; ctx.translate((Math.random() - 0.5) * k, (Math.random() - 0.5) * k); }
+  ctx.fillStyle = '#0d0c0b';
+  ctx.fillRect(-20, -20, W + 40, H + 40);
+  // 땅: 미리 그려 둔 판(화면 + 둘레 GM px)을 카메라만큼 밀어 붙인다. 판 밖으로 벗어나거나 확대가 바뀌면 다시 그린다
+  const GM = 220, Zs = s;
+  let gc = stage.gcache;
+  const camPx = (c) => ({ x: c.x * PX * s, y: c.z * PZ * s });
+  const now = camPx(stage.cam);
+  if (!gc || gc.ver !== groundVer || gc.s !== Zs || gc.W !== W || gc.H !== H || Math.abs(now.x - gc.px.x) > GM - 20 || Math.abs(now.y - gc.px.y) > GM - 20) {
+    gc = stage.gcache ||= { c: document.createElement('canvas') };
+    gc.c.width = Math.ceil((W + GM * 2) * stage.pr); gc.c.height = Math.ceil((H + GM * 2) * stage.pr);
+    gc.ver = groundVer; gc.s = Zs; gc.W = W; gc.H = H; gc.px = now;
+    const g = gc.c.getContext('2d');
+    g.setTransform(stage.pr, 0, 0, stage.pr, GM * stage.pr, GM * stage.pr);
+    drawGround(stage, g, W, H, s, GM);
+  }
+  ctx.drawImage(gc.c, 0, 0, gc.c.width, gc.c.height, -GM + (gc.px.x - now.x), -GM + (gc.px.y - now.y), W + GM * 2, H + GM * 2);
+  const c0 = stage.toWorld(-100, -100), c1 = stage.toWorld(W + 100, H + 160);
   for (const f of stage.flats) {
     if (!stage.onScreen(f.x, f.z, 3)) continue;
     const p = stage.toScreen(f.x, f.z);
@@ -599,7 +619,10 @@ function render(stage, dt) {
   }
   for (const d of stage.drawables) if (d.visible !== false) list.push(d);
   list.sort((a, b) => a.z - b.z);
+  // 화면 밖 타일 물건은 건너뛴다 (덩어리 단위로만 고르면 화면 몇 배를 그렸다)
+  const offX0 = -260, offX1 = W + 260, offY0 = -60, offY1 = H + 420;
   for (const o of list) {
+    if (o.t) { const p = stage.toScreen(o.x, o.z); if (p.x < offX0 || p.x > offX1 || p.y < offY0 || p.y > offY1) continue; }
     if (o.t && o.bank) { const p = stage.toScreen(o.x, o.z); drawBank(ctx, o.set, o.id, o.bank, o.top, p.x, p.y - o.lift * s, s); }
     else if (o.t && o.lift) { const p = stage.toScreen(o.x, o.z); drawTile(stage, ctx, o.set, o.id, p.x, p.y - o.lift * s, s * 1.02); }
     else if (o.t && o.wall && o.z > stage.cam.z && Math.abs(o.x - stage.cam.x) + (o.z - stage.cam.z) < 7) { // 앞을 가리는 던전 벽은 비쳐 보이게

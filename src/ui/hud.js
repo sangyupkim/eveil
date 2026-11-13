@@ -157,7 +157,6 @@ export class HUD {
     $('.bar.mp i').style.transform = `scaleX(${Math.max(0, st.mp / d.maxMp)})`;
     $('.bar.mp span').textContent = `${Math.floor(st.mp)} / ${d.maxMp}`;
     const need = expNeeded(st.awakenings);
-    $('.bar.xp i').style.transform = `scaleX(${st.exp / need})`;
     $('#expBar i').style.transform = `scaleX(${st.exp / need})`;
     $('#expBar span').textContent = `각성 EXP ${((st.exp / need) * 100).toFixed(2)}%${w.auto ? ' · 자동 -20%' : ''}`;
 
@@ -252,6 +251,21 @@ export class HUD {
       el.style.top = `${sc.y}px`;
       seen.add(key);
     };
+    // 내 캐릭터 머리 위: 칭호 · 닉네임 · 작은 체력 · 마나 줄
+    if (!w.dead) {
+      const st = w.st, d = w.d, ttl = st.titles?.[st.titles.length - 1]?.name || '';
+      place('me', P, 2.45 * (w.player.scale || 1), () => {
+        const el = document.createElement('div'); el.className = 'lbl me';
+        el.innerHTML = '<small class="ttl"></small><b class="nm"></b><span class="hb"><i></i></span><span class="mb"><i></i></span>';
+        return el;
+      }, (el) => {
+        const k = ttl + '|' + (st.nick || st.name);
+        if (el.dataset.k !== k) { el.dataset.k = k; el.querySelector('.ttl').textContent = ttl; el.querySelector('.ttl').hidden = !ttl; el.querySelector('.nm').textContent = st.nick || st.name; }
+        el.querySelector('.hb i').style.transform = `scaleX(${Math.max(0, st.hp / d.maxHp)})`;
+        el.querySelector('.mb i').style.transform = `scaleX(${Math.max(0, st.mp / d.maxMp)})`;
+        el.classList.toggle('low', st.hp < d.maxHp * 0.3);
+      });
+    }
     for (const m of w.monsters) {
       if (m.dead) continue;
       const dd = Math.hypot(m.pos.x - P.x, m.pos.z - P.z);
