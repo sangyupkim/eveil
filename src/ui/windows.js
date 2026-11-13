@@ -193,8 +193,13 @@ export class Windows {
     h += `<div class="sub">판매가 ${itemValue(it)} G</div>`;
     h += '<div class="btns">';
     if (where === 'inv') {
-      if (!it.shard) h += `<button class="btn gold" data-act="use">${isBook(it) ? '배우기' : b.type === 'potion' ? '사용' : b.type === 'elixir' ? '마시기' : '장착'}</button>`;
-      if (this.w.canShop) h += `<button class="btn" data-act="sell">판매</button>`;
+      if (!it.shard && b.type !== 'mat') h += `<button class="btn gold" data-act="use">${isBook(it) ? '배우기' : b.type === 'potion' ? '사용' : b.type === 'elixir' ? '마시기' : '장착'}</button>`;
+      // 물약 퀵슬롯: 이 물약을 체력 · 마나 칸에 두거나 뺀다
+      if (b.type === 'potion') for (const [k, nm] of [['hp', '체력 칸'], ['mp', '마나 칸']]) {
+        const on = st.potSlot?.[k] === it.base;
+        h += `<button class="btn${on ? ' on' : ''}" data-pslot="${k}|${on ? '' : it.base}">${on ? `${nm}에서 빼기` : `${nm}에 두기`}</button>`;
+      }
+      if (this.w.canShop && b.type !== 'mat') h += `<button class="btn" data-act="sell">판매</button>`;
       h += `<button class="btn danger" data-act="drop">버리기</button>`;
     } else if (where === 'equip') {
       h += `<button class="btn" data-act="unequip">해제</button>`;
@@ -317,7 +322,7 @@ export class Windows {
 
   bagHead() {
     const st = this.w.st;
-    return `<h3>가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span>${this.w.canShop ? '<button class="btn" data-selljunk="1" style="margin-left:auto">일반 · 마법 팔기</button>' : ''}<span class="goldTxt">${st.gold.toLocaleString()} G · ◆${(st.town?.ore || 0).toLocaleString()}</span></h3>` + (Object.values(townOf(st).mats || {}).some((n) => n > 0) ? `<div class="note matRow">재료 · ${Object.entries(townOf(st).mats).filter(([, n]) => n > 0).map(([k, n]) => `${MATERIALS[k].name} ${n}`).join(' · ')}</div>` : '');
+    return `<h3>가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span>${this.w.canShop ? '<button class="btn" data-selljunk="1" style="margin-left:auto">일반 · 마법 팔기</button>' : ''}<span class="goldTxt">${st.gold.toLocaleString()} G · ◆${townOf(st).ore.toLocaleString()}</span></h3>`;
   }
 
   // 고른 가방 아이템과 같은 칸에 끼고 있는 장비
@@ -485,7 +490,7 @@ export class Windows {
       ['포탈', 'portal', ['마을 · 발견한 야영지의 포탈', '포탈 위에서 버튼을 눌러 갈 곳을 고릅니다']],
       ['공용 창고', 'vaultspot', ['상인 옆 공용 창고 상자', '상자 앞에서 버튼을 누르면 창고가 열립니다']],
       ['창고', 'vault', ['창고: 같은 계정의 캐릭터끼리 함께 씁니다. 100칸, 연구 「큰 창고」로 늘어납니다', '가방'], ['아이템을 누르면 가운데에 정보가 보이고, 버튼으로 옮깁니다']],
-      ['가방 · 장비', 'inv', ['착용 장비', '고른 아이템 정보 · 능력치 변화', '모은 재료: 마을에 쌓여 건물 단계 올리기에 쓰입니다', '금화 · 강화석', '창 탭']],
+      ['가방 · 장비', 'inv', ['착용 장비', '고른 아이템 정보 · 능력치 변화. 물약은 여기서 체력 · 마나 칸에 두거나 뺍니다', '가방: 강화석 · 지역 재료도 아이템으로 들어옵니다. 창고에 넣어도 강화 · 건물에 쓰입니다', '금화 · 강화석', '창 탭']],
       ['스킬', 'skills', ['배운 스킬. 쓸수록 랭크가 오릅니다. 랭크 제한은 없고 50부터 느려집니다', '위력 · 다음 랭크 · MP · 재사용 · 범위', '변형: 랭크 25 · 50에서 하나씩 고릅니다', '퀵슬롯: 칸을 누르면 넣습니다. 이미 있는 스킬은 자리가 바뀝니다']],
       ['능력 · 각성', 'char', ['능력치: 행동에 따라 오릅니다. 칼을 휘두르면 힘, 주문을 쓰면 지능, 맞으면 체력', '세부 능력치. 각성마다 성향에 맞는 칭호와 특성을 고릅니다']],
       ['퀘스트 · 오늘의 의뢰', 'quest', ['메인 퀘스트', '오늘의 의뢰 보상 받기: 경비대장 하겐 앞에서만', '오늘의 의뢰 3개 · 지역별 퀘스트']],
@@ -860,6 +865,7 @@ export class Windows {
       if (r.ok) { audio.play('rankup'); w.ui.toast(`${affixText(r.old)} → ${affixText(r.now)}`, '#c58cff'); this.shardSel = null; w.refreshGear(); }
       townDone(r);
     });
+    on('[data-pslot]', (el) => { const [k, base] = el.dataset.pslot.split('|'); (st.potSlot ||= {})[k] = base || null; audio.play('click'); w.ui.dirty(); this.render(); });
     on('[data-vsel]', (el) => { const [f, k] = el.dataset.vsel.split('|'); this.vsel = f === 'v' ? { from: 'v', i: Number(k) } : { from: 'b', uid: Number(k) }; audio.play('click'); this.render(); });
     on('[data-vput]', (el) => { this.vsel = null; const r = vaultPut(st, Number(el.dataset.vput)); if (!r.ok && r.why) { w.ui.toast(r.why); audio.play('error'); } else audio.play('click'); w.ui.dirty(); this.render(); });
     on('[data-vtake]', (el) => { this.vsel = null; const r = vaultTake(st, Number(el.dataset.vtake)); if (!r.ok && r.why) { w.ui.toast(r.why); audio.play('error'); } else audio.play('click'); w.ui.dirty(); this.render(); });

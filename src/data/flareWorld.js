@@ -158,6 +158,9 @@ export const ITEM_LOOK = {
   ...Object.fromEntries(Object.entries(GEMS).flatMap(([g, x]) => GEM_GRADES.map((gr, k) => [gemId(g, k), { icon: x.icon }]))),
   dungeon_key: { icon: 226 }, shard: { icon: 68 }, el_str: { icon: 84 }, el_dex: { icon: 86 }, el_int: { icon: 86 }, el_wis: { icon: 86 }, el_vit: { icon: 84 }, el_armor: { icon: 84 }, el_might: { icon: 84 }, el_haste: { icon: 86 }, el_swift: { icon: 86 }, el_focus: { icon: 86 }, el_luck: { icon: 84 }, pet_egg: { icon: 234 }, pet_cat: { icon: 234 }, hp_potion: { icon: 64 }, mp_potion: { icon: 65 }, hp_potion_l: { icon: 84 }, mp_potion_l: { icon: 86 },
 };
+// 강화석 · 지역 재료 (가방 아이템, v0.30)
+Object.assign(ITEM_LOOK, { ore: { icon: 71 }, mat_field: { icon: 70 }, mat_forest: { icon: 69 }, mat_grave: { icon: 72 }, mat_ruins: { icon: 73 }, mat_swamp: { icon: 74 }, mat_frost: { icon: 75 }, mat_valley: { icon: 76 }, mat_inferno: { icon: 77 } });
+
 // 처음 복장 (안 입은 부위)
 export const BASE_CLOTHES = { chest: 'cloth_shirt', legs: 'cloth_pants', feet: 'cloth_sandals', hands: 'default_hands' };
 // 떨어진 아이템 그림 (Flare loot 동작)

@@ -32,6 +32,7 @@ export function itemIcon(it) {
   if (it.shard) return iconUrl(68, '#c58cff');
   if (BASES[it.base]?.type === 'pet') return petIcon(BASES[it.base].pet);
   if (ELIXIRS[it.base]) return iconUrl(ITEM_LOOK[it.base]?.icon ?? 84, ELIXIRS[it.base].color);
+  if (BASES[it.base]?.type === 'mat') return iconUrl(BASES[it.base].icon, it.base === 'ore' ? null : '#9ad06a');
   const L = ITEM_LOOK[it.base];
   if (L) return iconUrl(L.icon);
   const b = BASES[it.base];

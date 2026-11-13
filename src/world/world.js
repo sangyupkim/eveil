@@ -1399,8 +1399,9 @@ export class World {
     const st = this.st;
     const ids = kind === 'hp' ? ['hp_potion_l', 'hp_potion'] : ['mp_potion_l', 'mp_potion'];
     const missing = kind === 'hp' ? this.d.maxHp - st.hp : this.d.maxMp - st.mp;
-    // 부족한 양에 맞는 물약을 먼저
-    const order = missing > 150 ? ids : [...ids].reverse();
+    // 가방에서 정해 둔 물약이 있으면 그것, 없으면 부족한 양에 맞는 물약을 먼저
+    const pick = st.potSlot?.[kind];
+    const order = pick ? [pick] : missing > 150 ? ids : [...ids].reverse();
     const id = order.find((i) => countOf(st, i) > 0);
     if (!id) { if (!quiet) this.ui.toast(kind === 'hp' ? '체력 물약이 없습니다' : '마나 물약이 없습니다'); else this.potionCd = 3; return false; }
     takeOne(st, id);

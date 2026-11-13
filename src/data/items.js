@@ -19,6 +19,7 @@ export const WEAPON_CLASSES = {
 // model: 손에 드는 모델 · icon: 가방 그림(없으면 model)
 // wear: 입었을 때 끼우는 KayKit 조각의 캐릭터 (knight · mage · barbarian) · hat: [캐릭터, 'Hat'|'Helmet'] · tint: 조각 색
 export const BASES = {
+  ore: { name: '강화석', type: 'mat', price: 0, stack: true, icon: 71 }, // 가방 · 창고 어디에 있든 강화 · 건물에 쓴다
   shard: { name: '능력치 파편', type: 'shard', price: 120 },
   rusty_sword: { name: '낡은 검', slot: 'weapon', cls: 'sword', model: 'w_sword', mtint: 0x9a8a7a, dmg: [4, 7], speed: 1.1, price: 5, minLvl: 99 },
   short_sword: { name: '장검', slot: 'weapon', cls: 'sword', model: 'w_sword', dmg: [6, 10], speed: 1.15, price: 90, shop: true },
@@ -224,3 +225,7 @@ for (const [lv, tn] of HIGH_TIERS) for (const [k, [tpl, nm]] of Object.entries(H
   if (b.req) o.req = Object.fromEntries(Object.entries(b.req).map(([a, v]) => [a, Math.round(v * (1 + (lv - (b.minLvl || 36)) / 55))]));
   BASES[`h${lv}_${k}`] = o;
 }
+
+// 지역 재료도 쌓이는 아이템 (mat_지역). 건물 단계 올리기 · 세트 제작에 쓴다
+import { MATERIALS as _MATS } from './crafting.js';
+for (const [k, m] of Object.entries(_MATS)) BASES['mat_' + k] = { name: m.name, type: 'mat', price: 0, stack: true, icon: m.icon, mat: k };

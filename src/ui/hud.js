@@ -7,6 +7,7 @@ import { entranceOf, layout as dungeonLayout, cellPos, N, T } from '../data/dung
 import { terrain, fogCan, MAP_R, FOG_C, seen as seenAt } from './mapimg.js';
 import { CAMPS } from '../engine2d/stage.js';
 import { dailyOf, dailyText } from '../game/daily.js';
+import { townOf } from '../game/town.js';
 import { PLOTS, BUILDINGS, VAULT_SPOT } from '../data/buildings.js';
 import { expNeeded, powerLevel } from '../game/growth.js';
 import { countOf } from '../game/inventory.js';
@@ -205,12 +206,16 @@ export class HUD {
     if (this.isDirty) {
       this.isDirty = false;
       $('#gold').textContent = st.gold.toLocaleString();
-      $('#oreN').textContent = (st.town?.ore || 0).toLocaleString();
+      $('#oreN').textContent = townOf(st).ore.toLocaleString();
       if (!$('#oreIco').src) $('#oreIco').src = oreIcon();
       $('#awakeBadge').textContent = `각성 ${st.awakenings}`;
       $('#bagCnt').textContent = `${st.inv.length}/${bagSize(st)}`;
-      $('#btnHp em').textContent = countOf(st, 'hp_potion') + countOf(st, 'hp_potion_l');
-      $('#btnMp em').textContent = countOf(st, 'mp_potion') + countOf(st, 'mp_potion_l');
+      // 물약 칸: 가방에서 정해 둔 물약이면 그 그림 · 개수
+      for (const [k, sel, def] of [['hp', '#btnHp', ['hp_potion', 'hp_potion_l']], ['mp', '#btnMp', ['mp_potion', 'mp_potion_l']]]) {
+        const pick = st.potSlot?.[k], img = $(sel + ' img'), want = itemIconCut(pick || def[0]);
+        $(sel + ' em').textContent = pick ? countOf(st, pick) : countOf(st, def[0]) + countOf(st, def[1]);
+        if (img.dataset.k !== want.slice(-24)) { img.dataset.k = want.slice(-24); img.src = want; }
+      }
       for (let i = 0; i < slots.length; i++) {
         const id = st.quick[i];
         const el = slots[i];

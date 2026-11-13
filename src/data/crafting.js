@@ -1,6 +1,6 @@
 // 지역 재료 · 지역 세트 장비 (제작소에서 만든다)
 export const MATERIALS = {
-  field: { name: '개미 껍질', icon: 70 }, forest: { name: '썩은 나무심', icon: 71 }, grave: { name: '뼛가루', icon: 72 },
+  field: { name: '개미 껍질', icon: 70 }, forest: { name: '썩은 나무심', icon: 69 }, grave: { name: '뼛가루', icon: 72 },
   ruins: { name: '녹슨 문장', icon: 73 }, swamp: { name: '늪 이끼', icon: 74 }, frost: { name: '서리 결정', icon: 75 },
   valley: { name: '고대 파편', icon: 76 }, inferno: { name: '불씨 핵', icon: 77 },
 };

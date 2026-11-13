@@ -13,6 +13,7 @@ try { const x = JSON.parse(localStorage.getItem(KEY)); if (x?.items) V = x; } ca
 export const vault = () => V;
 export const vaultSize = (st) => VAULT_BASE + VAULT_PER * (st?.town?.research?.vault || 0);
 let putT = null;
+export function vaultSave() { save(); }
 function save() {
   V.at = Date.now();
   try { localStorage.setItem(KEY, JSON.stringify(V)); } catch { /* 무시 */ }

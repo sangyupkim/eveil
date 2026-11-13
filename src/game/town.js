@@ -7,13 +7,54 @@ import { addItem } from './inventory.js';
 import { makeItem } from './items.js';
 import { MATERIALS, MAT_DROP, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
 import { BASES } from '../data/items.js';
+import { vault, vaultAdd, vaultSave } from './vault.js';
 
 export function townOf(st, now = Date.now()) {
-  st.town ||= { plots: {}, ore: 0, mercs: [], last: now };
-  st.town.mats ||= {};
+  st.town ||= { plots: {}, mercs: [], last: now };
   st.town.herbs ||= {};
   migrateMercs(st.town);
+  if (!st.town.__res) resources(st);
   return st.town;
+}
+
+// ── 강화석 · 재료는 가방 · 창고의 아이템 (v0.30) ──
+// t.ore · t.mats[지역]은 예전 코드 그대로 쓰도록 남긴 통로: 읽으면 가방 + 창고의 개수, 빼면 가방부터 꺼내 쓴다
+export const resCount = (st, base) => st.inv.filter((x) => x.base === base).reduce((a, x) => a + (x.qty || 1), 0) + vault().items.filter((x) => x.base === base).reduce((a, x) => a + (x.qty || 1), 0);
+export function resAdd(st, base, n) {
+  if (n <= 0) return;
+  const it = makeItem(base, { qty: n }, st);
+  if (addItem(st, it)) return;
+  if (vaultAdd(st, it)) return;
+  st.inv.push(it); // 둘 다 가득이면 가방에 넘쳐 담는다 (잃지 않게)
+}
+export function resTake(st, base, n) {
+  for (const list of [st.inv, vault().items]) {
+    for (let i = list.length - 1; i >= 0 && n > 0; i--) {
+      const x = list[i]; if (x.base !== base) continue;
+      const k = Math.min(n, x.qty || 1); x.qty = (x.qty || 1) - k; n -= k;
+      if (x.qty <= 0) list.splice(i, 1);
+    }
+    if (list !== st.inv) vaultSave();
+  }
+}
+function resources(st) {
+  const t = st.town;
+  // 예전 저장: 숫자로 있던 강화석 · 재료를 아이템으로 옮긴다
+  const oldOre = Object.getOwnPropertyDescriptor(t, 'ore')?.value, oldMats = Object.getOwnPropertyDescriptor(t, 'mats')?.value;
+  delete t.ore; delete t.mats;
+  const set = (base, v) => { const c = resCount(st, base); if (v > c) resAdd(st, base, Math.round(v - c)); else if (v < c) resTake(st, base, Math.round(c - v)); };
+  Object.defineProperty(t, 'ore', { configurable: true, enumerable: false, get: () => resCount(st, 'ore'), set: (v) => set('ore', v) });
+  const mats = new Proxy({}, {
+    get: (_, k) => (typeof k === 'string' && MATERIALS[k] ? resCount(st, 'mat_' + k) : undefined),
+    set: (_, k, v) => { if (MATERIALS[k]) set('mat_' + k, v); return true; },
+    has: (_, k) => !!MATERIALS[k],
+    ownKeys: () => Object.keys(MATERIALS),
+    getOwnPropertyDescriptor: (_, k) => (MATERIALS[k] ? { configurable: true, enumerable: true, value: resCount(st, 'mat_' + k) } : undefined),
+  });
+  Object.defineProperty(t, 'mats', { configurable: true, enumerable: false, get: () => mats, set: () => {} });
+  Object.defineProperty(t, '__res', { configurable: true, enumerable: false, value: true });
+  if (oldOre > 0) resAdd(st, 'ore', Math.round(oldOre));
+  if (oldMats) for (const [k, n] of Object.entries(oldMats)) if (n > 0 && MATERIALS[k]) resAdd(st, 'mat_' + k, Math.round(n));
 }
 export const buildingAt = (st, plot) => townOf(st).plots[plot] || null;
 export const findBuilding = (st, type) => Object.values(townOf(st).plots).find((b) => b.type === type) || null;
@@ -353,7 +394,7 @@ export function claim(st, id, now = Date.now(), rng = Math.random) {
   const rolls = Math.round(ex.mult * eff * 1.5 * (1 + SHELTER.loot * sh));
   for (let k = 0; k < rolls; k++) for (const d of rollLoot({ tier: k % 6 === 5 ? 'elite' : 'normal', level: lvl }, {}, st, rng)) if (d.kind === 'item' && d.item.base && !d.item.book) out.items.push(d.item);
   out.mats = Math.round(ex.mult * 3 * eff * (1 + SHELTER.mats * sh));
-  t.mats ||= {}; t.mats[zn.id] = (t.mats[zn.id] || 0) + out.mats;
+  t.mats[zn.id] = (t.mats[zn.id] || 0) + out.mats;
   st.gold += out.gold; t.ore += out.ore;
   out.items = out.items.filter((it) => addItem(st, it));
   gainExp(m, ex.mult * 10);
