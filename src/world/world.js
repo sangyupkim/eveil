@@ -1178,6 +1178,14 @@ export class World {
     }
     if (m.dungeon && m.tier === 'boss' && this.dungeon) this.dungeonCleared(m);
     if (!m.noLoot) this.dailyDone(dailyProgress(st, { kind: 'kill', zone: m.dungeon ? null : m.sp?.zone?.id, tier: m.tier }));
+    // 강화석: 강한 몬스터는 가끔, 일반 몬스터는 아주 가끔
+    if (!m.noLoot) {
+      const oc = { normal: 0.015, elite: 0.12, named: 0.3, boss: 0.6 }[m.tier] || 0;
+      if (Math.random() < oc * this.autoMult) {
+        const n = (m.tier === 'boss' ? 3 : m.tier === 'named' ? 2 : 1) + Math.floor(Math.random() * (1 + m.level / 15));
+        townOf(st).ore += n; this.fx.text(m.pos.clone().setY(2.6), `+${n} 강화석`, 'gold'); this.ui.log(`강화석 +${n}`, '#d8e8ff'); this.ui.dirty();
+      }
+    }
     const zid = m.sp?.zone?.id, got = zid && !m.noLoot ? dropMats(st, zid, m.tier) : 0;
     if (zid && !m.dungeon && !m.noLoot && liberateAdd(st, zid, m.tier)) {
       const zn = ALL_ZONES.find((z) => z.id === zid);
