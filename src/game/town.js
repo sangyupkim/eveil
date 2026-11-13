@@ -178,7 +178,7 @@ export function bonusOf(st, type) {
 }
 export const GRADES = [{ name: '평범', color: '#c8c0b0', k: 1 }, { name: '숙련', color: '#6aa8ff', k: 1.5 }, { name: '정예', color: '#d080ff', k: 2.2 }, { name: '전설', color: '#ffb040', k: 3.2 }];
 const NA = ['브', '셀', '오', '이', '케', '도', '미', '하', '유', '바', '로', '카', '테', '루', '자', '에', '실', '아', '고', '네'], NB = ['란', '마', '덴', '라', '일', '르', '나', '스', '크', '린', '온', '벨', '렌', '드', '아', '토'];
-export const staMax = (m) => 40 + m.lv * 2 + (m.aw || 0) * 8 + (m.vit || 0);
+export const staMax = (m) => 50 + m.lv * 2 + (m.aw || 0) * 8 + (m.vit || 0);
 export const workEff = (m, type) => (m[SKILL_OF[type]] || 0) / 10;  // 솜씨 10 = 한 자리 몫
 const growSkill = (m, k, h) => { m[k] ??= 1; const cap = 30 + (m.aw || 0) * 6; m[k] = Math.min(cap, m[k] + 0.12 * h * (1 - m[k] / (cap + 5))); };
 function gainExp(m, n) {
@@ -269,7 +269,7 @@ export function liberateAdd(st, zoneId, tier) {
 }
 export const isLiberated = (st, zoneId) => (st.liberate?.[zoneId] || 0) >= LIBERATE_NEED;
 // 파견: 해방한 지역에만. 체력을 쓰고, 약하면 죽을 수도 있다
-export const EXP_STA = { short: 12, mid: 35, long: 70, siege: 100, deep: 130 };
+export const EXP_STA = { short: 10, mid: 25, long: 45, siege: 65, deep: 85 }; // 1레벨 용병(최대 52)도 긴 원정까지 갈 수 있게
 export const EXP_RISK = { short: 0.02, mid: 0.05, long: 0.1, siege: 0.14, deep: 0.18 };
 // 개척지 쉼터 단계 (그 지역 야영지)
 export const shelterLv = (st, zoneId) => st.camps?.[zoneId]?.rest || 0;
