@@ -481,3 +481,10 @@ html.force-land #rotate { display: none !important; }
 /* 물약 버튼: 칸 무늬 없이 물약 그림만 (테두리만 옅게) */
 #br .act.pot { background: radial-gradient(circle, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0) 70%) !important; border-color: rgba(201, 168, 106, 0.45); box-shadow: none; }
 #br .act.pot img { width: 78%; height: 78%; }
+/* 가이드북: 실제 화면 그림 + 번호 설명 */
+.gshot { display: flex; align-items: center; justify-content: center; padding: 6px; }
+.gshot img { width: 100%; height: auto; max-height: 100%; object-fit: contain; border: 1px solid #6a5430; border-radius: 6px; }
+.glist { list-style: none; padding: 0; margin: 0; }
+.glist li { margin: 0 0 7px; line-height: 1.45; }
+.gnum { display: inline-block; min-width: 1.35em; height: 1.35em; margin-right: 6px; border-radius: 50%; background: #ffd54a; color: #2a1a00; font-size: .8em; text-align: center; line-height: 1.35em; }
+.gsec { display: block; width: 100%; margin: 0 0 4px; text-align: left; }
