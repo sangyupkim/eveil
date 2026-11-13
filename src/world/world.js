@@ -546,6 +546,7 @@ export class World {
   }
   leaveDungeon(silent = false) {
     if (!this.dungeon) return;
+    if (this.autoArea?.dungeon != null) this.autoArea = { zone: ALL_ZONES[this.dungeon.zi] }; // 던전에서 켠 자동 사냥은 나오면 그 지역에서
     for (const m of this.monsters) if (m.dungeon && !m.dead) { m.dead = true; m.noLoot = true; this.stage.remove(m.actor); }
     this.monsters = this.monsters.filter((m) => !m.dungeon);
     const zn = this.dungeon.zone;
@@ -761,7 +762,7 @@ export class World {
           m.pathT = (m.pathT || 0) - dt;
           if (m.pathT <= 0) {
             m.pathT = 0.6 + Math.random() * 0.3;
-            m.path = clearLine(this.stage, m.pos, p, 0.45) ? null : findPath(this.stage, m.pos, p, 0.45);
+            m.path = clearLine(this.stage, m.pos, p, 0.45) ? null : findPath(this.stage, m.pos, p, 0.45, 1800);
           }
           let goal = p;
           if (m.path?.length) {
@@ -1364,10 +1365,10 @@ export class World {
     if (this.joy.lengthSq() > 0.01) { this.moveTo = null; this.target = null; this.pendingSkill = null; this.cancelRecall(); this.manual(); }
   }
 
-  nearestMonster(range, from = this.player.pos, exclude = null) {
+  nearestMonster(range, from = this.player.pos, exclude = null, filter = null) {
     let best = null, bd = range;
     for (const m of this.monsters) {
-      if (m.dead || m === exclude || !m.near || m.ignoreUntil > this.time) continue;
+      if (m.dead || m === exclude || !m.near || m.ignoreUntil > this.time || (filter && !filter(m))) continue;
       if (dist2(m.pos, TOWN) < TOWN.r) continue;
       const d = dist2(m.pos, from);
       if (d < bd) { bd = d; best = m; }
@@ -1426,6 +1427,19 @@ export class World {
   }
 
   // 자동 사냥 지역: 권장 각성((최저 위험도 - 1) × 2)을 넘긴 가장 깊은 곳, 최근 10분에 그곳에서 3번 넘게 죽었으면 한 칸 아래
+  // 자동 사냥 구역 안인가
+  inAutoArea(p) {
+    const A = this.autoArea;
+    if (!A) return true;
+    if (A.dungeon != null) return !!this.dungeon;
+    return zoneAt(p.x, p.z)?.id === A.zone.id;
+  }
+  // 자동 사냥 이동: 막혀 있으면 길을 찾아 따라간다
+  autoGo(dest) {
+    const P = this.player.pos;
+    this.moveTo = dest; this.target = null;
+    this.movePath = clearLine(this.stage, P, dest, 0.5) ? null : findPath(this.stage, P, dest, 0.5, 9000);
+  }
   autoZone() {
     const st = this.st, ok = ZONES.filter((z) => st.awakenings >= (z.levels[0] + this.tierOffset - 1) * 2);
     let i = Math.max(0, ok.length - 1);
@@ -1447,6 +1461,8 @@ export class World {
   toggleAuto(on = !this.auto) {
     this.auto = on;
     this.autoPause = 0;
+    // 자동 사냥은 켠 곳(지역 · 던전) 안에서만. 마을 · 황야에서 켜면 알맞은 사냥터
+    if (on) { const P = this.player.pos, zn = zoneAt(P.x, P.z); this.autoArea = this.dungeon ? { dungeon: this.dungeon.zi } : zn ? { zone: zn } : { zone: this.autoZone() }; this.ui.log(`자동 사냥: ${this.dungeon ? '이 던전' : this.autoArea.zone.name}`, '#9a917f'); }
     this.ui.dirty();
   }
 
@@ -1819,22 +1835,35 @@ export class World {
     // 가까운 전리품 먼저 (싸우는 중이 아닐 때)
     const fighting = this.monsters.some((m) => !m.dead && m.state === 'chase' && dist2(m.pos, P) < 6);
     if (!fighting) {
-      const g = this.ground.filter((x) => dist2(x, P) < 12).sort((a, b) => dist2(a, P) - dist2(b, P))[0];
+      const g = this.ground.filter((x) => !x.deathDrop && dist2(x, P) < 12).sort((a, b) => dist2(a, P) - dist2(b, P))[0];
       if (g && !(g.kind === 'item' && st.inv.length >= bagSize(st) && !BASES[g.item.base]?.stack)) {
-        this.moveTo = { x: g.x, z: g.z }; this.target = null; return;
+        if (!this.moveTo || dist2(this.moveTo, g) > 0.5) this.autoGo({ x: g.x, z: g.z }); else this.target = null;
+        return;
       }
     }
+    if (this.target && !this.target.dead && !this.inAutoArea(this.target.pos)) this.target = null; // 구역 밖 몬스터는 쫓지 않는다
     if (!this.target || this.target.dead) {
-      this.target = this.nearestMonster(18);
+      this.target = this.nearestMonster(18, P, null, (m) => this.inAutoArea(m.pos));
       if (!this.target) {
-        // 사냥터로 이동
-        const zn = this.autoZone();
-        if (!this.moveTo || dist2(P, this.moveTo) < 2) {
-          const a = Math.random() * Math.PI * 2, r = Math.random() * zn.r * 0.6;
-          this.moveTo = { x: zn.x + Math.cos(a) * r, z: zn.z + Math.sin(a) * r };
+        // 구역 안을 돌아다닌다 (구역 밖이면 먼저 돌아간다)
+        if (!this.moveTo || dist2(P, this.moveTo) < 2 || (!this.movePath?.length && this.stuckT > 1)) {
+          let dest;
+          if (this.autoArea?.dungeon != null) {
+            const Ld = dungeonLayout(this.dungeon.zi), cells = []; for (let k = 0; k < Ld.g.length; k++) if (Ld.g[k]) cells.push(k);
+            const k = cells[Math.floor(Math.random() * cells.length)]; dest = cellPos(this.dungeon.zi, k % N, Math.floor(k / N));
+          } else {
+            const zn = this.autoArea?.zone || this.autoZone(), near = this.inAutoArea(P);
+            for (let t = 0; t < 12; t++) {
+              const a = Math.random() * Math.PI * 2, r = near ? 6 + Math.random() * 14 : Math.random() * zn.r * 0.5, c = near ? P : zn;
+              dest = { x: c.x + Math.cos(a) * r, z: c.z + Math.sin(a) * r };
+              if (zoneAt(dest.x, dest.z)?.id === zn.id && !blockedAt(this.stage, dest.x, dest.z, 0.6)) break;
+            }
+          }
+          this.autoGo(dest);
         }
         return;
       }
+      this.chasePath = null; this.chaseT = 0;
     }
     this.moveTo = null;
     // 스킬: 퀵슬롯 순서대로 쓸 수 있는 것
@@ -2008,7 +2037,16 @@ export class World {
       const range = this.pendingSkill ? this.skillRange(this.pendingSkill) : d.range;
       const dd = dist2(t.pos, P.pos);
       if (dd > range) {
-        if (P.lock <= 0) { const g = this.goal(t.pos); this.stepToward(P.pos, g, speed * dt); P.face(g.x, g.z); moving = true; }
+        if (P.lock <= 0) {
+          // 자동 사냥: 몬스터까지 막혀 있으면 길을 찾아 돌아간다 (0.5초마다 다시)
+          let to = t.pos;
+          if (this.auto) {
+            this.chaseT = (this.chaseT || 0) - dt;
+            if (this.chaseT <= 0) { this.chaseT = 0.5; this.chasePath = clearLine(this.stage, P.pos, t.pos, 0.5) ? null : findPath(this.stage, P.pos, t.pos, 0.5, 6000); }
+            if (this.chasePath?.length) { if (dist2(P.pos, this.chasePath[0]) < 0.6) this.chasePath.shift(); if (this.chasePath.length) to = this.chasePath[0]; }
+          }
+          const g = this.goal(to); this.stepToward(P.pos, g, speed * dt); P.face(g.x, g.z); moving = true;
+        }
       } else if (this.pendingSkill) {
         if (this.actCd <= 0 && (P.lock <= 0 || this.swing <= 0)) {
           const r = this.skillReady(this.pendingSkill);

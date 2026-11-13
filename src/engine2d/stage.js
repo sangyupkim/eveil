@@ -668,37 +668,48 @@ export function clearLine(stage, a, b, r = 0.5) {
   return true;
 }
 // 격자 길찾기 (A*, 칸 1). 막힌 길을 돌아가는 꺾인 점들을 돌려준다 (못 찾으면 null)
-export function findPath(stage, from, to, r = 0.5, maxNodes = 1800) {
-  const S = 1, key = (i, j) => i * 4096 + j;
+// A* 길찾기 (1칸 격자, 8방향, 모서리 끼기 금지). 우선순위 큐로 넓은 범위도 빠르게
+export function findPath(stage, from, to, r = 0.5, maxNodes = 4000) {
+  const S = 1, key = (i, j) => (i + 32768) * 65536 + (j + 32768);
   const si = Math.round(from.x / S), sj = Math.round(from.z / S), ti = Math.round(to.x / S), tj = Math.round(to.z / S);
-  const open = [[si, sj, 0, Math.hypot(ti - si, tj - sj)]], came = new Map(), gs = new Map([[key(si, sj), 0]]);
-  let seen = 0;
-  while (open.length && seen++ < maxNodes) {
-    let bi = 0;
-    for (let k = 1; k < open.length; k++) if (open[k][2] + open[k][3] < open[bi][2] + open[bi][3]) bi = k;
-    const [i, j, g] = open.splice(bi, 1)[0];
-    if (Math.abs(i - ti) <= 1 && Math.abs(j - tj) <= 1) {
-      const pts = [{ x: to.x, z: to.z }];
-      let k = key(i, j);
-      while (came.has(k)) { const [a, b] = came.get(k); pts.push({ x: a * S, z: b * S }); k = key(a, b); }
-      pts.reverse();
-      // 직선으로 갈 수 있는 점은 건너뛴다
-      const out = []; let cur = from;
-      for (let n = 0; n < pts.length; n++) {
-        const next = pts[n + 1];
-        if (!next || !clearLine(stage, cur, next, r)) { out.push(pts[n]); cur = pts[n]; }
-      }
-      return out;
-    }
+  const H = (i, j) => { const dx = Math.abs(ti - i), dz = Math.abs(tj - j); return Math.max(dx, dz) + 0.414 * Math.min(dx, dz); };
+  // 이진 힙 [f, i, j, g]
+  const heap = [], push = (n) => { heap.push(n); let k = heap.length - 1; while (k > 0) { const p = (k - 1) >> 1; if (heap[p][0] <= n[0]) break; heap[k] = heap[p]; k = p; } heap[k] = n; };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { let k = 0; for (;;) { const l = k * 2 + 1, rr = l + 1; let m = k; if (l < heap.length && heap[l][0] < (m === k ? last[0] : heap[m][0])) m = l; if (rr < heap.length && heap[rr][0] < (m === k ? last[0] : heap[m][0])) m = rr; if (m === k) break; heap[k] = heap[m]; k = m; } heap[k] = last; } return top; };
+  const came = new Map(), gs = new Map([[key(si, sj), 0]]), closed = new Set(), free = new Map();
+  const ok = (i, j) => { const k = key(i, j); let v = free.get(k); if (v === undefined) { v = !blockedAt(stage, i * S, j * S, r); free.set(k, v); } return v; };
+  push([H(si, sj), si, sj, 0]);
+  let seen = 0, best = null, bestH = Infinity;
+  while (heap.length && seen++ < maxNodes) {
+    const [, i, j, g] = pop(), k0 = key(i, j);
+    if (closed.has(k0)) continue;
+    closed.add(k0);
+    const h = H(i, j);
+    if (h < bestH) { bestH = h; best = [i, j]; }
+    if (Math.abs(i - ti) <= 1 && Math.abs(j - tj) <= 1) { best = [i, j]; bestH = 0; break; }
     for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
-      const ni = i + di, nj = j + dj, nk = key(ni, nj), ng = g + (di && dj ? 1.414 : 1);
+      const ni = i + di, nj = j + dj, nk = key(ni, nj);
+      if (closed.has(nk) || !ok(ni, nj)) continue;
+      if (di && dj && (!ok(i + di, j) || !ok(i, j + dj))) continue; // 모서리를 비집고 지나가지 않는다
+      const ng = g + (di && dj ? 1.414 : 1);
       if (ng >= (gs.get(nk) ?? Infinity)) continue;
-      if (blockedAt(stage, ni * S, nj * S, r)) continue;
       gs.set(nk, ng); came.set(nk, [i, j]);
-      open.push([ni, nj, ng, Math.hypot(ti - ni, tj - nj)]);
+      push([ng + H(ni, nj), ni, nj, ng]);
     }
   }
-  return null;
+  if (!best || bestH > 0) return null; // 닿지 못하면 길 없음 (멀거나 막힘) — 부르는 쪽은 곧장 간다
+  const pts = bestH === 0 ? [{ x: to.x, z: to.z }] : [];
+  let k = key(best[0], best[1]);
+  if (bestH > 0) pts.push({ x: best[0] * S, z: best[1] * S });
+  while (came.has(k)) { const [a, b2] = came.get(k); pts.push({ x: a * S, z: b2 * S }); k = key(a, b2); }
+  pts.reverse();
+  // 직선으로 갈 수 있는 점은 건너뛴다
+  const out = []; let cur = from;
+  for (let n = 0; n < pts.length; n++) {
+    const next = pts[n + 1];
+    if (!next || !clearLine(stage, cur, next, r)) { out.push(pts[n]); cur = pts[n]; }
+  }
+  return out;
 }
 
 // 처음(시작 화면)은 정해진 세상

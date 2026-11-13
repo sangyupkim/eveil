@@ -391,4 +391,22 @@ test('창고: 100칸, 캐릭터끼리 나눠 쓰고 연구로 늘어난다', asy
   assert.ok(V.vaultTake(b, idx).ok && b.inv.some((x) => x.base === 'short_sword'));
 });
 
+globalThis.matchMedia ||= () => ({ matches: false }); globalThis.window ||= globalThis;
+const { findPath, clearLine } = await import('../src/engine2d/stage.js');
+test('길찾기: 벽을 돌아가고, 모든 구간이 트여 있다', () => {
+  const stage = { colliders: [], grid: null };
+  for (let z = -8; z <= 8; z += 0.8) stage.colliders.push({ x: 0, z, r: 0.6 }); // 세로 벽 (z -8 ~ 8)
+  for (let x = -6; x <= 0; x += 0.8) stage.colliders.push({ x, z: 8, r: 0.6 });   // ㄱ자로 꺾인 끝
+  const from = { x: -5, z: 0 }, to = { x: 5, z: 0 };
+  assert.equal(clearLine(stage, from, to, 0.5), false);
+  const path = findPath(stage, from, to, 0.5, 9000);
+  assert.ok(path && path.length >= 2, '길을 찾는다');
+  let cur = from; for (const q of path) { assert.ok(clearLine(stage, cur, q, 0.5), '구간이 트여 있다'); cur = q; }
+  assert.ok(Math.hypot(cur.x - to.x, cur.z - to.z) < 0.01);
+  // 완전히 막히면 길 없음
+  const box = { colliders: [], grid: null };
+  for (let a = 0; a < 6.283; a += 0.1) box.colliders.push({ x: 5 + Math.cos(a) * 3, z: Math.sin(a) * 3, r: 0.6 });
+  assert.equal(findPath(box, from, to, 0.5, 3000), null);
+});
+
 console.log(`\n${n}개 통과`);
