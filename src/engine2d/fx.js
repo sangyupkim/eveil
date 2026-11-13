@@ -372,6 +372,7 @@ export class FX {
     for (let i = this.items.length - 1; i >= 0; i--) {
       const it = this.items[i];
       it.t += dt;
+      if (it.follow) { it.x = it.follow.x; it.z = it.follow.z; if (it.drawable) it.drawable.z = it.z + 0.05; } // 캐릭터를 따라가는 효과
       let done = it.t >= it.dur;
       if (it.kind === 'proj') {
         const tp = it.target.pos && !it.target.dead ? it.target.pos : it.last;

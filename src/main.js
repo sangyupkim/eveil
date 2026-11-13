@@ -246,17 +246,20 @@ function startGame(stage, st) {
   window.__askNick = askNick;
 
   let saveT = CONFIG.autosaveInterval;
+  const loopErr = {};
   let fpsT = 0, frames = 0, slow = 0, fast = 0;
   const PR_MAX = stage.pr, PR_MIN = Math.min(PR_MAX, isTouch ? 0.75 : 1);
   const loop = () => {
     const dt = Math.min(0.05, clock.getDelta());
     if (window.__stop) { requestAnimationFrame(loop); return; } // 개발용: 화면 멈춤
-    input.update();
-    if (!tut.blocking) world.update(dt);
-    tut.update();
-    stage.follow(world.player.pos.x, world.player.pos.z, dt);
-    hud.update(dt);
-    stage.render(dt);
+    // 한 곳에서 오류가 나도 게임이 통째로 멈추지 않게 (예전엔 다음 프레임 예약이 안 돼 화면이 굳었다)
+    const safe = (name, fn) => { try { fn(); } catch (e) { if ((loopErr[name] = (loopErr[name] || 0) + 1) <= 3) { console.error(name, e); cloud.reportError(`[loop:${name}] ${e?.message}`, e?.stack, GAME_VERSION); } } };
+    safe('input', () => input.update());
+    if (!tut.blocking) safe('world', () => world.update(dt));
+    safe('tut', () => tut.update());
+    safe('follow', () => stage.follow(world.player.pos.x, world.player.pos.z, dt));
+    safe('hud', () => hud.update(dt));
+    safe('render', () => stage.render(dt));
     saveT -= dt;
     if (saveT <= 0) { saveT = CONFIG.autosaveInterval; save(); }
     frames++; fpsT += dt;

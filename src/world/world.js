@@ -1380,7 +1380,7 @@ export class World {
     return this.monsters.filter((m) => !m.dead && dist2(m.pos, pos) <= r);
   }
 
-  usePotion(kind) {
+  usePotion(kind, quiet = false) {
     if (this.dead || this.potionCd > 0) return false;
     const st = this.st;
     const ids = kind === 'hp' ? ['hp_potion_l', 'hp_potion'] : ['mp_potion_l', 'mp_potion'];
@@ -1388,7 +1388,7 @@ export class World {
     // 부족한 양에 맞는 물약을 먼저
     const order = missing > 150 ? ids : [...ids].reverse();
     const id = order.find((i) => countOf(st, i) > 0);
-    if (!id) { this.ui.toast(kind === 'hp' ? '체력 물약이 없습니다' : '마나 물약이 없습니다'); return false; }
+    if (!id) { if (!quiet) this.ui.toast(kind === 'hp' ? '체력 물약이 없습니다' : '마나 물약이 없습니다'); else this.potionCd = 3; return false; }
     takeOne(st, id);
     const r = BASES[id].restore;
     const rk = 1 + researchK(st, 'potion');
@@ -1438,7 +1438,7 @@ export class World {
   autoGo(dest) {
     const P = this.player.pos;
     this.moveTo = dest; this.target = null;
-    this.movePath = clearLine(this.stage, P, dest, 0.5) ? null : findPath(this.stage, P, dest, 0.5, 9000);
+    this.movePath = clearLine(this.stage, P, dest, 0.5) ? null : findPath(this.stage, P, dest, 0.5, 4000);
   }
   autoZone() {
     const st = this.st, ok = ZONES.filter((z) => st.awakenings >= (z.levels[0] + this.tierOffset - 1) * 2);
@@ -1532,7 +1532,7 @@ export class World {
     const spellCrit = () => Math.random() < d.crit * 0.5;
     const weaponHit = () => { const w = this.rollWeapon(); return { v: w.v * pw, crit: w.crit }; };
     const color = new THREE.Color(sk.color).getHex();
-    this.fx.circle(P.pos.x, P.pos.z, sk.type === 'buff' ? 2.6 : 1.8, color, 0.9);
+    if (sk.type !== 'buff') this.fx.circle(P.pos.x, P.pos.z, 1.8, color, 0.9); // 버프는 따로 (보호막 · 오라)
     this.fx.castFlash(P.pos.x, P.pos.z, color);
 
     switch (sk.type) {
@@ -1748,12 +1748,30 @@ export class World {
         const val = sk.buff === 'shield' ? pw * d.healMult : pw;
         this.buffs[sk.buff] = { v: val, t: sk.duration, max: sk.duration, id };
         sfx('buff');
-        this.fx.ring(P.pos.x, P.pos.z, 2.5, color, 0.8);
+        // 쓸 때: 몸을 감싸는 빛 (폭발처럼 보이던 고리 대신). 지속 중에는 발밑 오라가 따라다닌다 (auraStep)
+        { const q = this.fx.play('immunity', P.pos.x, P.pos.z, { y: 0.05, scale: 0.75, tint: color, alpha: 0.9, fade: true, dur: 0.9 }); if (q) q.follow = P.pos; }
+        { const q = this.fx.play('sparkle', P.pos.x, P.pos.z, { y: 0.6, scale: 0.9, alpha: 1, dur: 0.8 }); if (q) q.follow = P.pos; }
         this.d = derive(st, this.buffValues());
         break;
       }
     }
     this.ui.dirty();
+  }
+
+  // 버프 오라: 걸린 버프가 있으면 발밑에 은은한 빛이 돌며 따라다닌다 (가장 오래 남은 버프 색)
+  auraStep() {
+    const P = this.player.pos, act = Object.values(this.buffs).filter((b) => b.t > 0 && b.id).sort((a, b) => b.t - a.t)[0];
+    const key = act ? act.id : null;
+    if (this.aura && (this.aura.key !== key || this.dead)) { this.aura.it.dur = 0; this.aura = null; }
+    if (!act || this.dead) return;
+    if (!this.aura) {
+      const sk = SKILLS[act.id], c = new THREE.Color(sk.color), warm = c.r > c.b; // 따뜻한 색 = 주황 고리, 차가운 색 = 파란 고리
+      const it = this.fx.play(warm ? 'shield_orange' : 'shield', P.x, P.z, { y: 0, scale: 0.5, loop: true, dur: 9999, alpha: 0.8 });
+      if (!it) return;
+      this.aura = { key, it };
+    }
+    const it = this.aura.it; it.x = P.x; it.z = P.z; it.drawable.z = P.z + 0.05;
+    it.alpha = act.t < 2 ? 0.8 * (0.5 + 0.5 * Math.sin(this.time * 12)) : 0.8; // 끝나 갈 때 깜빡
   }
 
   // 쏘는 자리: 바라보는 쪽으로 몸 앞 (활 · 지팡이 끝)
@@ -1933,6 +1951,7 @@ export class World {
     // 버프 · 쿨타임 · 회복
     let buffChanged = false;
     for (const k in this.buffs) { const b = this.buffs[k]; if (b.t > 0) { b.t -= dt; if (b.t <= 0) buffChanged = true; } }
+    this.auraStep();
     for (const k in this.st.elix || {}) { const e = this.st.elix[k]; e.t -= dt; if (e.t <= 0) { delete this.st.elix[k]; buffChanged = true; this.ui.dirty(); } }
     for (const k in this.pbuffs || {}) { const b = this.pbuffs[k]; if (b.t > 0) { b.t -= dt; if (b.t <= 0) buffChanged = true; } }
     if (buffChanged) this.d = derive(st, this.buffValues());
@@ -2014,6 +2033,12 @@ export class World {
       return;
     }
     this.autoPause -= dt;
+    // 자동 물약: 직접 조작 중(autoPause)에도 자동 사냥이 켜져 있으면 늘 확인한다
+    if (this.auto && !this.dead) {
+      const st2 = this.st, d2 = this.d;
+      if (st2.hp / d2.maxHp < (st2.settings.autoPotion ?? 0.4) && this.potionCd <= 0) this.usePotion('hp', true);
+      if (st2.mp / d2.maxMp < 0.2 && this.potionCd <= 0) this.usePotion('mp', true);
+    }
     if (this.auto && this.autoPause <= 0) {
       this.autoThink -= dt;
       if (this.autoThink <= 0) { this.autoThink = 0.2; this.autoBrain(); }
@@ -2042,7 +2067,16 @@ export class World {
           let to = t.pos;
           if (this.auto) {
             this.chaseT = (this.chaseT || 0) - dt;
-            if (this.chaseT <= 0) { this.chaseT = 0.5; this.chasePath = clearLine(this.stage, P.pos, t.pos, 0.5) ? null : findPath(this.stage, P.pos, t.pos, 0.5, 6000); }
+            if (this.chaseT <= 0) {
+              this.chaseT = 0.6;
+              const moved = !this.chaseAt || Math.hypot(t.pos.x - this.chaseAt.x, t.pos.z - this.chaseAt.z) > 1.5;
+              if (clearLine(this.stage, P.pos, t.pos, 0.5)) this.chasePath = null;
+              else if (moved || !this.chasePath?.length) {
+                this.chaseAt = { x: t.pos.x, z: t.pos.z };
+                this.chasePath = findPath(this.stage, P.pos, t.pos, 0.5, 2500);
+                if (!this.chasePath) { t.ignoreUntil = this.time + 12; this.target = null; this.chaseAt = null; } // 닿을 수 없으면 다른 몬스터로 (계속 찾으며 끊기지 않게)
+              }
+            }
             if (this.chasePath?.length) { if (dist2(P.pos, this.chasePath[0]) < 0.6) this.chasePath.shift(); if (this.chasePath.length) to = this.chasePath[0]; }
           }
           const g = this.goal(to); this.stepToward(P.pos, g, speed * dt); P.face(g.x, g.z); moving = true;
