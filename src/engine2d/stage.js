@@ -1,7 +1,7 @@
 // 2D 쿼터뷰 화면: 카메라 · 땅 타일 · 배경 물건 · 앞뒤 정렬 · 조명. 게임 규칙의 좌표(x, z)는 그대로 쓴다
 // 투영: 화면 x = x·48, 화면 y = z·24 − 높이·48 (Flare 타일 192×96 하나 = 세계 (2, 2) 대각)
 import { ZONES, TOWN, WORLD_SIZE } from '../data/world.js';
-import { setDungeonSeed, dungeonAt, DUNGEON_X, entranceOf, layout, cellPos, N, T } from '../data/dungeons.js';
+import { setDungeonSeed, dungeonAt, dungeonBox, DUNGEON_X, entranceOf, layout, cellPos, N, T } from '../data/dungeons.js';
 const farSide = (x) => x > DUNGEON_X - 80;
 import { ZONE_LOOK, ZONE_PROPS, FLAT } from '../data/flareWorld.js';
 import { DATA, image, drawRect } from './sprites.js';
@@ -30,7 +30,7 @@ const noise = (x, z) => (Math.sin(x * 0.11 + Math.cos(z * 0.07) * 2) + Math.sin(
 function groundAt(i, j) {
   const x = (i - j) * STEP, z = (i + j) * STEP;
   const h = hash(i, j);
-  if (farSide(x)) { const di = dungeonAt(x, z); return di >= 0 ? pick(ZONES[di].id, h) : ['void']; } // 던전 바닥은 그 지역 땅 그대로
+  if (farSide(x)) { const di = dungeonBox(x, z); return di >= 0 ? pick(ZONES[di].id, h) : ['void']; } // 던전 바닥은 그 지역 땅 그대로
   const dT = Math.hypot(x, z);
   if (dT < TOWN.r * 0.75) return pick('town', h);
   for (const zn of ZONES) if (distToSeg(x, z, 0, 0, zn.x * 0.72, zn.z * 0.72) < 2.6 + noise(x, z) * 1.5) return pick('town', h);
@@ -114,6 +114,7 @@ function genTerrain(rng) {
   }
 }
 // 던전 벽: 기둥 대신 그 지역 언덕(필드와 같은 절벽)을 길 둘레에 두른다
+export let HILL_BACK = 1.3, HILL_R = 0.7; export const setHill = (b, r) => { HILL_BACK = b; HILL_R = r; };
 function dungeonHills() {
   ZONES.forEach((zn, zi) => {
     const L = layout(zi), Z = ZONE_LOOK[zn.id];
@@ -123,8 +124,11 @@ function dungeonHills() {
       let edge = false;
       for (let b = -1; b <= 1 && !edge; b++) for (let a = -1; a <= 1; a++) if (L.at(i + a, j + b)) { edge = true; break; }
       if (!edge) continue;
-      const p = cellPos(zi, i, j);
-      MESAS.push({ x: p.x, z: p.z, r: T * 0.85, set: bs, top, lava: false, chasm: false, floor: [Z.set, Z.ground[0]], look: zn.id, dungeon: true });
+      // 언덕은 길에서 바깥쪽으로 물려 세운다 (언덕 둘레 절벽까지 길을 덮어 막던 문제)
+      let ox = 0, oz = 0;
+      for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) if (L.at(i + a, j + b)) { ox -= a; oz -= b; }
+      const ol = Math.hypot(ox, oz) || 1, p = cellPos(zi, i + (ox / ol) * HILL_BACK, j + (oz / ol) * HILL_BACK);
+      MESAS.push({ x: p.x, z: p.z, r: T * HILL_R, set: bs, top, lava: false, chasm: false, floor: [Z.set, Z.ground[0]], look: zn.id, dungeon: true });
     }
   });
 }
@@ -278,13 +282,15 @@ export function buildWorldProps(stage) {
   for (const [i, j, q] of cells(MESAS, (a, b) => mesaCell(a, b) || mesaRing(a, b))) {
     const [x, z] = cellXZ(i, j), h = hash(i, j), set = q.set;
     const L = ZONE_LOOK[q.look || zoneAt(x, z)?.id || 'wild'], floor = L.ground;
+    // 던전 바닥 위에는 언덕 충돌을 두지 않는다 (바닥 밖은 dungeonAt이 막는다)
+    const solid = !(q.dungeon && dungeonAt(x, z) >= 0);
     if (mesaCell(i, j)) {
-      stage.colliders.push({ x, z, r: 1.15 });
+      if (solid) stage.colliders.push({ x, z, r: 1.15 });
       addProp(stage, L.set, floor[0] + Math.floor(h * (floor[1] - floor[0] + 1)), x, z, 0, HILL_LIFT);
     } else {
       const k = edgeKind((a, b) => !mesaCell(a, b), i, j);
       if (!k || k === 'bad') continue;
-      stage.colliders.push({ x, z, r: 0.95 });
+      if (solid) stage.colliders.push({ x, z, r: 0.95 });
       const id = bankId(set, k, h), p = { set, id, x, z, t: DATA.tiles[set].tiles[id], lift: HILL_LIFT, bank: [L.set, floor[0]], top: q.top };
       const key = Math.floor(x / CHUNK) + ',' + Math.floor(z / CHUNK);
       if (!stage.props.has(key)) stage.props.set(key, []);

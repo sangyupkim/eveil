@@ -63,6 +63,14 @@ export function dungeonAt(x, z) {
   const [i, j] = cellOf(zi, x, z);
   return layout(zi).at(i, j) ? zi : -1;
 }
+// 던전 칸판 안이면 지역 번호 (바닥 · 언덕 사이 땅을 그 지역 땅으로 칠할 때)
+export function dungeonBox(x, z) {
+  if (x < DUNGEON_X - 60) return -1;
+  const zi = Math.round((x - DUNGEON_X) / DUNGEON_GAP);
+  if (zi < 0 || zi >= ZONES.length) return -1;
+  const o = originOf(zi);
+  return Math.abs(x - o.x) < (N / 2 + 1) * T && Math.abs(z - o.z) < (N / 2 + 1) * T ? zi : -1;
+}
 // 지역 안 입구 자리 (문 앞)
 export const entranceOf = (zn) => ({ x: zn.x + (zn.x >= 0 ? -1 : 1) * zn.r * 0.45, z: zn.z + (zn.z >= 0 ? -1 : 1) * zn.r * 0.45 });
 
