@@ -1,6 +1,6 @@
 import { bagSize } from '../game/inventory.js';
 import { ZONES as ALL_ZONES } from '../data/world.js';
-import { entranceOf, MAX_STAGE, stageMods, layout as dungeonLayout, cellPos, N } from '../data/dungeons.js';
+import { DUNGEON_X, entranceOf, MAX_STAGE, stageMods, layout as dungeonLayout, cellPos, N } from '../data/dungeons.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { gemGradeFor } from '../data/legends.js';
 export const TIER_NAMES = ['평온', '악몽', '지옥'];
@@ -547,8 +547,14 @@ export class World {
   leaveDungeon(silent = false) {
     if (!this.dungeon) return;
     if (this.autoArea?.dungeon != null) this.autoArea = { zone: ALL_ZONES[this.dungeon.zi] }; // 던전에서 켠 자동 사냥은 나오면 그 지역에서
-    for (const m of this.monsters) if (m.dungeon && !m.dead) { m.dead = true; m.noLoot = true; this.stage.remove(m.actor); }
-    this.monsters = this.monsters.filter((m) => !m.dungeon);
+    // 던전 몬스터는 쓰러진 중이던 것 · 보스가 부른 졸개까지 그림째 모두 치운다 (남으면 다시 들어갈 때 잔상이 보였다)
+    const inDg = (m) => m.dungeon || m.owner?.dungeon || m.pos.x > DUNGEON_X - 80;
+    for (const m of this.monsters) if (inDg(m)) { m.dead = true; m.noLoot = true; this.stage.remove(m.actor); }
+    this.monsters = this.monsters.filter((m) => !inDg(m));
+    // 던전 바닥에 남은 것: 죽으며 떨어뜨린 장비는 던전 입구로 옮기고, 나머지는 치운다
+    const ent = entranceOf(this.dungeon.zone);
+    for (const g of [...this.ground]) if (g.x > DUNGEON_X - 80) { if (g.deathDrop) { this.removeGround(g); const n = this.dropGround({ kind: 'item', item: g.item }, ent.x + 1, ent.z + 1, g.expires); n.deathDrop = true; } else this.removeGround(g); }
+    this.target = null; this.chasePath = null;
     const zn = this.dungeon.zone;
     this.dungeon = null;
     if (!silent) { const e = entranceOf(zn); this.player.pos.set(e.x + 2, 0, e.z + 2); this.gateCd = 4; this.fx.arrive(e.x + 2, e.z + 2); }
@@ -890,7 +896,7 @@ export class World {
         const x = m.pos.x + Math.cos(ang) * 3.5, z = m.pos.z + Math.sin(ang) * 3.5;
         this.fx.pillar(x, z, 0xc0a0ff, 0.6, 4, 1);
         const add = this.spawn({ zone: m.sp.zone, x, z, level: Math.max(1, m.level - 1), tier: 'normal', timer: 0, mon: null, forceType: m.def.minion });
-        add.owner = m; add.state = 'chase'; add.exp *= 0.3; add.noLoot = true;
+        add.owner = m; add.state = 'chase'; add.exp *= 0.3; add.noLoot = true; if (m.dungeon) add.dungeon = true;
       }
     } else if (name === 'charge') {
       // 돌진: 잠깐 움츠렸다가 곧게 달려든다
