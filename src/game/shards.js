@@ -5,8 +5,8 @@ import { AFFIXES, BASES, RARITY } from '../data/items.js';
 import { R, pick } from './rng.js';
 
 export const SHARD = {
-  swapChance: 0.06,   // 장비를 갈아 끼울 때 빠진 장비에서 파편이 나올 확률
-  bossChance: 0.12,   // 보스 장비 드랍 하나가 파편으로 바뀔 확률
+  swapChance: 0.1,    // 장비를 갈아 끼울 때 빠진 장비에서 파편이 나올 확률
+  bossChance: 0.2,    // 보스 장비 드랍 하나가 파편으로 바뀔 확률
 };
 export const SHARD_COLOR = '#c58cff';
 // 잠글 수 있는 옵션 수: 대장간 3단계 1개 · 4단계 2개 · 5단계 3개

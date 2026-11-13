@@ -17,7 +17,7 @@ import { addAP, gainExp, rewardFactor } from '../game/growth.js';
 import { addSkillExp, skillValues, skillEff, modsOf, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
 import { rollLoot, rollDeathDrop } from '../game/loot.js';
 import { dropMats, liberateAdd } from '../game/town.js';
-import { dailyProgress, dailyReward, dailyText, dayKey } from '../game/daily.js';
+import { dailyProgress, dailyReward, dailyText, dayKey, dailyOf } from '../game/daily.js';
 import { MATERIALS } from '../data/crafting.js';
 import { addItem, takeOne, countOf, equip as equipItem, unequip as unequipItem } from '../game/inventory.js';
 import { itemName, itemColor, isBook, makeItem, makeBook, rollBase, itemValue } from '../game/items.js';
@@ -317,17 +317,21 @@ export class World {
     }
   }
 
-  // 오늘의 의뢰 끝: 보상을 바로 준다
+  // 오늘의 의뢰 끝: 보상은 경비대장 하겐에게 보고해서 받는다 (claimDaily)
   dailyDone(list) {
-    const st = this.st;
-    for (const q of list) {
-      (st.rec ||= {}).daily = (st.rec.daily || 0) + 1;
+    for (const q of list) { this.ui.toast(`오늘의 의뢰 완료: ${dailyText(q)}`, '#ffd84a'); sfx('coin'); }
+  }
+  claimDaily() {
+    const st = this.st; let n = 0, g = 0;
+    for (const q of dailyOf(st).list) {
+      if (!q.done || q.got) continue;
       const r = dailyReward(q, st);
-      st.gold += r.gold; if (r.ore) townOf(st).ore += r.ore;
-      if (r.key) addItem(st, makeItem('dungeon_key', { qty: r.key }, st));
-      this.ui.toast(`오늘의 의뢰 완료: ${dailyText(q)} — ${r.gold}G${r.ore ? ` · 강화석 ${r.ore}` : ''}${r.key ? ' · 던전 열쇠' : ''}`, '#ffd84a');
-      sfx('coin');
+      if (r.key && !addItem(st, makeItem('dungeon_key', { qty: r.key }, st))) { this.ui.toast('가방이 가득 찼습니다'); break; }
+      st.gold += r.gold; g += r.gold; if (r.ore) townOf(st).ore += r.ore;
+      q.got = true; n++; (st.rec ||= {}).daily = (st.rec.daily || 0) + 1;
     }
+    if (n) { this.ui.toast(`의뢰 보상 ${n}개 — ${g.toLocaleString()}G`, '#ffd84a'); sfx('coin'); this.ui.dirty(); }
+    return n;
   }
 
   // 막힌 곳(언덕 · 물 · 바위 · 벽)이면 가까운 빈자리로
@@ -401,7 +405,7 @@ export class World {
     const P = this.player.pos, st = this.st;
     this.petT = (this.petT || 0) - dt;
     let goal = { x: P.x - 1.2, z: P.z + 0.8 };
-    const g = this.ground.filter((x) => dist2(x, P) < 9 && !(x.kind === 'item' && st.inv.length >= bagSize(st) && !BASES[x.item.base]?.stack)).sort((a, b) => dist2(a, pet.pos) - dist2(b, pet.pos))[0];
+    const g = this.dead ? null : this.ground.filter((x) => !x.deathDrop && dist2(x, P) < 9 && !(x.kind === 'item' && st.inv.length >= bagSize(st) && !BASES[x.item.base]?.stack)).sort((a, b) => dist2(a, pet.pos) - dist2(b, pet.pos))[0];
     if (g) { goal = g; if (dist2(pet.pos, g) < 0.8) this.pickup(g); }
     const d = dist2(pet.pos, goal);
     if (d > 0.4) { this.stepToward(pet.pos, goal, Math.min(14, 5 + d) * dt); pet.face(goal.x, goal.z); pet.play('run', { speed: 1.4 }); } else pet.play('idle');
@@ -453,6 +457,7 @@ export class World {
 
   // ───────── 떠돌이 상인 (사냥터에 가끔 나타나 4분 머문다) ─────────
   merchantStep(dt) {
+    return; // 떠돌이 상인은 없앴다 (야영지 포탈 상인으로 충분, 0.28.0)
     const P = this.player.pos;
     if (this.eventNpc) {
       this.eventNpc.update(dt);
@@ -1291,7 +1296,7 @@ export class World {
     this.player.lock = 99;
     const lost = rollDeathDrop(this.st);
     if (lost) {
-      const g = this.dropGround({ kind: 'item', item: lost }, this.player.pos.x + 0.8, this.player.pos.z, Date.now() + CONFIG.deathItemLifetime * 1000);
+      const g = this.dropGround({ kind: 'item', item: lost }, this.player.pos.x + 1.8, this.player.pos.z, Date.now() + CONFIG.deathItemLifetime * 1000);
       g.deathDrop = true;
       this.refreshGear();
     }
@@ -2042,7 +2047,7 @@ export class World {
     if (P.lock <= 0) P.play(moving ? 'run' : 'idle', { speed: moving ? speed / 7 : 1 });
 
     // 줍기
-    for (const g of [...this.ground]) if (dist2(g, P.pos) < 1.4) this.pickup(g);
+    if (!this.dead) for (const g of [...this.ground]) if (dist2(g, P.pos) < 1.4) this.pickup(g);
 
     // 지역
     const zn = zoneAt(P.pos.x, P.pos.z);

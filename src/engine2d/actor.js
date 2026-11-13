@@ -1,6 +1,6 @@
 // 2D 인물: 주인공(겹그림) · 몬스터 · NPC. 예전 3D Actor와 같은 쓰임새(play · act · face · lock · hitFlash · pos …)
 import * as THREE from 'three';
-import { DATA, image, tinted, frameIndex, animImage, drawRect, dirIndex } from './sprites.js';
+import { DATA, image, tinted, tintedRect, frameIndex, animImage, drawRect, dirIndex } from './sprites.js';
 import { ANIM_MAP, BASE_CLOTHES, faceOf } from '../data/flareWorld.js';
 import { PX, PZ, PY } from './stage.js';
 
@@ -145,9 +145,10 @@ export class Actor {
       const anims = this.def.anims;
       const a = anims[fl] || (fl === 'swing' && anims.melee) || anims.stance || Object.values(anims)[0];
       const path = animImage(this.def, anims[fl] ? fl : 'stance');
-      const src = this.tint != null ? tinted(path, this.tint) : image(path).ok && image(path).im;
-      if (src && a) drawRect(ctx, src, a.f[this.dir]?.[frameIndex(a, this.t, this.once)], p.x, y, s * (this.def.px || 1));
-      if (src && a && this.flash > 0) (this.lastDraw ||= []).push([src, a.f[this.dir]?.[frameIndex(a, this.t, this.once)], s * (this.def.px || 1)]);
+      let src = this.tint != null ? null : image(path).ok && image(path).im, rect = a && a.f[this.dir]?.[frameIndex(a, this.t, this.once)];
+      if (this.tint != null) { const tr = tintedRect(path, this.tint, rect); if (tr) [src, rect] = tr; }
+      if (src && a) drawRect(ctx, src, rect, p.x, y, s * (this.def.px || 1));
+      if (src && a && this.flash > 0) (this.lastDraw ||= []).push([src, rect, s * (this.def.px || 1)]);
     }
     // 맞았을 때 번쩍: 같은 그림을 밝게 한 번 더 (lighter)
     if (this.flash > 0 && this.lastDraw?.length) {

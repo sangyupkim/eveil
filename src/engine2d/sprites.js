@@ -53,6 +53,30 @@ export const animDuration = (a) => (a ? a.dur / 1000 : 0);
 export const animImage = (def, name) => def.images[name] || def.images.default;
 
 // 색 입힌 그림 (같은 그림 · 색이면 한 번만 만든다)
+// 색 입힌 동작 칸 하나 (그림 전체를 칠하면 몬스터가 처음 나올 때 멈칫하고 메모리를 크게 먹었다)
+const tintRects = new Map();
+export function tintedRect(path, color, rect) {
+  if (!rect) return null;
+  const key = path + '|' + color + '|' + rect[0] + ',' + rect[1];
+  let v = tintRects.get(key);
+  if (v) return v;
+  const src = image(path);
+  if (!src.ok) return null;
+  const [x, y, w, h, ox, oy] = rect;
+  if (w <= 1 || h <= 1) return null;
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  g.drawImage(src.im, x, y, w, h, 0, 0, w, h);
+  g.globalCompositeOperation = 'multiply';
+  g.fillStyle = '#' + color.toString(16).padStart(6, '0');
+  g.fillRect(0, 0, w, h);
+  g.globalCompositeOperation = 'destination-in';
+  g.drawImage(src.im, x, y, w, h, 0, 0, w, h);
+  v = [c, [0, 0, w, h, ox, oy]];
+  if (tintRects.size > 4000) tintRects.clear();
+  tintRects.set(key, v);
+  return v;
+}
 const tints = new Map();
 export function tinted(path, color) {
   const key = path + '|' + color;

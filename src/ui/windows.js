@@ -312,7 +312,7 @@ export class Windows {
 
   bagHead() {
     const st = this.w.st;
-    return `<h3>가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span>${this.w.canShop ? '<button class="btn" data-selljunk="1" style="margin-left:auto">일반 · 마법 팔기</button>' : ''}<span class="goldTxt">${st.gold.toLocaleString()} G · ◆${(st.town?.ore || 0).toLocaleString()}</span></h3>`;
+    return `<h3>가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span>${this.w.canShop ? '<button class="btn" data-selljunk="1" style="margin-left:auto">일반 · 마법 팔기</button>' : ''}<span class="goldTxt">${st.gold.toLocaleString()} G · ◆${(st.town?.ore || 0).toLocaleString()}</span></h3>` + (Object.values(townOf(st).mats || {}).some((n) => n > 0) ? `<div class="note matRow">재료 · ${Object.entries(townOf(st).mats).filter(([, n]) => n > 0).map(([k, n]) => `${MATERIALS[k].name} ${n}`).join(' · ')}</div>` : '');
   }
 
   // 고른 가방 아이템과 같은 칸에 끼고 있는 장비
@@ -451,8 +451,9 @@ export class Windows {
         <div class="btns"><button class="plate gold" data-turnin="1" ${done && this.w.inTown ? '' : 'disabled'}>${done ? (this.w.inTown ? '보상 받기' : '경비대장 하겐에게 보고') : '진행 중'}</button></div>`;
     }
     const dl = dailyOf(st);
-    let list = `<h3>오늘의 의뢰</h3>` + dl.list.map((x) => { const r = dailyReward(x, st);
-      return `<div class="row qrow${x.done ? ' fin' : ''}"><div class="grow">${dailyText(x)}<div class="note">${r.gold}G${r.ore ? ` · 강화석 ${r.ore}` : ''}${r.key ? ' · 던전 열쇠' : ''}</div></div><span class="note">${x.done ? '완료' : `${x.have} / ${x.need}`}</span></div>`; }).join('');
+    const atGuard = this.townMode === 'build', claimable = dl.list.some((x) => x.done && !x.got);
+    let list = `<h3>오늘의 의뢰${claimable ? `<button class="btn gold" data-daily="1" style="margin-left:auto" ${atGuard ? '' : 'disabled'}>${atGuard ? '보상 받기' : '경비대장에게 보고'}</button>` : ''}</h3>` + dl.list.map((x) => { const r = dailyReward(x, st);
+      return `<div class="row qrow${x.done ? ' fin' : ''}"><div class="grow">${dailyText(x)}<div class="note">${r.gold}G${r.ore ? ` · 강화석 ${r.ore}` : ''}${r.key ? ' · 던전 열쇠' : ''}</div></div><span class="note">${x.got ? '받음' : x.done ? '완료' : `${x.have} / ${x.need}`}</span></div>`; }).join('');
     for (const z of ZONES) {
       list += `<h3>${z.name}</h3>`;
       for (const x of QUESTS.filter((y) => y.zone === z.id)) {
@@ -792,6 +793,7 @@ export class Windows {
       };
       el.onchange = () => { if (el.dataset.vol === 'sfx') audio.play('coin'); };
     });
+    on('[data-daily]', () => { w.claimDaily(); this.render(); });
     on('[data-turnin]', () => {
       const r = questTurnIn(st, bagSize(st));
       if (r.bagFull) { audio.play('error'); this.alert('가방이 가득 찼습니다', `보상을 받으려면 가방 ${r.need}칸이 필요합니다`); return; }

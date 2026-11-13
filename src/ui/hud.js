@@ -6,6 +6,7 @@ import { ZONES, TOWN, WORLD_SIZE } from '../data/world.js';
 import { entranceOf, layout as dungeonLayout, cellPos, N, T } from '../data/dungeons.js';
 import { terrain, fogCan, MAP_R, FOG_C, seen as seenAt } from './mapimg.js';
 import { CAMPS } from '../engine2d/stage.js';
+import { dailyOf, dailyText } from '../game/daily.js';
 import { PLOTS, BUILDINGS, VAULT_SPOT } from '../data/buildings.js';
 import { expNeeded, powerLevel } from '../game/growth.js';
 import { countOf } from '../game/inventory.js';
@@ -37,6 +38,7 @@ export class HUD {
     document.querySelectorAll('img[data-ico]').forEach((im) => { im.src = icons[im.dataset.ico] || ''; });
     $('#menuToggle').onclick = () => $('.menuCol').classList.toggle('closed');
     $('#qToggle').onclick = () => $('#questBox').classList.toggle('min');
+    $('#qpToggle').onclick = () => $('#qPanel').classList.toggle('min');
     this.dirty();
   }
 
@@ -147,6 +149,9 @@ export class HUD {
     const w = this.world;
     if (!w) return;
     const st = w.st, d = w.d;
+    // 퀘스트 칸: 오늘의 의뢰 진행 (바뀔 때만 다시 쓴다)
+    const dl = dailyOf(st), dk = dl.list.map((q) => q.have + (q.done ? 'd' : '') + (q.got ? 'g' : '')).join('|');
+    if (dk !== this.dailyKey) { this.dailyKey = dk; $('#dailyBox').innerHTML = dl.list.filter((q) => !q.got).map((q) => `<div class="dq${q.done ? ' fin' : ''}">${dailyText(q)} <b>${q.done ? '완료' : `${q.have} / ${q.need}`}</b></div>`).join(''); }
     $('.bar.hp i').style.transform = `scaleX(${Math.max(0, st.hp / d.maxHp)})`;
     $('.bar.hp span').textContent = `${Math.ceil(Math.max(0, st.hp))} / ${d.maxHp}`;
     $('.bar.mp i').style.transform = `scaleX(${Math.max(0, st.mp / d.maxMp)})`;
@@ -317,14 +322,16 @@ export class HUD {
       c.fillStyle = 'rgba(90,80,70,0.8)';
       const Ld = dungeonLayout(zi), o = cellPos(zi, 0, 0);
       for (let k2 = 0; k2 < Ld.g.length; k2++) if (Ld.g[k2]) { const i = k2 % N, j = Math.floor(k2 / N); c.fillRect(tx(o.x + (i - 0.5) * T), tz(o.z + (j - 0.5) * T), T * k + 0.5, T * k + 0.5); }
-      const bp = cellPos(zi, Ld.boss[0], Ld.boss[1]); c.fillStyle = '#ff5a4a'; c.beginPath(); c.arc(tx(bp.x), tz(bp.z), 4, 0, 7); c.fill();
+
     } else {
       // 지형 그림 + 탐험 안개
       c.imageSmoothingEnabled = false;
       c.drawImage(terrain, P.x - R + MAP_R, P.z - R + MAP_R, R * 2, R * 2, 0, 0, S, S);
       c.imageSmoothingEnabled = true;
       c.drawImage(fogCan, (P.x - R + MAP_R) / FOG_C, (P.z - R + MAP_R) / FOG_C, (R * 2) / FOG_C, (R * 2) / FOG_C, 0, 0, S, S);
-      for (const cp of CAMPS) if (w.st.camps?.[cp.zone]) { c.fillStyle = '#9ad0ff'; c.fillRect(tx(cp.x) - 3, tz(cp.z) - 3, 6, 6); }
+      // 포탈 = 하늘색 고리
+      for (const cp of CAMPS) if (w.st.camps?.[cp.zone]) { c.strokeStyle = '#7fe8ff'; c.lineWidth = 2.5; c.beginPath(); c.arc(tx(cp.x), tz(cp.z), 5, 0, 7); c.stroke(); c.fillStyle = '#e8fbff'; c.beginPath(); c.arc(tx(cp.x), tz(cp.z), 1.8, 0, 7); c.fill(); }
+      c.strokeStyle = '#7fe8ff'; c.lineWidth = 2.5; c.beginPath(); c.arc(tx(0), tz(-2), 5, 0, 7); c.stroke();
     }
     c.beginPath();
     c.arc(tx(TOWN.x), tz(TOWN.z), TOWN.r * k, 0, Math.PI * 2);
@@ -335,14 +342,15 @@ export class HUD {
     c.strokeStyle = 'rgba(0,0,0,0.8)';
     c.lineWidth = 3;
     c.stroke();
-    if (!w.dungeon) for (const z of ZONES) { const e = entranceOf(z); if (!seenAt(e.x, e.z)) continue; c.fillStyle = '#80c0ff'; c.beginPath(); c.arc(tx(e.x), tz(e.z), 4, 0, 7); c.fill(); }
+    // 던전 입구 = 초록 세모 (테두리)
+    if (!w.dungeon) for (const z of ZONES) { const e = entranceOf(z); if (!seenAt(e.x, e.z)) continue; const x = tx(e.x), y = tz(e.z); c.beginPath(); c.moveTo(x, y - 6); c.lineTo(x + 6, y + 5); c.lineTo(x - 6, y + 5); c.closePath(); c.fillStyle = '#5ee07a'; c.fill(); c.strokeStyle = '#0c2a12'; c.lineWidth = 1.5; c.stroke(); }
+    // 몬스터: 일반 = 빨간 점, 정예 · 네임드 = 주황 점, 보스 = 큰 금색 마름모 (파란색은 쓰지 않는다)
     for (const m of w.monsters) {
       if (m.dead) continue;
-      const big = m.tier !== 'normal';
-      c.fillStyle = TIERS[m.tier].color === '#e8e2d4' ? '#e04a38' : TIERS[m.tier].color;
-      c.beginPath();
-      c.arc(tx(m.pos.x), tz(m.pos.z), big ? 3.5 : 2, 0, Math.PI * 2);
-      c.fill();
+      const x = tx(m.pos.x), y = tz(m.pos.z);
+      if (m.tier === 'boss') { c.beginPath(); c.moveTo(x, y - 7); c.lineTo(x + 7, y); c.lineTo(x, y + 7); c.lineTo(x - 7, y); c.closePath(); c.fillStyle = '#ffcf3a'; c.fill(); c.strokeStyle = '#5a1000'; c.lineWidth = 2; c.stroke(); continue; }
+      c.fillStyle = m.tier === 'normal' ? '#e04a38' : '#ff9a2a';
+      c.beginPath(); c.arc(x, y, m.tier === 'normal' ? 2 : 3.5, 0, Math.PI * 2); c.fill();
     }
     for (const g of w.ground) {
       c.fillStyle = g.color;
@@ -351,9 +359,8 @@ export class HUD {
     // 보스 위치 표시
     for (const sp of w.spawners) {
       if (sp.tier !== 'boss' || !seenAt(sp.x, sp.z)) continue;
-      c.fillStyle = sp.mon ? '#ff5a4a' : 'rgba(255,90,74,0.3)';
-      c.font = '13px sans-serif';
-      c.fillText('☠', tx(sp.x) - 5, tz(sp.z) + 5);
+      if (sp.mon && !sp.mon.dead) continue; // 살아 있으면 위에서 금색 마름모로
+      const x = tx(sp.x), y = tz(sp.z); c.beginPath(); c.moveTo(x, y - 6); c.lineTo(x + 6, y); c.lineTo(x, y + 6); c.lineTo(x - 6, y); c.closePath(); c.strokeStyle = 'rgba(255,207,58,0.45)'; c.lineWidth = 1.5; c.stroke();
     }
     c.save();
     c.translate(S / 2, S / 2);
