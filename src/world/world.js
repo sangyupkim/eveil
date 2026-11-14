@@ -525,7 +525,7 @@ export class World {
     this.player.pos.set(sp0.x, 0, sp0.z); this.moveTo = null; this.target = null;
     this.stage.cam.x = sp0.x; this.stage.cam.z = sp0.z;
     this.fx.arrive(sp0.x, sp0.z);
-    const mod = stageMods(stage), L = zn.levels[1] + mod.level + this.tierOffset;
+    const mod = stageMods(stage), L = zn.levels[1] + mod.level; // 세계 단계 보정은 spawn에서 더한다 (예전엔 두 번 더해 지옥 던전이 283레벨이 됐다)
     // 몬스터: 시작에서 먼 칸일수록 많이 · 정예는 깊은 곳, 우두머리는 가장 먼 방
     const cells = [];
     for (let k = 0; k < Ld.g.length; k++) if (Ld.g[k] && Ld.dist[k] > 5 && Ld.dist[k] < Ld.far - 2) cells.push(k);
@@ -2159,7 +2159,7 @@ export class World {
     if (id !== this.zone) {
       this.zone = id;
       if (zn) st.lastZone = zn.id;
-      this.ui.zone(dg ? { name: `${dg.zone.name} 던전 ${dg.stage}단계`, levels: [dg.zone.levels[1] + dg.stage, dg.zone.levels[1] + dg.stage] } : id === 'town' ? TOWN : zn);
+      this.ui.zone(dg ? { name: `${dg.zone.name} 던전 ${dg.stage}단계`, levels: [dg.zone.levels[1] + stageMods(dg.stage).level + this.tierOffset, dg.zone.levels[1] + stageMods(dg.stage).level + this.tierOffset] } : id === 'town' ? TOWN : zn);
     }
     this.musicT = (this.musicT || 0) - dt;
     if (this.musicT <= 0) {
