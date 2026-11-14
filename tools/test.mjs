@@ -423,4 +423,11 @@ test('드랍 장비 레벨: 모든 세계 단계 · 지역 · 등급에서 몬�
   assert.ok(nm.ilvl === 198 && (BS_[nm.base].minLvl ?? 1) >= 180 && nm.affixes[0].v > 26);
 });
 
+// 모든 소스 파일 문법 검사 (화면용 파일은 테스트에서 불러오지 않아 문법 오류가 그대로 배포된 적이 있다 — 0.33.1 로딩 멈춤)
+const { execFileSync: _ex } = await import('node:child_process'), { readdirSync: _rd, statSync: _st } = await import('node:fs');
+test('모든 src 파일 문법', () => {
+  const walk = (d) => _rd(d).flatMap((f) => { const q = d + '/' + f; return _st(q).isDirectory() ? walk(q) : q.endsWith('.js') ? [q] : []; });
+  for (const f of walk(new URL('../src', import.meta.url).pathname)) _ex(process.execPath, ['--check', f], { stdio: 'pipe' });
+});
+
 console.log(`\n${n}개 통과`);
