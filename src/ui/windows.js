@@ -67,6 +67,8 @@ const TITLES = { gems: '보석상', map: '월드맵', inv: '가방 · 장비', s
 const gauge = (from, until, dur = 3600000, color = '#7ad0ff') => { const f = from || until - dur, k = Math.max(0, Math.min(1, (Date.now() - f) / Math.max(1, until - f))); return `<div class="mini" style="margin-top:3px"><i style="width:${(k * 100).toFixed(1)}%;background:linear-gradient(#bfe8ff,${color})"></i></div>`; };
 // 보석 합치기 · 빼기 값
 const mergeCost = (k) => 200 * (k + 1) ** 2;
+// 합치기 성공률: 조각난 · 흐린 100%, 그 위로 한 등급마다 -10% (최소 35%)
+const mergeChance = (k) => (k < 2 ? 1 : Math.max(0.35, 1 - 0.1 * (k - 1)));
 const pullCost = (g) => 100 * ((BASES[g]?.grade || 0) + 1) ** 2;
 const NPC_ONLY = ['shop', 'town', 'vault', 'gems'];
 const TAB_ORDER = ['gems', 'map', 'inv', 'vault', 'skills', 'char', 'quest', 'dex', 'town', 'shop', 'guide', 'menu'];
@@ -507,7 +509,7 @@ export class Windows {
       ['화면 보기', 'hud', ['체력 · 마나', '내 캐릭터: 칭호 · 이름 · 체력 · 마나. 체력이 낮으면 깜빡입니다', '퀘스트: 진행 중인 퀘스트와 오늘의 의뢰', '기록: 지역 정보 · 얻은 것', '미니맵', '메뉴: 가방 · 스킬 · 능력 · 퀘스트 · 설정', '스킬 칸', '공격 버튼', '조이스틱: 만질 때만 보입니다']],
       ['버튼', 'buttons', ['귀환: 마을로 돌아갑니다', '자동 사냥: 켠 지역 안에서만, 가장 가까운 몬스터를 찾아가며 장애물을 돌아갑니다. 얻는 것이 조금 줄어듭니다', '마나 물약', '체력 물약', '공격. 사람 · 건물 · 포탈 · 창고 앞에서는 그 이름으로 바뀝니다', '스킬. 스킬 창에서 칸을 정합니다']],
       ['미니맵 표시', 'minimap', ['빨간 점: 몬스터 · 주황 점: 정예 · 네임드 · 금색 마름모: 보스 · 하늘색 고리: 포탈 · 초록 세모: 던전 입구 · 노란 테: 마을']],
-      ['NPC와 대화', 'talk', ['경비대장 하겐: 퀘스트 보고 · 오늘의 의뢰 보상 · 건물 짓기', '가까이 가면 공격 버튼이 이름으로 바뀝니다. 누르면 대화. 상인 오르텐은 상점, 보석상 리엔은 보석 사기 · 합치기 · 박기, 현자는 도감']],
+      ['NPC와 대화', 'talk', ['경비대장 하겐: 퀘스트 보고 · 오늘의 의뢰 보상 · 건물 짓기', '가까이 가면 공격 버튼이 이름으로 바뀝니다. 누르면 대화. 상인 오르텐은 상점, 보석상 리엔은 보석 합치기 · 박기 · 빼기, 현자는 도감']],
       ['건물 쓰기', 'building', ['지은 건물', '건물 앞에서 버튼이 건물 이름으로 바뀝니다. 누르면 그 건물 창이 열립니다']],
       ['포탈', 'portal', ['마을 · 발견한 야영지의 포탈', '포탈 위에서 버튼을 눌러 갈 곳을 고릅니다']],
       ['공용 창고', 'vaultspot', ['상인 옆 공용 창고 상자', '상자 앞에서 버튼을 누르면 창고가 열립니다']],
@@ -717,23 +719,32 @@ export class Windows {
       <div class="frame detail" style="flex:1">${right}</div></div>`;
   }
 
-  // 보석상: 보석 사기 | 같은 보석 3개 → 한 등급 위 | 착용 장비 구멍에 박기 · 빼기. 칸이 좁아도 글이 세로로 쪼개지지 않게 (아이콘 칸 + 이름 줄 + 작은 버튼)
+  // 보석상: 가방(구멍 있는 장비 · 보석) | 고른 장비의 구멍에 박기 · 빼기 | 보석 합치기 (보석은 팔지 않는다 — 돈으로 상위 보석을 무한히 만들 수 있어서)
   gems() {
     const st = this.w.st;
     const row = (icon, title, sub, btns) => `<div class="grow-row"><div class="cell shopIco">${icon}</div><div class="gtxt"><b>${title}</b><div class="note">${sub}</div><div class="gbtns">${btns}</div></div></div>`;
-    const buy = Object.keys(GEMS).map((g) => { const id = gemId(g, 0), b = BASES[id]; return row(ico({ base: id }), b.name, `${STAT_NAMES[GEMS[g].stat]} +${GEM_GRADES[0].v}`, `<button class="btn" data-gbuy="${id}" ${st.gold < b.price ? 'disabled' : ''}>${b.price.toLocaleString()}G</button>`); }).join('');
     const have = st.inv.filter((x) => BASES[x.base]?.type === 'gem').sort((a, b) => BASES[a.base].grade - BASES[b.base].grade || a.base.localeCompare(b.base));
-    const merge = have.map((x) => { const b = BASES[x.base], up = b.grade + 1 < GEM_GRADES.length, cost = mergeCost(b.grade); return row(`${ico(x)}<span class="q">${x.qty}</span>`, b.name, `${STAT_NAMES[GEMS[b.gem].stat]} +${GEM_GRADES[b.grade].v}`, up ? `<button class="btn" data-gmerge="${x.base}" ${x.qty < 3 || st.gold < cost ? 'disabled' : ''}>3개 합치기 · ${cost.toLocaleString()}G</button>` : ''); }).join('') || '<div class="note">가진 보석이 없습니다</div>';
-    const slots = SLOTS.filter((sl) => st.equip[sl]?.sockets);
-    if (!slots.includes(this.gemSlot)) this.gemSlot = slots[0];
-    // 장비 고르기 → 그 장비의 구멍 · 박을 보석 (보석은 아이콘 칸으로)
-    let eq = slots.length ? `<div class="btns" style="flex-wrap:wrap;margin:0 0 6px">${slots.map((sl) => { const it = st.equip[sl]; return `<button class="btn ${sl === this.gemSlot ? 'on' : ''}" data-gslot="${sl}" style="color:${itemColor(it)}">${esc(itemName(it))} <small>${it.gems.length}/${it.sockets}</small></button>`; }).join('')}</div>` : '<div class="note">구멍이 있는 장비를 끼고 있지 않습니다</div>';
-    if (this.gemSlot) {
-      const it = st.equip[this.gemSlot];
-      eq += `<div class="note">박힌 보석</div>` + (it.gems.map((g, k) => row(ico({ base: g }), BASES[g].name, `${STAT_NAMES[GEMS[BASES[g].gem].stat]} +${GEM_GRADES[BASES[g].grade].v}`, `<button class="btn" data-gpull="${this.gemSlot}|${k}">빼기 · ${pullCost(g).toLocaleString()}G</button>`)).join('') || '<div class="note">없음</div>');
-      if (it.gems.length < it.sockets) eq += `<div class="note" style="margin-top:6px">박을 보석</div><div class="grid gemGrid">${have.map((x) => `<div class="cell${''}" data-gput="${this.gemSlot}|${x.base}" title="${esc(BASES[x.base].name)}">${ico(x)}<span class="q">${x.qty}</span></div>`).join('') || '<div class="note">가진 보석이 없습니다</div>'}</div>`;
+    // 구멍 있는 장비: 착용 (e:부위) + 가방 (b:uid)
+    const targets = [...SLOTS.filter((sl) => st.equip[sl]?.sockets).map((sl) => ['e:' + sl, st.equip[sl]]), ...st.inv.filter((x) => x.sockets).map((x) => ['b:' + x.uid, x])];
+    if (!targets.some((t) => t[0] === this.gemSel)) this.gemSel = targets[0]?.[0];
+    const sel = targets.find((t) => t[0] === this.gemSel)?.[1];
+    // 왼쪽: 착용 중 · 가방 칸 (구멍 있는 장비만 누를 수 있다)
+    const eqCells = SLOTS.filter((sl) => st.equip[sl]?.sockets).map((sl) => { const it = st.equip[sl]; return `<div class="cell${rar(it)}${this.gemSel === 'e:' + sl ? ' sel' : ''}" data-gsel="e:${sl}" title="${esc(itemName(it))}">${ico(it)}<span class="q">${it.gems.length}/${it.sockets}</span></div>`; }).join('');
+    let bag = '';
+    for (let i = 0; i < bagSize(st); i++) { const it = st.inv[i]; if (!it) { bag += '<div class="cell"></div>'; continue; }
+      const can = !!it.sockets; bag += `<div class="cell${rar(it)}${this.gemSel === 'b:' + it.uid ? ' sel' : ''}${can ? '' : ' dim'}" ${can ? `data-gsel="b:${it.uid}"` : ''} title="${esc(itemName(it))}">${ico(it)}${it.qty > 1 ? `<span class="q">${it.qty}</span>` : it.sockets ? `<span class="q">${it.gems.length}/${it.sockets}</span>` : ''}</div>`; }
+    const left = `<h3>착용 장비</h3><div class="grid">${eqCells || '<div class="note">구멍 있는 착용 장비 없음</div>'}</div><h3 style="margin-top:8px">가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span></h3><div class="grid">${bag}</div>`;
+    // 가운데: 고른 장비의 구멍
+    let mid = '<div class="note">구멍이 있는 장비를 고르세요</div>';
+    if (sel) {
+      mid = `<div class="nm" style="color:${itemColor(sel)}">${esc(itemName(sel))}</div><div class="note">구멍 ${sel.gems.length} / ${sel.sockets}</div>`;
+      mid += sel.gems.map((g, k) => row(ico({ base: g }), BASES[g].name, `${STAT_NAMES[GEMS[BASES[g].gem].stat]} +${GEM_GRADES[BASES[g].grade].v}`, `<button class="btn" data-gpull="${this.gemSel}|${k}">빼기 · ${pullCost(g).toLocaleString()}G</button>`)).join('');
+      if (sel.gems.length < sel.sockets) mid += `<div class="note" style="margin-top:6px">박을 보석</div><div class="grid gemGrid">${have.map((x) => `<div class="cell" data-gput="${this.gemSel}|${x.base}" title="${esc(BASES[x.base].name)}">${ico(x)}<span class="q">${x.qty}</span></div>`).join('') || '<div class="note">가진 보석이 없습니다</div>'}</div>`;
     }
-    return `<div class="cols gemsWin"><div class="frame" style="flex:1;overflow:auto"><h3>보석 사기</h3>${buy}</div><div class="frame" style="flex:1;overflow:auto"><h3>보석 합치기</h3>${merge}</div><div class="frame" style="flex:1.2;overflow:auto"><h3>장비에 박기</h3>${eq}</div></div>`;
+    // 오른쪽: 합치기 (높은 등급은 실패할 수 있다)
+    const merge = have.map((x) => { const b = BASES[x.base], up = b.grade + 1 < GEM_GRADES.length, cost = mergeCost(b.grade), ch = mergeChance(b.grade);
+      return row(`${ico(x)}<span class="q">${x.qty}</span>`, b.name, `${STAT_NAMES[GEMS[b.gem].stat]} +${GEM_GRADES[b.grade].v}`, up ? `<button class="btn" data-gmerge="${x.base}" ${x.qty < 3 || st.gold < cost ? 'disabled' : ''}>3개 합치기 · ${cost.toLocaleString()}G · ${Math.round(ch * 100)}%</button>` : ''); }).join('') || '<div class="note">가진 보석이 없습니다</div>';
+    return `<div class="cols gemsWin"><div class="frame" style="flex:1.1;overflow:auto">${left}</div><div class="frame" style="flex:1;overflow:auto">${mid}</div><div class="frame" style="flex:1;overflow:auto"><h3>보석 합치기</h3>${merge}</div></div>`;
   }
 
   shop() {
@@ -944,11 +955,17 @@ export class Windows {
     on('[data-research]', (el) => townDone(researchStart(st, el.dataset.research), '연구를 시작했습니다'));
     on('[data-mgear]', (el) => townDone(mercGear(st, el.dataset.mgear), '장비를 맡겼습니다'));
     on('[data-school]', (el) => { this.skillSchool = el.dataset.school; this.skillSel = null; audio.play('click'); this.render(); });
-    on('[data-gslot]', (el) => { this.gemSlot = el.dataset.gslot; audio.play('click'); this.render(); });
-    on('[data-gbuy]', (el) => { const id = el.dataset.gbuy, b = BASES[id]; if (st.gold < b.price) return; if (!addItem(st, makeItem(id, { qty: 1 }, st))) { w.ui.toast('가방이 가득 찼습니다'); return; } st.gold -= b.price; audio.play('coin'); w.ui.dirty(); this.render(); });
-    on('[data-gmerge]', (el) => { const id = el.dataset.gmerge, b = BASES[id], cost = mergeCost(b.grade); if (countOf(st, id) < 3 || st.gold < cost) return; for (let i = 0; i < 3; i++) takeOne(st, id); st.gold -= cost; const nid = gemId(b.gem, b.grade + 1); addItem(st, makeItem(nid, { qty: 1 }, st)); audio.play('rankup'); w.ui.toast(`${BASES[nid].name}을(를) 만들었습니다`, '#c0b0ff'); w.ui.dirty(); this.render(); });
-    on('[data-gput]', (el) => { const [sl, id] = el.dataset.gput.split('|'), it = st.equip[sl]; if (!it || it.gems.length >= it.sockets || !takeOne(st, id)) return; it.gems.push(id); audio.play('rankup'); w.refreshGear(); w.ui.dirty(); this.render(); });
-    on('[data-gpull]', (el) => { const [sl, k] = el.dataset.gpull.split('|'), it = st.equip[sl], g = it?.gems[Number(k)]; if (!g) return; const c = pullCost(g); if (st.gold < c) { w.ui.toast('금화가 모자랍니다'); return; } st.gold -= c; it.gems.splice(Number(k), 1); addItem(st, makeItem(g, { qty: 1 }, st)); audio.play('click'); w.refreshGear(); w.ui.dirty(); this.render(); });
+    on('[data-gsel]', (el) => { this.gemSel = el.dataset.gsel; audio.play('click'); this.render(); });
+    const gemItem = (key) => { const [k, v] = key.split(':'); return k === 'e' ? st.equip[v] : st.inv.find((x) => x.uid === Number(v)); };
+    on('[data-gmerge]', (el) => {
+      const id = el.dataset.gmerge, b = BASES[id], cost = mergeCost(b.grade); if (countOf(st, id) < 3 || st.gold < cost) return;
+      st.gold -= cost;
+      if (Math.random() < mergeChance(b.grade)) { for (let i = 0; i < 3; i++) takeOne(st, id); const nid = gemId(b.gem, b.grade + 1); addItem(st, makeItem(nid, { qty: 1 }, st)); audio.play('rankup'); this.popup('합치기 성공', `<div class="aff" style="color:#c0b0ff">${BASES[nid].name}</div>`); }
+      else { const lost = Math.floor(Math.random() * 3); for (let i = 0; i < lost; i++) takeOne(st, id); audio.play('error'); this.popup('합치기 실패', `<div class="aff">${b.name} ${lost}개를 잃었습니다</div>`); } // 실패: 0~2개가 사라진다
+      w.ui.dirty(); this.render();
+    });
+    on('[data-gput]', (el) => { const i = el.dataset.gput.lastIndexOf('|'), key = el.dataset.gput.slice(0, i), id = el.dataset.gput.slice(i + 1), it = gemItem(key); if (!it || it.gems.length >= it.sockets || !takeOne(st, id)) return; it.gems.push(id); audio.play('rankup'); w.refreshGear(); w.ui.dirty(); this.render(); });
+    on('[data-gpull]', (el) => { const i = el.dataset.gpull.lastIndexOf('|'), key = el.dataset.gpull.slice(0, i), k = Number(el.dataset.gpull.slice(i + 1)), it = gemItem(key), g = it?.gems[k]; if (!g) return; const c = pullCost(g); if (st.gold < c) { w.ui.toast('금화가 모자랍니다'); return; } st.gold -= c; it.gems.splice(k, 1); addItem(st, makeItem(g, { qty: 1 }, st)); audio.play('click'); w.refreshGear(); w.ui.dirty(); this.render(); });
     on('[data-socket]', (el) => {
       const it = this.cur(); if (!it?.sockets || it.gems.length >= it.sockets) return;
       if (!takeOne(st, el.dataset.socket)) return;

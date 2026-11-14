@@ -127,7 +127,7 @@ export const BASES = {
   jade_ring: { name: '비취 반지', slot: 'ring', minLvl: 14 },
   sapphire_ring: { name: '청옥 반지', slot: 'ring', minLvl: 22 },
   ruby_ring: { name: '홍옥 반지', slot: 'ring', minLvl: 30 },
-  ...Object.fromEntries(Object.entries(GEMS).flatMap(([g, x]) => GEM_GRADES.map((gr, k) => [gemId(g, k), { name: `${gr.pre ? gr.pre + ' ' : ''}${x.name}`, type: 'gem', gem: g, grade: k, stack: true, price: 250 * (k + 1) ** 2, shop: k === 0 }]))),
+  ...Object.fromEntries(Object.entries(GEMS).flatMap(([g, x]) => GEM_GRADES.map((gr, k) => [gemId(g, k), { name: `${gr.pre ? gr.pre + ' ' : ''}${x.name}`, type: 'gem', gem: g, grade: k, stack: true, price: 250 * (k + 1) ** 2, shop: false }]))),
   dungeon_key: { name: '던전 열쇠', type: 'key', price: 1500, stack: true }, // 상점에서 팔지 않는다: 오늘의 의뢰 · 보스에게서만
   pet_egg: { name: '강아지', type: 'pet', pet: 'pet_dog', price: 3000, stack: true, shop: true },
   pet_cat: { name: '고양이', type: 'pet', pet: 'pet_cat', price: 3000, stack: true, shop: true },

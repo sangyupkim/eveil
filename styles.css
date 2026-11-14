@@ -509,3 +509,4 @@ html.force-land #rotate { display: none !important; }
 .shopRow .buys { flex-wrap: wrap; justify-content: flex-end; max-width: 100%; }
 #window .row { min-width: 0; }
 #window .row .grow { min-width: 0; overflow-wrap: anywhere; }
+.cell.dim { opacity: 0.35; }
