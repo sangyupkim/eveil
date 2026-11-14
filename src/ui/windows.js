@@ -253,23 +253,24 @@ export class Windows {
   }
 
   // 대장간: 능력치 파편으로 착용 장비의 옵션 하나를 바꾼다 (잠근 옵션은 그대로)
-  // 제련: 장비(착용 · 가방)와 능력치 파편을 골라 장비 옵션 하나를 파편 옵션으로 바꾼다. 대장간 단계만큼 옵션을 잠근다
+  // 제련: ① 장비(착용 · 가방) → ② 능력치 파편 → ③ 잠글 옵션 → 제련. 결과는 팝업으로 전 · 후를 보여 준다
   shardPanel(smith) {
     const st = this.w.st, t = townOf(st);
-    const shards = st.inv.filter((x) => x.shard);
     let h = `<h3 style="margin-top:8px">제련 <small>잠금 최대 ${lockMax(smith.lv)}개</small></h3>`;
-    if (!shards.length) return h + '<div class="note">능력치 파편 없음</div>';
-    if (!shards.some((x) => x.uid === this.shardSel)) this.shardSel = null;
-    h += `<div class="note">파편</div><div class="btns" style="flex-wrap:wrap;margin:0 0 6px">${shards.map((x) => `<button class="btn ${x.uid === this.shardSel ? 'on' : ''}" data-shard="${x.uid}" style="color:#c58cff">${affixText(x.shard)}</button>`).join('')}</div>`;
-    const sh = st.inv.find((x) => x.uid === this.shardSel)?.shard;
-    if (!sh) return h;
-    // 고를 수 있는 장비: 착용 중 + 가방 (옵션이 있는 것)
     const targets = [...SLOTS.filter((sl) => st.equip[sl]?.affixes?.length).map((sl) => ['e:' + sl, st.equip[sl], '착용']), ...st.inv.filter((x) => BASES[x.base]?.slot && x.affixes?.length).map((x) => ['b:' + x.uid, x, '가방'])];
-    if (!targets.some((x) => x[0] === this.shardTarget)) { this.shardTarget = targets[0]?.[0]; this.shardLocks = []; }
     if (!targets.length) return h + '<div class="note">옵션이 있는 장비 없음</div>';
-    h += `<div class="note">장비</div><div class="btns" style="flex-wrap:wrap;margin:0 0 6px">${targets.map(([k, it, where]) => `<button class="btn ${k === this.shardTarget ? 'on' : ''}" data-starget="${k}" style="color:${itemColor(it)}">${esc(itemName(it))} <small>${where}</small></button>`).join('')}</div>`;
-    const it = targets.find((x) => x[0] === this.shardTarget)[1], L = this.shardLocks || [], max = lockMax(smith.lv), c = shardCost(it), ok = canApply(it, sh, L);
-    h += it.affixes.map((a, k) => { const on = L.includes(k); return `<div class="row"><div class="grow aff" style="${on ? 'color:#ffd84a' : ''}">${affixText(a)}</div><button class="btn ${on ? 'on' : ''}" data-slock="${k}" ${!on && L.length >= max ? 'disabled' : ''}>${on ? '잠김' : '잠그기'}</button></div>`; }).join('');
+    if (!targets.some((x) => x[0] === this.shardTarget)) { this.shardTarget = null; this.shardLocks = []; }
+    h += `<div class="note">1 장비</div><div class="btns" style="flex-wrap:wrap;margin:0 0 6px">${targets.map(([k, it, where]) => `<button class="btn ${k === this.shardTarget ? 'on' : ''}" data-starget="${k}" style="color:${itemColor(it)}">${esc(itemName(it))} <small>${where}</small></button>`).join('')}</div>`;
+    if (!this.shardTarget) return h;
+    const it = targets.find((x) => x[0] === this.shardTarget)[1];
+    const shards = st.inv.filter((x) => x.shard);
+    if (!shards.some((x) => x.uid === this.shardSel)) this.shardSel = null;
+    h += `<div class="note">2 능력치 파편</div>` + (shards.length ? `<div class="btns" style="flex-wrap:wrap;margin:0 0 6px">${shards.map((x) => { const okk = canApply(it, x.shard, []).ok; return `<button class="btn ${x.uid === this.shardSel ? 'on' : ''}" data-shard="${x.uid}" style="color:#c58cff;${okk ? '' : 'opacity:.45'}">${affixText(x.shard)}</button>`; }).join('')}</div>` : '<div class="note">파편 없음</div>');
+    const sh = st.inv.find((x) => x.uid === this.shardSel)?.shard;
+    const L = this.shardLocks || [], max = lockMax(smith.lv);
+    h += `<div class="note">3 지킬 옵션</div>` + it.affixes.map((a, k) => { const on = L.includes(k); return `<div class="row"><div class="grow aff" style="${on ? 'color:#ffd84a' : ''}">${affixText(a)}</div><button class="btn ${on ? 'on' : ''}" data-slock="${k}" ${!on && L.length >= max ? 'disabled' : ''}>${on ? '잠김' : '잠그기'}</button></div>`; }).join('');
+    if (!sh) return h;
+    const c = shardCost(it), ok = canApply(it, sh, L);
     h += `<div class="btns"><button class="btn gold" data-sapply="1" ${!ok.ok || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>${ok.ok ? `제련 · ${c.gold.toLocaleString()} G · 강화석 ${c.ore}` : ok.why}</button></div>`;
     return h;
   }
@@ -544,6 +545,15 @@ export class Windows {
   }
 
   // 창 위에 뜨는 알림 (확인을 눌러 닫는다)
+  // 결과 팝업 (html 내용)
+  popup(title, html) {
+    document.getElementById('winAlert')?.remove();
+    const el = document.createElement('div');
+    el.id = 'winAlert';
+    el.innerHTML = `<div class="popWide"><b>${esc(title)}</b>${html}<button class="plate gold">확인</button></div>`;
+    el.querySelector('button').onclick = () => { audio.play('click'); el.remove(); };
+    document.body.appendChild(el);
+  }
   alert(title, text = '') {
     document.getElementById('winAlert')?.remove();
     const el = document.createElement('div');
@@ -897,7 +907,11 @@ export class Windows {
       const [kind, key] = String(this.shardTarget || '').split(':'), it = kind === 'e' ? st.equip[key] : st.inv.find((x) => x.uid === Number(key));
       const sm = Object.values(townOf(st).plots).find((q) => q.type === 'smithy');
       const r = applyShard(st, it, this.shardSel, this.shardLocks || [], sm?.lv || 0);
-      if (r.ok) { audio.play('rankup'); w.ui.toast(`제련: ${affixText(r.old)} → ${affixText(r.now)}`, '#c58cff'); this.shardSel = null; w.refreshGear(); }
+      if (r.ok) {
+        audio.play('rankup'); this.shardSel = null; w.refreshGear();
+        const list = it.affixes.map((a) => `<div class="aff" style="${a === r.now ? 'color:#c58cff;font-weight:700' : ''}">${a === r.now ? `<s style="opacity:.6">${affixText(r.old)}</s> → ` : ''}${affixText(a)}</div>`).join('');
+        setTimeout(() => this.popup('제련 결과', `<div style="margin:.5em 0;color:${itemColor(it)}">${esc(itemName(it))}</div>${list}`), 0);
+      }
       townDone(r);
     });
     on('[data-pslot]', (el) => { const [k, base] = el.dataset.pslot.split('|'); (st.potSlot ||= {})[k] = base || null; audio.play('click'); w.ui.dirty(); this.render(); });
