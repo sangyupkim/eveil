@@ -170,6 +170,8 @@ export class Windows {
       h += `<div class="sub">능력치 파편 · 대장간</div><div class="aff">${affixText(it.shard)}</div>`;
     } else if (b.type === 'gem') {
       h += `<div class="sub">보석 ×${it.qty}</div><div>${STAT_NAMES[GEMS[b.gem].stat]} +${GEM_GRADES[b.grade].v}</div>`;
+    } else if (b?.type === 'pet') {
+      h += `<div class="sub">펫 ×${it.qty || 1}</div><div>쓰면 펫이 따라다니며 물건을 주워 줍니다</div>`;
     } else if (b?.type === 'mat') {
       h += `<div class="sub">재료 ×${it.qty}</div><div>${it.base === 'ore' ? '장비 강화 · 재련 · 파편' : '건물 단계 올리기'}</div>`;
     } else if (b.type === 'key') {
@@ -178,6 +180,8 @@ export class Windows {
       h += `<div class="sub">영약 ×${it.qty} · 5분</div><div class="aff">${ELIXIRS[it.base].text}</div>`;
     } else if (b.type === 'potion') {
       h += `<div class="sub">소모품 ×${it.qty}</div><div>${b.restore.hp ? `HP ${b.restore.hp} 회복` : `MP ${b.restore.mp} 회복`}</div>`;
+    } else if (!b?.slot) { // 그 밖의 물건 (모르는 종류도 창이 비지 않게)
+      h += `<div class="sub">${it.qty > 1 ? `×${it.qty}` : ''}</div>`;
     } else {
       h += `<div class="sub">${RARITY[it.rarity].name} ${SLOT_NAMES[b.slot]} · 아이템 레벨 ${it.ilvl}</div>`;
       if (b.dmg) { const d = scaledDmg(it); h += `<div>${WEAPON_CLASSES[b.cls].name} · 피해 ${d[0]}~${d[1]} · 속도 ${b.speed}</div><div class="sub">주 스탯 ${STAT_NAMES[WEAPON_CLASSES[b.cls].ap]}</div>`; }
@@ -203,7 +207,7 @@ export class Windows {
     h += `<div class="sub">판매가 ${itemValue(it)} G</div>`;
     h += '<div class="btns">';
     if (where === 'inv') {
-      if (!it.shard && b?.type !== 'mat') h += `<button class="btn gold" data-act="use">${isBook(it) ? '배우기' : b.type === 'potion' ? '사용' : b.type === 'elixir' ? '마시기' : '장착'}</button>`;
+      if (!it.shard && b?.type !== 'mat') h += `<button class="btn gold" data-act="use">${isBook(it) ? '배우기' : b.type === 'potion' ? '사용' : b.type === 'elixir' ? '마시기' : b.type === 'pet' ? '부르기' : '장착'}</button>`;
       // 물약 퀵슬롯: 이 물약을 체력 · 마나 칸에 두거나 뺀다
       if (b?.type === 'potion') for (const [k, nm] of [['hp', '체력 칸'], ['mp', '마나 칸']]) {
         const on = st.potSlot?.[k] === it.base;
@@ -725,7 +729,7 @@ export class Windows {
     for (const id of goods) {
       const b = BASES[id];
       const desc = b.dmg ? `피해 ${b.dmg[0]}~${b.dmg[1]} · ${WEAPON_CLASSES[b.cls].name}` : b.armor ? `방어력 ${b.armor}${b.block ? ` · 막기 ${b.block * 100}%` : ''}` : b.restore ? (b.restore.hp ? `HP ${b.restore.hp}` : `MP ${b.restore.mp}`) : '';
-      const qty = b.stack ? [1, 5, 20] : [1];
+      const qty = b.stack && b.type !== 'pet' ? [1, 5, 20] : [1]; // 펫은 하나씩
       list += `<div class="row shopRow"><div class="cell shopIco">${ico({ base: id, rarity: 'common' })}</div><div class="grow"><b>${b.name}</b><div class="note">${desc}</div></div>
         <div class="buys">${qty.map((q) => `<button class="btn" data-buy="${id}" data-q="${q}" ${st.gold < b.price * q ? 'disabled' : ''}>${q > 1 ? `×${q} ` : ''}${(b.price * q).toLocaleString()}G</button>`).join('')}</div></div>`;
     }
