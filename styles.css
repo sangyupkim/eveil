@@ -493,3 +493,19 @@ html.force-land #rotate { display: none !important; }
 #winAlert .popWide { min-width: 22em; text-align: left; }
 #winAlert .popWide .aff { padding: 2px 0; }
 #winAlert .popWide button { display: block; margin: 1em auto 0; }
+/* 보석상 · 좁은 칸용 줄: 아이콘 | 이름 · 설명 · 버튼 (글이 세로로 쪼개지지 않게) */
+.grow-row { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid rgba(201, 168, 106, 0.15); }
+.grow-row .gtxt { flex: 1; min-width: 0; }
+.grow-row .gtxt b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.grow-row .gbtns { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.grow-row .gbtns .btn { white-space: nowrap; }
+.gemGrid { grid-template-columns: repeat(auto-fill, minmax(calc(var(--u) * 3.6), 1fr)) !important; }
+/* 좁은 칸(폴드 · UI 크게)에서 버튼이 칸 밖으로 나가지 않게 */
+#window .frame { min-width: 0; }
+#window .frame .btn { max-width: 100%; }
+.grow-row .gbtns .btn { white-space: normal; text-align: center; }
+.shopRow { flex-wrap: wrap; }
+.shopRow .grow { min-width: 6em; }
+.shopRow .buys { flex-wrap: wrap; justify-content: flex-end; max-width: 100%; }
+#window .row { min-width: 0; }
+#window .row .grow { min-width: 0; overflow-wrap: anywhere; }
