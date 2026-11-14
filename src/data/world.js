@@ -195,4 +195,46 @@ export const ZONES = [
   },
 ];
 
-export const WORLD_SIZE = 340; // 맵 반경 (지역 9~12가 바깥 고리)
+// ── 지역 13~20 (v0.33): 평온 단계를 길게. 몬스터는 기존 몸에 이름 · 색을 새로 입힌 변종 ──
+// [새 id, 바탕 id, 이름, 색, 체력 배율, 공격 배율]
+export const VARIANTS = [
+  ['ash_hound', 'hell_hound', '잿빛 사냥개', 0x9a9a9a, 1, 1], ['ash_bear', 'dread_bear', '잿더미 곰', 0x8a8070, 1.1, 1], ['ash_shade', 'void_shade', '재의 망령', 0xb0a090, 1, 1.05], ['ash_golem', 'magma_golem', '잿빛 골렘', 0xa0a0a0, 1.2, 1],
+  ['crypt_knight', 'bone_knight', '얼어붙은 기사', 0xa8d8ff, 1.1, 1], ['crypt_mage', 'occultist', '서리 사교도', 0x9ad0ff, 1, 1.1], ['crypt_wraith', 'frost_wraith', '묘역 원령', 0xc0e8ff, 1, 1.05], ['crypt_ghoul', 'ghost_crew', '언 망자', 0x90c0e0, 1, 1],
+  ['crystal_golem', 'ice_golem', '수정 골렘', 0xd0a0ff, 1.25, 1], ['crystal_spider', 'cave_spider', '수정 거미', 0xc090ff, 1, 1.05], ['crystal_imp', 'flame_imp', '수정 도깨비', 0xb080ff, 1, 1.1], ['crystal_bat', 'drake', '수정 비룡', 0xe0b0ff, 1, 1],
+  ['blood_frog', 'frog', '피 두꺼비', 0xd04040, 1.1, 1], ['blood_slime', 'bog_slime', '피 슬라임', 0xc03030, 1.2, 1], ['blood_snake', 'poison_spider', '피 독거미', 0xe05050, 1, 1.1], ['blood_witch', 'squidle', '피의 주술사', 0xff6060, 1, 1.15],
+  ['storm_yeti', 'yeti', '천둥 설인', 0x80a0ff, 1.15, 1], ['storm_wolf', 'ice_wolf', '번개 늑대', 0x90b0ff, 1, 1.1], ['storm_wraith', 'shade', '폭풍 그림자', 0x7090ff, 1, 1.1], ['storm_brute', 'orc_brute', '천둥 오크', 0x6080e0, 1.2, 1.05],
+  ['temple_guard', 'fallen_knight', '사원 수호병', 0xe0c070, 1.2, 1.05], ['temple_priest', 'occultist', '망각의 사제', 0xf0d080, 1, 1.15], ['temple_statue', 'gargoyle', '사원 석상', 0xd0b080, 1.15, 1.1], ['temple_shade', 'void_shade', '잊힌 영혼', 0xe8d8a0, 1, 1.1],
+  ['abyss_fiend', 'fiend', '심연 악마', 0x8040c0, 1.15, 1.1], ['abyss_hound', 'hell_hound', '심연 사냥개', 0x7030a0, 1.1, 1.1], ['abyss_eye', 'void_shade', '심연의 눈', 0xa050ff, 1.05, 1.15], ['abyss_golem', 'magma_golem', '심연 골렘', 0x6020a0, 1.3, 1.1],
+  ['doom_knight', 'bone_knight', '종말 기사', 0x404040, 1.3, 1.15], ['doom_demon', 'fiend', '종말 악마', 0x502020, 1.25, 1.2], ['doom_gargoyle', 'gargoyle', '종말 석상', 0x303030, 1.35, 1.15], ['doom_shade', 'void_shade', '종말의 그림자', 0x200020, 1.15, 1.25],
+  // 네임드 · 보스
+  ['ash_lord', 'pit_lord', '잿빛 군주 카르낙', 0xa0a0a0, 1, 1], ['ash_king', 'arch_demon', '재의 왕 이그니스', 0xb0a090, 1.1, 1],
+  ['crypt_lord', 'high_mage', '얼음 리치 볼로스', 0xa8d8ff, 1, 1], ['crypt_king', 'ghost_captain', '얼어붙은 왕 하르겐', 0x9ad0ff, 1.15, 1],
+  ['crystal_lord', 'brood_mother', '수정 여왕의 딸', 0xd0a0ff, 1, 1], ['crystal_king', 'spider_queen', '수정 여왕 아메티스', 0xc090ff, 1.2, 1.05],
+  ['blood_lord', 'bog_witch', '피의 마녀 사르바', 0xd04040, 1, 1], ['blood_king', 'bog_king', '피늪의 군주 그로스', 0xc03030, 1.25, 1.05],
+  ['storm_lord', 'frost_stag', '천둥 사슴 볼트', 0x80a0ff, 1, 1], ['storm_king', 'yeti_king', '폭풍의 왕 토르간', 0x6080ff, 1.3, 1.1],
+  ['temple_lord', 'orc_warlord', '사원 수호장 아르텐', 0xe0c070, 1.05, 1], ['temple_king', 'troll_king', '망각의 신상', 0xf0d080, 1.35, 1.1],
+  ['abyss_lord', 'pit_lord', '심연 군주 모르가스', 0x8040c0, 1.1, 1.05], ['abyss_king', 'flame_lord', '심연의 대주술사 네르', 0xa050ff, 1.4, 1.15],
+  ['doom_lord', 'arch_demon', '종말의 전령 바엘', 0x502020, 1.2, 1.1], ['doom_king', 'arch_demon', '종말의 군주 아즈라엘', 0x300010, 4, 1.35],
+];
+for (const [id, base, name, tint, hk, dk] of VARIANTS) {
+  const b = MONSTERS[base];
+  MONSTERS[id] = { ...b, name, tint, hp: Math.round(b.hp * hk), dmg: b.dmg.map((v) => Math.round(v * dk)), variantOf: base };
+}
+MONSTERS.doom_king.final = true; // 마지막 보스: 체력 4배 · 패턴 더 자주 (world.js)
+const Z = (id, name, x, z, levels, ground, music, spawns, named, boss) => ({ id, name, x, z, r: 40, levels, count: 22, ground, music, spawns, named: { type: named[0], name: named[1] }, boss: { type: boss[0], name: boss[1] }, props: {} });
+ZONES.push(
+  Z('ashland', '잿빛 황무지', 170, 170, [67, 72], [0.32, 0.30, 0.28], 'field', { ash_hound: 28, ash_bear: 20, ash_shade: 22, ash_golem: 14 }, ['ash_lord', '잿빛 군주 카르낙'], ['ash_king', '재의 왕 이그니스']),
+  Z('crypt', '얼어붙은 묘역', -170, 170, [73, 78], [0.55, 0.62, 0.70], 'grave', { crypt_knight: 24, crypt_mage: 20, crypt_wraith: 22, crypt_ghoul: 22 }, ['crypt_lord', '얼음 리치 볼로스'], ['crypt_king', '얼어붙은 왕 하르겐']),
+  Z('crystal', '수정 동굴', -170, -170, [79, 84], [0.28, 0.22, 0.34], 'unrest', { crystal_golem: 18, crystal_spider: 26, crystal_imp: 22, crystal_bat: 18 }, ['crystal_lord', '수정 여왕의 딸'], ['crystal_king', '수정 여왕 아메티스']),
+  Z('bloodmire', '피의 늪', 170, -170, [85, 90], [0.26, 0.10, 0.10], 'forest', { blood_frog: 24, blood_slime: 22, blood_snake: 22, blood_witch: 16 }, ['blood_lord', '피의 마녀 사르바'], ['blood_king', '피늪의 군주 그로스']),
+  Z('stormpeak', '천둥 고원', 0, 292, [91, 96], [0.58, 0.62, 0.70], 'battle', { storm_yeti: 22, storm_wolf: 26, storm_wraith: 20, storm_brute: 18 }, ['storm_lord', '천둥 사슴 볼트'], ['storm_king', '폭풍의 왕 토르간']),
+  Z('temple', '망각의 사원', -292, 0, [97, 102], [0.34, 0.30, 0.22], 'ruins', { temple_guard: 24, temple_priest: 20, temple_statue: 16, temple_shade: 22 }, ['temple_lord', '사원 수호장 아르텐'], ['temple_king', '망각의 신상']),
+  Z('abyss', '심연의 균열', 0, -292, [103, 110], [0.18, 0.08, 0.22], 'boss', { abyss_fiend: 22, abyss_hound: 24, abyss_eye: 22, abyss_golem: 16 }, ['abyss_lord', '심연 군주 모르가스'], ['abyss_king', '심연의 대주술사 네르']),
+  Z('throne', '종말의 왕좌', 292, 0, [111, 120], [0.20, 0.05, 0.05], 'boss', { doom_knight: 24, doom_demon: 22, doom_gargoyle: 16, doom_shade: 22 }, ['doom_lord', '종말의 전령 바엘'], ['doom_king', '종말의 군주 아즈라엘']),
+);
+ZONES.forEach((z) => { if (z.levels[0] >= 67) z.count = z.id === 'throne' ? 26 : 23; });
+// 세계 단계 한 칸 = 평온 마지막 지역 레벨 (악몽 = +120, 지옥 = +240)
+export const TIER_STEP = 120;
+export const FINAL_ZONE = 'throne';
+
+export const WORLD_SIZE = 545; // 맵 반경 (지역 13~20이 가장 바깥 고리)

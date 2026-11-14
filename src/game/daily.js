@@ -10,7 +10,7 @@ export function dailyOf(st, now = Date.now()) {
   if (st.daily?.day === day) return st.daily;
   const rng = seeded([...day].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0);
   // 내가 갈 수 있는 지역 중에서 (각성에 맞는 깊이까지)
-  const open = ZONES.filter((z) => (st.awakenings || 0) >= (z.levels[0] - 1) * 2);
+  const open = ZONES.filter((z) => (st.awakenings || 0) >= Math.max(0, z.levels[0] - 1));
   const zn = open[Math.floor(rng() * open.length)] || ZONES[0];
   const zn2 = open[Math.floor(rng() * open.length)] || ZONES[0];
   st.daily = {

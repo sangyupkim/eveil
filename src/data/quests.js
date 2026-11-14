@@ -83,6 +83,14 @@ export const QUESTS = [
   { id: 'd2', zone: 'demongate', name: '악마 석상', goal: { kill: 'gargoyle', n: 10 }, text: '움직이는 석상을 부숴라.', reward: { gold: 24000, gear: ['belt', 'legend', 64] } },
   { id: 'd3', zone: 'demongate', name: '구덩이 군주 모르독', goal: { named: 'demongate' }, text: '관문을 지키는 군주.', reward: { gold: 28000, gear: ['amulet', 'legend', 65] } },
   { id: 'd4', zone: 'demongate', name: '대악마 벨가로스', goal: { boss: 'demongate' }, text: '깨어남의 끝. 모든 것을 걸어라.', reward: { gold: 60000, book: 5, gear: ['weapon', 'legend', 66] } },
+  // 지역 13~20 (v0.33)
+  ...[['ashland', 'ash_hound', 'ash_golem', '잿빛 사냥개', '잿빛 골렘'], ['crypt', 'crypt_knight', 'crypt_mage', '얼어붙은 기사', '서리 사교도'], ['crystal', 'crystal_spider', 'crystal_golem', '수정 거미', '수정 골렘'], ['bloodmire', 'blood_frog', 'blood_witch', '피 두꺼비', '피의 주술사'],
+    ['stormpeak', 'storm_wolf', 'storm_brute', '번개 늑대', '천둥 오크'], ['temple', 'temple_guard', 'temple_statue', '사원 수호병', '사원 석상'], ['abyss', 'abyss_hound', 'abyss_golem', '심연 사냥개', '심연 골렘'], ['throne', 'doom_knight', 'doom_gargoyle', '종말 기사', '종말 석상']]
+    .flatMap(([z, a, b, an, bn], i) => { const lv = 67 + i * 6; return [
+      { id: z + '1', zone: z, name: an + ' 사냥', goal: { kill: a, n: 25 }, text: '', reward: { gold: 30000 + i * 6000, gear: ['boots', 'hero', lv] } },
+      { id: z + '2', zone: z, name: bn + ' 부수기', goal: { kill: b, n: 12 }, text: '', reward: { gold: 34000 + i * 6000, gear: ['belt', 'hero', lv + 2] } },
+      { id: z + '3', zone: z, name: '지역의 수호자', goal: { named: z }, text: '', reward: { gold: 40000 + i * 7000, gear: ['amulet', 'legend', lv + 4] } },
+      { id: z + '4', zone: z, name: '지역의 주인', goal: { boss: z }, text: '', reward: { gold: 80000 + i * 15000, book: 5, gear: ['weapon', 'legend', lv + 5] } }]; }),
 ];
 // 시작 무기 계열별 스킬북 (등급 → 스킬)
 export const QUEST_BOOKS = {

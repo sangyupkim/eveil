@@ -190,4 +190,19 @@ export const faceOf = (id) => FACES.find((f) => f[0] === id) || FACES[0];
 // 높은 단계 장비 그림: 본보기 그림 + 단계 색
 import { BASES as _B, HIGH_TIERS as _HT } from './items.js';
 const _TC = [0x8a8a96, 0xc0d8e8, 0xc8ccd8, 0xa8e0ff, 0xb08aff, 0x7fd08a, 0xffe08a, 0x9a7aff, 0x8af0ff, 0xffb070, 0xff8ac0, 0xffd040, 0xffffff, 0xff5a5a, 0x60ffd0];
-for (const [id, b] of Object.entries(_B)) if (b.tpl && ITEM_LOOK[b.tpl]) { const i = _HT.findIndex((t) => t[0] === b.minLvl); ITEM_LOOK[id] = { ...ITEM_LOOK[b.tpl], tint: _TC[i] }; }
+for (const [id, b] of Object.entries(_B)) if (b.tpl && ITEM_LOOK[b.tpl]) { const i = _HT.findIndex((t) => t[0] === b.minLvl); ITEM_LOOK[id] = { ...ITEM_LOOK[b.tpl], tint: _TC[i % _TC.length] }; }
+
+// ── 지역 13~20 · 변종 몬스터 (v0.33): 기존 지역의 땅 · 물건을 바탕으로 색만 바꾼다 ──
+import { VARIANTS as _VAR } from './world.js';
+Object.assign(ZONE_LOOK, {
+  ashland: { ...ZONE_LOOK.valley, grade: 'rgba(60,60,60,0.35)' },
+  crypt: { ...ZONE_LOOK.frost, grade: 'rgba(30,50,90,0.35)' },
+  crystal: { ...ZONE_LOOK.demongate, grade: 'rgba(70,30,110,0.35)' },
+  bloodmire: { ...ZONE_LOOK.swamp, grade: 'rgba(90,10,10,0.35)' },
+  stormpeak: { ...ZONE_LOOK.frost, grade: 'rgba(20,30,90,0.3)' },
+  temple: { ...ZONE_LOOK.ruins, grade: 'rgba(80,60,20,0.25)' },
+  abyss: { ...ZONE_LOOK.inferno, grade: 'rgba(60,10,90,0.42)' },
+  throne: { ...ZONE_LOOK.demongate, grade: 'rgba(40,0,0,0.5)' },
+});
+Object.assign(ZONE_PROPS, { ashland: ZONE_PROPS.valley, crypt: ZONE_PROPS.frost, crystal: ZONE_PROPS.demongate, bloodmire: ZONE_PROPS.swamp, stormpeak: ZONE_PROPS.frost, temple: ZONE_PROPS.ruins, abyss: ZONE_PROPS.inferno, throne: ZONE_PROPS.demongate });
+for (const [id, base, , tint] of _VAR) if (MONSTER_LOOK[base]) MONSTER_LOOK[id] = { ...MONSTER_LOOK[base], tint, size: (MONSTER_LOOK[base].size || 1) * (id === 'doom_king' ? 1.25 : 1) };

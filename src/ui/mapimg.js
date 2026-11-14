@@ -33,7 +33,15 @@ export function rebuildTerrain() { const go = row >= MAP_W; row = 0; tctx.clearR
 export function loadFog(st) {
   fog = new Uint8Array(FOG_N * FOG_N);
   const s = st.fog || '';
-  for (let i = 0; i < s.length; i++) { const v = s.charCodeAt(i) - 48; for (let b = 0; b < 6; b++) if (v & (1 << b)) fog[i * 6 + b] = 1; }
+  // 세상 크기가 바뀌었으면(예전 저장은 반경 350) 밝힌 칸을 새 칸으로 옮긴다
+  const oldR = st.fogR || 350, oldN = Math.ceil((oldR * 2) / FOG_C);
+  for (let i = 0; i < s.length; i++) { const v = s.charCodeAt(i) - 48; for (let b = 0; b < 6; b++) if (v & (1 << b)) {
+    const k = i * 6 + b;
+    if (oldR === MAP_R) { fog[k] = 1; continue; }
+    const x = (k % oldN) * FOG_C - oldR, z = Math.floor(k / oldN) * FOG_C - oldR, ni = Math.floor((x + MAP_R) / FOG_C), nj = Math.floor((z + MAP_R) / FOG_C);
+    if (ni >= 0 && nj >= 0 && ni < FOG_N && nj < FOG_N) fog[nj * FOG_N + ni] = 1;
+  } }
+  if (oldR !== MAP_R) { st.fogR = MAP_R; saveFog(st); }
   fctx.fillStyle = 'rgb(10,9,16)'; fctx.fillRect(0, 0, FOG_N, FOG_N);
   for (let k = 0; k < fog.length; k++) if (fog[k]) fctx.clearRect(k % FOG_N, Math.floor(k / FOG_N), 1, 1);
 }
@@ -41,6 +49,7 @@ export function saveFog(st) {
   let s = '';
   for (let i = 0; i < fog.length; i += 6) { let v = 0; for (let b = 0; b < 6; b++) if (fog[i + b]) v |= 1 << b; s += String.fromCharCode(48 + v); }
   st.fog = s.replace(/0+$/, '');
+  st.fogR = MAP_R;
 }
 // 둘레 r을 밝힌다. 새로 밝힌 칸이 있으면 true
 export function reveal(x, z, r = 15) {

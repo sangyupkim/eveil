@@ -19,7 +19,7 @@ export function rollLoot(mon, opt = {}, st = null, rng = R) {
     out.push({ kind: 'gold', amount });
   }
   // 장비: 레벨이 높을수록 드물다 (레벨 1 ×1 → 100 ×0.73 → 200 ×0.46, 최소 ×0.4)
-  const rareK = Math.max(0.4, 1 - (mon.level - 1) / 370);
+  const rareK = Math.max(0.35, 1 - (mon.level - 1) / 600); // 레벨 100 ×0.84 · 200 ×0.67 · 360 ×0.4
   if (chance(t.itemChance * dropMult * rareK, rng)) {
     const n = randInt(t.items[0], t.items[1], rng);
     for (let i = 0; i < n; i++) {

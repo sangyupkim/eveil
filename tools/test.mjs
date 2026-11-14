@@ -411,7 +411,7 @@ test('길찾기: 벽을 돌아가고, 모든 구간이 트여 있다', () => {
 
 const LOOT_ = await import('../src/game/loot.js'), WD_ = await import('../src/data/world.js'), IT_ = await import('../src/game/items.js'), BS_ = (await import('../src/data/items.js')).BASES, LG_ = await import('../src/data/legends.js');
 test('드랍 장비 레벨: 모든 세계 단계 · 지역 · 등급에서 몬스터 레벨에 맞는다 (이름 있는 전설 포함)', () => {
-  for (const t of [0, 66, 132]) for (const zn of WD_.ZONES) for (const tier of ['normal', 'elite', 'named', 'boss']) {
+  for (const t of [0, WD_.TIER_STEP, WD_.TIER_STEP * 2]) for (const zn of WD_.ZONES) for (const tier of ['normal', 'elite', 'named', 'boss']) {
     const lv = zn.levels[1] + t;
     for (let k = 0; k < 60; k++) for (const d of LOOT_.rollLoot({ tier, level: lv, sp: { zone: zn } }, {}, null)) {
       if (d.kind !== 'item' || !BS_[d.item.base]?.slot) continue;

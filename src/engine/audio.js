@@ -34,6 +34,7 @@ const MUSIC = {
   title: 'title', town: 'town', wild: 'overworld', field: 'overworld', forest: 'forest', grave: 'unrest', ruins: 'dungeon',
   swamp: 'magical', frost: 'wind_ambient', valley: 'battle', inferno: 'cave', boss: 'boss',
   orcfort: 'z_orcfort', webwood: 'z_webwood', harbor: 'z_harbor', demongate: 'z_demongate',
+  ashland: 'battle', crypt: 'unrest', crystal: 'cave', bloodmire: 'magical', stormpeak: 'wind_ambient', temple: 'dungeon', abyss: 'z_demongate', throne: 'boss',
 };
 
 export class Audio {

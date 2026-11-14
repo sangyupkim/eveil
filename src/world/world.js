@@ -10,10 +10,10 @@ import * as THREE from 'three';
 import { CONFIG, TIERS, AP_TABLE } from '../data/config.js';
 import { SKILLS } from '../data/skills.js';
 import { BASES, WEAPON_CLASSES, RARITY_ORDER } from '../data/items.js';
-import { MONSTERS, ZONES, TOWN } from '../data/world.js';
+import { MONSTERS, ZONES, TOWN, TIER_STEP, FINAL_ZONE } from '../data/world.js';
 import { derive, damageReduction, totalStats } from '../game/player.js';
 import { ELIXIRS, ELIXIR_TIME } from '../data/potions.js';
-import { addAP, gainExp, rewardFactor } from '../game/growth.js';
+import { addAP, gainExp, rewardFactor, recAwaken } from '../game/growth.js';
 import { addSkillExp, skillValues, skillEff, modsOf, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
 import { rollLoot, rollDeathDrop } from '../game/loot.js';
 import { dropMats, liberateAdd } from '../game/town.js';
@@ -48,6 +48,9 @@ const BOSS_SIG = { // 첫째 = 그 보스만 쓰는 패턴, 둘째 = 결이 맞�
   apato: ['quakerings', 'tailsweep'], trex: ['tailsweep', 'tricharge'], flame_lord: ['meteors', 'fissure'], orc_warlord: ['cross', 'tricharge'],
   troll_king: ['boulder', 'quakerings'], brood_mother: ['webtrail', 'mines'], spider_queen: ['xcross', 'webtrail'], high_mage: ['grid', 'bonespiral'],
   ghost_captain: ['cannons', 'cross'], pit_lord: ['fissure', 'meteors'], arch_demon: ['hellnova', 'xcross'],
+  ash_king: ['hellnova', 'meteors', 'fissure'], crypt_king: ['cannons', 'icelines', 'grid'], crystal_king: ['xcross', 'webtrail', 'bonespiral'], blood_king: ['tongue', 'mines', 'quakerings'],
+  storm_king: ['avalanche', 'icelines', 'cross'], temple_king: ['boulder', 'quakerings', 'grid'], abyss_king: ['meteors', 'bonespiral', 'xcross', 'fissure'],
+  doom_king: ['hellnova', 'xcross', 'meteors', 'avalanche', 'cannons', 'tricharge'], // 마지막 보스: 패턴이 많다
 };
 // 멀리 있는 플레이어를 노리는 패턴 (보스마다 둘)
 const FAR = ['leap', 'snipe', 'fan', 'hail', 'pull'];
@@ -620,7 +623,7 @@ export class World {
   get canShop() { const P = this.player.pos, c = inCamp(P.x, P.z); return this.inTown || !!(c && this.st.camps?.[c.zone]?.merchant) || !!(this.eventNpc && dist2(this.eventNpc.pos, P) < 6); }
   // 세계 단계: 마지막 보스를 잡으면 다음 단계가 열린다. 단계마다 모든 몬스터 레벨 +66 (드랍 장비 · 보석 등급도 따라 오른다)
   get wt() { return Math.min(3, Math.max(1, this.st.worldTier || 1)); }
-  get tierOffset() { return ((this.st.worldTier || 1) - 1) * 66; }
+  get tierOffset() { return ((this.st.worldTier || 1) - 1) * TIER_STEP; } // 세계 단계 한 칸 = 평온 마지막 지역 레벨 (120)
   setTier(t) {
     const st = this.st;
     if (t < 1 || t > (st.maxTier || 1) || t === (st.worldTier || 1) || this.dungeon) return;
@@ -791,7 +794,7 @@ export class World {
         // 기본 패턴 + 보스 전용 패턴을 번갈아
         const all = m.tier === 'boss' ? [...pats, ...(BOSS_SIG[m.type] || [])] : pats;
         m.patT = (m.patT ?? 5) - dt * (m.hp < m.maxHp * 0.3 ? 1.6 : 1);
-        if (m.patT <= 0 && a.lock <= 0) { m.patT = (m.tier === 'boss' ? 5.5 : 8.5) / TIER_K[this.wt].pat; this.bossPattern(m, all[(m.patI = (m.patI || 0) + 1) % all.length]); }
+        if (m.patT <= 0 && a.lock <= 0) { m.patT = (m.tier === 'boss' ? (m.def.final ? 3.2 : 5.5) : 8.5) / TIER_K[this.wt].pat; this.bossPattern(m, all[(m.patI = (m.patI || 0) + 1) % all.length]); }
       }
       // 멀리서 맴돌며 치면 원거리 응징 패턴
       if (m.tier === 'boss' && valid && d > 7.5 && d < 24 && !m.dash) {
@@ -1181,7 +1184,7 @@ export class World {
     else if (best === 'hero') { sfx('rare', 0.8); this.fx.pillar(m.pos.x, m.pos.z, 0xff9a3c, 1.2, 4, 1); }
     if (m.tier !== 'normal') this.ui.log(`${m.name} 처치!`, TIERS[m.tier].color);
     if (!m.dungeon && m.tier === 'boss') (st.rec ||= {}).bosses = (st.rec.bosses || 0) + 1;
-    if (!m.dungeon && m.tier === 'boss' && m.sp?.zone?.id === 'demongate' && (st.worldTier || 1) < 3 && (st.maxTier || 1) <= (st.worldTier || 1) && (st.dungeons?.demongate || 0) >= 3 * (st.worldTier || 1)) { // 악마의 관문 던전 3 · 6단계를 돌파해야
+    if (!m.dungeon && m.tier === 'boss' && m.sp?.zone?.id === FINAL_ZONE && (st.worldTier || 1) < 3 && (st.maxTier || 1) <= (st.worldTier || 1) && (st.dungeons?.[FINAL_ZONE] || 0) >= 3 * (st.worldTier || 1)) { // 종말의 왕좌 보스 + 그 던전 3 · 6단계
       st.maxTier = (st.worldTier || 1) + 1; this.ui.toast(`세계 ${TIER_NAMES[st.maxTier - 1]} 단계가 열렸습니다`, '#ff9a6a'); sfx('awaken');
     }
     if (!m.dungeon && !m.noLoot && m.tier === 'boss' && Math.random() < 0.3) { // 보스가 가끔 열쇠
@@ -1461,7 +1464,7 @@ export class World {
     this.movePath = clearLine(this.stage, P, dest, 0.5) ? null : findPath(this.stage, P, dest, 0.5, 4000);
   }
   autoZone() {
-    const st = this.st, ok = ZONES.filter((z) => st.awakenings >= (z.levels[0] + this.tierOffset - 1) * 2);
+    const st = this.st, ok = ZONES.filter((z) => st.awakenings >= recAwaken(z.levels[0] + this.tierOffset));
     let i = Math.max(0, ok.length - 1);
     this.autoDeaths = (this.autoDeaths || []).filter((x) => this.time - x.t < 600);
     while (i > 0 && this.autoDeaths.filter((x) => x.z === ZONES[i].id).length >= 3) i--;

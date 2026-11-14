@@ -59,14 +59,14 @@ const nearBoss = (x, z, pad = 0) => ZONES.some((zn) => { const b = bossSpot(zn);
 export const CAMPS = [];
 export const inCamp = (x, z, pad = 0) => CAMPS.find((c) => Math.hypot(x - c.x, z - c.z) < 7 + pad) || null;
 const HAS_BANKS = new Set(['grassland', 'snowplains', 'desert']);
-const LAVA_ZONES = new Set(['inferno', 'demongate']);
+const LAVA_ZONES = new Set(['inferno', 'demongate', 'abyss', 'throne']);
 function genTerrain(rng) {
   LAKES.length = 0; MESAS.length = 0;
   const clear = (x, z, r) => !nearBoss(x, z, r) && roadDist(x, z) > r + 5 && !inCamp(x, z, r + 3) && !ZONES.some((zn) => { const e = entranceOf(zn); return Math.hypot(e.x - x, e.z - z) < r + 4; }) && ![...LAKES, ...MESAS].some((q) => Math.hypot(q.x - x, q.z - z) < q.r + r + (q.ring ? 3 : 6));
   // ① 지역 경계: 언덕(물 많은 지역은 물)을 고리처럼 두르고, 길목(마을 쪽 길) · 샛길 두세 군데만 뚫는다
   const nearGate = (x, z, r) => roadDist(x, z) < r + 3.5 || !!inCamp(x, z, r + 2) || ZONES.some((zn) => { const e = entranceOf(zn); return Math.hypot(e.x - x, e.z - z) < r + 5; }) || Math.hypot(x, z) < TOWN.r + r + 3;
   for (const zn of ZONES) {
-    const L = ZONE_LOOK[zn.id], wet = ['swamp', 'harbor', 'webwood', 'frost'].includes(zn.id) || LAVA_ZONES.has(zn.id);
+    const L = ZONE_LOOK[zn.id], wet = ['swamp', 'harbor', 'webwood', 'frost', 'bloodmire', 'crypt'].includes(zn.id) || LAVA_ZONES.has(zn.id);
     const bs = HAS_BANKS.has(L.set) ? L.set : 'grassland', top = bs !== L.set ? [L.set, L.ground[0]] : null;
     const base = { set: bs, top, lava: LAVA_ZONES.has(zn.id), chasm: L.set === 'ruins', floor: [L.set, L.ground[0]], ring: true };
     const road = Math.atan2(-zn.z, -zn.x), gaps = [road, road + 1.6 + rng() * 1.2, road - 1.8 - rng() * 1.4];

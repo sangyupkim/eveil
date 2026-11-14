@@ -9,7 +9,7 @@ import { CAMPS } from '../engine2d/stage.js';
 import { dailyOf, dailyText } from '../game/daily.js';
 import { townOf } from '../game/town.js';
 import { PLOTS, BUILDINGS, VAULT_SPOT } from '../data/buildings.js';
-import { expNeeded, powerLevel } from '../game/growth.js';
+import { expNeeded, powerLevel, recAwaken } from '../game/growth.js';
 import { countOf } from '../game/inventory.js';
 import { skillValues, modsOf } from '../game/skills.js';
 import { ELIXIRS } from '../data/potions.js';
@@ -71,7 +71,7 @@ export class HUD {
     $('.zoneName').textContent = z ? z.name + (z.levels ? `  ·  위험도 ${z.levels[0]}~${z.levels[1]}` : '') : '황야';
     let info = '안전 지역 · 상점 이용 가능';
     const off = z?.id ? this.world.tierOffset : 0;
-    if (z && z.levels) info = `위험도 ${z.levels[0] + off}~${z.levels[1] + off} · 권장 각성 ${Math.max(0, (z.levels[0] + off - 1) * 2)}+${z.id ? ` · 해방 ${Math.floor(((this.world.st.liberate?.[z.id] || 0) / 400) * 100)}%` : ''}`;
+    if (z && z.levels) info = `위험도 ${z.levels[0] + off}~${z.levels[1] + off} · 권장 각성 ${recAwaken(z.levels[0] + off)}+${z.id ? ` · 해방 ${Math.floor(((this.world.st.liberate?.[z.id] || 0) / 400) * 100)}%` : ''}`;
     else if (!z) info = '지역 사이의 황야';
     $('.zoneInfo').textContent = info;
     $('#shopBtn').hidden = true;
