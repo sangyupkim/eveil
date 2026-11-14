@@ -85,7 +85,7 @@ export const modsOf = (s) => Object.values(s?.mod || {});
 // 랭크 효과: 10까지는 랭크마다 가득, 그 뒤는 절반씩
 const eff = (rank) => Math.min(rank, 10) - 1 + 0.5 * Math.max(0, rank - 10);
 // 주문 계수: 위력 28(재사용 3초급) = 평타 2배. 재사용이 짧은(3초 미만) 주문은 연타할 수 있어 조금 낮춘다
-export const SPELL_K = 2.0, SPELL_REF = 28;
+export const SPELL_K = 2 / 3, SPELL_REF = 28; // 0.34.2: 플레이해 보니 너무 세서 1/3로
 export const isSpell = (sk) => sk.ap === 'int' && sk.type !== 'buff';
 export const spellCoef = (raw, cd) => SPELL_K * Math.pow(Math.max(0, raw) / SPELL_REF, 0.6) * Math.min(1, 0.75 + 0.1 * cd);
 export function skillValues(id, rank, vars = []) {

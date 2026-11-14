@@ -1,6 +1,11 @@
 // 패치 노트 (게임 안 [메뉴 → 패치 노트]에서 본다). 새 버전이 나오면 맨 위에 더한다.
-export const GAME_VERSION = '0.34.1';
+export const GAME_VERSION = '0.34.2';
 export const PATCH_NOTES = [
+  {
+    ver: '0.34.2', date: '2026-11-14',
+    head: '마법 스킬 피해를 낮췄습니다.',
+    items: ['1. 마법 스킬 피해가 지금의 3분의 1로 줄었습니다.'],
+  },
   {
     ver: '0.34.1', date: '2026-11-14',
     head: '스킬 피해를 다시 맞췄습니다.',

@@ -425,10 +425,10 @@ test('드랍 장비 레벨: 모든 세계 단계 · 지역 · 등급에서 몬�
 
 // 모든 소스 파일 문법 검사 (화면용 파일은 테스트에서 불러오지 않아 문법 오류가 그대로 배포된 적이 있다 — 0.33.1 로딩 멈춤)
 const { execFileSync: _ex } = await import('node:child_process'), { readdirSync: _rd, statSync: _st } = await import('node:fs');
-test('주문 피해: 평타 기준 × 계수 — 화염 화살은 평타보다 세고, 큰 주문도 무기 스킬과 비슷한 폭', () => {
+test('주문 피해: 평타 기준 × 계수 (0.34.2에 1/3로 낮춤)', () => {
   const fb = (r) => skillValues('fire_bolt', r, []).power;
-  assert.ok(fb(1) >= 1 && fb(1) < 1.2);            // 랭크 1: 평타쯤
-  assert.ok(fb(10) > 1.8 && fb(10) < 2.4);         // 랭크 10: 평타 약 2배
+  assert.ok(fb(1) > 0.3 && fb(1) < 0.4);
+  assert.ok(fb(10) > 0.6 && fb(10) < 0.8);
   const big = skillValues('absolute_zero', 10, []).power, w = skillValues('judgement', 10, []).power;
   assert.ok(big < w * 1.6);                         // 가장 큰 주문도 가장 큰 무기 스킬의 1.6배 안
   for (const id of Object.keys(SKILLS)) { const sk = SKILLS[id]; if (sk.ap === 'int' && sk.type !== 'buff') assert.ok(skillValues(id, 50, []).power < 25, id); }
