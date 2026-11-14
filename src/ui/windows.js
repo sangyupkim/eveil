@@ -133,7 +133,10 @@ export class Windows {
     const body = $('.body', this.el);
     // 다시 그려도 스크롤 위치는 지킨다
     const keep = [...body.querySelectorAll('.frame')].map((f) => f.scrollTop);
-    body.innerHTML = this[this.kind]();
+    // 창 내용을 만들다 오류가 나도 빈 창이 되지 않게: 알리고 기록을 보낸다
+    let html;
+    try { html = this[this.kind](); } catch (e) { console.error(e); cloud.reportError(`[win:${this.kind}] ${e?.message}`, e?.stack, GAME_VERSION); html = `<div class="frame" style="flex:1"><div class="note">창을 여는 중 오류가 났습니다 · ${esc(e?.message || '')}</div></div>`; }
+    body.innerHTML = html;
     const wc = body.querySelector('.wmc');
     if (wc && this.kind === 'map') { const mf = body.querySelector('.mapFrame'), me = body.querySelector('.pin.me'); if (mf && me && (this.mapCenter !== false)) { requestAnimationFrame(() => { mf.scrollLeft = me.offsetLeft - mf.clientWidth / 2; mf.scrollTop = me.offsetTop - mf.clientHeight / 2; }); this.mapCenter = false; } }
     if (wc) { const g = wc.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(terrain, 0, 0, wc.width, wc.height); g.imageSmoothingEnabled = true; g.drawImage(fogCan, 0, 0, wc.width, wc.height); }
@@ -167,6 +170,8 @@ export class Windows {
       h += `<div class="sub">능력치 파편 · 대장간</div><div class="aff">${affixText(it.shard)}</div>`;
     } else if (b.type === 'gem') {
       h += `<div class="sub">보석 ×${it.qty}</div><div>${STAT_NAMES[GEMS[b.gem].stat]} +${GEM_GRADES[b.grade].v}</div>`;
+    } else if (b?.type === 'mat') {
+      h += `<div class="sub">재료 ×${it.qty}</div><div>${it.base === 'ore' ? '장비 강화 · 재련 · 파편' : '건물 단계 올리기'}</div>`;
     } else if (b.type === 'key') {
       h += `<div class="sub">×${it.qty}</div><div>지역의 던전 입구에서 하나 써서 들어갑니다</div>`;
     } else if (b.type === 'elixir') {
@@ -196,13 +201,13 @@ export class Windows {
     h += `<div class="sub">판매가 ${itemValue(it)} G</div>`;
     h += '<div class="btns">';
     if (where === 'inv') {
-      if (!it.shard && b.type !== 'mat') h += `<button class="btn gold" data-act="use">${isBook(it) ? '배우기' : b.type === 'potion' ? '사용' : b.type === 'elixir' ? '마시기' : '장착'}</button>`;
+      if (!it.shard && b?.type !== 'mat') h += `<button class="btn gold" data-act="use">${isBook(it) ? '배우기' : b.type === 'potion' ? '사용' : b.type === 'elixir' ? '마시기' : '장착'}</button>`;
       // 물약 퀵슬롯: 이 물약을 체력 · 마나 칸에 두거나 뺀다
-      if (b.type === 'potion') for (const [k, nm] of [['hp', '체력 칸'], ['mp', '마나 칸']]) {
+      if (b?.type === 'potion') for (const [k, nm] of [['hp', '체력 칸'], ['mp', '마나 칸']]) {
         const on = st.potSlot?.[k] === it.base;
         h += `<button class="btn${on ? ' on' : ''}" data-pslot="${k}|${on ? '' : it.base}">${on ? `${nm}에서 빼기` : `${nm}에 두기`}</button>`;
       }
-      if (this.w.canShop && b.type !== 'mat') h += `<button class="btn" data-act="sell">판매</button>`;
+      if (this.w.canShop && b?.type !== 'mat') h += `<button class="btn" data-act="sell">판매</button>`;
       h += `<button class="btn danger" data-act="drop">버리기</button>`;
     } else if (where === 'equip') {
       h += `<button class="btn" data-act="unequip">해제</button>`;

@@ -168,7 +168,8 @@ export function enhance(st, it, rng = Math.random) {
 const RK = { common: 1, magic: 2, rare: 4, hero: 8, legend: 16 };
 export function salvageValue(it) {
   const ore = Math.max(0, Math.floor((RK[it.rarity] || 1) * (1 + it.ilvl / 10) / 3)); // 분해 강화석은 적게 (일반 · 마법 낮은 레벨은 0)
-  const zn = ZONES.find((z) => it.ilvl <= z.levels[1]) || ZONES[ZONES.length - 1];
+  const withMat = ZONES.filter((z) => MATERIALS[z.id]); // 재료가 없는 지역(오크 요새 등)은 건너뛴다 — 높은 레벨 장비에서 대장간 창이 비던 문제
+  const zn = withMat.find((z) => it.ilvl <= z.levels[1]) || withMat[withMat.length - 1];
   return { ore, mat: zn.id, matN: Math.max(1, Math.round((RK[it.rarity] || 1) / 2)) };
 }
 export function salvage(st, uid) {
