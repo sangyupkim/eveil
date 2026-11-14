@@ -362,7 +362,7 @@ export class HUD {
     c.lineWidth = 3;
     c.stroke();
     // 던전 입구 = 초록 세모 (테두리)
-    if (!w.dungeon) for (const z of ZONES) { const e = entranceOf(z); if (!seenAt(e.x, e.z)) continue; const x = tx(e.x), y = tz(e.z); c.beginPath(); c.moveTo(x, y - 6); c.lineTo(x + 6, y + 5); c.lineTo(x - 6, y + 5); c.closePath(); c.fillStyle = '#5ee07a'; c.fill(); c.strokeStyle = '#0c2a12'; c.lineWidth = 1.5; c.stroke(); }
+    if (!w.dungeon) for (const z of ZONES) { const e = entranceOf(z); if (!seenAt(e.x, e.z)) continue; const x = tx(e.x), y = tz(e.z); c.beginPath(); c.moveTo(x, y - 6); c.lineTo(x + 6, y + 5); c.lineTo(x - 6, y + 5); c.closePath(); c.fillStyle = w.bossCleared?.(z) ? '#5ee07a' : '#7a8a7e'; c.fill(); // 보스를 아직 안 잡았으면 회색 (잠김) c.strokeStyle = '#0c2a12'; c.lineWidth = 1.5; c.stroke(); }
     // 몬스터: 일반 = 빨간 점, 정예 · 네임드 = 주황 점, 보스 = 큰 금색 마름모 (파란색은 쓰지 않는다)
     for (const m of w.monsters) {
       if (m.dead) continue;

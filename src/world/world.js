@@ -514,8 +514,11 @@ export class World {
     for (let zi = 0; zi < ALL_ZONES.length; zi++) { const e = entranceOf(ALL_ZONES[zi]); if (Math.hypot(P.x - e.x, P.z - e.z) < r) return zi; }
     return -1;
   }
+  // 지역 보스를 잡았나 (예전 저장은 도감의 보스 처치 수로)
+  bossCleared(zn) { return !!this.st.bossDone?.[zn.id] || (this.st.dex?.[zn.boss.type] || 0) > 0; }
   askDungeon(zi) {
     if (this.asking || zi < 0) return;
+    if (!this.bossCleared(ALL_ZONES[zi])) { this.ui.toast(`${ALL_ZONES[zi].boss.name}을(를) 쓰러뜨려야 던전이 열립니다`); sfx('error'); return; }
     const zn = ALL_ZONES[zi], stage = Math.min(MAX_STAGE, (this.st.dungeons?.[zn.id] || 0) + 1), keys = countOf(this.st, 'dungeon_key');
     this.asking = true; this.moveTo = null; this.target = null; this.toggleAuto(false);
       this.ui.ask(`${zn.name} 던전 ${stage}단계`, keys ? `던전 열쇠 1개를 써서 들어갈까요? · 열쇠 ${keys}` : '던전 열쇠가 필요합니다', keys ? '들어가기' : null, (yes) => { this.asking = false; if (yes) this.enterDungeon(zi); });
@@ -1183,7 +1186,7 @@ export class World {
     if (best === 'legend') { this.fx.shake(0.4); this.fx.pillar(m.pos.x, m.pos.z, 0x41e07a, 2.2, 6, 2); sfx('rare'); this.ui.toast('전설 장비!', '#41e07a'); }
     else if (best === 'hero') { sfx('rare', 0.8); this.fx.pillar(m.pos.x, m.pos.z, 0xff9a3c, 1.2, 4, 1); }
     if (m.tier !== 'normal') this.ui.log(`${m.name} 처치!`, TIERS[m.tier].color);
-    if (!m.dungeon && m.tier === 'boss') (st.rec ||= {}).bosses = (st.rec.bosses || 0) + 1;
+    if (!m.dungeon && m.tier === 'boss') { (st.rec ||= {}).bosses = (st.rec.bosses || 0) + 1; if (m.sp?.zone?.id) (st.bossDone ||= {})[m.sp.zone.id] = 1; } // 지역 보스를 잡으면 그 지역 던전이 열린다
     if (!m.dungeon && m.tier === 'boss' && m.sp?.zone?.id === FINAL_ZONE && (st.worldTier || 1) < 3 && (st.maxTier || 1) <= (st.worldTier || 1) && (st.dungeons?.[FINAL_ZONE] || 0) >= 3 * (st.worldTier || 1)) { // 종말의 왕좌 보스 + 그 던전 3 · 6단계
       st.maxTier = (st.worldTier || 1) + 1; this.ui.toast(`세계 ${TIER_NAMES[st.maxTier - 1]} 단계가 열렸습니다`, '#ff9a6a'); sfx('awaken');
     }
