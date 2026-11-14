@@ -72,6 +72,8 @@ const mergeChance = (k) => (k < 2 ? 1 : Math.max(0.35, 1 - 0.1 * (k - 1)));
 const pullCost = (g) => 100 * ((BASES[g]?.grade || 0) + 1) ** 2;
 // 건물 창 칸 나눔 표시 (town()의 'one' 모드에서 칸으로 나눈다)
 const COL = '<!--COL-->';
+// 칸 위 작은 글: 능력치 파편은 옵션을 보여 준다
+const cellTag = (it) => (it?.shard ? `<span class="ctag">${affixText(it.shard).replace(/\s+/g, '')}</span>` : '');
 const NPC_ONLY = ['shop', 'town', 'vault', 'gems'];
 const TAB_ORDER = ['gems', 'map', 'inv', 'vault', 'skills', 'char', 'quest', 'dex', 'town', 'shop', 'guide', 'menu'];
 const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '');
@@ -319,7 +321,7 @@ export class Windows {
       const it = st.inv[i];
       if (!it) { h += '<div class="cell"></div>'; continue; }
       const sel = this.sel?.from === 'inv' && this.sel.uid === it.uid ? ' sel' : '';
-      h += `<div class="cell${sel}${rar(it)}" data-uid="${it.uid}">${ico(it)}${it.qty > 1 ? `<span class="q">${it.qty}</span>` : ''}</div>`;
+      h += `<div class="cell${sel}${rar(it)}" data-uid="${it.uid}">${ico(it)}${cellTag(it)}${it.qty > 1 ? `<span class="q">${it.qty}</span>` : ''}</div>`;
     }
     return h + '</div>';
   }
@@ -332,10 +334,10 @@ export class Windows {
     if (sel) { sel.keys = sel.keys.filter((k) => (sel.from === 'v' ? !!V.items[k] : st.inv.some((x) => x.uid === k))); if (!sel.keys.length) sel = this.vsel = null; }
     const on = (f, k) => (sel && sel.from === f && sel.keys.includes(k) ? ' sel' : '');
     let left = `<h3>창고 <span class="cnt">${V.items.length}/${n}</span><button class="btn" data-vall="v" style="margin-left:auto">모두 고르기</button></h3><div class="grid">`;
-    for (let i = 0; i < n; i++) { const it = V.items[i]; left += it ? `<div class="cell${rar(it)}${on('v', i)}" data-vsel="v|${i}">${ico(it)}${it.qty > 1 ? `<span class="q">${it.qty}</span>` : ''}</div>` : '<div class="cell"></div>'; }
+    for (let i = 0; i < n; i++) { const it = V.items[i]; left += it ? `<div class="cell${rar(it)}${on('v', i)}" data-vsel="v|${i}">${ico(it)}${cellTag(it)}${it.qty > 1 ? `<span class="q">${it.qty}</span>` : ''}</div>` : '<div class="cell"></div>'; }
     left += '</div>';
     let right = `<h3>가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span><button class="btn" data-vall="b" style="margin-left:auto">모두 고르기</button></h3><div class="grid">`;
-    for (let i = 0; i < bagSize(st); i++) { const it = st.inv[i]; right += it ? `<div class="cell${rar(it)}${on('b', it.uid)}" data-vsel="b|${it.uid}">${ico(it)}${it.qty > 1 ? `<span class="q">${it.qty}</span>` : ''}</div>` : '<div class="cell"></div>'; }
+    for (let i = 0; i < bagSize(st); i++) { const it = st.inv[i]; right += it ? `<div class="cell${rar(it)}${on('b', it.uid)}" data-vsel="b|${it.uid}">${ico(it)}${cellTag(it)}${it.qty > 1 ? `<span class="q">${it.qty}</span>` : ''}</div>` : '<div class="cell"></div>'; }
     right += '</div>';
     let mid = '<div class="note">고른 아이템이 없습니다</div>';
     if (sel) {
@@ -348,7 +350,8 @@ export class Windows {
 
   bagHead() {
     const st = this.w.st;
-    return `<h3>가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span>${this.w.canShop ? '<button class="btn" data-selljunk="1" style="margin-left:auto">일반 · 마법 팔기</button>' : ''}<span class="goldTxt">${st.gold.toLocaleString()} G · ◆${townOf(st).ore.toLocaleString()}</span></h3>`;
+    const shards = st.inv.filter((x) => x.shard);
+    return `<h3>가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span>${this.w.canShop ? '<button class="btn" data-selljunk="1" style="margin-left:auto">일반 · 마법 팔기</button>' : ''}<span class="goldTxt">${st.gold.toLocaleString()} G · ◆${townOf(st).ore.toLocaleString()}</span></h3>` + (shards.length ? `<div class="note shardRow">능력치 파편 ${shards.length} · ${shards.map((x) => `<span style="color:#c58cff">${affixText(x.shard)}</span>`).join(' · ')}</div>` : '');
   }
 
   // 고른 가방 아이템과 같은 칸에 끼고 있는 장비
@@ -652,7 +655,7 @@ export class Windows {
       if (bmode && !b.bld) right += costTable;
       if (!bmode && !(b.bld?.to === 1)) {
       if (b.type === 'workshop') {
-        right += `<div class="herbBar">${HERB_IDS.map((h) => `<span class="hb" title="${HERBS[h].name}"><img src="${herbIcon(h)}" alt="" />${t.herbs[h] || 0}</span>`).join('')}</div>`;
+        right += `<h3>약초</h3><div class="herbList">${HERB_IDS.map((h) => `<span class="hb"><img src="${herbIcon(h)}" alt="" />${HERBS[h].name} <b>${t.herbs[h] || 0}</b></span>`).join('')}</div>`;
         const q = t.brew || [], ready = q.filter((x) => x.until <= Date.now()).length;
         if (q.length) right += `<h3>제작 중 <span class="cnt">${q.length} / ${BREW_QUEUE}</span>${ready ? '<button class="btn gold" data-brewget="bag" style="margin-left:auto">가방으로</button><button class="btn gold" data-brewget="vault">창고로</button>' : ''}</h3>` + q.map((x) => `<div class="row"><div class="cell shopIco">${ico({ base: x.id })}</div><div class="grow"><b>${BASES[x.id].name} ×${x.n}</b> <small class="note">${x.until <= Date.now() ? '완성' : `${Math.ceil((x.until - Date.now()) / 1000)}초`}</small>${gauge(x.from, x.until, 60000, '#7fe07a')}</div></div>`).join('');
         right += COL + '<h3>만들기</h3>';
@@ -664,7 +667,7 @@ export class Windows {
             ${open ? `<button class="btn" data-brew="${rc.id}|1" ${can(1) ? '' : 'disabled'}>만들기</button><button class="btn" data-brew="${rc.id}|5" ${can(5) ? '' : 'disabled'}>×5</button>` : ''}</div>`;
         }
       }
-      if (b.type === 'herb') right += `<div class="herbBar">${herbsAt(5).map((h) => `<span class="hb" style="${HERBS[h].lv <= b.lv ? '' : 'opacity:.35'}" title="${HERBS[h].name}${HERBS[h].lv <= b.lv ? '' : ` · ${HERBS[h].lv}단계`}"><img src="${herbIcon(h)}" alt="" />${HERBS[h].lv <= b.lv ? t.herbs[h] || 0 : HERBS[h].lv + '단계'}</span>`).join('')}</div>`;
+      if (b.type === 'herb') right += `<h3>자라는 약초</h3><div class="herbList">${herbsAt(5).map((h) => { const on = HERBS[h].lv <= b.lv; return `<span class="hb" style="${on ? '' : 'opacity:.4'}"><img src="${herbIcon(h)}" alt="" />${HERBS[h].name} <b>${on ? (t.herbs[h] || 0) : `${HERBS[h].lv}단계`}</b></span>`; }).join('')}</div>`;
       if (b.type === 'guild') right += this.guildPanel(b);
       if (SKILL_OF[b.type]) {
         const sk = SKILL_OF[b.type], crew = t.mercs.filter((m) => m.work === sel), idle = t.mercs.filter((m) => !m.work && !m.job);
