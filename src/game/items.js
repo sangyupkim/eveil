@@ -17,6 +17,7 @@ export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1 } = {}, 
   if (!base) throw new Error('없는 아이템: ' + baseId);
   if (base.type === 'potion' || base.stack) return { uid: uid(st), base: baseId, qty };
   const it = { uid: uid(st), base: baseId, rarity, ilvl, affixes: [] };
+  if (base.slot && (base.dmg || base.armor)) it.q = Math.round((0.85 + rng() * 0.3) * 100) / 100; // 품질: 같은 아이템도 기본 피해 · 방어력이 85~115%
   const r = RARITY[rarity];
   const n = randInt(r.affix[0], r.affix[1], rng);
   const slot = base.slot;

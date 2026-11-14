@@ -8,6 +8,7 @@ import { makeItem } from './items.js';
 import { MATERIALS, MAT_DROP, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
 import { BASES } from '../data/items.js';
 import { vault, vaultAdd, vaultSave } from './vault.js';
+import { shardFrom } from './shards.js';
 
 export function townOf(st, now = Date.now()) {
   st.town ||= { plots: {}, mercs: [], last: now };
@@ -172,13 +173,18 @@ export function salvageValue(it) {
   const zn = withMat.find((z) => it.ilvl <= z.levels[1]) || withMat[withMat.length - 1];
   return { ore, mat: zn.id, matN: Math.max(1, Math.round((RK[it.rarity] || 1) / 2)) };
 }
+// 분해 파편 확률: 마법 8% · 희귀 15% · 영웅 25% · 전설 35%
+export const SALVAGE_SHARD = { common: 0, magic: 0.08, rare: 0.15, hero: 0.25, legend: 0.35 };
 export function salvage(st, uid) {
   const i = st.inv.findIndex((x) => x.uid === uid);
   const it = st.inv[i];
   if (!it || it.book || !BASES[it.base]?.slot || it.named) return { ok: false, why: '분해할 수 없습니다' };
   const v = salvageValue(it), t = townOf(st);
   st.inv.splice(i, 1); t.ore += v.ore; t.mats[v.mat] = (t.mats[v.mat] || 0) + v.matN;
-  return { ok: true, ...v };
+  // 분해하면 그 장비의 옵션 하나가 능력치 파편으로 나올 수 있다 (등급이 높을수록 자주)
+  let shard = null;
+  if (it.affixes?.length && Math.random() < SALVAGE_SHARD[it.rarity] * (1 + 0.2 * (t.research?.shard || 0))) { shard = shardFrom(it, st); if (shard) st.inv.push(shard); }
+  return { ok: true, ...v, shard };
 }
 // 재련: 옵션 하나(가장 약한 것)를 다시 굴린다
 export const reforgeCost = (it) => ({ gold: Math.round(200 * (1 + it.ilvl / 5) * (RK[it.rarity] || 1)), ore: 4 + Math.round(it.ilvl / 4) });

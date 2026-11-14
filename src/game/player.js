@@ -70,10 +70,10 @@ export function gearSum(st) {
 
 // 강화(+n)는 단계마다 +8%
 const plusK = (it) => 1 + 0.08 * (it.plus || 0);
-export const scaledArmor = (it) => Math.round(BASES[it.base].armor * (1 + 0.1 * (it.ilvl - 1)) * plusK(it));
+export const scaledArmor = (it) => Math.round(BASES[it.base].armor * (1 + 0.1 * (it.ilvl - 1)) * plusK(it) * (it.q || 1));
 export const scaledDmg = (it) => {
   const b = BASES[it.base];
-  const m = (1 + 0.1 * (it.ilvl - 1)) * plusK(it);
+  const m = (1 + 0.1 * (it.ilvl - 1)) * plusK(it) * (it.q || 1);
   return [Math.round(b.dmg[0] * m), Math.round(b.dmg[1] * m)];
 };
 

@@ -184,7 +184,9 @@ export class Windows {
       if (b.armor) h += `<div>방어력 ${scaledArmor(it)}</div>`;
       if (b.block) h += `<div>막기 확률 ${Math.round(b.block * 100)}%</div>`;
       if (b.mods) for (const k in b.mods) h += `<div>${k === 'maxMp' ? '최대 MP' : k} +${b.mods[k]}</div>`;
-      for (const a of it.affixes) h += `<div class="aff">${affixText(a)}</div>`;
+      if (it.q) h += `<div class="sub">품질 <b style="color:${it.q >= 1.1 ? '#ffd84a' : it.q <= 0.9 ? '#a09a8a' : '#e8e2d4'}">${Math.round(it.q * 100)}%</b> · 85~115%</div>`;
+      // 옵션마다 이 아이템 레벨 · 등급에서 나올 수 있는 범위
+      for (const a of it.affixes) { const A = AFFIXES[a.id], mx = A ? Math.round(Math.max(A.min, A.max(it.ilvl) * (RARITY[it.rarity]?.mult || 1))) : null; h += `<div class="aff">${affixText(a)}${A ? ` <small class="note">${A.min}~${mx}</small>` : ''}</div>`; }
       if (it.unique != null) h += `<div class="aff" style="color:#41e07a">◆ ${UNIQUES[it.unique].text}</div>`;
       if (it.sockets) {
         h += `<div class="aff" style="color:#c0b0ff">구멍 ${it.gems.length} / ${it.sockets}${it.gems.map((g) => ` · ${BASES[g].name} ${STAT_NAMES[GEMS[BASES[g].gem].stat]} +${GEM_GRADES[BASES[g].grade].v}`).join('')}</div>`;
@@ -513,7 +515,7 @@ export class Windows {
       ['던전', 'dungeon', ['던전 지도', '단계'], ['던전 입구 앞에서 버튼이 「던전」으로 바뀝니다. 오늘의 의뢰 · 보스가 가끔 주는 열쇠로 들어갑니다', '가장 깊은 곳의 우두머리를 잡으면 다음 단계가 열립니다', '돌파하면 공격 버튼이 나가기로 바뀝니다. 전리품을 줍고 눌러 나갑니다']],
       ['보스', 'boss', ['색칠된 곳에 곧 공격이 들어옵니다. 가운데부터 차오르면 터집니다'], ['멀리서 맴돌면 뛰어들기 · 저격 같은 원거리 공격을 합니다', '보스마다 고유한 공격이 있습니다']],
       ['설정', 'menu', ['화면 확대', 'UI 위치 바꾸기']],
-      ['그 밖에', null, [], ['죽으면 가끔 장비 하나를 그 자리에 떨어뜨립니다. 다시 가서 주워야 합니다', '세계 단계: 평온 → 악몽 → 지옥. 오를수록 몬스터가 세지고 좋은 장비가 나옵니다', '도감: 몬스터를 잡으면 채워지고 보너스를 받습니다', '능력치 파편: 장비를 갈아 낄 때 · 보스에게서 가끔. 대장간에서 장비 옵션 하나와 바꿉니다']],
+      ['그 밖에', null, [], ['죽으면 가끔 장비 하나를 그 자리에 떨어뜨립니다. 다시 가서 주워야 합니다', '세계 단계: 평온 → 악몽 → 지옥. 오를수록 몬스터가 세지고 좋은 장비가 나옵니다', '도감: 몬스터를 잡으면 채워지고 보너스를 받습니다', '능력치 파편: 장비를 갈아 낄 때 10% · 보스 장비 대신 20% · 분해할 때 마법 8% · 희귀 15% · 영웅 25% · 전설 35%. 대장간에서 장비 옵션 하나와 바꿉니다', '같은 장비도 품질 85~115%와 옵션 수치가 매번 다릅니다']],
     ];
     const [t, img, nums, more = []] = S[Math.min(k, S.length - 1)];
     const li = nums.map((l, i) => `<li><b class="gnum">${i + 1}</b>${l}</li>`).join('') + more.map((l) => `<li>${l}</li>`).join('');
@@ -875,8 +877,8 @@ export class Windows {
     on('[data-travel]', (el) => { this.portalAt = null; this.mapZoom = null; this.close(); w.travel(el.dataset.travel); });
     on('[data-mzoom]', (el) => { const Z = [1, 1.6, 2.4, 3.2], i = Math.max(0, Math.min(Z.length - 1, Z.indexOf(this.mapZoom || 1) + Number(el.dataset.mzoom))); this.mapZoom = Z[i]; this.mapCenter = true; audio.play('click'); this.render(); });
     on('[data-camp]', (el) => { const [z, what] = el.dataset.camp.split('|'); const r = w.buildCamp(z, what); if (!r.ok && r.why) w.ui.toast(r.why); w.ui.dirty(); this.render(); });
-    on('[data-salvage]', (el) => { const r = salvage(st, Number(el.dataset.salvage)); if (r.ok) { audio.play('coin'); w.ui.toast(`분해: 강화석 ${r.ore} · ${MATERIALS[r.mat].name} ${r.matN}`, '#ffd84a'); } townDone(r); });
-    on('[data-salvageall]', () => { let n = 0; for (const x of [...st.inv]) if (!x.book && BASES[x.base]?.slot && ['common', 'magic'].includes(x.rarity) && salvage(st, x.uid).ok) n++; audio.play('coin'); w.ui.toast(`장비 ${n}개 분해`, '#ffd84a'); townDone({ ok: true }); });
+    on('[data-salvage]', (el) => { const r = salvage(st, Number(el.dataset.salvage)); if (r.ok) { audio.play('coin'); w.ui.toast(`분해: 강화석 ${r.ore} · ${MATERIALS[r.mat].name} ${r.matN}`, '#ffd84a'); if (r.shard) w.ui.toast(`능력치 파편: ${affixText(r.shard.shard)}`, '#c58cff'); } townDone(r); });
+    on('[data-salvageall]', () => { let n = 0, sh = 0; for (const x of [...st.inv]) if (!x.book && BASES[x.base]?.slot && ['common', 'magic'].includes(x.rarity)) { const r = salvage(st, x.uid); if (r.ok) { n++; if (r.shard) sh++; } } if (sh) w.ui.toast(`능력치 파편 ${sh}개`, '#c58cff'); audio.play('coin'); w.ui.toast(`장비 ${n}개 분해`, '#ffd84a'); townDone({ ok: true }); });
     on('[data-reforge]', (el) => { const it = st.equip[el.dataset.reforge], r = reforge(st, it); if (r.ok) { audio.play('rankup'); w.ui.toast(`재련: ${affixText(r.old)} → ${affixText(r.now)}`, '#ffd84a'); w.refreshGear(); } townDone(r); });
     on('[data-shard]', (el) => { const u = Number(el.dataset.shard); this.shardSel = this.shardSel === u ? null : u; this.shardLocks = []; audio.play('click'); this.render(); });
     on('[data-starget]', (el) => { this.shardTarget = el.dataset.starget; this.shardLocks = []; audio.play('click'); this.render(); });
