@@ -18,13 +18,15 @@ export function rollLoot(mon, opt = {}, st = null, rng = R) {
     const amount = Math.round(randInt(3, 8, rng) * mon.level * t.gold[1] * (opt.goldFind || 1));
     out.push({ kind: 'gold', amount });
   }
-  // 장비
-  if (chance(t.itemChance * dropMult, rng)) {
+  // 장비: 레벨이 높을수록 드물다 (레벨 1 ×1 → 100 ×0.73 → 200 ×0.46, 최소 ×0.4)
+  const rareK = Math.max(0.4, 1 - (mon.level - 1) / 370);
+  if (chance(t.itemChance * dropMult * rareK, rng)) {
     const n = randInt(t.items[0], t.items[1], rng);
     for (let i = 0; i < n; i++) {
       // 보스는 가끔 장비 대신 능력치 파편
       if (mon.tier === 'boss' && rng() < SHARD.bossChance * (1 + 0.2 * (st?.town?.research?.shard || 0))) { out.push({ kind: 'item', item: rollShard(mon.level, st, rng) }); continue; }
-      const rarity = rollRarity(t.rarity, opt.magicFind || 0, rng);
+      const rr = { ...t.rarity, hero: (t.rarity.hero || 0) * rareK, legend: (t.rarity.legend || 0) * rareK * rareK }; // 높은 곳의 영웅 · 전설은 더 드물다
+      const rarity = rollRarity(rr, opt.magicFind || 0, rng);
       out.push({ kind: 'item', item: makeItem(rollBase(mon.level, rng), { rarity, ilvl: mon.level }, st, rng) });
     }
   }

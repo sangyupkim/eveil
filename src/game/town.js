@@ -146,9 +146,9 @@ export const enhanceCap = (st) => { const s = findBuilding(st, 'smithy'); return
 // 실패마다 기본 확률의 10%씩 올라 최대 2배 (성공하면 둘 다 0으로)
 export const jangOf = (it) => it.jang || 0;
 export function enhanceCost(it, st = null) {
-  const n = it.plus || 0, base = ENHANCE.chance(n), up = Math.min(base, base * 0.1 * (it.fails || 0));
+  const n = it.plus || 0, hk = Math.max(0.55, 1 - (it.ilvl || 1) / 450), base = n < 2 ? ENHANCE.chance(n) : ENHANCE.chance(n) * hk, up = Math.min(base, base * 0.1 * (it.fails || 0)); // 높은 장비는 성공률이 낮다 (레벨 200 ×0.56)
   const chance = jangOf(it) >= 1 ? 1 : Math.min(1, base + up + (st ? researchK(st, 'enh') : 0));
-  return { gold: Math.round(ENHANCE.gold(n, it.ilvl || 1) * (1 - (st ? bonusOf(st, 'smithy') : 0))), ore: ENHANCE.ore(n), chance, base, jang: jangOf(it) };
+  return { gold: Math.round(ENHANCE.gold(n, it.ilvl || 1) * (1 - (st ? bonusOf(st, 'smithy') : 0))), ore: Math.round(ENHANCE.ore(n) * (1 + (it.ilvl || 1) / 80)), chance, base, jang: jangOf(it) }; // 강화석도 높은 장비일수록 많이
 }
 // rng: 0~1. 실패해도 단계가 떨어지지는 않는다 (재료만 사라진다)
 export function enhance(st, it, rng = Math.random) {

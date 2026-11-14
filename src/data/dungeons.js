@@ -75,4 +75,7 @@ export function dungeonBox(x, z) {
 export const entranceOf = (zn) => ({ x: zn.x + (zn.x >= 0 ? -1 : 1) * zn.r * 0.45, z: zn.z + (zn.z >= 0 ? -1 : 1) * zn.r * 0.45 });
 
 // 단계마다: 몬스터 강함 · 보상
-export const stageMods = (stage) => ({ level: Math.ceil(stage / 2), hp: 1 + 0.12 * stage, dmg: 1 + 0.06 * stage });
+// 던전 단계마다 +2레벨: 10단계면 다음다음 지역 수준 (마지막 지역은 다음 세계 단계 초반으로 이어진다)
+export const stageMods = (stage) => ({ level: 2 * (stage - 1), hp: 1 + 0.08 * stage, dmg: 1 + 0.04 * stage });
+// 던전 몬스터 레벨 (세계 단계 보정 전): 지역 중간 레벨 + 단계
+export const dungeonLevel = (zn, stage) => Math.round((zn.levels[0] + zn.levels[1]) / 2) + stageMods(stage).level;

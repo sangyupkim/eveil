@@ -1,6 +1,6 @@
 import { bagSize } from '../game/inventory.js';
 import { ZONES as ALL_ZONES } from '../data/world.js';
-import { DUNGEON_X, entranceOf, MAX_STAGE, stageMods, layout as dungeonLayout, cellPos, N } from '../data/dungeons.js';
+import { DUNGEON_X, entranceOf, MAX_STAGE, stageMods, dungeonLevel, layout as dungeonLayout, cellPos, N } from '../data/dungeons.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { gemGradeFor } from '../data/legends.js';
 export const TIER_NAMES = ['평온', '악몽', '지옥'];
@@ -528,7 +528,7 @@ export class World {
     this.player.pos.set(sp0.x, 0, sp0.z); this.moveTo = null; this.target = null;
     this.stage.cam.x = sp0.x; this.stage.cam.z = sp0.z;
     this.fx.arrive(sp0.x, sp0.z);
-    const mod = stageMods(stage), L = Math.round((zn.levels[0] + zn.levels[1]) / 2) + mod.level - 1; // 1단계는 지역 중간 레벨부터 (필드 → 던전 격차를 줄였다)
+    const mod = stageMods(stage), L = dungeonLevel(zn, stage); // 1단계는 지역 중간 레벨부터 (필드 → 던전 격차를 줄였다)
     // 세계 단계 보정은 spawn에서 더한다 (예전엔 두 번 더해 지옥 던전이 283레벨이 됐다)
     // 몬스터: 시작에서 먼 칸일수록 많이 · 정예는 깊은 곳, 우두머리는 가장 먼 방
     const cells = [];
@@ -574,7 +574,7 @@ export class World {
     st.dungeons[zn.id] = Math.max(st.dungeons[zn.id] || 0, dg.stage);
     this.dailyDone(dailyProgress(st, { kind: 'dungeon', zone: zn.id }));
     // 보상: 영웅 이상 2개 (단계가 높을수록 전설), 상급 스킬북 하나, 금화
-    const lv = zn.levels[1] + dg.stage + this.tierOffset;
+    const lv = dungeonLevel(zn, dg.stage) + this.tierOffset;
     for (let i = 0; i < 2; i++) {
       const rarity = Math.random() < 0.08 + dg.stage * 0.035 ? 'legend' : 'hero';
       this.dropGround({ kind: 'item', item: makeItem(rollBase(lv), { rarity, ilvl: lv }, st) }, m.pos.x + i * 1.2, m.pos.z + 1);
@@ -2165,7 +2165,7 @@ export class World {
     if (id !== this.zone) {
       this.zone = id;
       if (zn) st.lastZone = zn.id;
-      this.ui.zone(dg ? { name: `${dg.zone.name} 던전 ${dg.stage}단계`, levels: [dg.zone.levels[1] + stageMods(dg.stage).level + this.tierOffset, dg.zone.levels[1] + stageMods(dg.stage).level + this.tierOffset] } : id === 'town' ? TOWN : zn);
+      this.ui.zone(dg ? { name: `${dg.zone.name} 던전 ${dg.stage}단계`, levels: [dungeonLevel(dg.zone, dg.stage) + this.tierOffset, dungeonLevel(dg.zone, dg.stage) + this.tierOffset] } : id === 'town' ? TOWN : zn);
     }
     this.musicT = (this.musicT || 0) - dt;
     if (this.musicT <= 0) {
