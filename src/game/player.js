@@ -113,6 +113,8 @@ export function derive(st, buffs = {}) {
     block: g.block ? Math.min(0.5, g.block + s.str * 0.0008) : 0,
     armor,
     spellMult: (1 + s.int * 0.035) * (1 + (g.spellPct || 0) / 100),
+    // 주문 기준 피해: 무기 평균 피해 × 지능 배율 × 피해% × 주문 피해% (주문 스킬 = 이 값 × 계수)
+    spellBase: ((wd[0] + wd[1]) / 2) * (1 + s.int * 0.03) * (1 + ((g.dmgPct || 0) + (buffs.might || 0)) / 100) * (1 + berserk / 100) * (1 + (g.spellPct || 0) / 100),
     healMult: 1 + s.wis * 0.035,
     hpRegen: 0.5 + s.vit * 0.04 + (g.hpRegen || 0),
     mpRegen: 0.6 + s.wis * 0.07 + (g.mpRegen || 0),

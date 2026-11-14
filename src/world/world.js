@@ -1554,8 +1554,10 @@ export class World {
     if (sk.mix) addAP(st, sk.mix, v.mp * AP_TABLE.supportPerMp, this.autoMult);
     if (sk.apStat && sk.ap === 'weapon') addAP(st, sk.apStat, v.mp * AP_TABLE.supportPerMp, this.autoMult);
     const pw = v.power * mixK;
-    const spell = () => randRange(0.9, 1.1) * pw * d.spellMult;
-    const spellCrit = () => Math.random() < d.crit * 0.5;
+    // 주문 피해 = 평타 기준 피해(spellBase) × 계수, 치명타는 평타와 같은 확률 · 배율 (spell() 다음에 spellCrit()을 부른다)
+    let lastCrit = false;
+    const spell = () => { lastCrit = Math.random() < d.crit; return randRange(0.9, 1.1) * pw * d.spellBase * (lastCrit ? d.critMult : 1); };
+    const spellCrit = () => lastCrit;
     const weaponHit = () => { const w = this.rollWeapon(); return { v: w.v * pw, crit: w.crit }; };
     const color = new THREE.Color(sk.color).getHex();
     if (sk.type !== 'buff') this.fx.circle(P.pos.x, P.pos.z, 1.8, color, 0.9); // 버프는 따로 (보호막 · 오라)

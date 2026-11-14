@@ -393,7 +393,7 @@ export class Windows {
       const mods = modsOf(s), v = skillValues(id, s.rank, mods), nx = skillValues(id, s.rank + 1, mods), e = skillEff(id, mods);
       const need = skillExpNeeded(s.rank), d = this.w.d || {};
       const isW = sk.ap === 'weapon', isBuff = sk.type === 'buff';
-      const pw = (x) => isW ? `무기 피해 ×${x.toFixed(2)}` : `${Math.round(x * (d.spellMult || 1))}`;
+      const pw = (x) => isW ? `무기 피해 ×${x.toFixed(2)}` : `평타 ×${x.toFixed(2)} · 약 ${Math.round(x * (d.spellBase || 0)).toLocaleString()}`;
       const kv = [];
       if (!isBuff) kv.push(['위력', pw(v.power)], ['다음 랭크', pw(nx.power)]);
       else kv.push(['효과', `${Math.round(v.power)}${/Pct$/.test(sk.buff || '') ? '%' : ''}`], ['다음 랭크', `${Math.round(nx.power)}${/Pct$/.test(sk.buff || '') ? '%' : ''}`]);

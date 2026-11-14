@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { newPlayer, derive, chooseStart } from '../src/game/player.js';
 import { STARTS, START_BONUS } from '../src/data/items.js';
 import { addAP, gainExp, distribute, expNeeded, rewardFactor } from '../src/game/growth.js';
-import { learn, addSkillExp, canLearn } from '../src/game/skills.js';
+import { learn, addSkillExp, canLearn, skillValues } from '../src/game/skills.js';
 import { rollLoot, rollDeathDrop } from '../src/game/loot.js';
 import { makeItem, itemName, rollBase } from '../src/game/items.js';
 import * as await_fs from 'node:fs';
@@ -425,6 +425,15 @@ test('드랍 장비 레벨: 모든 세계 단계 · 지역 · 등급에서 몬�
 
 // 모든 소스 파일 문법 검사 (화면용 파일은 테스트에서 불러오지 않아 문법 오류가 그대로 배포된 적이 있다 — 0.33.1 로딩 멈춤)
 const { execFileSync: _ex } = await import('node:child_process'), { readdirSync: _rd, statSync: _st } = await import('node:fs');
+test('주문 피해: 평타 기준 × 계수 — 화염 화살은 평타보다 세고, 큰 주문도 무기 스킬과 비슷한 폭', () => {
+  const fb = (r) => skillValues('fire_bolt', r, []).power;
+  assert.ok(fb(1) >= 1 && fb(1) < 1.2);            // 랭크 1: 평타쯤
+  assert.ok(fb(10) > 1.8 && fb(10) < 2.4);         // 랭크 10: 평타 약 2배
+  const big = skillValues('absolute_zero', 10, []).power, w = skillValues('judgement', 10, []).power;
+  assert.ok(big < w * 1.6);                         // 가장 큰 주문도 가장 큰 무기 스킬의 1.6배 안
+  for (const id of Object.keys(SKILLS)) { const sk = SKILLS[id]; if (sk.ap === 'int' && sk.type !== 'buff') assert.ok(skillValues(id, 50, []).power < 25, id); }
+});
+
 test('모든 src 파일 문법', () => {
   const walk = (d) => _rd(d).flatMap((f) => { const q = d + '/' + f; return _st(q).isDirectory() ? walk(q) : q.endsWith('.js') ? [q] : []; });
   for (const f of walk(new URL('../src', import.meta.url).pathname)) _ex(process.execPath, ['--check', f], { stdio: 'pipe' });
