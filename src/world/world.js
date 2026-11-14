@@ -1549,8 +1549,9 @@ export class World {
     if (sk.echo && !v.echoed) this.later(0.6, () => { if (!this.dead) this.castSkill(id, { ...v, mp: 0, power: v.power * sk.echo, echoed: true, cd: this.cds[id] }); });
     const t = this.target;
     if (t) P.face(t.pos.x, t.pos.z);
-    // 혼합 기술: 둘째 스탯 1점당 피해 +1.2%, 쓸 때 그 스탯 행동 기록
-    const mixK = sk.mix ? 1 + d.stats[sk.mix] * 0.012 : 1;
+    // 혼합 기술: 둘째 스탯이 주 스탯(주문은 지능, 무기 스킬은 무기 스탯)만큼이면 +25%, 아주 높아도 최대 +50%. 쓸 때 그 스탯 행동 기록
+    const mainStat = d.stats[sk.ap === 'int' ? 'int' : d.cls.ap] || 0, mixStat = sk.mix ? d.stats[sk.mix] || 0 : 0;
+    const mixK = sk.mix ? 1 + 0.5 * mixStat / Math.max(1, mainStat + mixStat) : 1;
     if (sk.mix) addAP(st, sk.mix, v.mp * AP_TABLE.supportPerMp, this.autoMult);
     if (sk.apStat && sk.ap === 'weapon') addAP(st, sk.apStat, v.mp * AP_TABLE.supportPerMp, this.autoMult);
     const pw = v.power * mixK;
@@ -1723,8 +1724,9 @@ export class World {
             const px = m.pos.x - P.pos.x, pz = m.pos.z - P.pos.z;
             const along = px * ux + pz * uz, side = Math.abs(px * uz - pz * ux);
             if (along > 0 && along < sk.range && side < sk.width * 0.5 + 0.5 * m.actor.scale) {
-              const w = weaponHit();
-              this.later(along / 40, () => this.hitMonster(m, w.v, { crit: w.crit, src: 'skill', ctx }));
+              // 주문(얼음 창 등)은 주문 공식, 활 스킬은 무기 공식
+              const w = sk.ap === 'int' ? { v: spell(), crit: spellCrit(), pierce: 0.5 } : weaponHit();
+              this.later(along / 40, () => this.hitMonster(m, w.v, { crit: w.crit, src: 'skill', ctx, pierce: w.pierce || 0 }));
             }
           }
         });

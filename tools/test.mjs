@@ -432,6 +432,9 @@ test('주문 피해: 평타 기준 × 계수 — 화염 화살은 평타보다 �
   const big = skillValues('absolute_zero', 10, []).power, w = skillValues('judgement', 10, []).power;
   assert.ok(big < w * 1.6);                         // 가장 큰 주문도 가장 큰 무기 스킬의 1.6배 안
   for (const id of Object.keys(SKILLS)) { const sk = SKILLS[id]; if (sk.ap === 'int' && sk.type !== 'buff') assert.ok(skillValues(id, 50, []).power < 25, id); }
+  // 여러 번 내리는 주문의 합은 같은 급 활 스킬(화살 폭우)의 1.2배 안
+  const hail = skillValues('hail_of_arrows', 10, []).power * 6;
+  for (const id of ['blizzard', 'inferno_field', 'thunderstorm']) assert.ok(skillValues(id, 10, []).power * SKILLS[id].waves < hail * 1.2, id);
 });
 
 test('모든 src 파일 문법', () => {

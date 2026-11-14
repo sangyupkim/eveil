@@ -94,7 +94,8 @@ export function skillValues(id, rank, vars = []) {
   const raw = (sk.power + sk.perRank * eff(rank)) * (p ? 1.4 : 1) * (f ? 1.25 : 1);
   return {
     // 주문(지능 공격 스킬)은 「평타 피해 × 계수」: 무기가 좋아지면 함께 커지고, 큰 위력 · 랭크는 0.6제곱으로 눌러 지나치게 세지지 않는다
-    power: isSpell(sk) ? spellCoef(raw, sk.cd) : raw,
+    // 여러 번 내리는 주문(눈보라 · 불바다 · 뇌우)은 한 번당 계수를 나눠 전체가 활 화살 폭우 수준
+    power: isSpell(sk) ? spellCoef(raw, sk.cd) / ((sk.waves || 1) > 1 ? sk.waves * 0.5 : 1) : raw,
     mp: Math.round(sk.mp * (1 + 0.05 * Math.min(rank - 1, 9) + 0.01 * Math.max(0, rank - 10)) * (fr ? 0.55 : 1)),
     cd: sk.cd * (1 - 0.02 * Math.min(rank - 1, 15)) * (q ? 0.65 : 1) * (f ? 0.85 : 1),
   };
