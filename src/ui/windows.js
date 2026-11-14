@@ -249,22 +249,24 @@ export class Windows {
   }
 
   // 대장간: 능력치 파편으로 착용 장비의 옵션 하나를 바꾼다 (잠근 옵션은 그대로)
+  // 제련: 장비(착용 · 가방)와 능력치 파편을 골라 장비 옵션 하나를 파편 옵션으로 바꾼다. 대장간 단계만큼 옵션을 잠근다
   shardPanel(smith) {
     const st = this.w.st, t = townOf(st);
     const shards = st.inv.filter((x) => x.shard);
-    let h = `<h3 style="margin-top:8px">능력치 파편 <small>잠금 최대 ${lockMax(smith.lv)}개</small></h3>`;
-    if (!shards.length) return h + '<div class="note">파편 없음</div>';
+    let h = `<h3 style="margin-top:8px">제련 <small>잠금 최대 ${lockMax(smith.lv)}개</small></h3>`;
+    if (!shards.length) return h + '<div class="note">능력치 파편 없음</div>';
     if (!shards.some((x) => x.uid === this.shardSel)) this.shardSel = null;
-    h += `<div class="btns" style="flex-wrap:wrap;margin:0 0 6px">${shards.map((x) => `<button class="btn ${x.uid === this.shardSel ? 'on' : ''}" data-shard="${x.uid}" style="color:#c58cff">${affixText(x.shard)}</button>`).join('')}</div>`;
+    h += `<div class="note">파편</div><div class="btns" style="flex-wrap:wrap;margin:0 0 6px">${shards.map((x) => `<button class="btn ${x.uid === this.shardSel ? 'on' : ''}" data-shard="${x.uid}" style="color:#c58cff">${affixText(x.shard)}</button>`).join('')}</div>`;
     const sh = st.inv.find((x) => x.uid === this.shardSel)?.shard;
     if (!sh) return h;
-    const targets = SLOTS.filter((sl) => st.equip[sl]?.affixes?.length);
-    if (!targets.includes(this.shardTarget)) { this.shardTarget = targets[0]; this.shardLocks = []; }
-    if (!targets.length) return h + '<div class="note">옵션이 있는 착용 장비 없음</div>';
-    h += `<div class="btns" style="flex-wrap:wrap;margin:0 0 6px">${targets.map((sl) => `<button class="btn ${sl === this.shardTarget ? 'on' : ''}" data-starget="${sl}" style="color:${itemColor(st.equip[sl])}">${esc(itemName(st.equip[sl]))}</button>`).join('')}</div>`;
-    const it = st.equip[this.shardTarget], L = this.shardLocks || [], max = lockMax(smith.lv), c = shardCost(it), ok = canApply(it, sh, L);
+    // 고를 수 있는 장비: 착용 중 + 가방 (옵션이 있는 것)
+    const targets = [...SLOTS.filter((sl) => st.equip[sl]?.affixes?.length).map((sl) => ['e:' + sl, st.equip[sl], '착용']), ...st.inv.filter((x) => BASES[x.base]?.slot && x.affixes?.length).map((x) => ['b:' + x.uid, x, '가방'])];
+    if (!targets.some((x) => x[0] === this.shardTarget)) { this.shardTarget = targets[0]?.[0]; this.shardLocks = []; }
+    if (!targets.length) return h + '<div class="note">옵션이 있는 장비 없음</div>';
+    h += `<div class="note">장비</div><div class="btns" style="flex-wrap:wrap;margin:0 0 6px">${targets.map(([k, it, where]) => `<button class="btn ${k === this.shardTarget ? 'on' : ''}" data-starget="${k}" style="color:${itemColor(it)}">${esc(itemName(it))} <small>${where}</small></button>`).join('')}</div>`;
+    const it = targets.find((x) => x[0] === this.shardTarget)[1], L = this.shardLocks || [], max = lockMax(smith.lv), c = shardCost(it), ok = canApply(it, sh, L);
     h += it.affixes.map((a, k) => { const on = L.includes(k); return `<div class="row"><div class="grow aff" style="${on ? 'color:#ffd84a' : ''}">${affixText(a)}</div><button class="btn ${on ? 'on' : ''}" data-slock="${k}" ${!on && L.length >= max ? 'disabled' : ''}>${on ? '잠김' : '잠그기'}</button></div>`; }).join('');
-    h += `<div class="btns"><button class="btn gold" data-sapply="1" ${!ok.ok || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>${ok.ok ? `바꾸기 · ${c.gold.toLocaleString()} G · 강화석 ${c.ore}` : ok.why}</button></div>`;
+    h += `<div class="btns"><button class="btn gold" data-sapply="1" ${!ok.ok || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>${ok.ok ? `제련 · ${c.gold.toLocaleString()} G · 강화석 ${c.ore}` : ok.why}</button></div>`;
     return h;
   }
 
@@ -505,7 +507,7 @@ export class Windows {
       ['능력 · 각성', 'char', ['능력치: 행동에 따라 오릅니다. 칼을 휘두르면 힘, 주문을 쓰면 지능, 맞으면 체력', '세부 능력치. 각성마다 성향에 맞는 칭호와 특성을 고릅니다']],
       ['퀘스트 · 오늘의 의뢰', 'quest', ['메인 퀘스트', '오늘의 의뢰 보상 받기: 경비대장 하겐 앞에서만', '오늘의 의뢰 3개 · 지역별 퀘스트']],
       ['건물 짓기', 'build', ['집터와 건물', '단계 올리기', '단계별 금화 · 재료 · 각성 · 걸리는 시간']],
-      ['대장간', 'smithy', ['강화: 실패해도 단계는 그대로, 실패할수록 장인의 기운이 쌓입니다', '재련 · 능력치 파편 · 분해']],
+      ['대장간', 'smithy', ['강화: 실패해도 단계는 그대로, 실패할수록 장인의 기운이 쌓입니다', '제련: 장비와 능력치 파편을 골라 옵션 하나를 파편 옵션으로 바꿉니다. 대장간 3 · 4 · 5단계에 옵션을 1 · 2 · 3개 잠급니다. 아래는 분해']],
       ['제작소', 'workshop', ['약초', '만드는 중', '다 만든 것을 가방이나 창고로', '만들기: 시간이 걸립니다. 다섯 개까지 줄을 세웁니다']],
       ['파견소 · 용병', 'guild', ['보낼 지역', '기간. 건물에서 일하는 용병은 보낼 수 없습니다']],
       ['여관', 'inn', ['찾아온 용병 고용. 매 시간 바뀝니다']],
@@ -515,7 +517,7 @@ export class Windows {
       ['던전', 'dungeon', ['던전 지도', '단계'], ['던전 입구 앞에서 버튼이 「던전」으로 바뀝니다. 오늘의 의뢰 · 보스가 가끔 주는 열쇠로 들어갑니다', '가장 깊은 곳의 우두머리를 잡으면 다음 단계가 열립니다', '돌파하면 공격 버튼이 나가기로 바뀝니다. 전리품을 줍고 눌러 나갑니다']],
       ['보스', 'boss', ['색칠된 곳에 곧 공격이 들어옵니다. 가운데부터 차오르면 터집니다'], ['멀리서 맴돌면 뛰어들기 · 저격 같은 원거리 공격을 합니다', '보스마다 고유한 공격이 있습니다']],
       ['설정', 'menu', ['화면 확대', 'UI 위치 바꾸기']],
-      ['그 밖에', null, [], ['죽으면 가끔 장비 하나를 그 자리에 떨어뜨립니다. 다시 가서 주워야 합니다', '세계 단계: 평온 → 악몽 → 지옥. 오를수록 몬스터가 세지고 좋은 장비가 나옵니다', '도감: 몬스터를 잡으면 채워지고 보너스를 받습니다', '능력치 파편: 장비를 갈아 낄 때 10% · 보스 장비 대신 20% · 분해할 때 마법 8% · 희귀 15% · 영웅 25% · 전설 35%. 대장간에서 장비 옵션 하나와 바꿉니다', '같은 장비도 품질 85~115%와 옵션 수치가 매번 다릅니다']],
+      ['그 밖에', null, [], ['죽으면 가끔 장비 하나를 그 자리에 떨어뜨립니다. 다시 가서 주워야 합니다', '세계 단계: 평온 → 악몽 → 지옥. 오를수록 몬스터가 세지고 좋은 장비가 나옵니다', '도감: 몬스터를 잡으면 채워지고 보너스를 받습니다', '능력치 파편: 장비를 갈아 낄 때 10% · 보스 장비 대신 12% · 분해할 때 마법 8% · 희귀 15% · 영웅 25% · 전설 35%. 대장간에서 장비 옵션 하나와 바꿉니다', '같은 장비도 품질 85~115%와 옵션 수치가 매번 다릅니다']],
     ];
     const [t, img, nums, more = []] = S[Math.min(k, S.length - 1)];
     const li = nums.map((l, i) => `<li><b class="gnum">${i + 1}</b>${l}</li>`).join('') + more.map((l) => `<li>${l}</li>`).join('');
@@ -658,7 +660,7 @@ export class Windows {
           const c = enhanceCost(it, st), max = (it.plus || 0) >= cap, rc = reforgeCost(it);
           right += `<div class="row"><div class="cell shopIco${rar(it)}">${ico(it)}</div><div class="grow"><b style="color:${itemColor(it)}">${esc(itemName(it))}</b>
             <div class="note">${max ? '상한' : `+${(it.plus || 0) + 1} · ${c.jang >= 1 ? '<b style="color:#ffd84a">100%</b>' : `${+(c.chance * 100).toFixed(1)}%`} · 장인의 기운 ${+(c.jang * 100).toFixed(1)}% · ${c.gold.toLocaleString()} G · 강화석 ${c.ore}`}</div></div>
-            <button class="btn" data-enh="${slot}" ${max || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>강화</button>${it.affixes?.length ? `<button class="btn" data-reforge="${slot}" title="가장 약한 옵션 다시 굴리기 · ${rc.gold.toLocaleString()}G · 강화석 ${rc.ore}" ${st.gold < rc.gold || t.ore < rc.ore ? 'disabled' : ''}>재련</button>` : ''}</div>`;
+            <button class="btn" data-enh="${slot}" ${max || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>강화</button></div>`;
         }
         right += this.shardPanel(b);
         const junk = st.inv.filter((x) => !x.book && BASES[x.base]?.slot && !x.named);
@@ -879,14 +881,14 @@ export class Windows {
     on('[data-camp]', (el) => { const [z, what] = el.dataset.camp.split('|'); const r = w.buildCamp(z, what); if (!r.ok && r.why) w.ui.toast(r.why); w.ui.dirty(); this.render(); });
     on('[data-salvage]', (el) => { const r = salvage(st, Number(el.dataset.salvage)); if (r.ok) { audio.play('coin'); w.ui.toast(`분해: 강화석 ${r.ore} · ${MATERIALS[r.mat].name} ${r.matN}`, '#ffd84a'); if (r.shard) w.ui.toast(`능력치 파편: ${affixText(r.shard.shard)}`, '#c58cff'); } townDone(r); });
     on('[data-salvageall]', () => { let n = 0, sh = 0; for (const x of [...st.inv]) if (!x.book && BASES[x.base]?.slot && ['common', 'magic'].includes(x.rarity)) { const r = salvage(st, x.uid); if (r.ok) { n++; if (r.shard) sh++; } } if (sh) w.ui.toast(`능력치 파편 ${sh}개`, '#c58cff'); audio.play('coin'); w.ui.toast(`장비 ${n}개 분해`, '#ffd84a'); townDone({ ok: true }); });
-    on('[data-reforge]', (el) => { const it = st.equip[el.dataset.reforge], r = reforge(st, it); if (r.ok) { audio.play('rankup'); w.ui.toast(`재련: ${affixText(r.old)} → ${affixText(r.now)}`, '#ffd84a'); w.refreshGear(); } townDone(r); });
     on('[data-shard]', (el) => { const u = Number(el.dataset.shard); this.shardSel = this.shardSel === u ? null : u; this.shardLocks = []; audio.play('click'); this.render(); });
     on('[data-starget]', (el) => { this.shardTarget = el.dataset.starget; this.shardLocks = []; audio.play('click'); this.render(); });
     on('[data-slock]', (el) => { const k = Number(el.dataset.slock), L = this.shardLocks ||= []; const i = L.indexOf(k); if (i >= 0) L.splice(i, 1); else L.push(k); audio.play('click'); this.render(); });
     on('[data-sapply]', () => {
-      const it = st.equip[this.shardTarget], sm = Object.values(townOf(st).plots).find((q) => q.type === 'smithy');
+      const [kind, key] = String(this.shardTarget || '').split(':'), it = kind === 'e' ? st.equip[key] : st.inv.find((x) => x.uid === Number(key));
+      const sm = Object.values(townOf(st).plots).find((q) => q.type === 'smithy');
       const r = applyShard(st, it, this.shardSel, this.shardLocks || [], sm?.lv || 0);
-      if (r.ok) { audio.play('rankup'); w.ui.toast(`${affixText(r.old)} → ${affixText(r.now)}`, '#c58cff'); this.shardSel = null; w.refreshGear(); }
+      if (r.ok) { audio.play('rankup'); w.ui.toast(`제련: ${affixText(r.old)} → ${affixText(r.now)}`, '#c58cff'); this.shardSel = null; w.refreshGear(); }
       townDone(r);
     });
     on('[data-pslot]', (el) => { const [k, base] = el.dataset.pslot.split('|'); (st.potSlot ||= {})[k] = base || null; audio.play('click'); w.ui.dirty(); this.render(); });
