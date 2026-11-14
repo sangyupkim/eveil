@@ -316,20 +316,25 @@ export class Windows {
   }
 
   // 창고: 계정 공용 (같은 계정의 캐릭터끼리 나눈다). 누르면 바로 옮긴다
-  // 창고 | 고른 아이템 정보 + 넣기/빼기 | 가방. 누르면 고르고, 가운데 버튼으로 옮긴다
+  // 창고 | 고른 아이템 정보 + 넣기/빼기 | 가방. 누를 때마다 고르기 · 풀기 (여러 개), 가운데 버튼으로 한꺼번에 옮긴다
   vault() {
-    const st = this.w.st, V = vault(), n = vaultSize(st), sel = this.vsel;
-    const cur = sel?.from === 'v' ? V.items[sel.i] : sel?.from === 'b' ? st.inv.find((x) => x.uid === sel.uid) : null;
-    if (sel && !cur) this.vsel = null;
-    const on = (f, k) => (sel && sel.from === f && (f === 'v' ? sel.i === k : sel.uid === k) ? ' sel' : '');
-    let left = `<h3>창고 <span class="cnt">${V.items.length}/${n}</span></h3><div class="grid">`;
+    const st = this.w.st, V = vault(), n = vaultSize(st);
+    let sel = this.vsel; // { from: 'v' | 'b', keys: [창고 칸 번호 | 가방 uid] }
+    if (sel) { sel.keys = sel.keys.filter((k) => (sel.from === 'v' ? !!V.items[k] : st.inv.some((x) => x.uid === k))); if (!sel.keys.length) sel = this.vsel = null; }
+    const on = (f, k) => (sel && sel.from === f && sel.keys.includes(k) ? ' sel' : '');
+    let left = `<h3>창고 <span class="cnt">${V.items.length}/${n}</span><button class="btn" data-vall="v" style="margin-left:auto">모두 고르기</button></h3><div class="grid">`;
     for (let i = 0; i < n; i++) { const it = V.items[i]; left += it ? `<div class="cell${rar(it)}${on('v', i)}" data-vsel="v|${i}">${ico(it)}${it.qty > 1 ? `<span class="q">${it.qty}</span>` : ''}</div>` : '<div class="cell"></div>'; }
     left += '</div>';
-    let right = `<h3>가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span></h3><div class="grid">`;
+    let right = `<h3>가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span><button class="btn" data-vall="b" style="margin-left:auto">모두 고르기</button></h3><div class="grid">`;
     for (let i = 0; i < bagSize(st); i++) { const it = st.inv[i]; right += it ? `<div class="cell${rar(it)}${on('b', it.uid)}" data-vsel="b|${it.uid}">${ico(it)}${it.qty > 1 ? `<span class="q">${it.qty}</span>` : ''}</div>` : '<div class="cell"></div>'; }
     right += '</div>';
-    const mid = cur ? `<div class="detail">${this.describe(cur, 'vault')}</div><div class="btns">${sel.from === 'v' ? `<button class="plate gold" data-vtake="${sel.i}">가방으로</button>` : `<button class="plate gold" data-vput="${sel.uid}">창고에 넣기</button>`}</div>` : '<div class="note">고른 아이템이 없습니다</div>';
-    return `<div class="cols"><div class="frame" style="flex:1;overflow:auto">${left}</div><div class="frame" style="flex:0 0 28%">${mid}</div><div class="frame" style="flex:1;overflow:auto">${right}</div></div>`;
+    let mid = '<div class="note">고른 아이템이 없습니다</div>';
+    if (sel) {
+      const items = sel.from === 'v' ? sel.keys.map((k) => V.items[k]) : sel.keys.map((k) => st.inv.find((x) => x.uid === k));
+      const btn = `<div class="btns"><button class="plate gold" data-vmove="1">${sel.from === 'v' ? `가방으로${items.length > 1 ? ` · ${items.length}개` : ''}` : `창고에 넣기${items.length > 1 ? ` · ${items.length}개` : ''}`}</button><button class="btn" data-vclear="1">고르기 풀기</button></div>`;
+      mid = items.length === 1 ? `<div class="detail">${this.describe(items[0], 'vault')}</div>${btn}` : `<h3>${items.length}개 고름</h3>${btn}<div class="vlist">${items.map((it) => `<div class="row"><div class="cell shopIco${rar(it)}">${ico(it)}</div><div class="grow" style="color:${itemColor(it)}">${esc(itemName(it))}${it.qty > 1 ? ` ×${it.qty}` : ''}</div></div>`).join('')}</div>`;
+    }
+    return `<div class="cols"><div class="frame" style="flex:1;overflow:auto">${left}</div><div class="frame" style="flex:0 0 28%;overflow:auto">${mid}</div><div class="frame" style="flex:1;overflow:auto">${right}</div></div>`;
   }
 
   bagHead() {
@@ -501,7 +506,7 @@ export class Windows {
       ['건물 쓰기', 'building', ['지은 건물', '건물 앞에서 버튼이 건물 이름으로 바뀝니다. 누르면 그 건물 창이 열립니다']],
       ['포탈', 'portal', ['마을 · 발견한 야영지의 포탈', '포탈 위에서 버튼을 눌러 갈 곳을 고릅니다']],
       ['공용 창고', 'vaultspot', ['상인 옆 공용 창고 상자', '상자 앞에서 버튼을 누르면 창고가 열립니다']],
-      ['창고', 'vault', ['창고: 같은 계정의 캐릭터끼리 함께 씁니다. 100칸, 연구 「큰 창고」로 늘어납니다', '가방'], ['아이템을 누르면 가운데에 정보가 보이고, 버튼으로 옮깁니다']],
+      ['창고', 'vault', ['창고: 같은 계정의 캐릭터끼리 함께 씁니다. 100칸, 연구 「큰 창고」로 늘어납니다', '가방'], ['아이템을 누를 때마다 고르거나 풉니다. 여러 개를 골라 가운데 버튼으로 한꺼번에 옮깁니다']],
       ['가방 · 장비', 'inv', ['착용 장비', '고른 아이템 정보 · 능력치 변화. 물약은 여기서 체력 · 마나 칸에 두거나 뺍니다', '가방: 강화석 · 지역 재료도 아이템으로 들어옵니다. 창고에 넣어도 강화 · 건물에 쓰입니다', '금화 · 강화석', '창 탭']],
       ['스킬', 'skills', ['배운 스킬. 쓸수록 랭크가 오릅니다. 랭크 제한은 없고 50부터 느려집니다', '위력 · 다음 랭크 · MP · 재사용 · 범위', '변형: 랭크 25 · 50에서 하나씩 고릅니다', '퀵슬롯: 칸을 누르면 넣습니다. 이미 있는 스킬은 자리가 바뀝니다']],
       ['능력 · 각성', 'char', ['능력치: 행동에 따라 오릅니다. 칼을 휘두르면 힘, 주문을 쓰면 지능, 맞으면 체력', '세부 능력치. 각성마다 성향에 맞는 칭호와 특성을 고릅니다']],
@@ -892,9 +897,17 @@ export class Windows {
       townDone(r);
     });
     on('[data-pslot]', (el) => { const [k, base] = el.dataset.pslot.split('|'); (st.potSlot ||= {})[k] = base || null; audio.play('click'); w.ui.dirty(); this.render(); });
-    on('[data-vsel]', (el) => { const [f, k] = el.dataset.vsel.split('|'); this.vsel = f === 'v' ? { from: 'v', i: Number(k) } : { from: 'b', uid: Number(k) }; audio.play('click'); this.render(); });
-    on('[data-vput]', (el) => { this.vsel = null; const r = vaultPut(st, Number(el.dataset.vput)); if (!r.ok && r.why) { w.ui.toast(r.why); audio.play('error'); } else audio.play('click'); w.ui.dirty(); this.render(); });
-    on('[data-vtake]', (el) => { this.vsel = null; const r = vaultTake(st, Number(el.dataset.vtake)); if (!r.ok && r.why) { w.ui.toast(r.why); audio.play('error'); } else audio.play('click'); w.ui.dirty(); this.render(); });
+    on('[data-vsel]', (el) => { const [f, k0] = el.dataset.vsel.split('|'), k = Number(k0); let v = this.vsel; if (!v || v.from !== f) v = this.vsel = { from: f, keys: [] }; const i = v.keys.indexOf(k); if (i >= 0) v.keys.splice(i, 1); else v.keys.push(k); if (!v.keys.length) this.vsel = null; audio.play('click'); this.render(); });
+    on('[data-vall]', (el) => { const f = el.dataset.vall; this.vsel = { from: f, keys: f === 'v' ? vault().items.map((_, i) => i) : st.inv.map((x) => x.uid) }; if (!this.vsel.keys.length) this.vsel = null; audio.play('click'); this.render(); });
+    on('[data-vclear]', () => { this.vsel = null; audio.play('click'); this.render(); });
+    on('[data-vmove]', () => {
+      const v = this.vsel; if (!v) return; let moved = 0, why = '';
+      if (v.from === 'v') for (const k of [...v.keys].sort((a, b) => b - a)) { const r = vaultTake(st, k); if (r.ok) moved++; else { why = r.why || why; } } // 뒤 칸부터 빼야 번호가 밀리지 않는다
+      else for (const u of v.keys) { const r = vaultPut(st, u); if (r.ok) moved++; else { why = r.why || why; } }
+      this.vsel = null; audio.play(moved ? 'click' : 'error'); if (why) w.ui.toast(`${moved}개 옮김 · ${why}`); w.ui.dirty(); this.render();
+    });
+    on('[data-vput]', (el) => { const r = vaultPut(st, Number(el.dataset.vput)); if (!r.ok && r.why) { w.ui.toast(r.why); audio.play('error'); } else audio.play('click'); w.ui.dirty(); this.render(); });
+    on('[data-vtake]', (el) => { const r = vaultTake(st, Number(el.dataset.vtake)); if (!r.ok && r.why) { w.ui.toast(r.why); audio.play('error'); } else audio.play('click'); w.ui.dirty(); this.render(); });
     on('[data-notes]', () => showNotes());
     on('[data-restore]', async () => {
       const b = await cloud.restore(st.cid);
