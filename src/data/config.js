@@ -16,7 +16,7 @@ export const CONFIG = {
   // 각성(스탯 성장)
   awakenPoints: 5,          // 각성 1회에 오르는 스탯 총량
   expBase: 150,
-  expGrowth: 1.15,          // (옛날 게임처럼 느리게, v2 기본 방향)          // 필요 EXP = expBase × expGrowth^각성횟수
+  expGrowth: 1.17,          // (옛날 게임처럼 느리게, v2 기본 방향)          // 필요 EXP = expBase × expGrowth^각성횟수
   apKeepAfterAwaken: 0.5,   // 각성 후 남기는 행동 기록 비율
   apSoftCapStart: 10,       // 이 값을 넘는 스탯은 같은 행동의 AP 효율이 떨어진다
   apSoftCapScale: 60,
@@ -71,12 +71,13 @@ export const TIERS = {
 // 몬스터 등급별 드랍
 // 드랍: 장비는 드물게 — 천천히 잡아 가며 하나씩 얻고 강화한다 (v2 기본 방향)
 export const LOOT = {
-  normal: { itemChance: 0.006, items: [1, 1], gold: [0.5, 1], potion: 0.03, book: 0.005, bookTiers: { 1: 1 },
-    rarity: { common: 76, magic: 22, rare: 1.9, hero: 0.1, legend: 0 } },
-  elite: { itemChance: 0.05, items: [1, 1], gold: [1, 3], potion: 0.25, book: 0.04, bookTiers: { 1: 70, 2: 30 },
-    rarity: { common: 20, magic: 58, rare: 19, hero: 2.7, legend: 0.3 } },
-  named: { itemChance: 0.16, items: [1, 1], gold: [1, 8], potion: 0.5, book: 0.2, bookTiers: { 2: 60, 3: 40 },
-    rarity: { common: 0, magic: 35, rare: 47, hero: 16, legend: 2 } },
-  boss: { itemChance: 0.28, items: [1, 2], gold: [1, 20], potion: 1, book: 0.8, bookTiers: { 3: 60, 4: 35, 5: 5 },
-    rarity: { common: 0, magic: 10, rare: 50, hero: 33, legend: 7 } },
+  // v0.32 밸런스: 장비 드랍 · 영웅 · 전설을 크게 줄였다 (하루 만에 끝나지 않게)
+  normal: { itemChance: 0.004, items: [1, 1], gold: [0.5, 1], potion: 0.03, book: 0.004, bookTiers: { 1: 1 },
+    rarity: { common: 78, magic: 20.5, rare: 1.45, hero: 0.05, legend: 0 } },
+  elite: { itemChance: 0.035, items: [1, 1], gold: [1, 3], potion: 0.25, book: 0.03, bookTiers: { 1: 70, 2: 30 },
+    rarity: { common: 25, magic: 60, rare: 13.8, hero: 1.1, legend: 0.1 } },
+  named: { itemChance: 0.12, items: [1, 1], gold: [1, 8], potion: 0.5, book: 0.15, bookTiers: { 2: 60, 3: 40 },
+    rarity: { common: 5, magic: 45, rare: 42, hero: 7.4, legend: 0.6 } },
+  boss: { itemChance: 0.22, items: [1, 2], gold: [1, 20], potion: 1, book: 0.6, bookTiers: { 3: 60, 4: 35, 5: 5 },
+    rarity: { common: 0, magic: 18, rare: 57, hero: 22, legend: 3 } },
 };

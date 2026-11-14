@@ -53,6 +53,9 @@ const BOSS_SIG = { // 첫째 = 그 보스만 쓰는 패턴, 둘째 = 결이 맞�
 const FAR = ['leap', 'snipe', 'fan', 'hail', 'pull'];
 const farOf = (id) => { let h = 0; for (const c of id || '') h = (h * 31 + c.charCodeAt(0)) >>> 0; const i = h % FAR.length; return [FAR[i], FAR[(i + 1 + (h >> 4) % (FAR.length - 1)) % FAR.length]]; };
 
+// 세계 단계 배율 (레벨 보정 위에 더): 악몽 · 지옥은 몬스터가 확실히 더 세다
+const TIER_K = { 1: { hp: 1, dmg: 1, pat: 1 }, 2: { hp: 1.8, dmg: 1.45, pat: 1.25 }, 3: { hp: 3, dmg: 2, pat: 1.5 } };
+
 export class World {
   constructor(stage, st, ui) {
     this.stage = stage;
@@ -525,7 +528,8 @@ export class World {
     this.player.pos.set(sp0.x, 0, sp0.z); this.moveTo = null; this.target = null;
     this.stage.cam.x = sp0.x; this.stage.cam.z = sp0.z;
     this.fx.arrive(sp0.x, sp0.z);
-    const mod = stageMods(stage), L = zn.levels[1] + mod.level; // 세계 단계 보정은 spawn에서 더한다 (예전엔 두 번 더해 지옥 던전이 283레벨이 됐다)
+    const mod = stageMods(stage), L = Math.round((zn.levels[0] + zn.levels[1]) / 2) + mod.level - 1; // 1단계는 지역 중간 레벨부터 (필드 → 던전 격차를 줄였다)
+    // 세계 단계 보정은 spawn에서 더한다 (예전엔 두 번 더해 지옥 던전이 283레벨이 됐다)
     // 몬스터: 시작에서 먼 칸일수록 많이 · 정예는 깊은 곳, 우두머리는 가장 먼 방
     const cells = [];
     for (let k = 0; k < Ld.g.length; k++) if (Ld.g[k] && Ld.dist[k] > 5 && Ld.dist[k] < Ld.far - 2) cells.push(k);
@@ -536,10 +540,11 @@ export class World {
       m.maxHp = m.hp = Math.round(m.maxHp * mod.hp); m.dmg = m.dmg.map((v) => v * mod.dmg); m.dungeon = true; m.exp *= 1.5;
       m.home = { x: p.x, z: p.z };
     };
-    for (let n = 0; n < 22 && cells.length; n++) put(pick(), 'normal');
+    for (let n = 0; n < 14 + Math.min(8, stage) && cells.length; n++) put(pick(), 'normal'); // 낮은 단계는 몬스터가 적다
     cells.sort((a, b) => Ld.dist[b] - Ld.dist[a]);
     for (let n = 0; n < 4 && cells.length; n++) put(cells.splice(Math.floor(Math.random() * Math.min(12, cells.length)), 1)[0], 'elite');
     put(Ld.boss[1] * N + Ld.boss[0], 'boss', { type: zn.boss.type, name: `${zn.name} 던전 우두머리` });
+    { const bm = this.monsters[this.monsters.length - 1]; if (bm?.tier === 'boss') { const k = 0.55 + 0.09 * stage; bm.maxHp = bm.hp = Math.round(bm.maxHp * k); } } // 우두머리: 1단계 0.64배 → 10단계 1.45배
     this.ui.toast(`${zn.name} 던전 ${stage}단계 — 가장 깊은 곳의 우두머리를 찾으세요`, '#ffd84a');
     this.ui.dirty();
   }
@@ -614,6 +619,7 @@ export class World {
 
   get canShop() { const P = this.player.pos, c = inCamp(P.x, P.z); return this.inTown || !!(c && this.st.camps?.[c.zone]?.merchant) || !!(this.eventNpc && dist2(this.eventNpc.pos, P) < 6); }
   // 세계 단계: 마지막 보스를 잡으면 다음 단계가 열린다. 단계마다 모든 몬스터 레벨 +66 (드랍 장비 · 보석 등급도 따라 오른다)
+  get wt() { return Math.min(3, Math.max(1, this.st.worldTier || 1)); }
   get tierOffset() { return ((this.st.worldTier || 1) - 1) * 66; }
   setTier(t) {
     const st = this.st;
@@ -691,8 +697,8 @@ export class World {
     const m = {
       id: actor.id, def, type, tier, level: L, actor, sp, fam,
       name: name || (tier === 'elite' ? `정예 ${def.name}` : def.name),
-      maxHp: Math.round(def.hp * (1 + 0.32 * (L - 1)) * T.hp),
-      dmg: def.dmg.map((v) => v * (1 + 0.22 * (L - 1)) * T.dmg),
+      maxHp: Math.round(def.hp * (1 + 0.4 * (L - 1)) * T.hp * TIER_K[this.wt].hp),
+      dmg: def.dmg.map((v) => v * (1 + 0.27 * (L - 1)) * T.dmg * TIER_K[this.wt].dmg),
       armor: L * 2,
       exp: def.exp * (1 + 0.3 * (L - 1)) * T.exp,
       speed: def.speed * (tier === 'boss' ? 1.1 : 1),
@@ -785,12 +791,12 @@ export class World {
         // 기본 패턴 + 보스 전용 패턴을 번갈아
         const all = m.tier === 'boss' ? [...pats, ...(BOSS_SIG[m.type] || [])] : pats;
         m.patT = (m.patT ?? 5) - dt * (m.hp < m.maxHp * 0.3 ? 1.6 : 1);
-        if (m.patT <= 0 && a.lock <= 0) { m.patT = m.tier === 'boss' ? 5.5 : 8.5; this.bossPattern(m, all[(m.patI = (m.patI || 0) + 1) % all.length]); }
+        if (m.patT <= 0 && a.lock <= 0) { m.patT = (m.tier === 'boss' ? 5.5 : 8.5) / TIER_K[this.wt].pat; this.bossPattern(m, all[(m.patI = (m.patI || 0) + 1) % all.length]); }
       }
       // 멀리서 맴돌며 치면 원거리 응징 패턴
       if (m.tier === 'boss' && valid && d > 7.5 && d < 24 && !m.dash) {
         m.farT = (m.farT ?? 2.5) - dt;
-        if (m.farT <= 0 && a.lock <= 0) { m.farT = 3.2; const f = farOf(m.type); this.bossPattern(m, f[(m.farI = (m.farI || 0) + 1) % f.length]); }
+        if (m.farT <= 0 && a.lock <= 0) { m.farT = 3.2 / TIER_K[this.wt].pat; const f = farOf(m.type); this.bossPattern(m, f[(m.farI = (m.farI || 0) + 1) % f.length]); }
       } else if (m.farT != null && m.farT < 1.2) m.farT = 1.2;
     } else if (m.state === 'return') {
       this.stepToward(m.pos, m.home, spd * 1.3 * dt);
@@ -1175,7 +1181,7 @@ export class World {
     else if (best === 'hero') { sfx('rare', 0.8); this.fx.pillar(m.pos.x, m.pos.z, 0xff9a3c, 1.2, 4, 1); }
     if (m.tier !== 'normal') this.ui.log(`${m.name} 처치!`, TIERS[m.tier].color);
     if (!m.dungeon && m.tier === 'boss') (st.rec ||= {}).bosses = (st.rec.bosses || 0) + 1;
-    if (!m.dungeon && m.tier === 'boss' && m.sp?.zone?.id === 'demongate' && (st.worldTier || 1) < 3 && (st.maxTier || 1) <= (st.worldTier || 1)) {
+    if (!m.dungeon && m.tier === 'boss' && m.sp?.zone?.id === 'demongate' && (st.worldTier || 1) < 3 && (st.maxTier || 1) <= (st.worldTier || 1) && (st.dungeons?.demongate || 0) >= 3 * (st.worldTier || 1)) { // 악마의 관문 던전 3 · 6단계를 돌파해야
       st.maxTier = (st.worldTier || 1) + 1; this.ui.toast(`세계 ${TIER_NAMES[st.maxTier - 1]} 단계가 열렸습니다`, '#ff9a6a'); sfx('awaken');
     }
     if (!m.dungeon && !m.noLoot && m.tier === 'boss' && Math.random() < 0.3) { // 보스가 가끔 열쇠

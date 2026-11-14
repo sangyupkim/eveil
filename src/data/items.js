@@ -155,8 +155,8 @@ export const RARITY = {
   common: { name: '일반', color: '#d8d2c4', affix: [0, 0], mult: 1, value: 1 },
   magic: { name: '마법', color: '#6c8cff', affix: [1, 2], mult: 1, value: 2.5 },
   rare: { name: '희귀', color: '#ffd84a', affix: [3, 4], mult: 1.1, value: 6 },
-  hero: { name: '영웅', color: '#ff9a3c', affix: [4, 5], mult: 1.3, value: 12 },
-  legend: { name: '전설', color: '#41e07a', affix: [5, 6], mult: 1.6, value: 25 },
+  hero: { name: '영웅', color: '#ff9a3c', affix: [4, 5], mult: 1.2, value: 12 },
+  legend: { name: '전설', color: '#41e07a', affix: [5, 6], mult: 1.4, value: 25 },
 };
 export const RARITY_ORDER = ['common', 'magic', 'rare', 'hero', 'legend'];
 
