@@ -189,5 +189,5 @@ export const faceOf = (id) => FACES.find((f) => f[0] === id) || FACES[0];
 
 // 높은 단계 장비 그림: 본보기 그림 + 단계 색
 import { BASES as _B, HIGH_TIERS as _HT } from './items.js';
-const _TC = [0xc8ccd8, 0xa8e0ff, 0xb08aff, 0x7fd08a, 0xffe08a, 0x9a7aff, 0x8af0ff, 0xffb070, 0xff8ac0, 0xffd040, 0xffffff];
+const _TC = [0x8a8a96, 0xc0d8e8, 0xc8ccd8, 0xa8e0ff, 0xb08aff, 0x7fd08a, 0xffe08a, 0x9a7aff, 0x8af0ff, 0xffb070, 0xff8ac0, 0xffd040, 0xffffff];
 for (const [id, b] of Object.entries(_B)) if (b.tpl && ITEM_LOOK[b.tpl]) { const i = _HT.findIndex((t) => t[0] === b.minLvl); ITEM_LOOK[id] = { ...ITEM_LOOK[b.tpl], tint: _TC[i] }; }

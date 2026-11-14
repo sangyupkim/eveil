@@ -446,7 +446,7 @@ export class World {
       if (c.open || Math.hypot(P.x - c.x, P.z - c.z) > 1.6) continue;
       c.open = true;
       const day = dayKey(); if (st.chests?.day !== day) st.chests = { day, ids: [] }; st.chests.ids.push(c.id);
-      const zn = zoneAt(c.x, c.z) || ALL_ZONES[0], lv = zn.levels[1];
+      const zn = zoneAt(c.x, c.z) || ALL_ZONES[0], lv = zn.levels[1] + this.tierOffset; // 세계 단계만큼 높은 장비
       const rr = Math.random(), rar = rr < 0.03 ? 'hero' : rr < 0.25 ? 'rare' : 'magic'; // 대부분 마법, 가끔 희귀
       if (Math.random() < 0.6) this.dropGround({ kind: 'item', item: makeItem(rollBase(lv), { rarity: rar, ilvl: lv }, st) }, c.x + 1, c.z + 0.5);
       this.dropGround({ kind: 'gold', amount: lv * 12 }, c.x - 1, c.z + 0.5);
@@ -480,7 +480,7 @@ export class World {
     if (this.raid) {
       this.raid.t -= dt;
       const left = this.raid.mons.filter((m) => !m.dead).length;
-      if (!left) { const lv = this.raid.zone.levels[1]; this.dropGround({ kind: 'item', item: makeItem(rollBase(lv), { rarity: Math.random() < 0.3 ? 'hero' : 'rare', ilvl: lv }, st) }, P.x + 1, P.z); this.dropGround({ kind: 'gold', amount: lv * 60 }, P.x - 1, P.z); this.ui.toast('습격을 막아 냈습니다!', '#ffd84a'); sfx('rankup'); this.raid = null; }
+      if (!left) { const lv = this.raid.zone.levels[1] + this.tierOffset; this.dropGround({ kind: 'item', item: makeItem(rollBase(lv), { rarity: Math.random() < 0.3 ? 'hero' : 'rare', ilvl: lv }, st) }, P.x + 1, P.z); this.dropGround({ kind: 'gold', amount: lv * 60 }, P.x - 1, P.z); this.ui.toast('습격을 막아 냈습니다!', '#ffd84a'); sfx('rankup'); this.raid = null; }
       else if (this.raid.t <= 0) { this.ui.toast('습격 무리가 물러갔습니다'); for (const m of this.raid.mons) if (!m.dead) m.state = 'return'; this.raid = null; }
       return;
     }
@@ -569,7 +569,7 @@ export class World {
     st.dungeons[zn.id] = Math.max(st.dungeons[zn.id] || 0, dg.stage);
     this.dailyDone(dailyProgress(st, { kind: 'dungeon', zone: zn.id }));
     // 보상: 영웅 이상 2개 (단계가 높을수록 전설), 상급 스킬북 하나, 금화
-    const lv = zn.levels[1] + dg.stage;
+    const lv = zn.levels[1] + dg.stage + this.tierOffset;
     for (let i = 0; i < 2; i++) {
       const rarity = Math.random() < 0.08 + dg.stage * 0.035 ? 'legend' : 'hero';
       this.dropGround({ kind: 'item', item: makeItem(rollBase(lv), { rarity, ilvl: lv }, st) }, m.pos.x + i * 1.2, m.pos.z + 1);
