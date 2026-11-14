@@ -92,11 +92,11 @@ export const affixText = (a) => AFFIXES[a.id].text.replace('{v}', a.v);
 export function rollBase(ilvl, rng = R) {
   // 그 레벨에서 나올 장비: 무기 · 방어구는 16레벨 안, 장신구는 40레벨 안의 단계 (낮은 반지가 높은 곳에서 섞이지 않게)
   const ok = (b, span) => (b.minLvl ?? 1) <= ilvl && (b.minLvl ?? 1) > ilvl - span;
-  let ids = Object.keys(BASES).filter((id) => { const b = BASES[id]; if (!b.slot) return false; return ok(b, b.slot === 'amulet' || b.slot === 'ring' ? 40 : 16); });
+  let ids = Object.keys(BASES).filter((id) => { const b = BASES[id]; if (!b.slot || b.noDrop) return false; return ok(b, b.slot === 'amulet' || b.slot === 'ring' ? 40 : 16); });
   if (!ids.some((id) => !['amulet', 'ring'].includes(BASES[id].slot))) {
     // 가장 높은 단계보다 높으면 가장 높은 단계 장비
     const top = Math.max(...Object.values(BASES).filter((b) => b.slot && (b.minLvl ?? 1) <= ilvl).map((b) => b.minLvl ?? 1));
-    ids = Object.keys(BASES).filter((id) => BASES[id].slot && (BASES[id].minLvl ?? 1) > top - 16 && (BASES[id].minLvl ?? 1) <= ilvl);
+    ids = Object.keys(BASES).filter((id) => BASES[id].slot && !BASES[id].noDrop && (BASES[id].minLvl ?? 1) > top - 16 && (BASES[id].minLvl ?? 1) <= ilvl);
   }
   return pick(ids, rng);
 }

@@ -21,18 +21,18 @@ export const WEAPON_CLASSES = {
 export const BASES = {
   ore: { name: '강화석', type: 'mat', price: 0, stack: true, icon: 71 }, // 가방 · 창고 어디에 있든 강화 · 건물에 쓴다
   shard: { name: '능력치 파편', type: 'shard', price: 120 },
-  rusty_sword: { name: '낡은 검', slot: 'weapon', cls: 'sword', model: 'w_sword', mtint: 0x9a8a7a, dmg: [4, 7], speed: 1.1, price: 5, minLvl: 99 },
+  rusty_sword: { name: '낡은 검', slot: 'weapon', cls: 'sword', model: 'w_sword', mtint: 0x9a8a7a, dmg: [4, 7], speed: 1.1, price: 5, minLvl: 1, noDrop: true },
   short_sword: { name: '장검', slot: 'weapon', cls: 'sword', model: 'w_sword', dmg: [6, 10], speed: 1.15, price: 90, shop: true },
   broad_sword: { name: '넓은날 검', slot: 'weapon', cls: 'sword', model: 'w_sword', mtint: 0xc8d0e0, dmg: [9, 14], speed: 1.1, req: { str: 16 }, minLvl: 3 },
   greatsword: { name: '대검', slot: 'weapon', cls: 'sword', model: 'w_greatsword', two: true, dmg: [13, 21], speed: 0.82, req: { str: 20 }, minLvl: 4 },
   claymore: { name: '클레이모어', slot: 'weapon', cls: 'sword', model: 'w_greatsword', mtint: 0x8a7aa0, two: true, dmg: [17, 27], speed: 0.78, req: { str: 28 }, minLvl: 8 },
   golden_sword: { name: '금빛 검', slot: 'weapon', cls: 'sword', model: 'w_sword', mtint: 0xffd36a, dmg: [14, 22], speed: 1.15, req: { str: 34 }, minLvl: 12 },
-  old_bow: { name: '낡은 활', slot: 'weapon', cls: 'bow', model: 'q_bow', dmg: [4, 7], speed: 0.95, price: 5, minLvl: 99 },
+  old_bow: { name: '낡은 활', slot: 'weapon', cls: 'bow', model: 'q_bow', dmg: [4, 7], speed: 0.95, price: 5, minLvl: 1, noDrop: true },
   short_bow: { name: '단궁', slot: 'weapon', cls: 'bow', model: 'q_bow', dmg: [7, 11], speed: 1.0, price: 110, shop: true },
   long_bow: { name: '장궁', slot: 'weapon', cls: 'bow', model: 'q_bow2', dmg: [11, 17], speed: 0.9, req: { dex: 18 }, minLvl: 4 },
   gilded_bow: { name: '금장 활', slot: 'weapon', cls: 'bow', model: 'q_bow_gold', dmg: [15, 23], speed: 0.95, req: { dex: 26 }, minLvl: 8 },
   fiend_bow: { name: '마궁', slot: 'weapon', cls: 'bow', model: 'q_bow_evil', dmg: [20, 30], speed: 0.9, req: { dex: 36 }, minLvl: 12 },
-  novice_staff: { name: '견습 지팡이', slot: 'weapon', cls: 'staff', model: 'w_wand', dmg: [4, 7], speed: 0.95, price: 5, minLvl: 99, mods: { maxMp: 5 } },
+  novice_staff: { name: '견습 지팡이', slot: 'weapon', cls: 'staff', model: 'w_wand', dmg: [4, 7], speed: 0.95, price: 5, minLvl: 1, noDrop: true, mods: { maxMp: 5 } },
   oak_staff: { name: '참나무 지팡이', slot: 'weapon', cls: 'staff', model: 'w_staff', dmg: [7, 11], speed: 0.9, price: 100, shop: true, mods: { maxMp: 10 } },
   bone_staff: { name: '뼈 지팡이', slot: 'weapon', cls: 'staff', model: 'ws_staff', dmg: [11, 17], speed: 0.88, req: { int: 18 }, minLvl: 4, mods: { maxMp: 20 } },
   sage_staff: { name: '현자의 지팡이', slot: 'weapon', cls: 'staff', model: 'w_staff', mtint: 0x8fb0ff, dmg: [16, 25], speed: 0.9, req: { int: 28 }, minLvl: 9, mods: { maxMp: 35 } },
@@ -229,3 +229,17 @@ for (const [lv, tn] of HIGH_TIERS) for (const [k, [tpl, nm]] of Object.entries(H
 // 지역 재료도 쌓이는 아이템 (mat_지역). 건물 단계 올리기 · 세트 제작에 쓴다
 import { MATERIALS as _MATS } from './crafting.js';
 for (const [k, m] of Object.entries(_MATS)) BASES['mat_' + k] = { name: m.name, type: 'mat', price: 0, stack: true, icon: m.icon, mat: k };
+
+// 필요 능력치가 없는 장비에 붙인다 (v0.33.4): 장비 단계(minLvl)에 맞춰 — 다른 장비의 곡선(레벨 44 → 63, 96 → 115, 187 → 221)과 비슷하게
+{
+  const need = (lv) => Math.round(12 + lv * 1.1);
+  const ringStat = ['str', 'dex', 'int'];
+  let h = 0;
+  for (const [id, b] of Object.entries(BASES)) {
+    if (!b.slot || b.req || (b.minLvl ?? 1) < 3 || b.noDrop) continue;
+    h = (h * 31 + id.length) % 997;
+    const stat = b.slot === 'belt' ? 'vit' : b.slot === 'amulet' ? 'wis' : b.slot === 'ring' ? ringStat[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % 3]
+      : b.cls ? { sword: 'str', axe: 'str', bow: 'dex', staff: 'int' }[b.cls] || 'str' : 'vit';
+    b.req = { [stat]: need(b.minLvl ?? 1) };
+  }
+}
