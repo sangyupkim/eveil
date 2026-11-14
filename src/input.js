@@ -37,6 +37,7 @@ export function setupInput(world, stage, windows) {
     if (npc === world.npc) windows.talkTo(['shop'], 'shop');
     else if (npc === world.guard) windows.talkTo(['town'], 'quest', 'build');
     else if (npc === world.sage) windows.show('dex');
+    else if (npc === world.gemNpc) windows.talkTo(['gems'], 'gems');
     else windows.talkTo(['shop'], 'shop');
   };
   const useBuilding = (id) => { windows.townSel = id; windows.talkTo(['town'], 'town', 'one'); };
@@ -48,6 +49,7 @@ export function setupInput(world, stage, windows) {
     // 포탈 (마을 차원문 · 발견한 야영지): 공격 버튼으로 탄다
     const pt = [{ x: 0, z: -2, zone: 'town' }, ...CAMPS.filter((c) => world.st.camps?.[c.zone])].find((q) => near(q, 3));
     if (pt) return { name: '포탈', go: () => { windows.portalAt = pt.zone; windows.show('map'); } };
+    { const dz = world.dungeonNear(3); if (dz >= 0) return { name: '던전', exit: true, go: () => world.askDungeon(dz) }; }
     if (world.inTown && near(VAULT_SPOT, 2.6)) return { name: '창고', go: () => windows.talkTo(['vault'], 'vault') };
     if (world.inTown) {
       const pl = PLOTS.filter((q) => near(q, 7.5)).sort((a, b) => Math.hypot(a.x - world.player.pos.x, a.z - world.player.pos.z) - Math.hypot(b.x - world.player.pos.x, b.z - world.player.pos.z))[0];

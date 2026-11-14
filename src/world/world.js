@@ -500,20 +500,19 @@ export class World {
   }
 
   // ───────── 던전 ─────────
-  // 입구 위에 서면: 열쇠가 있으면 들어간다
-  checkDungeonGate(dt) {
-    if (this.dungeon || this.dead || this.asking) return;
+  // 던전 입구: 밟기만 해서는 열리지 않는다 — 입구 앞에서 [던전] 버튼으로 (input.js). 자동 사냥이 입구를 지나다 멈추던 문제
+  checkDungeonGate() {}
+  dungeonNear(r = 3) {
+    if (this.dungeon || this.dead) return -1;
     const P = this.player.pos;
-    for (let zi = 0; zi < ALL_ZONES.length; zi++) {
-      const e = entranceOf(ALL_ZONES[zi]), d = Math.hypot(P.x - e.x, P.z - e.z);
-      if (this.gateAway === zi) { if (d > 3.5) this.gateAway = null; continue; } // 한 번 물었으면 멀어질 때까지 다시 묻지 않는다
-      if (d > 1.6) continue;
-      this.gateAway = zi;
-      const zn = ALL_ZONES[zi], stage = Math.min(MAX_STAGE, (this.st.dungeons?.[zn.id] || 0) + 1), keys = countOf(this.st, 'dungeon_key');
-      this.asking = true; this.moveTo = null; this.target = null; this.toggleAuto(false);
+    for (let zi = 0; zi < ALL_ZONES.length; zi++) { const e = entranceOf(ALL_ZONES[zi]); if (Math.hypot(P.x - e.x, P.z - e.z) < r) return zi; }
+    return -1;
+  }
+  askDungeon(zi) {
+    if (this.asking || zi < 0) return;
+    const zn = ALL_ZONES[zi], stage = Math.min(MAX_STAGE, (this.st.dungeons?.[zn.id] || 0) + 1), keys = countOf(this.st, 'dungeon_key');
+    this.asking = true; this.moveTo = null; this.target = null; this.toggleAuto(false);
       this.ui.ask(`${zn.name} 던전 ${stage}단계`, keys ? `던전 열쇠 1개를 써서 들어갈까요? · 열쇠 ${keys}` : '던전 열쇠가 필요합니다', keys ? '들어가기' : null, (yes) => { this.asking = false; if (yes) this.enterDungeon(zi); });
-      return;
-    }
   }
   enterDungeon(zi) {
     const st = this.st, zn = ALL_ZONES[zi];
@@ -1878,6 +1877,14 @@ export class World {
     if (!this.target || this.target.dead) {
       this.target = this.nearestMonster(18, P, null, (m) => this.inAutoArea(m.pos));
       if (!this.target) {
+        // 가까이 없으면: 구역 안에서 가장 가까운 몬스터 쪽으로 (빈 곳만 돌아다니지 않게)
+        const far = this.monsters.filter((m) => !m.dead && !(m.ignoreUntil > this.time) && m.tier !== 'boss' && this.inAutoArea(m.pos) && !(dist2(m.pos, TOWN) < TOWN.r)).sort((a, b) => dist2(a.pos, P) - dist2(b.pos, P))[0];
+        const sp = !far && this.spawners.filter((q) => !q.mon && q.tier !== 'boss' && this.inAutoArea(q)).sort((a, b) => dist2(a, P) - dist2(b, P))[0]; // 다 잡았으면 곧 다시 나올 자리로
+        const goal = far ? far.pos : sp;
+        if (goal && (this.autoArea?.dungeon == null || far)) {
+          if (!this.moveTo || dist2(this.moveTo, goal) > 4 || dist2(P, this.moveTo) < 2) this.autoGo({ x: goal.x, z: goal.z });
+          return;
+        }
         // 구역 안을 돌아다닌다 (구역 밖이면 먼저 돌아간다)
         if (!this.moveTo || dist2(P, this.moveTo) < 2 || (!this.movePath?.length && this.stuckT > 1)) {
           let dest;

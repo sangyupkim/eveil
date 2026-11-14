@@ -33,7 +33,7 @@ import { uiSettings, applyUi, editUi } from './layout.js';
 import { TITLE_AT, titleKey, titleName, UNIQUES, perkChoices } from '../data/titles.js';
 import { variantsOf, VARIANT_RANKS, modsOf, skillEff } from '../game/skills.js';
 import { SCHOOL_NAMES } from '../data/skills.js';
-import { GEMS, GEM_GRADES } from '../data/legends.js';
+import { GEMS, GEM_GRADES, gemId } from '../data/legends.js';
 import { applyShard, canApply, lockMax, shardCost } from '../game/shards.js';
 import { HERBS, HERB_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
 import { buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
@@ -62,11 +62,14 @@ export function showNotes() {
 }
 const repickCost = (t) => 2000 * (t.tier + 1) ** 2;
 const nextTitle = (st) => { const i = TITLE_AT.findIndex((n) => st.awakenings < n); return i < 0 ? '' : ` · ${titleName(titleKey(st.stats), i)}까지 각성 ${TITLE_AT[i] - st.awakenings}`; };
-const TITLES = { map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '메뉴' };
+const TITLES = { gems: '보석상', map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '메뉴' };
 // 진행 게이지 (시작 ~ 끝 시각). 예전 저장은 시작 시각이 없어 dur로 어림
 const gauge = (from, until, dur = 3600000, color = '#7ad0ff') => { const f = from || until - dur, k = Math.max(0, Math.min(1, (Date.now() - f) / Math.max(1, until - f))); return `<div class="mini" style="margin-top:3px"><i style="width:${(k * 100).toFixed(1)}%;background:linear-gradient(#bfe8ff,${color})"></i></div>`; };
-const NPC_ONLY = ['shop', 'town', 'vault'];
-const TAB_ORDER = ['map', 'inv', 'vault', 'skills', 'char', 'quest', 'dex', 'town', 'shop', 'guide', 'menu'];
+// 보석 합치기 · 빼기 값
+const mergeCost = (k) => 200 * (k + 1) ** 2;
+const pullCost = (g) => 100 * ((BASES[g]?.grade || 0) + 1) ** 2;
+const NPC_ONLY = ['shop', 'town', 'vault', 'gems'];
+const TAB_ORDER = ['gems', 'map', 'inv', 'vault', 'skills', 'char', 'quest', 'dex', 'town', 'shop', 'guide', 'menu'];
 const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '');
 const ico = (it) => `<img src="${itemIcon(it)}" alt="" draggable="false" />`;
 const sicon = (id) => `<div class="sicon" style="background:radial-gradient(circle at 35% 30%, ${SKILLS[id].color}, #17111f 90%)"><img src="${skillIcon(id)}" alt="" /></div>`;
@@ -124,7 +127,7 @@ export class Windows {
     const icons = { inv: chestIcon(), skills: bookIcon(), char: portrait(this.w.st.look), shop: coinIcon(), quest: scrollIcon(), town: townIcon(), dex: bookIcon(), map: scrollIcon(), guide: bookIcon(), vault: homeIcon() };
     const tabs = $('.tabs', this.el);
     // 탭은 그림 없이 같은 모양의 글자 단추로
-    const TAB_TXT = { map: '지도', inv: '가방', skills: '스킬', char: '능력', quest: '퀘스트', dex: '도감', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '설정' };
+    const TAB_TXT = { gems: '보석', map: '지도', inv: '가방', skills: '스킬', char: '능력', quest: '퀘스트', dex: '도감', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '설정' };
     tabs.innerHTML = TAB_ORDER.filter((k) => !NPC_ONLY.includes(k) || this.talk?.includes(k)).map((k) => `<button class="tab txt${k === this.kind ? ' on' : ''}" data-tab="${k}"><span>${TAB_TXT[k]}</span></button>`).join('');
     tabs.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => this.show(b.dataset.tab); });
     const body = $('.body', this.el);
@@ -483,9 +486,9 @@ export class Windows {
     // 그림은 실제 게임 화면(assets/guide). 번호는 그림 속 금색 표시와 짝이 맞는다
     const S = [
       ['화면 보기', 'hud', ['체력 · 마나', '내 캐릭터: 칭호 · 이름 · 체력 · 마나. 체력이 낮으면 깜빡입니다', '퀘스트: 진행 중인 퀘스트와 오늘의 의뢰', '기록: 지역 정보 · 얻은 것', '미니맵', '메뉴: 가방 · 스킬 · 능력 · 퀘스트 · 설정', '스킬 칸', '공격 버튼', '조이스틱: 만질 때만 보입니다']],
-      ['버튼', 'buttons', ['귀환: 마을로 돌아갑니다', '자동 사냥: 켠 지역 안에서만 사냥하고 장애물을 돌아갑니다. 얻는 것이 조금 줄어듭니다', '마나 물약', '체력 물약', '공격. 사람 · 건물 · 포탈 · 창고 앞에서는 그 이름으로 바뀝니다', '스킬. 스킬 창에서 칸을 정합니다']],
+      ['버튼', 'buttons', ['귀환: 마을로 돌아갑니다', '자동 사냥: 켠 지역 안에서만, 가장 가까운 몬스터를 찾아가며 장애물을 돌아갑니다. 얻는 것이 조금 줄어듭니다', '마나 물약', '체력 물약', '공격. 사람 · 건물 · 포탈 · 창고 앞에서는 그 이름으로 바뀝니다', '스킬. 스킬 창에서 칸을 정합니다']],
       ['미니맵 표시', 'minimap', ['빨간 점: 몬스터 · 주황 점: 정예 · 네임드 · 금색 마름모: 보스 · 하늘색 고리: 포탈 · 초록 세모: 던전 입구 · 노란 테: 마을']],
-      ['NPC와 대화', 'talk', ['경비대장 하겐: 퀘스트 보고 · 오늘의 의뢰 보상 · 건물 짓기', '가까이 가면 공격 버튼이 이름으로 바뀝니다. 누르면 대화. 상인 오르텐은 상점, 보석상 리엔은 보석, 현자는 도감']],
+      ['NPC와 대화', 'talk', ['경비대장 하겐: 퀘스트 보고 · 오늘의 의뢰 보상 · 건물 짓기', '가까이 가면 공격 버튼이 이름으로 바뀝니다. 누르면 대화. 상인 오르텐은 상점, 보석상 리엔은 보석 사기 · 합치기 · 박기, 현자는 도감']],
       ['건물 쓰기', 'building', ['지은 건물', '건물 앞에서 버튼이 건물 이름으로 바뀝니다. 누르면 그 건물 창이 열립니다']],
       ['포탈', 'portal', ['마을 · 발견한 야영지의 포탈', '포탈 위에서 버튼을 눌러 갈 곳을 고릅니다']],
       ['공용 창고', 'vaultspot', ['상인 옆 공용 창고 상자', '상자 앞에서 버튼을 누르면 창고가 열립니다']],
@@ -502,7 +505,7 @@ export class Windows {
       ['연구소', 'lab', ['연구 진행', '연구 시작']],
       ['상점', 'shop', ['파는 물건', '가방: 팔 수 있습니다']],
       ['지도', 'map', ['갈 곳', '지도. 가 본 곳만 밝혀집니다']],
-      ['던전', 'dungeon', ['던전 지도', '단계'], ['오늘의 의뢰 · 보스가 가끔 주는 열쇠로 들어갑니다', '가장 깊은 곳의 우두머리를 잡으면 다음 단계가 열립니다', '돌파하면 공격 버튼이 나가기로 바뀝니다. 전리품을 줍고 눌러 나갑니다']],
+      ['던전', 'dungeon', ['던전 지도', '단계'], ['던전 입구 앞에서 버튼이 「던전」으로 바뀝니다. 오늘의 의뢰 · 보스가 가끔 주는 열쇠로 들어갑니다', '가장 깊은 곳의 우두머리를 잡으면 다음 단계가 열립니다', '돌파하면 공격 버튼이 나가기로 바뀝니다. 전리품을 줍고 눌러 나갑니다']],
       ['보스', 'boss', ['색칠된 곳에 곧 공격이 들어옵니다. 가운데부터 차오르면 터집니다'], ['멀리서 맴돌면 뛰어들기 · 저격 같은 원거리 공격을 합니다', '보스마다 고유한 공격이 있습니다']],
       ['설정', 'menu', ['화면 확대', 'UI 위치 바꾸기']],
       ['그 밖에', null, [], ['죽으면 가끔 장비 하나를 그 자리에 떨어뜨립니다. 다시 가서 주워야 합니다', '세계 단계: 평온 → 악몽 → 지옥. 오를수록 몬스터가 세지고 좋은 장비가 나옵니다', '도감: 몬스터를 잡으면 채워지고 보너스를 받습니다', '능력치 파편: 장비를 갈아 낄 때 · 보스에게서 가끔. 대장간에서 장비 옵션 하나와 바꿉니다']],
@@ -686,10 +689,24 @@ export class Windows {
       <div class="frame detail" style="flex:1">${right}</div></div>`;
   }
 
+  // 보석상: 보석 사기 | 같은 보석 3개 → 한 등급 위 | 착용 장비 구멍에 박기 · 빼기
+  gems() {
+    const st = this.w.st;
+    const buy = Object.keys(GEMS).map((g) => { const id = gemId(g, 0), b = BASES[id]; return `<div class="row"><div class="cell shopIco">${ico({ base: id })}</div><div class="grow"><b>${b.name}</b><div class="note">${STAT_NAMES[GEMS[g].stat]} +${GEM_GRADES[0].v}</div></div><button class="btn" data-gbuy="${id}" ${st.gold < b.price ? 'disabled' : ''}>${b.price.toLocaleString()}G</button></div>`; }).join('');
+    const have = st.inv.filter((x) => BASES[x.base]?.type === 'gem').sort((a, b) => BASES[a.base].grade - BASES[b.base].grade);
+    const merge = have.map((x) => { const b = BASES[x.base], up = b.grade + 1 < GEM_GRADES.length, cost = mergeCost(b.grade); return `<div class="row"><div class="cell shopIco">${ico(x)}<span class="q">${x.qty}</span></div><div class="grow"><b>${b.name}</b><div class="note">${STAT_NAMES[GEMS[b.gem].stat]} +${GEM_GRADES[b.grade].v}</div></div>${up ? `<button class="btn" data-gmerge="${x.base}" ${x.qty < 3 || st.gold < cost ? 'disabled' : ''}>3개 → ${GEM_GRADES[b.grade + 1].pre || '보통'} · ${cost.toLocaleString()}G</button>` : ''}</div>`; }).join('') || '<div class="note">가진 보석이 없습니다</div>';
+    const slots = SLOTS.filter((sl) => st.equip[sl]?.sockets);
+    const eq = slots.map((sl) => { const it = st.equip[sl];
+      const gl = it.gems.map((g, k) => `<button class="btn" data-gpull="${sl}|${k}" title="빼기 ${pullCost(g).toLocaleString()}G">${BASES[g].name} 빼기</button>`).join('');
+      const add = it.gems.length < it.sockets ? have.map((x) => `<button class="btn gold" data-gput="${sl}|${x.base}">${BASES[x.base].name} 박기</button>`).join('') : '';
+      return `<div class="row" style="flex-wrap:wrap"><div class="cell shopIco${rar(it)}">${ico(it)}</div><div class="grow"><b style="color:${itemColor(it)}">${esc(itemName(it))}</b><div class="note">구멍 ${it.gems.length} / ${it.sockets}</div></div><div class="btns" style="flex-wrap:wrap;margin:4px 0 0;width:100%">${gl}${add}</div></div>`; }).join('') || '<div class="note">구멍이 있는 장비를 끼고 있지 않습니다</div>';
+    return `<div class="cols"><div class="frame" style="flex:1"><h3>보석 사기</h3>${buy}</div><div class="frame" style="flex:1"><h3>보석 합치기</h3>${merge}</div><div class="frame" style="flex:1.2"><h3>장비에 박기</h3>${eq}</div></div>`;
+  }
+
   shop() {
     const st = this.w.st;
     if (this.sel?.from === 'equip') this.sel = null;
-    const goods = Object.keys(BASES).filter((id) => BASES[id].shop);
+    const goods = Object.keys(BASES).filter((id) => BASES[id].shop && BASES[id].type !== 'gem'); // 보석은 보석상에서
     let list = '';
     for (const id of goods) {
       const b = BASES[id];
@@ -882,6 +899,10 @@ export class Windows {
     on('[data-research]', (el) => townDone(researchStart(st, el.dataset.research), '연구를 시작했습니다'));
     on('[data-mgear]', (el) => townDone(mercGear(st, el.dataset.mgear), '장비를 맡겼습니다'));
     on('[data-school]', (el) => { this.skillSchool = el.dataset.school; this.skillSel = null; audio.play('click'); this.render(); });
+    on('[data-gbuy]', (el) => { const id = el.dataset.gbuy, b = BASES[id]; if (st.gold < b.price) return; if (!addItem(st, makeItem(id, { qty: 1 }, st))) { w.ui.toast('가방이 가득 찼습니다'); return; } st.gold -= b.price; audio.play('coin'); w.ui.dirty(); this.render(); });
+    on('[data-gmerge]', (el) => { const id = el.dataset.gmerge, b = BASES[id], cost = mergeCost(b.grade); if (countOf(st, id) < 3 || st.gold < cost) return; for (let i = 0; i < 3; i++) takeOne(st, id); st.gold -= cost; const nid = gemId(b.gem, b.grade + 1); addItem(st, makeItem(nid, { qty: 1 }, st)); audio.play('rankup'); w.ui.toast(`${BASES[nid].name}을(를) 만들었습니다`, '#c0b0ff'); w.ui.dirty(); this.render(); });
+    on('[data-gput]', (el) => { const [sl, id] = el.dataset.gput.split('|'), it = st.equip[sl]; if (!it || it.gems.length >= it.sockets || !takeOne(st, id)) return; it.gems.push(id); audio.play('rankup'); w.refreshGear(); w.ui.dirty(); this.render(); });
+    on('[data-gpull]', (el) => { const [sl, k] = el.dataset.gpull.split('|'), it = st.equip[sl], g = it?.gems[Number(k)]; if (!g) return; const c = pullCost(g); if (st.gold < c) { w.ui.toast('금화가 모자랍니다'); return; } st.gold -= c; it.gems.splice(Number(k), 1); addItem(st, makeItem(g, { qty: 1 }, st)); audio.play('click'); w.refreshGear(); w.ui.dirty(); this.render(); });
     on('[data-socket]', (el) => {
       const it = this.cur(); if (!it?.sockets || it.gems.length >= it.sockets) return;
       if (!takeOne(st, el.dataset.socket)) return;
