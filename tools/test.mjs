@@ -409,4 +409,18 @@ test('길찾기: 벽을 돌아가고, 모든 구간이 트여 있다', () => {
   assert.equal(findPath(box, from, to, 0.5, 3000), null);
 });
 
+const LOOT_ = await import('../src/game/loot.js'), WD_ = await import('../src/data/world.js'), IT_ = await import('../src/game/items.js'), BS_ = (await import('../src/data/items.js')).BASES, LG_ = await import('../src/data/legends.js');
+test('드랍 장비 레벨: 모든 세계 단계 · 지역 · 등급에서 몬스터 레벨에 맞는다 (이름 있는 전설 포함)', () => {
+  for (const t of [0, 66, 132]) for (const zn of WD_.ZONES) for (const tier of ['normal', 'elite', 'named', 'boss']) {
+    const lv = zn.levels[1] + t;
+    for (let k = 0; k < 60; k++) for (const d of LOOT_.rollLoot({ tier, level: lv, sp: { zone: zn } }, {}, null)) {
+      if (d.kind !== 'item' || !BS_[d.item.base]?.slot) continue;
+      assert.ok(Math.abs(d.item.ilvl - lv) <= 1, `${zn.id}+${t} ${d.item.title || d.item.base} ${d.item.ilvl}`);
+      if (lv > 60) assert.ok(lv - (BS_[d.item.base].minLvl ?? 1) <= 45, `${zn.id}+${t} 기본템 ${d.item.base}`);
+    }
+  }
+  const nm = IT_.makeNamed(LG_.NAMED_LEGENDS.demongate[0], null, 198);
+  assert.ok(nm.ilvl === 198 && (BS_[nm.base].minLvl ?? 1) >= 180 && nm.affixes[0].v > 26);
+});
+
 console.log(`\n${n}개 통과`);

@@ -46,7 +46,7 @@ export function rollLoot(mon, opt = {}, st = null, rng = R) {
   }
   // 이름 있는 전설 (지역 보스 · 드물게 네임드)
   const zid = mon.sp?.zone?.id, nc = mon.dungeon ? (mon.tier === 'boss' ? NAMED_CHANCE.dungeon : 0) : NAMED_CHANCE[mon.tier] || 0;
-  if (zid && nc && chance(nc, rng)) { const pool = namedOf(zid); if (pool.length) out.push({ kind: 'item', item: makeNamed(pick(pool, rng), st) }); }
+  if (zid && nc && chance(nc, rng)) { const pool = namedOf(zid); if (pool.length) out.push({ kind: 'item', item: makeNamed(pick(pool, rng), st, mon.level) }); }
   // 보석: 깊은 곳일수록 높은 등급
   if (chance((GEM_DROP[mon.tier] || 0) * dropMult, rng)) {
     const k = gemGradeFor(mon.level, rng);

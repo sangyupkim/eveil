@@ -5,8 +5,15 @@ import { R, randInt, pick, weighted } from './rng.js';
 import { UNIQUES } from '../data/titles.js';
 import { NAMED_LEGENDS, socketRoll } from '../data/legends.js';
 // 이름 있는 전설 (정해진 옵션 · 고유 효과)
-export function makeNamed(def, st = null) {
-  return { uid: uid(st), base: def.base, rarity: 'legend', ilvl: def.ilvl, named: def.id, title: def.name, unique: def.unique, affixes: def.affixes.map(([id, v]) => ({ id, v })), sockets: 2, gems: [] };
+// 이름 있는 전설: 떨어뜨린 몬스터 레벨에 맞춰 레벨 · 기본템 단계 · 옵션 수치가 오른다 (예전엔 고정이라 지옥에서도 66레벨로 나왔다)
+export function makeNamed(def, st = null, level = def.ilvl) {
+  const L = Math.max(def.ilvl, Math.round(level)), b0 = BASES[def.base];
+  // 같은 부위 · 같은 무기 종류에서 그 레벨에 맞는 가장 높은 단계 (같은 본보기면 우선)
+  const cands = Object.entries(BASES).filter(([, b]) => b.slot === b0.slot && (b0.cls ? b.cls === b0.cls : true) && (b.minLvl ?? 1) <= L && (b.minLvl ?? 1) >= (b0.minLvl ?? 1));
+  cands.sort((a, b) => (b[1].minLvl ?? 1) - (a[1].minLvl ?? 1) || (b[1].tpl === def.base) - (a[1].tpl === def.base));
+  const base = cands.length ? cands[0][0] : def.base;
+  const k = (id) => { const A = AFFIXES[id]; return A ? A.max(L) / A.max(def.ilvl) : 1; };
+  return { uid: uid(st), base, rarity: 'legend', ilvl: L, named: def.id, title: def.name, unique: def.unique, affixes: def.affixes.map(([id, v]) => ({ id, v: Math.round(v * k(id)) })), sockets: 2, gems: [] };
 }
 export const namedOf = (zoneId) => NAMED_LEGENDS[zoneId] || [];
 
