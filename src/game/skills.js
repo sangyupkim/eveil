@@ -88,14 +88,17 @@ const eff = (rank) => Math.min(rank, 10) - 1 + 0.5 * Math.max(0, rank - 10);
 export const SPELL_K = 2 / 3, SPELL_REF = 28; // 0.34.2: 플레이해 보니 너무 세서 1/3로
 export const isSpell = (sk) => sk.ap === 'int' && sk.type !== 'buff';
 export const spellCoef = (raw, cd) => SPELL_K * Math.pow(Math.max(0, raw) / SPELL_REF, 0.6) * Math.min(1, 0.75 + 0.1 * cd);
+export const weaponCoef = (raw, cd) => SPELL_K * (Math.max(0, raw) / 1.8) * Math.min(1, 0.75 + 0.1 * cd);
+const multiDiv = (sk) => [sk.waves, sk.count, sk.hits].reduce((a, n) => a * ((n || 1) > 1 ? n * 0.5 : 1), 1);
 export function skillValues(id, rank, vars = []) {
   const sk = SKILLS[id];
   const p = vars.includes('power'), q = vars.includes('quick'), f = vars.includes('fierce'), fr = vars.includes('frugal');
   const raw = (sk.power + sk.perRank * eff(rank)) * (p ? 1.4 : 1) * (f ? 1.25 : 1);
   return {
     // 주문(지능 공격 스킬)은 「평타 피해 × 계수」: 무기가 좋아지면 함께 커지고, 큰 위력 · 랭크는 0.6제곱으로 눌러 지나치게 세지지 않는다
-    // 여러 번 내리는 주문(눈보라 · 불바다 · 뇌우)은 한 번당 계수를 나눠 전체가 활 화살 폭우 수준
-    power: isSpell(sk) ? spellCoef(raw, sk.cd) / ((sk.waves || 1) > 1 ? sk.waves * 0.5 : 1) : raw,
+    // 공격 스킬은 모두 같은 식 (0.34.3~): 평타 × 계수. 주문은 위력을 0.6제곱으로 누르고, 검 · 활은 무기 배율(1.8 = 주문 위력 28급)을
+    // 같은 계수로 맞춘다. 재사용 3초 미만은 감쇠. 여러 번 내리는 주문은 한 번당 계수를 (횟수 × 0.5)로 나눈다 (검 · 활 연타 스킬은 원래 한 번당 위력이 작게 짜여 있어 나누지 않는다)
+    power: sk.type === 'buff' ? raw : isSpell(sk) ? spellCoef(raw, sk.cd) / multiDiv(sk) : weaponCoef(raw, sk.cd),
     mp: Math.round(sk.mp * (1 + 0.05 * Math.min(rank - 1, 9) + 0.01 * Math.max(0, rank - 10)) * (fr ? 0.55 : 1)),
     cd: sk.cd * (1 - 0.02 * Math.min(rank - 1, 15)) * (q ? 0.65 : 1) * (f ? 0.85 : 1),
   };
