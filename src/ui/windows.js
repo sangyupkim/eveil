@@ -70,6 +70,8 @@ const mergeCost = (k) => 200 * (k + 1) ** 2;
 // 합치기 성공률: 조각난 · 흐린 100%, 그 위로 한 등급마다 -10% (최소 35%)
 const mergeChance = (k) => (k < 2 ? 1 : Math.max(0.35, 1 - 0.1 * (k - 1)));
 const pullCost = (g) => 100 * ((BASES[g]?.grade || 0) + 1) ** 2;
+// 건물 창 칸 나눔 표시 (town()의 'one' 모드에서 칸으로 나눈다)
+const COL = '<!--COL-->';
 const NPC_ONLY = ['shop', 'town', 'vault', 'gems'];
 const TAB_ORDER = ['gems', 'map', 'inv', 'vault', 'skills', 'char', 'quest', 'dex', 'town', 'shop', 'guide', 'menu'];
 const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '');
@@ -243,12 +245,12 @@ export class Windows {
       <div class="note">쉼터 ${sh}단계 · ${SHELTER.text(sh)}</div>`;
     h += `<h3 style="margin-top:8px">기간</h3><div class="btns" style="flex-wrap:wrap;margin:0">${EXPEDITIONS.map((e) => `<button class="btn ${e.id === P.exp ? 'on' : ''}" data-pexp="${e.id}" ${e.rest && sh < e.rest ? 'disabled' : ''}>${e.name} ${e.min >= 60 ? e.min / 60 + '시간' : e.min + '분'}${e.rest && sh < e.rest ? ` · 쉼터 ${e.rest}` : ''}</button>`).join('')}</div>`;
     const staNeed = Math.round(EXP_STA[P.exp] * (1 - SHELTER.sta * sh));
-    h += `<h3 style="margin-top:8px">용병 <small>${P.ids.length} / ${partyMax(st)} · 체력 ${staNeed}</small></h3>`;
+    h += COL + `<h3 style="margin-top:8px">용병 <small>${P.ids.length} / ${partyMax(st)} · 체력 ${staNeed}</small></h3>`;
     h += t.mercs.filter((m) => !m.job && !m.work).map((m) => { const on = P.ids.includes(m.id), dc = zn ? deathChance(m, zn, P.exp, st, boost) : 0;
       return `<div class="row pick ${on ? 'on' : ''}" data-pm="${m.id}">${this.mercLine(m, 'hunt')}<div class="note" style="min-width:5.5em;color:${dc > 0.15 ? '#ff7060' : ''}">사망 ${Math.round(dc * 100)}%${m.sta < staNeed ? ` · <b style="color:#ff7060">체력 ${Math.floor(m.sta)} / ${staNeed}</b>` : ''}</div></div>`; }).join('') || '<div class="note">쉬는 용병 없음</div>';
     const goods = st.inv.filter((x) => ['potion', 'elixir'].includes(BASES[x.base]?.type));
     const tot = pack.reduce((a, p) => a + p.qty, 0);
-    h += `<h3 style="margin-top:8px">챙길 물건 <small>${tot} / ${packMax(st)} · 안전 +${Math.round(boost.safe * 100)}% · 힘 +${Math.round(boost.pow * 100)}%</small></h3>`;
+    h += COL + `<h3 style="margin-top:8px">챙길 물건 <small>${tot} / ${packMax(st)} · 안전 +${Math.round(boost.safe * 100)}% · 힘 +${Math.round(boost.pow * 100)}%</small></h3>`;
     h += goods.map((x) => `<div class="row"><div class="cell shopIco">${ico(x)}</div><div class="grow">${BASES[x.base].name} <small class="note">${x.qty}</small></div><button class="btn" data-ppack="${x.base}|-1">-</button><b style="min-width:1.6em;text-align:center">${P.pack[x.base] || 0}</b><button class="btn" data-ppack="${x.base}|1">+</button></div>`).join('') || '<div class="note">물약 · 영약 없음</div>';
     h += `<div class="btns"><button class="btn gold" data-psend="1" ${P.ids.length ? '' : 'disabled'}>파견 보내기</button></div>`;
     return h;
@@ -653,6 +655,7 @@ export class Windows {
         right += `<div class="herbBar">${HERB_IDS.map((h) => `<span class="hb" title="${HERBS[h].name}"><img src="${herbIcon(h)}" alt="" />${t.herbs[h] || 0}</span>`).join('')}</div>`;
         const q = t.brew || [], ready = q.filter((x) => x.until <= Date.now()).length;
         if (q.length) right += `<h3>제작 중 <span class="cnt">${q.length} / ${BREW_QUEUE}</span>${ready ? '<button class="btn gold" data-brewget="bag" style="margin-left:auto">가방으로</button><button class="btn gold" data-brewget="vault">창고로</button>' : ''}</h3>` + q.map((x) => `<div class="row"><div class="cell shopIco">${ico({ base: x.id })}</div><div class="grow"><b>${BASES[x.id].name} ×${x.n}</b> <small class="note">${x.until <= Date.now() ? '완성' : `${Math.ceil((x.until - Date.now()) / 1000)}초`}</small>${gauge(x.from, x.until, 60000, '#7fe07a')}</div></div>`).join('');
+        right += COL + '<h3>만들기</h3>';
         for (const rc of RECIPES) {
           const open = rc.lv <= b.lv, can = (k) => open && Object.entries(rc.herbs).every(([h, q]) => (t.herbs[h] || 0) >= q * k) && st.gold >= brewGold(st, rc) * k;
           const it = { base: rc.id }, E = ELIXIRS[rc.id], fx = E ? E.text : BASES[rc.id].restore.hp ? `HP ${BASES[rc.id].restore.hp}` : `MP ${BASES[rc.id].restore.mp}`;
@@ -666,7 +669,7 @@ export class Windows {
       if (SKILL_OF[b.type]) {
         const sk = SKILL_OF[b.type], crew = t.mercs.filter((m) => m.work === sel), idle = t.mercs.filter((m) => !m.work && !m.job);
         const eff = crew.filter((m) => !m.tired).reduce((a, m) => a + (m[sk] || 0) / 10, 0) / b.lv;
-        right += `<h3>일하는 용병 ${crew.length} / ${b.lv} <small>${SKILL_NAMES[sk]} · ${def.rate ? `생산 ${Math.round(Math.min(2, eff) * 100)}%` : BONUS[b.type].text(bonusOf(st, b.type))}</small></h3>`;
+        right += `<h3 style="margin-top:8px">일하는 용병 ${crew.length} / ${b.lv} <small>${SKILL_NAMES[sk]} · ${def.rate ? `생산 ${Math.round(Math.min(2, eff) * 100)}%` : BONUS[b.type].text(bonusOf(st, b.type))}</small></h3>`;
         right += crew.map((m) => `<div class="row">${this.mercLine(m, sk)}<button class="btn" data-mwork="${m.id}|">쉬게</button></div>`).join('') || `<div class="note">${def.rate ? '일하는 용병이 없으면 생산하지 않습니다' : '없음'}</div>`;
         if (crew.length < b.lv && idle.length) right += `<div class="note" style="margin-top:6px">쉬는 용병</div>` + idle.sort((a, c) => (c[sk] || 0) - (a[sk] || 0)).map((m) => `<div class="row">${this.mercLine(m, sk)}<button class="btn" data-mwork="${m.id}|${sel}">일 맡기기</button></div>`).join('');
       }
@@ -674,7 +677,7 @@ export class Windows {
         <div class="btns"><button class="btn gold" data-collect="1" ${b.stock < 1 ? 'disabled' : ''}>거두기</button></div>`;
       if (b.type === 'smithy') {
         const cap = enhanceCap(st);
-        right += `<div class="note">강화 상한 +${cap} · 실패해도 단계 유지 · 실패하면 장인의 기운이 쌓이고 100%면 반드시 성공</div>`;
+        right += COL + `<h3>강화</h3><div class="note">강화 상한 +${cap} · 실패해도 단계 유지 · 실패하면 장인의 기운이 쌓이고 100%면 반드시 성공</div>`;
         for (const slot of SLOTS) {
           const it = st.equip[slot];
           if (!it) continue;
@@ -683,12 +686,12 @@ export class Windows {
             <div class="note">${max ? '상한' : `+${(it.plus || 0) + 1} · ${c.jang >= 1 ? '<b style="color:#ffd84a">100%</b>' : `${+(c.chance * 100).toFixed(1)}%`} · 장인의 기운 ${+(c.jang * 100).toFixed(1)}% · ${c.gold.toLocaleString()} G · 강화석 ${c.ore}`}</div></div>
             <button class="btn" data-enh="${slot}" ${max || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>강화</button></div>`;
         }
-        right += this.shardPanel(b);
         const junk = st.inv.filter((x) => !x.book && BASES[x.base]?.slot && !x.named);
         if (junk.length) right += `<h3 style="margin-top:8px">분해 <button class="btn" data-salvageall="1">일반 · 마법 모두</button></h3>` + junk.map((x) => { const v = salvageValue(x); return `<div class="row"><div class="cell shopIco${rar(x)}">${ico(x)}</div><div class="grow"><b style="color:${itemColor(x)}">${esc(itemName(x))}</b><div class="note">강화석 ${v.ore} · ${MATERIALS[v.mat].name} ${v.matN}</div></div><button class="btn" data-salvage="${x.uid}">분해</button></div>`; }).join('');
+        right += COL + this.shardPanel(b);
       }
       if (b.type === 'lab') {
-        if (t.lab) right += `<div class="note">연구 중: ${RESEARCH[t.lab.id].name} · ${Math.max(1, Math.ceil((t.lab.until - Date.now()) / 60000))}분 남음</div>${gauge(t.lab.from, t.lab.until)}`;
+        right += COL + '<h3>연구</h3>'; if (t.lab) right += `<div class="note">연구 중: ${RESEARCH[t.lab.id].name} · ${Math.max(1, Math.ceil((t.lab.until - Date.now()) / 60000))}분 남음</div>${gauge(t.lab.from, t.lab.until)}`;
         for (const [id, r] of Object.entries(RESEARCH)) {
           const lv = researchLv(st, id), c = researchCost(lv, id), max = lv >= RESEARCH_MAX, open = b.lv >= r.lab;
           right += `<div class="row" style="${open ? '' : 'opacity:.45'}"><div class="grow"><b>${r.name}</b> <small>${lv} / ${RESEARCH_MAX}</small><div class="note">${open ? `${lv ? r.text(lv) : '없음'}${max ? '' : ` → ${r.text(lv + 1)}`}` : `연구소 ${r.lab}단계 · ${r.text(1)}`}</div></div>
@@ -700,9 +703,9 @@ export class Windows {
         const zones = ZONES.filter((z) => isLiberated(st, z.id)), rec = recruits(st), slots = mercSlots(st);
         const nextH = Math.ceil((3600000 - (Date.now() % 3600000)) / 60000);
         const gw = BUILDINGS.inn.grades(b.lv), gs = gw.reduce((a, v) => a + v, 0);
-        right += `<h3>찾아온 용병 <small>${nextH}분 뒤 바뀜 · 고용 ${t.mercs.length} / ${slots}</small></h3><div class="note">${GRADES.map((g, i) => `<span style="color:${g.color}">${g.name} ${Math.round((gw[i] / gs) * 100)}%</span>`).join(' · ')}</div>`;
+        right += COL + `<h3>찾아온 용병 <small>${nextH}분 뒤 바뀜 · 고용 ${t.mercs.length} / ${slots}</small></h3><div class="note">${GRADES.map((g, i) => `<span style="color:${g.color}">${g.name} ${Math.round((gw[i] / gs) * 100)}%</span>`).join(' · ')}</div>`;
         right += rec.map((m) => `<div class="row">${this.mercLine(m)}<button class="btn gold" data-hirem="${m.id}" ${t.mercs.length >= slots || st.gold < m.cost ? 'disabled' : ''}>${m.cost.toLocaleString()} G</button></div>`).join('') || '<div class="note">없음</div>';
-        right += `<h3 style="margin-top:8px">내 용병</h3>`;
+        right += COL + `<h3>내 용병</h3>`;
         t.mercs.forEach((m) => {
           const left = m.job ? Math.max(0, m.job.until - Date.now()) : 0, where = m.work && t.plots[m.work] ? BUILDINGS[t.plots[m.work].type].name : '';
           const state = m.job ? (left > 0 ? `${ZONES.find((z) => z.id === m.job.zone).name} 파견 · ${Math.ceil(left / 60000)}분` : '돌아옴') : m.tired ? '지쳐서 쉬는 중' : where ? `${where}에서 일함` : '쉬는 중';
@@ -714,7 +717,7 @@ export class Windows {
       }
       }
     }
-    if (one) return `<div class="cols"><div class="frame detail" style="flex:1">${right}</div></div>`;
+    if (one) { const parts = right.split(COL).filter((x) => x.replace(/<[^>]+>/g, '').trim()); return `<div class="cols">${parts.map((x) => `<div class="frame detail" style="flex:1;overflow:auto">${x}</div>`).join('')}</div>`; } // 건물 창: 내용별 칸을 가로로
     return `<div class="cols"><div class="frame" style="flex:0 0 40%"><h3>마을 <span class="goldTxt">${st.gold.toLocaleString()} G</span></h3><div class="note" style="display:flex;gap:6px;align-items:center"><img src="${oreIcon()}" style="width:1.6em" alt="" />강화석 ${t.ore}</div><div class="note">용병 ${t.mercs.length} / ${mercSlots(st)} · 쉬는 ${t.mercs.filter((m) => !m.work && !m.job).length}</div><div class="note">${Object.entries(t.mats).filter(([, n]) => n > 0).map(([k, n]) => `${MATERIALS[k].name} ${n}`).join(' · ')}</div>${left}</div>
       <div class="frame detail" style="flex:1">${right}</div></div>`;
   }
