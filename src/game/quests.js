@@ -3,6 +3,8 @@ import { QUESTS, QUEST_BOOKS } from '../data/quests.js';
 import { BASES } from '../data/items.js';
 import { MONSTERS, ZONES } from '../data/world.js';
 import { makeItem, makeBook } from './items.js';
+import { meetsReq } from './skills.js';
+import { totalStats } from './player.js';
 import { addItem } from './inventory.js';
 
 export const questDef = (id) => QUESTS.find((q) => q.id === id) || null;
@@ -43,11 +45,15 @@ export function rewardItems(st, q) {
   for (const [id, n] of r.items || []) out.push(makeItem(id, { qty: n }, st));
   if (r.gear) {
     const [slot, rarity, ilvl] = r.gear;
-    // 그 레벨에서 쓸 수 있는 것 중 가장 좋은 기본 아이템 (무기는 내 계열)
+    // v0.40.2: 지금 능력치로 낄 수 있는 것 중 고른다 — 요구 능력치를 채우고, 내 가장 높은 능력치를 요구하는 것(내 빌드)을 먼저, 그다음 높은 레벨
+    const S = totalStats(st), top = Object.keys(S).filter((k) => ['str', 'dex', 'int', 'wis', 'vit'].includes(k)).sort((a, b) => (S[b] || 0) - (S[a] || 0));
+    const fit = (b) => { const ks = Object.keys(b.req || {}); if (!ks.length) return 1; return Math.max(...ks.map((k) => (top.indexOf(k) < 0 ? 0 : 5 - top.indexOf(k)))); };
     const pool = Object.keys(BASES).filter((id) => {
       const b = BASES[id];
-      return b.slot === slot && (slot !== 'weapon' || b.cls === cls) && ((b.minLvl ?? 1) <= ilvl || b.shop) && b.minLvl !== 99;
-    }).sort((a, b) => (BASES[b].minLvl ?? 1) - (BASES[a].minLvl ?? 1));
+      return b.slot === slot && ((b.minLvl ?? 1) <= ilvl || b.shop) && b.minLvl !== 99 && !b.noDrop;
+    });
+    const score = (id) => { const b = BASES[id], ok = meetsReq(st, b.req, S); return (ok ? 1e6 : 0) + (slot === 'weapon' && b.cls === cls ? 5e3 : 0) * (ok ? 1 : 0) + fit(b) * 1e4 + (b.minLvl ?? 1); };
+    pool.sort((a, b) => score(b) - score(a));
     if (pool.length) out.push(makeItem(pool[0], { rarity, ilvl }, st));
   }
   if (r.book) out.push(makeBook((QUEST_BOOKS[st.start] || QUEST_BOOKS.sword)[r.book], st));
