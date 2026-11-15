@@ -36,3 +36,11 @@
 
 ## 펫 (assets/flare/enemies/pet_dog · pet_cat)
 - "Animal Pack Vol.2" — Quaternius, CC0 (OpenGameArt "Animated Animales Low Poly"). 3D 모델을 8방향으로 찍어 씀: `node tools/prep-pets.mjs`
+
+## v0.40 추가 그림
+- 주인공 겹: 몽둥이 · 철퇴 · 강화 몽둥이 · 전쟁 망치 · 대형 망치 · 보병 도끼 · 대장장이 망치 · 마법사 옷 alt2 — Flare fantasycore (flareteam/flare-game), CC-BY-SA 3.0. 변환: `node tools/prep-avatar-extra.mjs <fantasycore 폴더>`
+- NPC: 주민 2 · 귀환 오벨리스크 (fantasycore) · 고블린 행상 · 쓰러진 해골 (empyrean_campaign) — flare-game, CC-BY-SA 3.0
+- 몬스터 `x_necromancer` · `x_grisbon` · `x_scathelocke` · `x_vesuvvio` · `x_goblin_minecart` — flare-game alpha_demo · empyrean_campaign 모드, CC-BY-SA 3.0
+- 몬스터 `x_{chainmail,cloth,leather,plate}_{archer,brute,mage}` · `x_shadow_wyvern` · `x_thug_slinger` — m7600 "skeleton_quest" Flare 모드 (github.com/m7600/skeleton_quest). Flare 그림 바탕, CC-BY-SA 3.0으로 다룬다 (원작자 표기는 모드 안 credits 기준: Flare 팀 · VWolfDog 외)
+- 몬스터 `x_wyvern_adult` · `x_stealth` — DrBenson "Flare-Remodify" (github.com/DrBenson/Flare-Remodify)의 fantasycore, CC-BY-SA 3.0
+- 변환: `node tools/prep-enemies-extra.mjs --each <몬스터별 폴더>...`

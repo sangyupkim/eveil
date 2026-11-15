@@ -211,7 +211,7 @@ export class World {
     this.workerSig = sig;
     for (const w of this.workers || []) w.a.dispose();
     this.workers = [];
-    const TOOL = { mine: 'hand_axe', herb: 'dagger', smithy: 'hand_axe', workshop: 'hand_axe', lab: 'rod', inn: null, house: null };
+    const TOOL = { mine: 'hand_axe', herb: 'dagger', smithy: 'smith_hammer', workshop: 'smith_hammer', lab: 'rod', inn: null, house: null };
     const SPOT = { herb: (i) => [(i % 3 - 1) * 3.0, (Math.floor(i / 3) - 0.5) * 2.2], mine: (i) => [-2.0 + i * 1.6, 4.6], lab: (i) => [-1.2 + i * 1.2, 2.2], smithy: (i) => [5.2 + (i % 2) * 1.2, 2.4 + i * 1.0], inn: (i) => [5.6 + (i % 2) * 1.2, 2.6 + i * 1.0] };
     const count = {};
     for (const m of want) {
@@ -383,7 +383,7 @@ export class World {
     this.campNpcs = []; this.campDraw = [];
     for (const c of CAMPS) {
       const k = this.st.camps?.[c.zone]; if (!k) continue;
-      if (k.merchant) { const a = new Actor(this.scene, { npc: 'wandering_trader' }); a.pos.set(c.x + 3, 0, c.z - 1); a.facing = -0.5; a.play('idle'); a.name = '떠돌이 상인'; this.campNpcs.push(a); }
+      if (k.merchant) { const a = new Actor(this.scene, { npc: 'peddler_goblin' }); a.pos.set(c.x + 3, 0, c.z - 1); a.facing = -0.5; a.play('idle'); a.name = '떠돌이 상인'; this.campNpcs.push(a); }
       if (k.rest) { // 용병 쉼터: 단계마다 천막 하나씩
         const tt = DATA.tiles.grassland.tiles[72], spots = [[-5, -2], [5, -3], [-6, 3], [6, 2.5], [0, -5]];
         for (let i = 0; i < Math.min(5, k.rest); i++) { const [dx, dz] = spots[i], x = c.x + dx, z = c.z + dz; const d = { z: z + 1.5, draw: (ctx, stg) => { const src = image(DATA.tiles.grassland.imgs[tt[0]]); if (!src.ok || !stg.onScreen(x, z, 5)) return; const p = stg.toScreen(x, z); drawRect(ctx, src.im, tt.slice(1), p.x, p.y, stg.scale() * 0.8); } }; this.stage.add(d); this.campDraw.push(d); }
@@ -638,6 +638,10 @@ export class World {
     // 보석상 (보석 조각 · 열쇠 상점) · 현자 (도감 · 칭호)
     this.gemNpc = new Actor(this.scene, { npc: 'guild_man' }); this.gemNpc.pos.set(9, 0, -4); this.gemNpc.facing = -0.4; this.gemNpc.play('idle'); this.gemNpc.name = '보석상 리엔';
     this.sage = new Actor(this.scene, { npc: 'peasant_woman1' }); this.sage.pos.set(-10, 0, -3); this.sage.facing = 0.6; this.sage.play('idle'); this.sage.name = '현자 에라';
+    // 마을 꾸밈 (v0.40): 주민 둘 · 귀환 오벨리스크
+    for (const [npc, x, z, f] of [['peasant_man2', 6, 7, -0.8], ['peasant_woman2', 7.2, 6.2, 2.2], ['return_obelisk1', 0, 3.5, 0]]) {
+      const a = new Actor(this.scene, { npc }); a.pos.set(x, 0, z); a.facing = f; a.play('idle');
+    }
   }
 
   get canShop() { const P = this.player.pos, c = inCamp(P.x, P.z); return this.inTown || !!(c && this.st.camps?.[c.zone]?.merchant) || !!(this.eventNpc && dist2(this.eventNpc.pos, P) < 6); }

@@ -5,13 +5,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 const sharp = createRequire(import.meta.url)('sharp');
+// 여러 개: node tools/prep-enemies-extra.mjs --each <dir>... (dir 이름 = 몬스터 이름, 안에 animations/enemies/<이름>.txt와 그림)
+const EACH = process.argv[2] === '--each';
 const SRC = process.argv[2];
 const OUT = 'assets/flare', J = path.join(OUT, 'enemies.json');
-const NAMES = ['orc_regular', 'orc_archer', 'orc_heavy', 'orc_elite', 'spider', 'spider_large', 'spider_giant', 'troll', 'werebear', 'werewolf',
+const NAMES = EACH ? process.argv.slice(3).map((d) => path.basename(d)) : ['orc_regular', 'orc_archer', 'orc_heavy', 'orc_elite', 'spider', 'spider_large', 'spider_giant', 'troll', 'werebear', 'werewolf',
   'demon', 'demon_statue', 'shadow', 'assassin', 'skeleton_knight', 'skeleton_mage_high', 'skeleton_occultist', 'pirate_ghost_captain', 'pirate_ghost_crewman'];
 const enemies = JSON.parse(fs.readFileSync(J, 'utf8'));
 for (const name of NAMES) {
-  const text = fs.readFileSync(path.join(SRC, 'animations/enemies', name + '.txt'), 'utf8');
+  const root = EACH ? process.argv[3 + NAMES.indexOf(name)] : SRC;
+  const text = fs.readFileSync(path.join(root, 'animations/enemies', name + '.txt'), 'utf8');
   const a = { images: {}, anims: {} };
   let cur = null, size = null, off = null, img = null;
   for (const raw of text.split('\n')) {
@@ -33,7 +36,7 @@ for (const name of NAMES) {
   // 격자 형식: 줄 = 방향(8), 칸 = 프레임
   if (size) for (const an of Object.values(a.anims)) for (let d = 0; d < 8; d++) an.f[d] = Array.from({ length: an.frames }, (_, i) => [(an.pos + i) * size[0], d * size[1], size[0], size[1], off[0], off[1]]);
   for (const an of Object.values(a.anims)) delete an.pos;
-  const src = path.join(SRC, img), meta = await sharp(src).metadata();
+  const src = path.join(root, img), meta = await sharp(src).metadata();
   const k2 = (size?.[0] || 128) >= 256 || meta.width > 6000 ? 0.4 : 0.6;
   const dst = `enemies/x_${name}.webp`;
   await sharp(src).resize(Math.round(meta.width * k2)).webp({ quality: 72, alphaQuality: 85 }).toFile(path.join(OUT, dst));

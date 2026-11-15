@@ -60,7 +60,7 @@ export const MONSTER_LOOK = {
   web_spider: { sprite: 'x_spider', size: 2.2 }, poison_spider: { sprite: 'x_spider_large', tint: 0xa0e080, size: 2.6 }, cave_spider: { sprite: 'x_spider_large', size: 2.8 }, shade: { sprite: 'x_shadow', size: 1.9 },
   brood_mother: { sprite: 'x_spider_giant', size: 3.0 }, spider_queen: { sprite: 'x_spider_giant', tint: 0xd0a0ff, size: 4.2 },
   ghost_crew: { sprite: 'x_pirate_ghost_crewman', size: 3.2 }, bone_knight: { sprite: 'x_skeleton_knight', size: 3.1 }, occultist: { sprite: 'x_skeleton_occultist', size: 3.0 }, dock_assassin: { sprite: 'x_assassin', size: 3.4 },
-  high_mage: { sprite: 'x_skeleton_mage_high', size: 3.6 }, ghost_captain: { sprite: 'x_pirate_ghost_captain', size: 4.8 },
+  high_mage: { sprite: 'x_necromancer', size: 4.0 }, ghost_captain: { sprite: 'x_pirate_ghost_captain', size: 4.8 },
   hell_hound: { sprite: 'x_werewolf', tint: 0xff9070, size: 3.3 }, dread_bear: { sprite: 'x_werebear', tint: 0xc08080, size: 2.8 }, void_shade: { sprite: 'x_shadow', tint: 0xd090ff, size: 2.0 }, gargoyle: { sprite: 'x_demon_statue', size: 1.5 },
   pit_lord: { sprite: 'x_demon', size: 1.9 }, arch_demon: { sprite: 'x_demon', tint: 0xff8060, size: 2.5 },
   slime: { sprite: 'antlion_small', size: 0.9 },
@@ -72,7 +72,7 @@ export const MONSTER_LOOK = {
   spider: { sprite: 'antlion', tint: 0x90b070 },
   wasp: { sprite: 'hobgoblin_archer' },
   orc_grunt: { sprite: 'hobgoblin' },
-  tribal: { sprite: 'skeleton_mage', tint: 0x9ad070 },
+  tribal: { sprite: 'x_cloth_mage', size: 2.8 },
   orc: { sprite: 'minotaur', size: 0.95 },
   skel_minion: { sprite: 'skeleton_weak' },
   skel_rogue: { sprite: 'skeleton' },
@@ -81,18 +81,18 @@ export const MONSTER_LOOK = {
   skel_mage: { sprite: 'skeleton_mage' },
   ghost: { sprite: 'zombie', tint: 0x9fb0ff },
   ghost_skull: { sprite: 'zombie_dark' },
-  raider: { sprite: 'hobgoblin', tint: 0xc08070, size: 1.15 },
-  fallen_knight: { sprite: 'skeleton_knight_boss', size: 0.9 },
+  raider: { sprite: 'x_leather_brute', size: 2.9 },
+  fallen_knight: { sprite: 'x_plate_brute', size: 3.0 },
   imp: { sprite: 'fire_ant' },
   blue_demon: { sprite: 'zombie_dark', tint: 0x8090ff, size: 1.2 },
   goleling: { sprite: 'cursed_grave', size: 0.9 },
-  dragon: { sprite: 'wyvern' },
+  dragon: { sprite: 'x_wyvern_adult', size: 2.7 },
   frog: { sprite: 'antlion', tint: 0x80c070 },
   bog_slime: { sprite: 'antlion_small', tint: 0xa0d070 },
   snake: { sprite: 'x_spider_large', tint: 0x90b070, size: 2.5 },
   squidle: { sprite: 'skeleton_mage', tint: 0x80d0a0 },
   mushnub_evo: { sprite: 'zombie', tint: 0x90c080 },
-  bog_witch: { sprite: 'skeleton_mage_boss', tint: 0xa0e090 },
+  bog_witch: { sprite: 'x_scathelocke', size: 3.9 },
   bog_king: { sprite: 'wyvern_water', size: 1.1 },
   yeti: { sprite: 'x_werebear', tint: 0xd8e8ff, size: 2.7 },
   ice_wolf: { sprite: 'ice_ant' },
@@ -113,7 +113,7 @@ export const MONSTER_LOOK = {
   magma_golem: { sprite: 'x_demon_statue', tint: 0xff9a60, size: 1.35 },
   ember_skull: { sprite: 'skeleton', tint: 0xff9a60 },
   drake: { sprite: 'wyvern_fire' },
-  flame_lord: { sprite: 'skeleton_mage_high_boss', tint: 0xff7a50, size: 1.3 },
+  flame_lord: { sprite: 'x_vesuvvio', size: 4.6 },
 };
 // 게임 동작 이름 → Flare 동작 이름
 export const ANIM_MAP = {
@@ -125,9 +125,9 @@ export const ANIM_MAP = {
 // layers: 입었을 때 끼우는 겹 { chest, legs, hands, feet, head, main, off } · tint: 색 · icon: 아이콘 번호
 const C = { ice: 0xa8d8ff, red: 0xff8a70, vio: 0xb8a0ff, grn: 0xa0d090, gold: 0xffd880, dark: 0x8a8898, brown: 0xc0a090 };
 export const ITEM_LOOK = {
-  // v0.37 둔기 · 홀 · 보주 (보주는 손에 그리지 않고 아이콘만)
-  rusty_club: { layers: { main: 'hand_axe' }, icon: 117, tint: 0x8a6a4a }, oak_club: { layers: { main: 'hand_axe' }, icon: 117, tint: 0x9a7a52 }, iron_mace: { layers: { main: 'hand_axe' }, icon: 117 },
-  war_hammer: { layers: { main: 'hand_axe' }, icon: 117, tint: 0x8a8a9a }, spiked_mace: { layers: { main: 'hand_axe' }, icon: 117, tint: 0x6a6a7a }, knight_axe: { layers: { main: 'hand_axe' }, icon: 117, tint: 0xd8c070 }, dragon_mace: { layers: { main: 'hand_axe' }, icon: 117, tint: 0xff7a5a },
+  // v0.37 둔기 · 홀 · 보주 (보주는 손에 그리지 않고 아이콘만) · v0.40 둔기는 Flare 몽둥이 · 철퇴 · 망치 그림
+  rusty_club: { layers: { main: 'club' }, icon: 117, tint: 0x8a6a4a }, oak_club: { layers: { main: 'club' }, icon: 117, tint: 0x9a7a52 }, iron_mace: { layers: { main: 'mace' }, icon: 117 },
+  war_hammer: { layers: { main: 'war_hammer' }, icon: 117 }, spiked_mace: { layers: { main: 'reinforced_club' }, icon: 117 }, knight_axe: { layers: { main: 'infantry_axe' }, icon: 117, tint: 0xd8c070 }, dragon_mace: { layers: { main: 'maul' }, icon: 117, tint: 0xff7a5a },
   novice_scepter: { layers: { main: 'wand' }, icon: 104, tint: 0x9a8aa0 }, oak_scepter: { layers: { main: 'wand' }, icon: 104 }, moon_scepter: { layers: { main: 'rod' }, icon: 105, tint: 0xb8d8ff },
   sage_scepter: { layers: { main: 'rod' }, icon: 105, tint: 0x9ad0ff }, rune_scepter: { layers: { main: 'rod' }, icon: 105, tint: 0x8ab0ff }, astral_scepter: { layers: { main: 'rod' }, icon: 105, tint: 0xd0b0ff }, void_scepter: { layers: { main: 'rod' }, icon: 105, tint: 0xb07aff },
   glass_orb: { icon: 68, tint: 0xd0e8ff }, moon_orb: { icon: 68 }, rune_orb: { icon: 68, tint: 0x8ab0ff }, void_orb: { icon: 68, tint: 0xb07aff },
@@ -146,10 +146,10 @@ export const ITEM_LOOK = {
   leather_cap: { layers: { head: 'leather_hood' }, icon: 144 }, wizard_hat: { layers: { head: 'mage_hood' }, icon: 136 }, iron_helm: { layers: { head: 'chain_coif' }, icon: 152 },
   sage_hat: { layers: { head: 'mage_hood_alt1' }, icon: 184 }, knight_helm: { layers: { head: 'plate_helm' }, icon: 160 }, great_helm: { layers: { head: 'plate_helm' }, icon: 160, tint: C.gold },
   hunter_cap: { layers: { head: 'leather_hood' }, icon: 144, tint: C.grn }, frost_helm: { layers: { head: 'plate_helm' }, icon: 160, tint: C.ice },
-  archmage_hat: { layers: { head: 'mage_hood_alt1' }, icon: 184, tint: C.gold }, dragon_helm: { layers: { head: 'plate_helm' }, icon: 160, tint: C.red },
+  archmage_hat: { layers: { head: 'mage_hood_alt2' }, icon: 184 }, dragon_helm: { layers: { head: 'plate_helm' }, icon: 160, tint: C.red },
   cloth_robe: { layers: { chest: 'mage_vest', legs: 'mage_skirt' }, icon: 137 }, leather_armor: { layers: { chest: 'leather_chest', legs: 'leather_pants' }, icon: 145 },
   chain_mail: { layers: { chest: 'chain_cuirass', legs: 'chain_greaves' }, icon: 153 }, plate_armor: { layers: { chest: 'plate_cuirass', legs: 'plate_greaves' }, icon: 161 },
-  arcane_robe: { layers: { chest: 'mage_vest_alt1', legs: 'mage_skirt_alt1' }, icon: 185 }, dark_plate: { layers: { chest: 'plate_cuirass', legs: 'plate_greaves' }, icon: 161, tint: C.dark },
+  arcane_robe: { layers: { chest: 'mage_vest_alt2', legs: 'mage_skirt_alt2' }, icon: 185 }, dark_plate: { layers: { chest: 'plate_cuirass', legs: 'plate_greaves' }, icon: 161, tint: C.dark },
   hard_leather: { layers: { chest: 'leather_chest', legs: 'leather_pants' }, icon: 145, tint: C.brown }, scout_armor: { layers: { chest: 'leather_chest', legs: 'leather_pants' }, icon: 145, tint: C.grn },
   frost_robe: { layers: { chest: 'mage_vest', legs: 'mage_skirt' }, icon: 137, tint: C.ice }, frost_plate: { layers: { chest: 'plate_cuirass', legs: 'plate_greaves' }, icon: 161, tint: C.ice },
   shadow_leather: { layers: { chest: 'leather_chest', legs: 'leather_pants' }, icon: 145, tint: C.vio }, inferno_robe: { layers: { chest: 'mage_vest_alt1', legs: 'mage_skirt_alt1' }, icon: 185, tint: C.red },
@@ -214,3 +214,8 @@ Object.assign(ZONE_LOOK, {
 });
 Object.assign(ZONE_PROPS, { ashland: ZONE_PROPS.valley, crypt: ZONE_PROPS.frost, crystal: ZONE_PROPS.demongate, bloodmire: ZONE_PROPS.swamp, stormpeak: ZONE_PROPS.frost, temple: ZONE_PROPS.ruins, abyss: ZONE_PROPS.inferno, throne: ZONE_PROPS.demongate });
 for (const [id, base, , tint] of _VAR) if (MONSTER_LOOK[base]) MONSTER_LOOK[id] = { ...MONSTER_LOOK[base], tint, size: (MONSTER_LOOK[base].size || 1) * (id === 'doom_king' ? 1.25 : 1) };
+// v0.40 새 그림 (skeleton_quest 사람 적 · Flare 원본 고유 적, CC-BY-SA): 변종 일부는 바탕과 다른 몸
+const VAR_SPRITE = { crypt_mage: ['x_chainmail_mage', 2.9], temple_priest: ['x_plate_mage', 2.9], blood_witch: ['x_leather_mage', 2.9], storm_wraith: ['x_shadow_wyvern', 3.0],
+  crystal_bat: ['x_shadow_wyvern', 3.0], storm_brute: ['x_chainmail_brute', 3.0], ash_shade: ['x_thug_slinger', 2.9], temple_lord: ['x_grisbon', 4.4], doom_knight: ['x_plate_brute', 3.1],
+  crypt_ghoul: ['x_cloth_brute', 2.9], blood_snake: ['x_leather_archer', 2.9], temple_shade: ['x_plate_archer', 2.9], abyss_eye: ['x_chainmail_archer', 2.9], doom_shade: ['x_cloth_archer', 2.9] };
+for (const [id, [sprite, size]] of Object.entries(VAR_SPRITE)) if (MONSTER_LOOK[id]) MONSTER_LOOK[id] = { ...MONSTER_LOOK[id], sprite, size };
