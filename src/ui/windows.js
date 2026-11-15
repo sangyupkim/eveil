@@ -18,7 +18,7 @@ import { CAMPS, inCamp } from '../engine2d/stage.js';
 import { TIER_NAMES } from '../world/world.js';
 import { entranceOf } from '../data/dungeons.js';
 import { MATERIALS, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
-import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, recruits, assignMerc, SKILL_OF, SKILLS_ALL, BONUS, bonusOf, awakenMerc, awakenCost, dismiss, staMax, SKILL_NAMES, GRADES, MERC, EXP_STA, deathChance, salvage, salvageValue, reforge, reforgeCost } from '../game/town.js';
+import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, mercUngear, mercById, recruits, assignMerc, SKILL_OF, SKILLS_ALL, BONUS, bonusOf, awakenMerc, awakenCost, dismiss, staMax, SKILL_NAMES, GRADES, MERC, EXP_STA, deathChance, salvage, salvageValue, reforge, reforgeCost } from '../game/town.js';
 import { RESEARCH, researchCost } from '../data/buildings.js';
 import { AFFIXES } from '../data/items.js';
 import { PLOTS, BUILDINGS, EXPEDITIONS, townOf, buildingAt, build, upgrade, collect, enhance, enhanceCap, enhanceCost, hire, mercSlots, dispatch, claim, tick } from '../game/town.js';
@@ -249,7 +249,7 @@ export class Windows {
     const staNeed = Math.round(EXP_STA[P.exp] * (1 - SHELTER.sta * sh));
     h += COL + `<h3 style="margin-top:8px">용병 <small>${P.ids.length} / ${partyMax(st)} · 체력 ${staNeed}</small></h3>`;
     h += t.mercs.filter((m) => !m.job && !m.work).map((m) => { const on = P.ids.includes(m.id), dc = zn ? deathChance(m, zn, P.exp, st, boost) : 0;
-      return `<div class="row pick ${on ? 'on' : ''}" data-pm="${m.id}">${this.mercLine(m, 'hunt')}<div class="note" style="min-width:5.5em;color:${dc > 0.15 ? '#ff7060' : ''}">사망 ${Math.round(dc * 100)}%${m.sta < staNeed ? ` · <b style="color:#ff7060">체력 ${Math.floor(m.sta)} / ${staNeed}</b>` : ''}</div></div>`; }).join('') || '<div class="note">쉬는 용병 없음</div>';
+      return `<div class="row mrow pick ${on ? 'on' : ''}" data-pm="${m.id}">${this.mercLine(m, 'hunt')}<div class="note" style="min-width:5.5em;color:${dc > 0.15 ? '#ff7060' : ''}">사망 ${Math.round(dc * 100)}%${m.sta < staNeed ? ` · <b style="color:#ff7060">체력 ${Math.floor(m.sta)} / ${staNeed}</b>` : ''}</div></div>`; }).join('') || '<div class="note">쉬는 용병 없음</div>';
     const goods = st.inv.filter((x) => ['potion', 'elixir'].includes(BASES[x.base]?.type));
     const tot = pack.reduce((a, p) => a + p.qty, 0);
     h += COL + `<h3 style="margin-top:8px">챙길 물건 <small>${tot} / ${packMax(st)} · 안전 +${Math.round(boost.safe * 100)}% · 힘 +${Math.round(boost.pow * 100)}%</small></h3>`;
@@ -551,6 +551,22 @@ export class Windows {
       <div class="note">${sk}</div><div class="mini" style="height:5px;max-width:12em"><i style="width:${Math.round((m.sta / sm) * 100)}%;background:#6ad07a"></i></div></div>`;
   }
 
+  // 용병 장비 고르기: 가방 | 창고에서 장비를 골라 입힌다 (입던 것은 가방으로)
+  mercGearPick(id) {
+    const st = this.w.st, m = mercById(st, id);
+    if (!m) return;
+    const gearOk = (it) => it && BASES[it.base]?.slot && !it.book;
+    const row = (it, from, key) => `<div class="row mgrow"><div class="cell shopIco${rar(it)}">${ico(it)}</div><div class="grow"><b style="color:${itemColor(it)}">${esc(itemName(it))}</b><div class="note">${it.ilvl || 1}레벨</div></div><button class="btn gold" data-mgpick="${from}|${key}">입히기</button></div>`;
+    const bag = st.inv.filter(gearOk).sort((a, b) => (b.ilvl || 0) - (a.ilvl || 0)).map((it) => row(it, 'inv', it.uid)).join('') || '<div class="note">없음</div>';
+    const vlt = vault().items.map((it, i) => [it, i]).filter(([it]) => gearOk(it)).sort((a, b) => (b[0].ilvl || 0) - (a[0].ilvl || 0)).map(([it, i]) => row(it, 'vault', i)).join('') || '<div class="note">없음</div>';
+    const cur = m.gearItem ? `<div class="row mgrow"><div class="cell shopIco${rar(m.gearItem)}">${ico(m.gearItem)}</div><div class="grow"><b style="color:${itemColor(m.gearItem)}">${esc(itemName(m.gearItem))}</b><div class="note">입는 중 · ${m.gearItem.ilvl || 1}레벨</div></div><button class="btn" data-mgoff="1">벗기기</button></div>` : m.gear ? `<div class="note">입는 중 ${m.gear.ilvl}레벨</div>` : '<div class="note">입은 장비 없음</div>';
+    this.popup(`${m.name} 장비`, `<div class="mgcols"><div><h3>지금</h3>${cur}</div><div><h3>가방</h3><div class="mglist">${bag}</div></div><div><h3>창고</h3><div class="mglist">${vlt}</div></div></div>`);
+    const box = document.getElementById('winAlert');
+    const done = (r, msg) => { if (!r.ok) { if (r.why) this.w.ui.toast(r.why); audio.play('error'); return; } audio.play('equip_metal'); if (msg) this.w.ui.toast(msg, '#ffd84a'); this.w.ui.dirty(); this.save?.(); this.mercGearPick(id); this.render(); };
+    box.querySelectorAll('[data-mgpick]').forEach((b) => { b.onclick = () => { const [from, key] = b.dataset.mgpick.split('|'); done(mercGear(st, id, from, Number(key)), `${m.name}에게 입혔습니다`); }; });
+    box.querySelector('[data-mgoff]')?.addEventListener('click', () => done(mercUngear(st, id), '장비를 가방으로 돌려받았습니다'));
+  }
+
   // 창 위에 뜨는 알림 (확인을 눌러 닫는다)
   // 결과 팝업 (html 내용)
   popup(title, html) {
@@ -673,8 +689,8 @@ export class Windows {
         const sk = SKILL_OF[b.type], crew = t.mercs.filter((m) => m.work === sel), idle = t.mercs.filter((m) => !m.work && !m.job);
         const eff = crew.filter((m) => !m.tired).reduce((a, m) => a + (m[sk] || 0) / 10, 0) / b.lv;
         right += `<h3 style="margin-top:8px">일하는 용병 ${crew.length} / ${b.lv} <small>${SKILL_NAMES[sk]} · ${def.rate ? `생산 ${Math.round(Math.min(2, eff) * 100)}%` : BONUS[b.type].text(bonusOf(st, b.type))}</small></h3>`;
-        right += crew.map((m) => `<div class="row">${this.mercLine(m, sk)}<button class="btn" data-mwork="${m.id}|">쉬게</button></div>`).join('') || `<div class="note">${def.rate ? '일하는 용병이 없으면 생산하지 않습니다' : '없음'}</div>`;
-        if (crew.length < b.lv && idle.length) right += `<div class="note" style="margin-top:6px">쉬는 용병</div>` + idle.sort((a, c) => (c[sk] || 0) - (a[sk] || 0)).map((m) => `<div class="row">${this.mercLine(m, sk)}<button class="btn" data-mwork="${m.id}|${sel}">일 맡기기</button></div>`).join('');
+        right += crew.map((m) => `<div class="row mrow">${this.mercLine(m, sk)}<button class="btn" data-mwork="${m.id}|">쉬게</button></div>`).join('') || `<div class="note">${def.rate ? '일하는 용병이 없으면 생산하지 않습니다' : '없음'}</div>`;
+        if (crew.length < b.lv && idle.length) right += `<div class="note" style="margin-top:6px">쉬는 용병</div>` + idle.sort((a, c) => (c[sk] || 0) - (a[sk] || 0)).map((m) => `<div class="row mrow">${this.mercLine(m, sk)}<button class="btn" data-mwork="${m.id}|${sel}">일 맡기기</button></div>`).join('');
       }
       if (def.rate) right += `<div class="kv"><span>생산</span><b>시간당 ${Math.round(def.rate(b.lv) * Math.min(1, t.mercs.filter((m) => m.work === sel && !m.tired).reduce((a, m) => a + m[b.type] / 10, 0) / b.lv) * 1)}</b><span>쌓인 양</span><b>${Math.floor(b.stock)} / ${def.store(b.lv)}</b></div>
         <div class="btns"><button class="btn gold" data-collect="1" ${b.stock < 1 ? 'disabled' : ''}>거두기</button></div>`;
@@ -707,12 +723,12 @@ export class Windows {
         const nextH = Math.ceil((3600000 - (Date.now() % 3600000)) / 60000);
         const gw = BUILDINGS.inn.grades(b.lv), gs = gw.reduce((a, v) => a + v, 0);
         right += COL + `<h3>찾아온 용병 <small>${nextH}분 뒤 바뀜 · 고용 ${t.mercs.length} / ${slots}</small></h3><div class="note">${GRADES.map((g, i) => `<span style="color:${g.color}">${g.name} ${Math.round((gw[i] / gs) * 100)}%</span>`).join(' · ')}</div>`;
-        right += rec.map((m) => `<div class="row">${this.mercLine(m)}<button class="btn gold" data-hirem="${m.id}" ${t.mercs.length >= slots || st.gold < m.cost ? 'disabled' : ''}>${m.cost.toLocaleString()} G</button></div>`).join('') || '<div class="note">없음</div>';
+        right += rec.map((m) => `<div class="row mrow">${this.mercLine(m)}<button class="btn gold" data-hirem="${m.id}" ${t.mercs.length >= slots || st.gold < m.cost ? 'disabled' : ''}>${m.cost.toLocaleString()} G</button></div>`).join('') || '<div class="note">없음</div>';
         right += COL + `<h3>내 용병</h3>`;
         t.mercs.forEach((m) => {
           const left = m.job ? Math.max(0, m.job.until - Date.now()) : 0, where = m.work && t.plots[m.work] ? BUILDINGS[t.plots[m.work].type].name : '';
           const state = m.job ? (left > 0 ? `${ZONES.find((z) => z.id === m.job.zone).name} 파견 · ${Math.ceil(left / 60000)}분` : '돌아옴') : m.tired ? '지쳐서 쉬는 중' : where ? `${where}에서 일함` : '쉬는 중';
-          right += `<div class="row">${this.mercLine(m)}<div class="note" style="min-width:7em">${state}${m.job && left > 0 ? gauge(m.job.from, m.job.until, 1800000, '#ffc860') : ''}</div>
+          right += `<div class="row mrow">${this.mercLine(m)}<div class="note" style="min-width:7em">${state}${m.job && left > 0 ? gauge(m.job.from, m.job.until, 1800000, '#ffc860') : ''}</div>
             ${m.job && left <= 0 ? `<button class="btn gold" data-claim="${m.id}">전리품</button>` : ''}
             ${m.lv >= MERC.lvMax && (m.aw || 0) < MERC.awMax ? `<button class="btn gold" data-mawk="${m.id}" ${st.gold < awakenCost(m) ? 'disabled' : ''}>각성 ${awakenCost(m).toLocaleString()}G</button>` : ''}
             ${!m.job ? `<button class="btn" data-mgear="${m.id}">장비</button><button class="btn danger" data-mfire="${m.id}">내보내기</button>` : ''}</div>`;
@@ -959,7 +975,7 @@ export class Windows {
       location.reload();
     });
     on('[data-research]', (el) => townDone(researchStart(st, el.dataset.research), '연구를 시작했습니다'));
-    on('[data-mgear]', (el) => townDone(mercGear(st, el.dataset.mgear), '장비를 맡겼습니다'));
+    on('[data-mgear]', (el) => this.mercGearPick(el.dataset.mgear));
     on('[data-school]', (el) => { this.skillSchool = el.dataset.school; this.skillSel = null; audio.play('click'); this.render(); });
     on('[data-gsel]', (el) => { this.gemSel = el.dataset.gsel; audio.play('click'); this.render(); });
     const gemItem = (key) => { const [k, v] = key.split(':'); return k === 'e' ? st.equip[v] : st.inv.find((x) => x.uid === Number(v)); };

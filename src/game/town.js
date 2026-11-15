@@ -505,12 +505,25 @@ export function researchTick(st, now = Date.now()) {
   return id;
 }
 // 용병 장비: 가방에서 가장 좋은 (끼지 않은) 장비 하나를 맡긴다 (돌려받지 않는다)
-export function mercGear(st, id) {
+// 용병 장비: 가방(from 'inv', key = uid)이나 창고(from 'vault', key = 칸 번호)에서 골라 입힌다.
+// 입고 있던 장비는 가방으로(가득하면 창고로) 돌려준다. 예전 저장의 요약만 있는 장비는 돌려줄 수 없어 사라진다
+export function mercGear(st, id, from, key) {
   const m = mercById(st, id);
-  const it = st.inv.filter((x) => BASES[x.base]?.slot && !x.book && x.ilvl).sort((a, b) => b.ilvl - a.ilvl)[0];
-  if (!m || !it) return { ok: false, why: '맡길 장비가 없습니다' };
-  st.inv.splice(st.inv.indexOf(it), 1);
-  m.gear = { ilvl: it.ilvl, rarity: it.rarity, name: it.base };
-  return { ok: true };
+  if (!m) return { ok: false };
+  let it = null;
+  if (from === 'vault') { const V = vault().items; it = V[key]; if (!it || !BASES[it.base]?.slot || it.book) return { ok: false, why: '입힐 수 없는 물건입니다' }; V.splice(key, 1); vaultSave(); it = { ...it, uid: st.nextUid++ }; }
+  else { const i = st.inv.findIndex((x) => x.uid === key); it = st.inv[i]; if (!it || !BASES[it.base]?.slot || it.book) return { ok: false, why: '입힐 수 없는 물건입니다' }; st.inv.splice(i, 1); }
+  const back = mercUngear(st, id).item;
+  m.gearItem = it;
+  m.gear = { ilvl: it.ilvl || 1, rarity: it.rarity, name: it.base };
+  return { ok: true, back };
+}
+export function mercUngear(st, id) {
+  const m = mercById(st, id);
+  if (!m?.gearItem) { if (m) m.gear = null; return { ok: !!m }; }
+  const it = m.gearItem;
+  m.gearItem = null; m.gear = null;
+  if (!addItem(st, it)) vaultAdd(st, it);
+  return { ok: true, item: it };
 }
 export { PLOTS, BUILDINGS, EXPEDITIONS };
