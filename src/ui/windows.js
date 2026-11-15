@@ -54,6 +54,14 @@ const pentagon = (stats) => {
   return `<svg class="penta" viewBox="0 0 100 100">${grid}${shape}${labels}</svg>`;
 };
 // 패치 노트 창 (새 버전이면 처음 한 번 저절로)
+// 팝업 닫기 (확인 · × · 바깥 누르기 · Esc). main.js의 공지 창도 쓴다
+export function closable(el) {
+  const close = () => { audio.play('click'); el.remove(); document.removeEventListener('keydown', esc); };
+  const esc = (e) => { if (e.key === 'Escape' && document.body.contains(el)) { e.stopPropagation(); close(); } };
+  el.querySelectorAll('.popClose, .popX').forEach((b) => { b.onclick = close; });
+  el.addEventListener('pointerdown', (e) => { if (e.target === el) close(); });
+  document.addEventListener('keydown', esc, true);
+}
 export function showNotes() {
   let el = document.getElementById('notes');
   if (!el) { el = document.createElement('div'); el.id = 'notes'; document.body.appendChild(el); }
@@ -601,24 +609,17 @@ export class Windows {
     box.querySelector('[data-mgoff]')?.addEventListener('click', () => done(mercUngear(st, id), '장비를 가방으로 돌려받았습니다'));
   }
 
-  // 창 위에 뜨는 알림 (확인을 눌러 닫는다)
-  // 결과 팝업 (html 내용)
-  popup(title, html) {
+  // 창 위 팝업 (결과 · 알림 · 우편함 · 용병 장비 …): [확인] · 오른쪽 위 × · 바깥 누르기 · Esc로 닫는다.
+  // 닫기 단추는 반드시 popClose로 찾는다 (내용 안 단추가 먼저 잡혀 닫히지 않던 문제, v0.39.2)
+  popup(title, html, wide = true) {
     document.getElementById('winAlert')?.remove();
     const el = document.createElement('div');
     el.id = 'winAlert';
-    el.innerHTML = `<div class="popWide"><b>${esc(title)}</b>${html}<button class="plate gold">확인</button></div>`;
-    el.querySelector('button').onclick = () => { audio.play('click'); el.remove(); };
+    el.innerHTML = `<div class="${wide ? 'popWide' : ''}"><button class="popX" title="닫기">×</button><b>${esc(title)}</b>${html}<button class="plate gold popClose">확인</button></div>`;
+    closable(el);
     document.body.appendChild(el);
   }
-  alert(title, text = '') {
-    document.getElementById('winAlert')?.remove();
-    const el = document.createElement('div');
-    el.id = 'winAlert';
-    el.innerHTML = `<div><b>${esc(title)}</b>${text ? `<p>${esc(text)}</p>` : ''}<button class="plate gold">확인</button></div>`;
-    el.querySelector('button').onclick = () => { audio.play('click'); el.remove(); };
-    document.body.appendChild(el);
-  }
+  alert(title, text = '') { this.popup(title, text ? `<p>${esc(text)}</p>` : '', false); }
 
   keysPanel() {
     const m = keyMap(this.w.st);

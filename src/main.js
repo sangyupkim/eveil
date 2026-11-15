@@ -7,7 +7,7 @@ import { warmTerrain } from './engine2d/stage.js';
 import { FACES } from './data/flareWorld.js';
 import { World } from './world/world.js';
 import { HUD } from './ui/hud.js';
-import { Windows, toggleFullscreen, setupFullscreenUi, showNotes } from './ui/windows.js';
+import { Windows, toggleFullscreen, setupFullscreenUi, showNotes, closable } from './ui/windows.js';
 import { GAME_VERSION } from './data/patchnotes.js';
 import { checkUpdate } from './update.js';
 import { syncVault } from './game/vault.js';
@@ -208,8 +208,8 @@ export function showNotices(list) {
   const esc = (t) => String(t).replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' })[c]);
   const el = document.createElement('div');
   el.id = 'winAlert';
-  el.innerHTML = `<div class="popWide"><b>공지사항</b><div class="noticeList">${list.map((n) => `<div class="row" style="display:block"><b style="color:#ffd84a">${esc(n.title)}</b> <small>${new Date(n.at).toLocaleDateString()}</small><div class="note" style="white-space:pre-wrap">${esc(n.body)}</div></div>`).join('') || '<div class="note">공지가 없습니다</div>'}</div><button class="plate gold">확인</button></div>`;
-  el.querySelector('button').onclick = () => el.remove();
+  el.innerHTML = `<div class="popWide"><button class="popX" title="닫기">×</button><b>공지사항</b><div class="noticeList">${list.map((n) => `<div class="row" style="display:block"><b style="color:#ffd84a">${esc(n.title)}</b> <small>${new Date(n.at).toLocaleDateString()}</small><div class="note" style="white-space:pre-wrap">${esc(n.body)}</div></div>`).join('') || '<div class="note">공지가 없습니다</div>'}</div><button class="plate gold popClose">확인</button></div>`;
+  closable(el);
   document.body.appendChild(el);
 }
 

@@ -535,3 +535,9 @@ html.force-land #rotate { display: none !important; }
 .noticeBar { margin-top: 8px; padding: 4px 10px; border: 1px solid #6a5430; border-radius: 6px; background: rgba(20, 15, 10, 0.75); color: #e8dcc0; cursor: pointer; max-width: 92vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .9em; }
 .noticeBar b { color: #ffd84a; margin-right: 6px; }
 .noticeList { max-height: 60vh; overflow-y: auto; text-align: left; min-width: min(80vw, 640px); }
+
+/* 팝업: 내용이 길어도 화면 안에서 스크롤, 닫기(×)는 늘 보이게 (v0.39.2) */
+#winAlert > div { position: relative; max-height: 92vh; max-width: 96vw; overflow-y: auto; }
+#winAlert .popX { position: sticky; top: 0; float: right; margin: -0.6em -0.9em 0 0.4em; width: 1.9em; height: 1.9em; border-radius: 50%; border: 1px solid #c9a050; background: #2a1c14; color: #ffd84a; font-size: 1.1em; line-height: 1; cursor: pointer; z-index: 2; }
+#winAlert .popClose { position: sticky; bottom: 0; }
+#winAlert .popWide .row button { display: inline-block; margin: 0; }
