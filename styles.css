@@ -541,3 +541,9 @@ html.force-land #rotate { display: none !important; }
 #winAlert .popX { position: sticky; top: 0; float: right; margin: -0.6em -0.9em 0 0.4em; width: 1.9em; height: 1.9em; border-radius: 50%; border: 1px solid #c9a050; background: #2a1c14; color: #ffd84a; font-size: 1.1em; line-height: 1; cursor: pointer; z-index: 2; }
 #winAlert .popClose { position: sticky; bottom: 0; }
 #winAlert .popWide .row button { display: inline-block; margin: 0; }
+
+/* 자동 사냥 줍기: 체크 상자 3칸 격자 (좁은 칸에서 글자가 세로로 쪼개지지 않게) */
+.setRow.pickRow { align-items: flex-start; }
+.pickGrid { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(6.5em, 1fr)); gap: 4px 10px; }
+.pickChk { display: flex; align-items: center; gap: 6px; white-space: nowrap; cursor: pointer; padding: 3px 0; }
+.pickChk input { width: 1.25em; height: 1.25em; accent-color: #e8c36a; flex: 0 0 auto; }

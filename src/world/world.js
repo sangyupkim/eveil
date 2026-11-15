@@ -413,7 +413,7 @@ export class World {
     const P = this.player.pos, st = this.st;
     this.petT = (this.petT || 0) - dt;
     let goal = { x: P.x - 1.2, z: P.z + 0.8 };
-    const g = this.dead ? null : this.ground.filter((x) => !x.deathDrop && dist2(x, P) < 9 && !(x.kind === 'item' && st.inv.length >= bagSize(st) && !BASES[x.item.base]?.stack)).sort((a, b) => dist2(a, pet.pos) - dist2(b, pet.pos))[0];
+    const g = this.dead ? null : this.ground.filter((x) => !x.deathDrop && dist2(x, P) < 9 && (!this.auto || this.autoWants(x)) && !(x.kind === 'item' && st.inv.length >= bagSize(st) && !BASES[x.item.base]?.stack)).sort((a, b) => dist2(a, pet.pos) - dist2(b, pet.pos))[0];
     if (g) { goal = g; if (dist2(pet.pos, g) < 0.8) this.pickup(g); }
     const d = dist2(pet.pos, goal);
     if (d > 0.4) { this.stepToward(pet.pos, goal, Math.min(14, 5 + d) * dt); pet.face(goal.x, goal.z); pet.play('run', { speed: 1.4 }); } else pet.play('idle');
@@ -2215,7 +2215,8 @@ export class World {
     if (P.lock <= 0) P.play(moving ? 'run' : 'idle', { speed: moving ? speed / 7 : 1 });
 
     // 줍기
-    if (!this.dead) for (const g of [...this.ground]) if (dist2(g, P.pos) < 1.4) this.pickup(g);
+    // 자동 사냥 중에는 설정한 것만 밟아서 줍는다 (지나가며 줍기 · 펫도 같은 규칙)
+    if (!this.dead) for (const g of [...this.ground]) if (dist2(g, P.pos) < 1.4 && (!this.auto || this.autoWants(g))) this.pickup(g);
 
     // 지역
     const zn = zoneAt(P.pos.x, P.pos.z);
