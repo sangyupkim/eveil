@@ -55,7 +55,7 @@ globalThis.__stage = stage;
   // 관리 페이지에서 고친 밸런스를 게임 표에 덮는다 (몬스터 · 드랍 · 챕터 · 설정 · 아이템)
   try { const { applyOverrides } = await import('./data/overrides.js'); const n = applyOverrides(await cloud.balance()); if (n) console.info(`밸런스 덮어쓰기 ${n}칸`); } catch (e) { console.warn('밸런스 덮어쓰기 실패', e); }
   bar(0.3);
-  const first = [...DATA.tiles.grassland.imgs, 'icons.webp',
+  const first = [...DATA.tiles.grassland.imgs, 'icons.webp', 'icons2.webp',
     ...['cloth_shirt', 'cloth_pants', 'cloth_sandals', 'default_hands'].flatMap((l) => ['m', 'f'].map((sx) => `avatar/${sx}/${l}.webp`)), 'avatar/m/head_short.webp', 'avatar/f/head_long.webp'];
   let n = 0;
   await Promise.all(first.map((p) => waitImage(p).then(() => bar(0.3 + (0.7 * ++n) / first.length))));

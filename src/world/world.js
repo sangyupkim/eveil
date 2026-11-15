@@ -1,3 +1,4 @@
+import '../data/skill_fx.js';
 import { bagSize } from '../game/inventory.js';
 import { ZONES as ALL_ZONES } from '../data/world.js';
 import { chapterK } from '../data/chapters.js';
@@ -879,12 +880,13 @@ export class World {
   // ───────── 보스 패턴: 바닥 예고를 보고 피한다 ─────────
 
   // 예고 원 → 시간이 지나면 그 안에 있을 때만 맞는다
-  danger(m, x, z, r, delay, mult, color = 0xff4020) {
+  danger(m, x, z, r, delay, mult, color = 0xff4020, img = null) {
     this.fx.telegraph(x, z, r, delay, color);
     this.later(delay, () => {
       if (m.dead) return;
       this.fx.ring(x, z, r * 1.15, color, 0.5);
       this.fx.pillar(x, z, color, 0.45, 4, r * 0.55);
+      if (img) { this.fx.play(img, x, z, { scale: Math.min(1.8, Math.max(0.7, r / 2.2)) }); if (r > 2.6) for (let i = 0; i < 4; i++) { const g = i * 1.57 + 0.4; this.fx.play(img, x + Math.cos(g) * r * 0.55, z + Math.sin(g) * r * 0.55, { scale: 0.8 }); } }
       this.fx.burst(x, 0.6, z, color, 18, 6, 0.55);
       this.fx.shake(Math.min(0.6, r * 0.08));
       sfx('boom', 0.6);
@@ -893,12 +895,12 @@ export class World {
   }
 
   // 직선 위험 지대: 선분에서 w/2 안이면 맞는다
-  dangerLane(m, x1, z1, x2, z2, w, delay, mult, color = 0xff4020) {
+  dangerLane(m, x1, z1, x2, z2, w, delay, mult, color = 0xff4020, img = null) {
     this.fx.lane(x1, z1, x2, z2, w, delay, color);
     this.later(delay, () => {
       if (m.dead) return;
       const n = Math.max(2, Math.round(Math.hypot(x2 - x1, z2 - z1) / 2.5));
-      for (let i = 0; i <= n; i++) this.fx.burst(x1 + (x2 - x1) * i / n, 0.6, z1 + (z2 - z1) * i / n, color, 5, 4, 0.4);
+      for (let i = 0; i <= n; i++) { this.fx.burst(x1 + (x2 - x1) * i / n, 0.6, z1 + (z2 - z1) * i / n, color, 5, 4, 0.4); if (img) this.fx.play(img, x1 + (x2 - x1) * i / n, z1 + (z2 - z1) * i / n, { scale: Math.max(0.7, w / 2.6) }); }
       sfx('boom', 0.5); this.fx.shake(0.25);
       const P = this.player.pos, dx = x2 - x1, dz = z2 - z1, L = dx * dx + dz * dz || 1;
       const t = Math.max(0, Math.min(1, ((P.x - x1) * dx + (P.z - z1) * dz) / L));
@@ -958,8 +960,12 @@ export class World {
   bossPattern2(m, name) {
     const a = m.actor, P = () => this.player.pos, M = m.pos, C = 0xff5030;
     const toP = () => { const dx = P().x - M.x, dz = P().z - M.z, l = Math.hypot(dx, dz) || 1; return { x: dx / l, z: dz / l, l }; };
-    const D = (x, z, r, t, k, c = C) => this.danger(m, x, z, r, t, k, c);
-    const L = (x1, z1, x2, z2, w, t, k, c = C) => this.dangerLane(m, x1, z1, x2, z2, w, t, k, c);
+    // v0.41 패턴마다 터지는 자리의 효과 그림 (powers.json)
+    const IMG = { icelines: 'c_icetacle', avalanche: 'c_icespike', hail: 'c_icemultispike', quakerings: 'c_earthspike', fissure: 'c_earthmultispike', tailsweep: 'c_earthspike', leap: 'c_earthmultispike', boulder: 'c_earthpost',
+      meteors: 'c_firepost', hellnova: 'c_firepost', cannons: 'c_firepost', breath: 'c_firepost', webtrail: 'spit', sporering: 'spit', mines: 'caltrops', cross: 'c_lightningclaw', xcross: 'c_lightningclaw', grid: 'c_lightningclaw',
+      bonespiral: 'dark_mist_alt', pull: 'c_torrentacle', tongue: 'c_torrentacle' }[name] || null;
+    const D = (x, z, r, t, k, c = C) => this.danger(m, x, z, r, t, k, c, IMG);
+    const L = (x1, z1, x2, z2, w, t, k, c = C) => this.dangerLane(m, x1, z1, x2, z2, w, t, k, c, IMG);
     const at = (t, fn) => this.later(t, () => { if (!m.dead && !this.dead) fn(); });
     const cast = (anim = 'attack2', lock = 1) => { a.act(anim, 0.8); a.lock = lock; a.face(P().x, P().z); };
     switch (name) {
@@ -1617,6 +1623,9 @@ export class World {
     let weaponHit = () => { const w = this.rollWeapon(); return { v: w.v * pw, crit: w.crit }; };
     const color = new THREE.Color(sk.color).getHex();
     if (sk.type !== 'buff') this.fx.circle(P.pos.x, P.pos.z, 1.8, color, 0.9); // 버프는 따로 (보호막 · 오라)
+    // v0.41 스킬마다 고유 효과 그림 (sk.fx: powers.json 이름) — 맞은 자리 · 범위 안에 찍는다
+    const FX = (x, z, s = 1) => { if (sk.fx) this.fx.play(sk.fx, x, z, { scale: s * (sk.fxScale || 1) }); };
+    const FXarea = (x, z, r, n = 6) => { if (!sk.fx) return; FX(x, z, Math.min(1.6, r / 3)); for (let i = 0; i < n; i++) { const a = (i / n) * 6.28 + Math.random() * 0.5, q = r * (0.45 + Math.random() * 0.4); FX(x + Math.cos(a) * q, z + Math.sin(a) * q, 0.8); } };
     this.fx.castFlash(P.pos.x, P.pos.z, color);
 
     switch (sk.type) {
@@ -1629,7 +1638,7 @@ export class World {
             const w = weaponHit();
             this.fx.slash(P.pos.x, P.pos.z, P.facing, color, d.range + 1.2, { tilt: 0.6, dur: 0.3 });
             this.fx.burst(t.pos.x, 1, t.pos.z, color, 16, 5, 0.5);
-            this.fx.shake(0.2);
+            this.fx.shake(0.2); FX(t.pos.x, t.pos.z, 1.1);
             this.hitMonster(t, w.v, { crit: w.crit, src: 'skill', ctx });
           }
         });
@@ -1641,7 +1650,7 @@ export class World {
         this.later(dur * 0.35, () => {
           sfx('spin');
           this.fx.slash(P.pos.x, P.pos.z, P.facing, color, sk.radius, { all: true, y: 0.9, dur: 0.35, tilt: 0 });
-          this.fx.ring(P.pos.x, P.pos.z, sk.radius, color, 0.45);
+          this.fx.ring(P.pos.x, P.pos.z, sk.radius, color, 0.45); FXarea(P.pos.x, P.pos.z, sk.radius);
           for (const m of this.monstersNear(P.pos, sk.radius)) { const w = weaponHit(); this.hitMonster(m, w.v, { crit: w.crit, src: 'skill', ctx }); }
           for (let h = 1; h < (sk.hits || 1); h++) this.later(h * 0.35, () => {
             sfx('spin');
@@ -1661,6 +1670,7 @@ export class World {
           this.fx.ring(P.pos.x + Math.sin(ang) * 2, P.pos.z + Math.cos(ang) * 2, 3, color, 0.4);
           this.fx.burst(P.pos.x + Math.sin(ang) * 2, 0.5, P.pos.z + Math.cos(ang) * 2, color, 16, 6, 0.5);
           this.fx.shake(0.3);
+          if (sk.fx) for (let i = 1; i <= 3; i++) for (const o of [-0.4, 0, 0.4]) FX(P.pos.x + Math.sin(ang + o) * sk.radius * i / 3.4, P.pos.z + Math.cos(ang + o) * sk.radius * i / 3.4, 0.6 + i * 0.15);
           for (const m of this.monstersNear(P.pos, sk.radius)) {
             const a = Math.atan2(m.pos.x - P.pos.x, m.pos.z - P.pos.z);
             if (Math.abs(Math.atan2(Math.sin(a - ang), Math.cos(a - ang))) < 0.75) { const w = weaponHit(); this.hitMonster(m, w.v, { crit: w.crit, src: 'skill', ctx }); }
@@ -1679,6 +1689,7 @@ export class World {
             from: this.muzzle(), target: t, color, size: sk.splash ? 1.5 : 0.9, speed: 20,
             onHit: (tg) => {
               const at = tg.pos || tg;
+              FX(at.x, at.z, sk.splash ? Math.min(1.6, sk.splash / 2.5) : 0.9);
               if (sk.splash) {
                 sfx('boom', 0.7);
                 this.fx.ring(at.x, at.z, sk.splash, color, 0.4);
@@ -1700,7 +1711,7 @@ export class World {
             if (!tg) continue;
             this.fx.projectile({
               from: this.muzzle(), target: tg, color, size: 0.7, speed: 32, bolt: true,
-              onHit: (x) => { if (!x.dead) { const w = weaponHit(); this.hitMonster(x, w.v, { crit: w.crit, src: 'skill', ctx }); } },
+              onHit: (x) => { if (x.pos) FX(x.pos.x, x.pos.z, 0.8); if (!x.dead) { const w = weaponHit(); this.hitMonster(x, w.v, { crit: w.crit, src: 'skill', ctx }); } },
             });
           }
         });
@@ -1720,7 +1731,7 @@ export class World {
           }
           sfx('zap');
           this.fx.lightning([P.pos, ...chain.map((m) => m.pos)], color);
-          chain.forEach((m, i) => this.hitMonster(m, spell() * Math.pow(0.85, i), { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 }));
+          chain.forEach((m, i) => FX(m.pos.x, m.pos.z, 0.9)); chain.forEach((m, i) => this.hitMonster(m, spell() * Math.pow(0.85, i), { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 }));
         });
         break;
       }
@@ -1730,7 +1741,7 @@ export class World {
         const at = { x: t.pos.x, z: t.pos.z };
         sfx('cast');
         this.fx.meteor(at.x, at.z, sk.radius, 1.0, () => {
-          sfx('boom');
+          sfx('boom'); FXarea(at.x, at.z, sk.radius, 4);
           for (const m of this.monstersNear(at, sk.radius)) this.hitMonster(m, spell(), { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 });
         });
         break;
@@ -1743,7 +1754,7 @@ export class World {
           this.fx.ring(P.pos.x, P.pos.z, sk.radius, color, 0.7);
           this.fx.decal(0, P.pos.x, P.pos.z, sk.radius * 1.2, 0xffffff, 0.5, { grow: true });
           this.fx.burst(P.pos.x, 1, P.pos.z, color, 40, 12, 0.7);
-          this.fx.shake(0.35);
+          this.fx.shake(0.35); FXarea(P.pos.x, P.pos.z, sk.radius, 8);
           for (const m of this.monstersNear(P.pos, sk.radius)) { m.slowT = 4; this.hitMonster(m, spell(), { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 }); }
         });
         break;
@@ -1773,6 +1784,7 @@ export class World {
           const ang = P.facing, ux = Math.sin(ang), uz = Math.cos(ang);
           sfx('shoot', 1.3);
           const end = { x: P.pos.x + ux * sk.range, z: P.pos.z + uz * sk.range };
+          if (sk.fx) for (let k = 2; k < sk.range; k += 2.2) this.later(k / 40, () => FX(P.pos.x + ux * k, P.pos.z + uz * k, 0.8));
           this.fx.projectile({ from: this.muzzle(), target: { pos: new THREE.Vector3(end.x, 1.4, end.z) }, color, size: sk.width > 2 ? 2 : 1, speed: 40, bolt: true, onHit: () => {} });
           for (const m of this.monsters) {
             if (m.dead) continue;
@@ -1797,6 +1809,7 @@ export class World {
         for (let i = 0; i < sk.waves; i++) {
           this.later(0.35 + i * 0.45, () => {
             this.fx.ring(at.x, at.z, sk.radius, color, 0.35);
+            if (sk.fx) for (let k = 0; k < 3; k++) { const a = Math.random() * 6.28, r = Math.random() * sk.radius; FX(at.x + Math.cos(a) * r, at.z + Math.sin(a) * r, 0.8); }
             for (let k = 0; k < 8; k++) {
               const a = Math.random() * 6.28, r = Math.random() * sk.radius, x = at.x + Math.cos(a) * r, z = at.z + Math.sin(a) * r;
               this.fx.projectile({ from: { x: x - 1, y: 9, z: z - 1 }, target: { x, z, pos: new THREE.Vector3(x, -1.1, z) }, color, size: 0.5, speed: 40, bolt: sk.ap !== 'int', trail: true, onHit: () => {} });
@@ -1819,6 +1832,7 @@ export class World {
           const ang = P.facing;
           sfx('fire');
           this.fx.cone(P.pos.x, P.pos.z, ang, sk.radius, color);
+          if (sk.fx) for (let i = 1; i <= 3; i++) FX(P.pos.x + Math.sin(ang) * sk.radius * i / 3.4, P.pos.z + Math.cos(ang) * sk.radius * i / 3.4, 0.6 + i * 0.15);
           for (const m of this.monstersNear(P.pos, sk.radius)) {
             const a = Math.atan2(m.pos.x - P.pos.x, m.pos.z - P.pos.z);
             if (Math.abs(Math.atan2(Math.sin(a - ang), Math.cos(a - ang))) < 0.75) this.hitMonster(m, spell(), { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 });

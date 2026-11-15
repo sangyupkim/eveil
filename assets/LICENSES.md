@@ -51,3 +51,15 @@
 - "isometric medieval buildings" (mhouse) — OpenGameArt, CC0/CC-BY (원 페이지 표기 따름)
 - "Old ruins tileset" (돌무더기 · 기둥 · 벽감 · 석상 · 아치 문, 얼어붙은 것 포함) — CC-BY-SA 3.0. 모델: Spelle (blendswap, CC-BY 3.0), Flare grassland walls
 - 변환: `node tools/prep-props.mjs <받아 푼 폴더>`
+
+## v0.41 효과 그림 (assets/flare/powers/c_* 등)
+- c_* (땅 가시 · 얼음 가시 · 얼음/물 촉수 · 번개 발톱 · 불기둥 · 물 구슬 · 회오리 · 화살비): "Valley of Concordia" (makrohn/concordia, Flare 모드), CC-BY-SA 3.0 — 작가는 그 저장소 AUTHORS
+- bear_trap · bolas · caltrops · spit · status_freeze: flare-game (fantasycore · empyrean_campaign), CC-BY-SA 3.0
+- dark_mist_alt: Fallen Kingdom (Smujb/fallen-kingdom, Flare 모드), CC-BY-SA 3.0
+- 변환: `node tools/prep-powers-extra.mjs <효과별 폴더>...`
+
+## v0.41 둘째 아이콘 묶음 (assets/flare/icons2.webp) — OpenGameArt
+- "Flare weapon icons 2" (몽둥이 · 철퇴 · 망치 · 도끼) — CC0
+- "Orbs Collection" (보주) — CC0
+- "Painterly Spell Icons" part 1 ~ 4 — J. W. Bjerk (eleazzaar), CC-BY 3.0 (CC-BY-SA 3.0/4.0 중 선택)
+- 만들기: `node tools/prep-icons2.mjs <받아 푼 폴더>` → src/data/icons2.js

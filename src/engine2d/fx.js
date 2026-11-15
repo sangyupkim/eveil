@@ -133,6 +133,7 @@ export class FX {
     const def = DATA.powers?.[name];
     if (!def) return null;
     const anim = def.anims.power || Object.values(def.anims)[0];
+    if (name.startsWith('c_')) scale *= 1.6; // Valley of Concordia 효과는 그림이 작다
     const it = { kind: 'power', def, anim, x, z, y, scale, dir, alpha, tint, fade, t: 0, dur: dur ?? anim.dur / 1000, loop };
     image(animImage(def, 'power'));
     it.drawable = { z, draw: (ctx, st) => this.drawPower(ctx, st, it) };

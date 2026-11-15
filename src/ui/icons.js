@@ -9,14 +9,15 @@ export const herbIcon = (id) => iconUrl(40, HERBS[id].color); // v0.40.1 약초�
 
 const SHEET = 'icons.webp', S = 64;
 const cache = new Map();
-export const iconsReady = () => image(SHEET).p;
+export const iconsReady = () => Promise.all([image(SHEET).p, image('icons2.webp').p]); // 둘째 묶음 (256번부터, v0.41)
 
 // 아이콘 번호 → 그림 주소 (frame: 테두리 색, 없으면 테두리 없음)
 export function iconUrl(index, frame = null, filter = '') {
   const key = index + '|' + frame + '|' + filter;
   if (cache.has(key)) return cache.get(key);
-  const src = image(SHEET);
+  const src = image(index >= 256 ? 'icons2.webp' : SHEET);
   if (!src.ok) return '';
+  if (index >= 256) index -= 256;
   const c = document.createElement('canvas');
   c.width = c.height = S;
   const g = c.getContext('2d');
@@ -30,7 +31,7 @@ export function iconUrl(index, frame = null, filter = '') {
 }
 
 export function itemIcon(it) {
-  if (it.book) return iconUrl(225, BOOK_TIERS[SKILLS[it.book].tier].color);
+  if (it.book) return iconUrl(SKILL_ICON[it.book] ?? SCHOOL_ICON[SKILLS[it.book]?.school] ?? 225, BOOK_TIERS[SKILLS[it.book].tier].color); // v0.41 책은 그 스킬 아이콘 + 단계 색 테두리
   if (it.shard) return iconUrl(46, '#c58cff'); // 능력치 파편: 모두 같은 그림 + 칸 아래 옵션 글 (cellTag)
   if (BASES[it.base]?.type === 'pet') return petIcon(BASES[it.base].pet);
   if (ELIXIRS[it.base]) return iconUrl(ITEM_LOOK[it.base]?.icon ?? 84, ELIXIRS[it.base].color);
@@ -75,8 +76,9 @@ export function petIcon(kind) {
 export function iconCut(index) {
   const key = 'cut|' + index;
   if (cache.has(key)) return cache.get(key);
-  const src = image(SHEET);
+  const src = image(index >= 256 ? 'icons2.webp' : SHEET);
   if (!src.ok) return '';
+  if (index >= 256) index -= 256;
   const c = document.createElement('canvas'); c.width = c.height = S;
   const g = c.getContext('2d');
   g.drawImage(src.im, (index % 8) * S, Math.floor(index / 8) * S, S, S, 0, 0, S, S);

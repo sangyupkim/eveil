@@ -1,4 +1,5 @@
 import { GEMS, GEM_GRADES, gemId } from './legends.js';
+import { ICONS2 } from './icons2.js';
 // 2D(Flare) 그림 연결: 지역마다 땅 타일 · 배경 물건, 몬스터 그림, 장비 겹그림 · 아이콘
 
 // ───── 땅 · 배경 ─────
@@ -228,3 +229,9 @@ const VAR_SPRITE = { crypt_mage: ['x_chainmail_mage', 2.9], temple_priest: ['x_p
   crystal_bat: ['x_shadow_wyvern', 3.0], storm_brute: ['x_chainmail_brute', 3.0], ash_shade: ['x_thug_slinger', 2.9], temple_lord: ['x_grisbon', 4.4], doom_knight: ['x_plate_brute', 3.1],
   crypt_ghoul: ['x_cloth_brute', 2.9], blood_snake: ['x_leather_archer', 2.9], temple_shade: ['x_plate_archer', 2.9], abyss_eye: ['x_chainmail_archer', 2.9], doom_shade: ['x_cloth_archer', 2.9] };
 for (const [id, [sprite, size]] of Object.entries(VAR_SPRITE)) if (MONSTER_LOOK[id]) MONSTER_LOOK[id] = { ...MONSTER_LOOK[id], sprite, size };
+
+// v0.41 둘째 아이콘 묶음: 둔기 · 보주는 Flare 무기 아이콘 · 보주 그림, 스킬은 Painterly 주문 아이콘 (스킬마다 하나씩)
+Object.assign(ITEM_LOOK.rusty_club, { icon: ICONS2.club }); Object.assign(ITEM_LOOK.oak_club, { icon: ICONS2.club }); Object.assign(ITEM_LOOK.iron_mace, { icon: ICONS2.mace });
+Object.assign(ITEM_LOOK.war_hammer, { icon: ICONS2.warhammer }); Object.assign(ITEM_LOOK.spiked_mace, { icon: ICONS2.reinforced_club }); Object.assign(ITEM_LOOK.knight_axe, { icon: ICONS2.infantry_axe }); Object.assign(ITEM_LOOK.dragon_mace, { icon: ICONS2.maul });
+Object.assign(ITEM_LOOK.glass_orb, { icon: ICONS2.orb_cyan, tint: undefined }); Object.assign(ITEM_LOOK.moon_orb, { icon: ICONS2.orb_blue }); Object.assign(ITEM_LOOK.rune_orb, { icon: ICONS2.orb_rune, tint: undefined }); Object.assign(ITEM_LOOK.void_orb, { icon: ICONS2.orb_void, tint: undefined });
+for (const [k, n] of Object.entries(ICONS2)) if (k.startsWith('sk:')) SKILL_ICON[k.slice(3)] = n;
