@@ -62,7 +62,7 @@ export function showNotes() {
 }
 const repickCost = (t) => 2000 * (t.tier + 1) ** 2;
 const nextTitle = (st) => { const i = TITLE_AT.findIndex((n) => st.awakenings < n); return i < 0 ? '' : ` · ${titleName(titleKey(st.stats), i)}까지 각성 ${TITLE_AT[i] - st.awakenings}`; };
-const TITLES = { gems: '보석상', map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '메뉴' };
+const TITLES = { gems: '보석상', map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', news: '공지 · 패치', menu: '메뉴' };
 // 진행 게이지 (시작 ~ 끝 시각). 예전 저장은 시작 시각이 없어 dur로 어림
 const gauge = (from, until, dur = 3600000, color = '#7ad0ff') => { const f = from || until - dur, k = Math.max(0, Math.min(1, (Date.now() - f) / Math.max(1, until - f))); return `<div class="mini" style="margin-top:3px"><i style="width:${(k * 100).toFixed(1)}%;background:linear-gradient(#bfe8ff,${color})"></i></div>`; };
 // 보석 합치기 · 빼기 값
@@ -75,7 +75,7 @@ const COL = '<!--COL-->';
 // 칸 위 작은 글: 능력치 파편은 옵션을 보여 준다
 const cellTag = (it) => (it?.shard ? `<span class="ctag">${affixText(it.shard).replace(/\s+/g, '')}</span>` : '');
 const NPC_ONLY = ['shop', 'town', 'vault', 'gems'];
-const TAB_ORDER = ['gems', 'map', 'inv', 'vault', 'skills', 'char', 'quest', 'dex', 'town', 'shop', 'guide', 'menu'];
+const TAB_ORDER = ['gems', 'map', 'inv', 'vault', 'skills', 'char', 'quest', 'dex', 'town', 'shop', 'guide', 'news', 'menu'];
 const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '');
 const ico = (it) => `<img src="${itemIcon(it)}" alt="" draggable="false" />`;
 const sicon = (id) => `<div class="sicon" style="background:radial-gradient(circle at 35% 30%, ${SKILLS[id].color}, #17111f 90%)"><img src="${skillIcon(id)}" alt="" /></div>`;
@@ -133,7 +133,7 @@ export class Windows {
     const icons = { inv: chestIcon(), skills: bookIcon(), char: portrait(this.w.st.look), shop: coinIcon(), quest: scrollIcon(), town: townIcon(), dex: bookIcon(), map: scrollIcon(), guide: bookIcon(), vault: homeIcon() };
     const tabs = $('.tabs', this.el);
     // 탭은 그림 없이 같은 모양의 글자 단추로
-    const TAB_TXT = { gems: '보석', map: '지도', inv: '가방', skills: '스킬', char: '능력', quest: '퀘스트', dex: '도감', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '설정' };
+    const TAB_TXT = { gems: '보석', map: '지도', inv: '가방', skills: '스킬', char: '능력', quest: '퀘스트', dex: '도감', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '설정', news: '공지' };
     tabs.innerHTML = TAB_ORDER.filter((k) => !NPC_ONLY.includes(k) || this.talk?.includes(k)).map((k) => `<button class="tab txt${k === this.kind ? ' on' : ''}" data-tab="${k}"><span>${TAB_TXT[k]}</span></button>`).join('');
     tabs.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => this.show(b.dataset.tab); });
     const body = $('.body', this.el);
@@ -554,6 +554,15 @@ export class Windows {
     const sk = SKILLS_ALL.map((k) => `<span style="${k === hi ? 'color:#ffd84a;font-weight:700' : ''}">${SKILL_NAMES[k]} ${(m[k] || 0).toFixed(1)}</span>`).join(' · ');
     return `<div class="grow"><b style="color:${g.color}">${esc(m.name)}</b> <small>${g.name} · Lv ${m.lv}${m.aw ? ` · 각성 ${m.aw}` : ''}${m.gear ? ` · 장비 ${m.gear.ilvl}` : ''}</small>
       <div class="note">${sk}</div><div class="mini" style="height:5px;max-width:12em"><i style="width:${Math.round((m.sta / sm) * 100)}%;background:#6ad07a"></i></div></div>`;
+  }
+
+  // 공지 · 패치 탭: 왼쪽 운영 공지(서버), 오른쪽 패치 노트 (언제든 다시 본다)
+  news() {
+    if (!this.newsList) { this.newsList = []; cloud.notices().then((l) => { this.newsList = l; if (this.kind === 'news') this.render(); }); }
+    const e = (t) => esc(String(t ?? ''));
+    const notices = this.newsList.map((n) => `<div class="row" style="display:block"><b style="color:#ffd84a">${e(n.title)}</b> <small class="note">${new Date(n.at).toLocaleDateString()}</small><div class="note" style="white-space:pre-wrap">${e(n.body)}</div></div>`).join('') || '<div class="note">공지가 없습니다</div>';
+    const notes = PATCH_NOTES.map((n) => `<div class="row" style="display:block"><b style="color:#ffd84a">${n.ver}</b> <small class="note">${n.date}</small><div>${n.head}</div><div class="note" style="margin-top:4px">${n.items.map((x) => `<div>${x}</div>`).join('')}</div></div>`).join('');
+    return `<div class="cols"><div class="frame" style="flex:1"><h3>공지사항</h3>${notices}</div><div class="frame" style="flex:1.3"><h3>패치 노트 <small>${GAME_VERSION}</small></h3>${notes}</div></div>`;
   }
 
   // 우편함: 운영자가 보낸 금화 받기 (계정마다 한 번, 지금 캐릭터에게)
@@ -1097,7 +1106,7 @@ export class Windows {
       }
     });
     // 메인 화면(캐릭터 고르기)으로: 저장하고 다시 연다
-    on('[data-notices]', async () => { const { showNotices } = await import('../main.js'); showNotices(await cloud.notices()); });
+    on('[data-notices]', () => { this.newsList = null; this.show('news'); });
     on('[data-mailbox]', () => this.mailbox());
     on('[data-title]', () => { this.save(true); window.__noSave = true; setTimeout(() => location.reload(), 400); });
     on('[data-nick]', () => { this.close(); window.__askNick?.(); });
