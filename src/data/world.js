@@ -7,7 +7,7 @@
 export const MONSTERS = {
   // 푸리에 들판
   slime: { name: '새끼 개미귀신', model: 'm_slime', h: 1.3, attack: 'melee', hp: 24, dmg: [2, 4], speed: 2.4, interval: 1.8, range: 1.8, aggro: 6, exp: 7 },
-  rat: { behave: 'charge', name: '들판 고블린', model: 'm_rat', h: 1.0, attack: 'melee', hp: 20, dmg: [3, 4], speed: 3.8, interval: 1.3, range: 1.7, aggro: 7, exp: 8 },
+  rat: { behave: 'charge', name: '고블린 돌격병', model: 'm_rat', h: 1.0, attack: 'melee', hp: 20, dmg: [3, 4], speed: 3.8, interval: 1.3, range: 1.7, aggro: 7, exp: 8 },
   mushnub: { name: '약한 해골', model: 'm_mushnub', h: 1.5, attack: 'melee', hp: 34, dmg: [3, 6], speed: 2.6, interval: 1.7, range: 1.8, aggro: 7, exp: 10 },
   slime_spiky: { name: '가시 개미귀신', model: 'm_slime_spiky', h: 1.6, attack: 'melee', hp: 46, dmg: [5, 8], speed: 2.6, interval: 1.6, range: 1.9, aggro: 8, exp: 14 },
   mushking: { name: '고블린 두목', model: 'm_mushking', h: 2.6, attack: 'melee', atk: 'attack2', hp: 30, dmg: [5, 8], speed: 2.5, interval: 1.9, range: 2.4, aggro: 11, exp: 16,
@@ -17,7 +17,7 @@ export const MONSTERS = {
   spider: { name: '숲 개미귀신', model: 'm_spider', h: 1.1, attack: 'melee', hp: 34, dmg: [5, 7], speed: 3.4, interval: 1.4, range: 1.8, aggro: 8, exp: 12 },
   wasp: { name: '호브고블린 궁수', model: 'm_wasp', h: 1.2, attack: 'ranged', fly: 1.0, hp: 28, dmg: [6, 9], speed: 3.2, interval: 2.0, range: 8, aggro: 11, exp: 13 },
   orc_grunt: { behave: 'shield', name: '호브고블린', model: 'm_orc_grunt', h: 1.7, attack: 'melee', hp: 52, dmg: [6, 9], speed: 2.8, interval: 1.7, range: 1.9, aggro: 9, exp: 14 },
-  tribal: { behave: 'charge', name: '숲의 주술사', model: 'm_tribal', h: 1.7, attack: 'spell', atk: 'attack2', hp: 38, dmg: [8, 11], speed: 2.6, interval: 2.3, range: 9, aggro: 11, exp: 15 },
+  tribal: { behave: 'charge', name: '고블린 주술사', model: 'm_tribal', h: 1.7, attack: 'spell', atk: 'attack2', hp: 38, dmg: [8, 11], speed: 2.6, interval: 2.3, range: 9, aggro: 11, exp: 15 },
   orc: { name: '숲의 미노타우로스', model: 'm_orc', h: 2.4, attack: 'melee', atk: 'attack2', hp: 70, dmg: [8, 12], speed: 2.9, interval: 1.8, range: 2.4, aggro: 11, exp: 18,
     patterns: ['charge', 'slam', 'summon'], minion: 'orc_grunt' },
   // 망자의 묘지
@@ -39,7 +39,7 @@ export const MONSTERS = {
     patterns: ['volley', 'spores', 'charge', 'summon'], minion: 'imp' },
   // 안개 늪
   frog: { behave: 'charge', name: '늪 개미귀신', model: 'm_frog', h: 1.6, attack: 'melee', hp: 99, dmg: [12, 16], speed: 2.8, interval: 1.7, range: 2.0, aggro: 9, exp: 28 },
-  bog_slime: { name: '늪 새끼 개미귀신', model: 'm_slime_pink', h: 1.5, tint: 0xa0d070, attack: 'melee', hp: 86, dmg: [11, 15], speed: 2.5, interval: 1.6, range: 1.9, aggro: 8, exp: 26 },
+  bog_slime: { name: '늪 슬라임', model: 'm_slime_pink', h: 1.5, tint: 0xa0d070, attack: 'melee', hp: 86, dmg: [11, 15], speed: 2.5, interval: 1.6, range: 1.9, aggro: 8, exp: 26 },
   snake: { name: '늪 독거미', model: 'm_snake', h: 1.1, attack: 'melee', hp: 76, dmg: [14, 18], speed: 3.6, interval: 1.3, range: 2.0, aggro: 10, exp: 27 },
   squidle: { name: '늪 해골 주술사', model: 'm_squidle', h: 1.8, attack: 'spell', hp: 81, dmg: [14, 20], speed: 2.6, interval: 2.2, range: 9, aggro: 11, exp: 30 },
   mushnub_evo: { behave: 'shield', name: '늪 좀비', model: 'm_mushnub_evo', h: 1.8, attack: 'melee', hp: 117, dmg: [13, 17], speed: 2.4, interval: 1.8, range: 2.0, aggro: 8, exp: 30 },

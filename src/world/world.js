@@ -136,6 +136,7 @@ export class World {
     // 큰 그림 하나를 집터 가운데에 (기준점 보정 ax · az, 크기 k, 색 필터)
     let cur = null;
     const big = (set, id, dx, dz, k, ox, oz, filter, r = 4.2) => {
+      if (set === 'props') r *= k; // 새 건물 그림은 키운 만큼 바닥도 넓게
       const x = cur.x + dx, z = cur.z + dz;
       const def = DATA.tiles[set], tt = def.tiles[id];
       if (!tt) return;
@@ -180,14 +181,14 @@ export class World {
     //  제작소 = 창문 통나무집(가로 7.4) + 통나무 · 모루     숙소 = 문 통나무집, 3단계부터 한 채 더
     //  약초밭 = 작물 7 × 4 줄
     const LOOK = {
-      smithy: (b) => { big('props', 5, 0, -0.4, 0.95, 0, 0, 'brightness(0.78) sepia(0.2)', 3.6); return [['dungeon', 167, 3.6, 3.4], ['grassland', 103, -3.4, 3.6], ['dungeon', 167, -1.2, 4.4], ['grassland', 100, 4.4, 1.0]]; },
-      inn: (b) => { big('props', 4, 0, -0.4, 1, 0, 0, 'brightness(0.82) saturate(0.85)', 4.2); return [['grassland', 98, 4.2, 3.6], ['grassland', 96, -4.2, 3.4], ['dungeon', 167, -1.4, 4.8], ['dungeon', 167, 1.4, 4.8]]; },
+      smithy: (b) => { big('grassland', 296, 0, 0, 0.75, -7.3, 2.2, 'brightness(0.78) sepia(0.35) saturate(1.2)', 4.8); return [['dungeon', 167, 3.6, 3.4], ['grassland', 103, -3.4, 3.6], ['dungeon', 167, -1.2, 4.4], ['grassland', 100, 4.4, 1.0]]; },
+      inn: (b) => { big('props', 4, 0, -0.8, 1.45, 0, 0, 'brightness(0.82) saturate(0.85)', 4.2); return [['grassland', 98, 4.2, 3.6], ['grassland', 96, -4.2, 3.4], ['dungeon', 167, -1.4, 4.8], ['dungeon', 167, 1.4, 4.8]]; },
       mine: (b) => { big('dungeon', 286, 0, -0.6, 0.75, 0, 0, 'sepia(0.4) brightness(0.9)', 2.8); return [['cave', 148, 4.6, -1.8], ['cave', 130, -4.4, 1.2], ['cave', 131, 3.8, 3.2], ['cave', 151, -3.6, -2.8], ['grassland', 100, -4.6, 3.6]]; },
       lab: (b) => { big('ruins', 380, 0, 0.4, 1.0, 0, 0, '', 0); return [['ruins', 243, 0.0, -3.0], ['ruins', 223, -3.6, -1.6], ['ruins', 231, 3.6, -1.6], ['ruins', 152, -3.8, 2.8], ['ruins', 223, 3.8, 2.8], ['ruins', 241, 0.0, 4.2], ['dungeon', 167, -1.8, 4.0], ['dungeon', 167, 1.8, 4.0]]; },
-      workshop: (b) => { big('props', 3, 0, -0.6, 0.95, 0, 0, 'brightness(0.82) saturate(0.85)', 3.6); return [['grassland', 76, 4.6, 2.2], ['grassland', 103, -4.2, 2.8], ['grassland', 100, 2.2, 3.8], ['grassland', 101, -1.8, 4.0]]; },
+      workshop: (b) => { big('props', 3, 0, -0.9, 1.4, 0, 0, 'brightness(0.82) saturate(0.85)', 3.6); return [['grassland', 76, 4.6, 2.2], ['grassland', 103, -4.2, 2.8], ['grassland', 100, 2.2, 3.8], ['grassland', 101, -1.8, 4.0]]; },
       // 파견소 = 천막 야영 (단계마다 천막이 늘어난다) + 횃불
-      guild: (b) => { big('props', 7, -0.6, -0.6, 1, 0, 0, 'brightness(0.82) saturate(0.85)', 3.6); if (b.lv >= 3) tent('B', 3.4, -2.6, 0.8, 'brightness(0.85)'); return [['dungeon', 167, 4.2, 3.4], ['dungeon', 167, -4.2, 3.4], ['grassland', 96, 0.4, 4.0], ['grassland', 98, -3.0, 4.2]]; },
-      house: (b) => { big('props', 1, b.lv >= 3 ? -1.8 : 0, -0.6, 0.95, 0, 0, 'brightness(0.82) saturate(0.85)', 3.4); if (b.lv >= 3) big('props', 9, 3.4, -3.4, 1, 0, 0, 'brightness(0.82) saturate(0.85)', 2.2); return [['grassland', 98, 4.4, 2.8], ['grassland', 122, -4.4, 2.8], ['grassland', 121, -3.4, 3.8]]; },
+      guild: (b) => { big('props', 7, -0.8, -0.9, 1.4, 0, 0, 'brightness(0.82) saturate(0.85)', 3.6); if (b.lv >= 3) tent('B', 3.4, -2.6, 0.8, 'brightness(0.85)'); return [['dungeon', 167, 4.2, 3.4], ['dungeon', 167, -4.2, 3.4], ['grassland', 96, 0.4, 4.0], ['grassland', 98, -3.0, 4.2]]; },
+      house: (b) => { big('props', 1, b.lv >= 3 ? -2.4 : 0, -0.9, 1.35, 0, 0, 'brightness(0.82) saturate(0.85)', 3.4); if (b.lv >= 3) big('props', 9, 4.6, -4.4, 1.35, 0, 0, 'brightness(0.82) saturate(0.85)', 2.2); return [['grassland', 98, 4.4, 2.8], ['grassland', 122, -4.4, 2.8], ['grassland', 121, -3.4, 3.8]]; },
     };
     // 공용 창고 상자
     tile('grassland', 76, VAULT_SPOT.x, VAULT_SPOT.z); col(VAULT_SPOT.x, VAULT_SPOT.z, 0.7);
@@ -198,9 +199,10 @@ export class World {
       if (b.type === 'herb') { // 밭: 작물 7 × 4 줄 (울타리 없음)
         for (let u = -3; u <= 3; u++) for (let v = -1.5; v <= 1.5; v++) tile('grassland', 120 + ((u + Math.round(v + 1.5) + 4) % 4), pl.x + u * 1.5, pl.z + v * 1.7);
       } else {
-        for (const [set, id, dx, dz] of (LOOK[b.type] || LOOK.smithy)(b)) { tile(set, id, pl.x + dx, pl.z + dz); col(pl.x + dx, pl.z + dz, 0.7); }
+        const K = ['inn', 'workshop', 'guild', 'house', 'smithy'].includes(b.type) ? 1.35 : 1; // v0.41.3 건물을 키워서 둘레 소품도 밖으로
+        for (const [set, id, dx, dz] of (LOOK[b.type] || LOOK.smithy)(b)) { tile(set, id, pl.x + dx * K, pl.z + dz * K); col(pl.x + dx * K, pl.z + dz * K, 0.7); }
       }
-      for (let lv = 2; lv <= b.lv; lv++) for (const [set, id, dx, dz] of LEVEL_DECOR[lv] || []) tile(set, id, pl.x + dx * 2.0, pl.z + dz + 4.8);
+      for (let lv = 2; lv <= b.lv; lv++) for (const [set, id, dx, dz] of LEVEL_DECOR[lv] || []) tile(set, id, pl.x + dx * 2.6, pl.z + dz + 6.4); // 단계 꾸밈: 건물 앞 양옆 (건물을 가리지 않게)
     }
   }
 

@@ -69,3 +69,9 @@
 - 효과 `inferno_aura` — "Fire Aura (Compatible with FLARE)", astiar_rpg (OpenGameArt), CC-BY 4.0
 - 소품 (props 20~25 · 30~35) — "Isometric Tileset: Gothic Archways" · "Dark Fantasy Isometric Tiles", Of Far Different Nature (OpenGameArt), CC-BY 4.0
 - 스킬 아이콘: 검 · 활 · 버프 스킬까지 모두 "Painterly Spell Icons" (J. W. Bjerk, CC-BY 3.0)
+
+## v0.41.3 더한 몬스터 (OpenGameArt, Flare 형식 옛 격자 128×128 — 동작 칸은 눈으로 보고 적음)
+- `x_goblin_charger` · `x_goblin_shaman` · `x_goblin_spearman` — "FLARE Mod - Goblin Charger / Shaman / Spearman", Short-Ribs, CC-BY 3.0
+- `x_slime` — "Slime Flare sprite sheets", CC-BY-SA 3.0 / CC-BY 3.0
+- `x_golem` — "Golem" (OpenGameArt), CC-BY 3.0
+- `x_zombie` — "Zombie Sprites" (OpenGameArt), CC-BY 3.0

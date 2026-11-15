@@ -40,7 +40,7 @@ import { HERBS, HERB_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
 import { buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
 import { RESEARCH_MAX, SHELTER } from '../data/buildings.js';
 import { herbIcon, homeIcon } from './icons.js';
-import { vault, vaultSize, vaultPut, vaultTake, vaultAdd } from '../game/vault.js';
+import { vault, vaultSize, vaultPut, vaultTake, vaultAdd, vaultSave } from '../game/vault.js';
 import { GAME_VERSION, PATCH_NOTES } from '../data/patchnotes.js';
 import { KEY_ACTIONS, keyMap, keyName } from '../data/keys.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
@@ -86,6 +86,9 @@ const cellTag = (it) => (it?.shard ? `<span class="ctag">${affixText(it.shard).r
 const NPC_ONLY = ['shop', 'town', 'vault', 'gems'];
 const TAB_ORDER = ['gems', 'map', 'inv', 'vault', 'skills', 'char', 'quest', 'dex', 'town', 'shop', 'guide', 'news', 'menu'];
 const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '');
+// 장비 찾기 (v0.41.3): 'e:부위' 착용 · 'b:uid' 가방 · 'v:uid' 창고 — 대장간 · 보석상은 세 곳 모두에서 고른다
+const gearAt = (st, key) => { const [k, v] = String(key || '').split(':'); return k === 'e' ? st.equip[v] : k === 'v' ? vault().items.find((x) => x.uid === Number(v)) : st.inv.find((x) => x.uid === Number(v)); };
+const gearList = (st, ok) => [...SLOTS.filter((sl) => st.equip[sl] && ok(st.equip[sl])).map((sl) => ['e:' + sl, st.equip[sl], '착용']), ...st.inv.filter((x) => BASES[x.base]?.slot && ok(x)).map((x) => ['b:' + x.uid, x, '가방']), ...vault().items.filter((x) => x && BASES[x.base]?.slot && ok(x)).map((x) => ['v:' + x.uid, x, '창고'])];
 const ico = (it) => `<img src="${itemIcon(it)}" alt="" draggable="false" />`;
 const sicon = (id) => `<div class="sicon" style="background:radial-gradient(circle at 35% 30%, ${SKILLS[id].color}, #17111f 90%)"><img src="${skillIcon(id)}" alt="" /></div>`;
 
@@ -262,7 +265,7 @@ export class Windows {
     h += COL + `<h3 style="margin-top:8px">용병 <small>${P.ids.length} / ${partyMax(st)} · 체력 ${staNeed}</small></h3>`;
     h += t.mercs.filter((m) => !m.job && !m.work).map((m) => { const on = P.ids.includes(m.id), dc = zn ? deathChance(m, zn, P.exp, st, boost) : 0;
       return `<div class="row mrow pick ${on ? 'on' : ''}" data-pm="${m.id}">${this.mercLine(m, 'hunt')}<div class="note" style="min-width:5.5em;color:${dc > 0.15 ? '#ff7060' : ''}">사망 ${Math.round(dc * 100)}%${m.sta < staNeed ? ` · <b style="color:#ff7060">체력 ${Math.floor(m.sta)} / ${staNeed}</b>` : ''}</div></div>`; }).join('') || '<div class="note">쉬는 용병 없음</div>';
-    const goods = st.inv.filter((x) => ['potion', 'elixir'].includes(BASES[x.base]?.type));
+    const goods = [...new Set([...st.inv, ...vault().items].filter((x) => ['potion', 'elixir'].includes(BASES[x?.base]?.type)).map((x) => x.base))].map((base) => ({ base, qty: resCount(st, base) })); // 가방 + 창고
     const tot = pack.reduce((a, p) => a + p.qty, 0);
     h += COL + `<h3 style="margin-top:8px">챙길 물건 <small>${tot} / ${packMax(st)} · 안전 +${Math.round(boost.safe * 100)}% · 힘 +${Math.round(boost.pow * 100)}%</small></h3>`;
     h += goods.map((x) => `<div class="row"><div class="cell shopIco">${ico(x)}</div><div class="grow">${BASES[x.base].name} <small class="note">${x.qty}</small></div><button class="btn" data-ppack="${x.base}|-1">-</button><b style="min-width:1.6em;text-align:center">${P.pack[x.base] || 0}</b><button class="btn" data-ppack="${x.base}|1">+</button></div>`).join('') || '<div class="note">물약 · 영약 없음</div>';
@@ -275,16 +278,16 @@ export class Windows {
   shardPanel(smith) {
     const st = this.w.st, t = townOf(st);
     let h = `<h3 style="margin-top:8px">제련 <small>잠금 최대 ${lockMax(smith.lv)}개</small></h3>`;
-    const targets = [...SLOTS.filter((sl) => st.equip[sl]?.affixes?.length).map((sl) => ['e:' + sl, st.equip[sl], '착용']), ...st.inv.filter((x) => BASES[x.base]?.slot && x.affixes?.length).map((x) => ['b:' + x.uid, x, '가방'])];
+    const targets = gearList(st, (x) => x.affixes?.length);
     if (!targets.length) return h + '<div class="note">옵션이 있는 장비 없음</div>';
     if (!targets.some((x) => x[0] === this.shardTarget)) { this.shardTarget = null; this.shardLocks = []; }
     h += `<div class="note">1 장비</div><div class="btns" style="flex-wrap:wrap;margin:0 0 6px">${targets.map(([k, it, where]) => `<button class="btn ${k === this.shardTarget ? 'on' : ''}" data-starget="${k}" style="color:${itemColor(it)}">${esc(itemName(it))} <small>${where}</small></button>`).join('')}</div>`;
     if (!this.shardTarget) return h;
     const it = targets.find((x) => x[0] === this.shardTarget)[1];
-    const shards = st.inv.filter((x) => x.shard);
+    const shards = [...st.inv, ...vault().items].filter((x) => x?.shard); // 창고 파편도
     if (!shards.some((x) => x.uid === this.shardSel)) this.shardSel = null;
     h += `<div class="note">2 능력치 파편</div>` + (shards.length ? `<div class="btns" style="flex-wrap:wrap;margin:0 0 6px">${shards.map((x) => { const okk = canApply(it, x.shard, []).ok; return `<button class="btn ${x.uid === this.shardSel ? 'on' : ''}" data-shard="${x.uid}" style="color:#c58cff;${okk ? '' : 'opacity:.45'}">${affixText(x.shard)}</button>`; }).join('')}</div>` : '<div class="note">파편 없음</div>');
-    const sh = st.inv.find((x) => x.uid === this.shardSel)?.shard;
+    const sh = shards.find((x) => x.uid === this.shardSel)?.shard;
     const L = this.shardLocks || [], max = lockMax(smith.lv);
     h += `<div class="note">3 지킬 옵션</div>` + it.affixes.map((a, k) => { const on = L.includes(k); return `<div class="row"><div class="grow aff" style="${on ? 'color:#ffd84a' : ''}">${affixText(a)}</div><button class="btn ${on ? 'on' : ''}" data-slock="${k}" ${!on && L.length >= max ? 'disabled' : ''}>${on ? '잠김' : '잠그기'}</button></div>`; }).join('');
     if (!sh) return h;
@@ -730,13 +733,11 @@ export class Windows {
       if (b.type === 'smithy') {
         const cap = enhanceCap(st);
         right += COL + `<h3>강화</h3><div class="note">강화 상한 +${cap} · 실패해도 단계 유지 · 실패하면 장인의 기운이 쌓이고 100%면 반드시 성공</div>`;
-        for (const slot of SLOTS) {
-          const it = st.equip[slot];
-          if (!it) continue;
+        for (const [key, it, where] of gearList(st, (x) => !x.book && !x.noDrop)) {
           const c = enhanceCost(it, st), max = (it.plus || 0) >= cap, rc = reforgeCost(it);
-          right += `<div class="row"><div class="cell shopIco${rar(it)}">${ico(it)}</div><div class="grow"><b style="color:${itemColor(it)}">${esc(itemName(it))}</b>
+          right += `<div class="row"><div class="cell shopIco${rar(it)}">${ico(it)}</div><div class="grow"><b style="color:${itemColor(it)}">${esc(itemName(it))}</b> <small class="note">${where}</small>
             <div class="note">${max ? '상한' : `+${(it.plus || 0) + 1} · ${c.jang >= 1 ? '<b style="color:#ffd84a">100%</b>' : `${+(c.chance * 100).toFixed(1)}%`} · 장인의 기운 ${+(c.jang * 100).toFixed(1)}% · ${c.gold.toLocaleString()} G · 강화석 ${c.ore}`}</div></div>
-            <button class="btn" data-enh="${slot}" ${max || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>강화</button></div>`;
+            <button class="btn" data-enh="${key}" ${max || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>강화</button></div>`;
         }
         const junk = st.inv.filter((x) => !x.book && BASES[x.base]?.slot && !x.named);
         if (junk.length) right += `<h3 style="margin-top:8px">분해 <button class="btn" data-salvageall="1">일반 · 마법 모두</button></h3>` + junk.map((x) => { const v = salvageValue(x); return `<div class="row"><div class="cell shopIco${rar(x)}">${ico(x)}</div><div class="grow"><b style="color:${itemColor(x)}">${esc(itemName(x))}</b><div class="note">강화석 ${v.ore} · ${MATERIALS[v.mat].name} ${v.matN}</div></div><button class="btn" data-salvage="${x.uid}">분해</button></div>`; }).join('');
@@ -781,7 +782,7 @@ export class Windows {
     // 보석은 가방 + 창고 (v0.40.1)
     const have = [...new Set([...st.inv, ...vault().items].filter((x) => BASES[x.base]?.type === 'gem').map((x) => x.base))].map((base) => ({ base, qty: resCount(st, base) })).sort((a, b) => BASES[a.base].grade - BASES[b.base].grade || a.base.localeCompare(b.base));
     // 구멍 있는 장비: 착용 (e:부위) + 가방 (b:uid)
-    const targets = [...SLOTS.filter((sl) => st.equip[sl]?.sockets).map((sl) => ['e:' + sl, st.equip[sl]]), ...st.inv.filter((x) => x.sockets).map((x) => ['b:' + x.uid, x])];
+    const targets = gearList(st, (x) => x.sockets);
     if (!targets.some((t) => t[0] === this.gemSel)) this.gemSel = targets[0]?.[0];
     const sel = targets.find((t) => t[0] === this.gemSel)?.[1];
     // 왼쪽: 착용 중 · 가방 칸 (구멍 있는 장비만 누를 수 있다)
@@ -789,7 +790,9 @@ export class Windows {
     let bag = '';
     for (let i = 0; i < bagSize(st); i++) { const it = st.inv[i]; if (!it) { bag += '<div class="cell"></div>'; continue; }
       const can = !!it.sockets; bag += `<div class="cell${rar(it)}${this.gemSel === 'b:' + it.uid ? ' sel' : ''}${can ? '' : ' dim'}" ${can ? `data-gsel="b:${it.uid}"` : ''} title="${esc(itemName(it))}">${ico(it)}${it.qty > 1 ? `<span class="q">${it.qty}</span>` : it.sockets ? `<span class="q">${it.gems.length}/${it.sockets}</span>` : ''}</div>`; }
+    const vCells = vault().items.filter((x) => x?.sockets).map((it) => `<div class="cell${rar(it)}${this.gemSel === 'v:' + it.uid ? ' sel' : ''}" data-gsel="v:${it.uid}" title="${esc(itemName(it))}">${ico(it)}<span class="q">${it.gems.length}/${it.sockets}</span></div>`).join('');
     const left = `<h3>착용 장비</h3><div class="grid">${eqCells || '<div class="note">구멍 있는 착용 장비 없음</div>'}</div><h3 style="margin-top:8px">가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span></h3><div class="grid">${bag}</div>`;
+    const leftV = vCells ? `<h3 style="margin-top:8px">창고</h3><div class="grid">${vCells}</div>` : '';
     // 가운데: 고른 장비의 구멍
     let mid = '<div class="note">구멍이 있는 장비를 고르세요</div>';
     if (sel) {
@@ -800,7 +803,7 @@ export class Windows {
     // 오른쪽: 합치기 (높은 등급은 실패할 수 있다)
     const merge = have.map((x) => { const b = BASES[x.base], up = b.grade + 1 < GEM_GRADES.length, cost = mergeCost(b.grade), ch = mergeChance(b.grade);
       return row(`${ico(x)}<span class="q">${x.qty}</span>`, b.name, `${STAT_NAMES[GEMS[b.gem].stat]} +${GEM_GRADES[b.grade].v}`, up ? `<button class="btn" data-gmerge="${x.base}" ${x.qty < 3 || st.gold < cost ? 'disabled' : ''}>3개 합치기 · ${cost.toLocaleString()}G · ${Math.round(ch * 100)}%</button>` : ''); }).join('') || '<div class="note">가진 보석이 없습니다</div>';
-    return `<div class="cols gemsWin"><div class="frame" style="flex:1.1;overflow:auto">${left}</div><div class="frame" style="flex:1;overflow:auto">${mid}</div><div class="frame" style="flex:1;overflow:auto"><h3>보석 합치기</h3>${merge}</div></div>`;
+    return `<div class="cols gemsWin"><div class="frame" style="flex:1.1;overflow:auto">${left}${leftV}</div><div class="frame" style="flex:1;overflow:auto">${mid}</div><div class="frame" style="flex:1;overflow:auto"><h3>보석 합치기</h3>${merge}</div></div>`;
   }
 
   shop() {
@@ -968,7 +971,7 @@ export class Windows {
     on('[data-upgrade]', () => { const r = upgrade(st, this.townSel); if (r.ok) audio.play('rankup'); townDone(r, '단계를 올렸습니다'); });
     on('[data-collect]', () => { const r = collect(st, this.townSel); if (r?.n) { audio.play('coin'); w.ui.toast(r.got ? `약초: ${Object.entries(r.got).map(([h, q]) => `${HERBS[h].name} ${q}`).join(' · ')}` : `${r.what} ${r.n}개를 거뒀습니다`, '#7fe07a'); } w.ui.dirty(); this.render(); });
     on('[data-enh]', (el) => {
-      const it = st.equip[el.dataset.enh], r = enhance(st, it);
+      const it = gearAt(st, el.dataset.enh), r = enhance(st, it); if (el.dataset.enh.startsWith('v:')) vaultSave();
       if (!r.ok) { w.ui.toast(r.why); audio.play('error'); }
       else if (r.success) { audio.play('awaken'); w.fx.pillar(w.player.pos.x, w.player.pos.z, 0xffd060, 0.8); w.ui.toast(`강화 성공! +${r.plus}`, '#ffd84a'); w.refreshGear(); }
       else { audio.play('error'); w.ui.toast(`강화 실패 · 장인의 기운 ${+((r.jang || 0) * 100).toFixed(1)}%`); }
@@ -988,9 +991,9 @@ export class Windows {
     on('[data-starget]', (el) => { this.shardTarget = el.dataset.starget; this.shardLocks = []; audio.play('click'); this.render(); });
     on('[data-slock]', (el) => { const k = Number(el.dataset.slock), L = this.shardLocks ||= []; const i = L.indexOf(k); if (i >= 0) L.splice(i, 1); else L.push(k); audio.play('click'); this.render(); });
     on('[data-sapply]', () => {
-      const [kind, key] = String(this.shardTarget || '').split(':'), it = kind === 'e' ? st.equip[key] : st.inv.find((x) => x.uid === Number(key));
+      const it = gearAt(st, this.shardTarget);
       const sm = Object.values(townOf(st).plots).find((q) => q.type === 'smithy');
-      const r = applyShard(st, it, this.shardSel, this.shardLocks || [], sm?.lv || 0);
+      const r = applyShard(st, it, this.shardSel, this.shardLocks || [], sm?.lv || 0); if (r.ok && String(this.shardTarget).startsWith('v:')) vaultSave();
       if (r.ok) {
         audio.play('rankup'); this.shardSel = null; w.refreshGear();
         const list = it.affixes.map((a) => `<div class="aff" style="${a === r.now ? 'color:#c58cff;font-weight:700' : ''}">${a === r.now ? `<s style="opacity:.6">${affixText(r.old)}</s> → ` : ''}${affixText(a)}</div>`).join('');
@@ -1024,7 +1027,7 @@ export class Windows {
     on('[data-mgear]', (el) => this.mercGearPick(el.dataset.mgear));
     on('[data-school]', (el) => { this.skillSchool = el.dataset.school; this.skillSel = null; audio.play('click'); this.render(); });
     on('[data-gsel]', (el) => { this.gemSel = el.dataset.gsel; audio.play('click'); this.render(); });
-    const gemItem = (key) => { const [k, v] = key.split(':'); return k === 'e' ? st.equip[v] : st.inv.find((x) => x.uid === Number(v)); };
+    const gemItem = (key) => gearAt(st, key);
     on('[data-gmerge]', (el) => {
       const id = el.dataset.gmerge, b = BASES[id], cost = mergeCost(b.grade); if (resCount(st, id) < 3 || st.gold < cost) return;
       st.gold -= cost;
@@ -1032,8 +1035,8 @@ export class Windows {
       else { const lost = Math.floor(Math.random() * 3); resTake(st, id, lost); audio.play('error'); this.popup('합치기 실패', `<div class="aff">${b.name} ${lost}개를 잃었습니다</div>`); } // 실패: 0~2개가 사라진다
       w.ui.dirty(); this.render();
     });
-    on('[data-gput]', (el) => { const i = el.dataset.gput.lastIndexOf('|'), key = el.dataset.gput.slice(0, i), id = el.dataset.gput.slice(i + 1), it = gemItem(key); if (!it || it.gems.length >= it.sockets || resCount(st, id) < 1) return; resTake(st, id, 1); it.gems.push(id); audio.play('rankup'); w.refreshGear(); w.ui.dirty(); this.render(); });
-    on('[data-gpull]', (el) => { const i = el.dataset.gpull.lastIndexOf('|'), key = el.dataset.gpull.slice(0, i), k = Number(el.dataset.gpull.slice(i + 1)), it = gemItem(key), g = it?.gems[k]; if (!g) return; const c = pullCost(g); if (st.gold < c) { w.ui.toast('금화가 모자랍니다'); return; } st.gold -= c; it.gems.splice(k, 1); addItem(st, makeItem(g, { qty: 1 }, st)); audio.play('click'); w.refreshGear(); w.ui.dirty(); this.render(); });
+    on('[data-gput]', (el) => { const i = el.dataset.gput.lastIndexOf('|'), key = el.dataset.gput.slice(0, i), id = el.dataset.gput.slice(i + 1), it = gemItem(key); if (!it || it.gems.length >= it.sockets || resCount(st, id) < 1) return; resTake(st, id, 1); it.gems.push(id); if (key.startsWith('v:')) vaultSave(); audio.play('rankup'); w.refreshGear(); w.ui.dirty(); this.render(); });
+    on('[data-gpull]', (el) => { const i = el.dataset.gpull.lastIndexOf('|'), key = el.dataset.gpull.slice(0, i), k = Number(el.dataset.gpull.slice(i + 1)), it = gemItem(key), g = it?.gems[k]; if (!g) return; const c = pullCost(g); if (st.gold < c) { w.ui.toast('금화가 모자랍니다'); return; } st.gold -= c; it.gems.splice(k, 1); if (key.startsWith('v:')) vaultSave(); addItem(st, makeItem(g, { qty: 1 }, st)); audio.play('click'); w.refreshGear(); w.ui.dirty(); this.render(); });
     on('[data-var]', (el) => { const s = st.skills[this.skillSel]; if (!s) return; const [r, k] = el.dataset.var.split('|'); if (s.rank < +r || s.mod?.[r]) return; (s.mod ||= {})[r] = k; audio.play('rankup'); w.ui.dirty(); this.render(); });
     on('[data-repick]', (el) => {
       const t = st.titles[Number(el.dataset.repick)], cost = repickCost(t);
@@ -1075,7 +1078,7 @@ export class Windows {
     on('[data-pm]', (el) => { const id = el.dataset.pm, P = (this.party ||= { ids: [], pack: {} }); const i = P.ids.indexOf(id); if (i >= 0) P.ids.splice(i, 1); else if (P.ids.length < partyMax(st)) P.ids.push(id); audio.play('click'); this.render(); });
     on('[data-pzone]', (el) => { (this.party ||= { ids: [], pack: {} }).zone = el.dataset.pzone; audio.play('click'); this.render(); });
     on('[data-pexp]', (el) => { (this.party ||= { ids: [], pack: {} }).exp = el.dataset.pexp; audio.play('click'); this.render(); });
-    on('[data-ppack]', (el) => { const [base, d] = el.dataset.ppack.split('|'), P = (this.party ||= { ids: [], pack: {} }); const tot = Object.values(P.pack).reduce((a, v) => a + v, 0); const n = (P.pack[base] || 0) + Number(d); if (n < 0 || (Number(d) > 0 && (tot >= packMax(st) || n > countOf(st, base)))) return; P.pack[base] = n; audio.play('click'); this.render(); });
+    on('[data-ppack]', (el) => { const [base, d] = el.dataset.ppack.split('|'), P = (this.party ||= { ids: [], pack: {} }); const tot = Object.values(P.pack).reduce((a, v) => a + v, 0); const n = (P.pack[base] || 0) + Number(d); if (n < 0 || (Number(d) > 0 && (tot >= packMax(st) || n > resCount(st, base)))) return; P.pack[base] = n; audio.play('click'); this.render(); });
     on('[data-psend]', () => { const P = this.party; const r = dispatchParty(st, P.ids, P.zone, P.exp, Object.entries(P.pack).filter(([, q]) => q > 0).map(([base, qty]) => ({ base, qty }))); if (r.ok) { this.party = { ids: [], pack: {}, zone: P.zone, exp: P.exp }; audio.play('rankup'); } townDone(r, `용병 ${r.n}명이 파견을 떠났습니다`); });
     on('[data-claimall]', () => { let g = 0, dead = []; for (const m of [...townOf(st).mercs]) if (m.job && Date.now() >= m.job.until) { const r = claim(st, m.id); if (r?.dead) dead.push(r.name); else if (r) g += r.gold; } if (dead.length) { audio.play('error'); w.ui.toast(`${dead.join(' · ')}이(가) 돌아오지 못했습니다…`, '#ff7060'); } else audio.play('coin'); w.ui.toast(`전리품 ${g.toLocaleString()} G 외`, '#ffd84a'); w.ui.dirty(); this.render(); });
     on('[data-shelter]', (el) => { const r = shelterUp(st, el.dataset.shelter); if (r.ok) { audio.play('rankup'); w.refreshCamps(); } townDone(r, `쉼터 ${r.lv}단계`); });

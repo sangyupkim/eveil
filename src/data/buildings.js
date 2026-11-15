@@ -112,7 +112,7 @@ export const RESEARCH = {
 // 비싼 연구(늦게 열리는 것)일수록 금화 · 시간이 더 든다
 export const researchCost = (lv, id) => { const k = 1 + ((RESEARCH[id]?.lab || 1) - 1) * 0.6; return { gold: Math.round(500 * (lv + 1) ** 2 * k), min: Math.round(20 * (lv + 1) ** 2 * k) }; };
 // 건물 단계마다 늘어나는 꾸밈 (상자 · 통 · 횃불 · 석상)
-export const LEVEL_DECOR = [[], [], [['grassland', 96, 1.8, -1.2], ['ruins', 287, -1.8, -1.0]], [['dungeon', 167, 2.2, 1.6], ['dungeon', 167, -2.2, 1.6]], [['ruins', 241, 0, -2.2]], [['grassland', 98, 2.4, -0.4], ['ruins', 289, -2.6, -0.2]]];
+export const LEVEL_DECOR = [[], [], [['grassland', 96, 1.8, -1.2], ['ruins', 287, -1.8, -1.0]], [['dungeon', 167, 2.2, 1.6], ['dungeon', 167, -2.2, 1.6]], [['ruins', 241, -2.4, 0.4]], [['grassland', 98, 2.4, -0.4], ['ruins', 289, -2.6, -0.2]]];
 // 일꾼: 광산 · 약초밭은 일꾼이 있어야 생산 (단계만큼 자리, 자리를 다 채우면 온전히)
 export const workerCost = (n) => Math.round(300 * Math.pow(n + 1, 1.5));
 export const WORKER_MAX = 12;

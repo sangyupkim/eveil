@@ -65,15 +65,15 @@ export const MONSTER_LOOK = {
   hell_hound: { sprite: 'x_werewolf', tint: 0xff9070, size: 3.3 }, dread_bear: { sprite: 'x_werebear', tint: 0xc08080, size: 2.8 }, void_shade: { sprite: 'x_shadow', tint: 0xd090ff, size: 2.0 }, gargoyle: { sprite: 'x_demon_statue', size: 1.5 },
   pit_lord: { sprite: 'x_demon', size: 1.9 }, arch_demon: { sprite: 'x_demon', tint: 0xff8060, size: 2.5 },
   slime: { sprite: 'antlion_small', size: 0.9 },
-  rat: { sprite: 'goblin', size: 0.9 },
+  rat: { sprite: 'x_goblin_charger', size: 2.5 }, // v0.41.3 Short-Ribs 고블린 (CC-BY)
   mushnub: { sprite: 'skeleton_weak' },
   slime_spiky: { sprite: 'antlion' },
-  mushking: { sprite: 'goblin_elite', size: 1.3 },
-  wolf: { sprite: 'x_goblin_spearman_elite', size: 1.9 }, // v0.41 고블린 창병 정예 (Short-Ribs, CC-BY 3.0)
+  mushking: { sprite: 'x_goblin_spearman_elite', size: 3.3 },
+  wolf: { sprite: 'x_goblin_spearman', size: 2.5 }, // v0.41 고블린 창병 정예 (Short-Ribs, CC-BY 3.0)
   spider: { sprite: 'antlion', tint: 0x90b070 },
   wasp: { sprite: 'hobgoblin_archer' },
   orc_grunt: { sprite: 'hobgoblin' },
-  tribal: { sprite: 'x_cloth_mage', size: 2.8 },
+  tribal: { sprite: 'x_goblin_shaman', size: 2.5 },
   orc: { sprite: 'minotaur', size: 0.95 },
   skel_minion: { sprite: 'skeleton_weak' },
   skel_rogue: { sprite: 'skeleton' },
@@ -89,10 +89,10 @@ export const MONSTER_LOOK = {
   goleling: { sprite: 'cursed_grave', size: 0.9 },
   dragon: { sprite: 'x_wyvern_adult', size: 2.7 },
   frog: { sprite: 'antlion', tint: 0x80c070 },
-  bog_slime: { sprite: 'antlion_small', tint: 0xa0d070 },
+  bog_slime: { sprite: 'x_slime', size: 1.6 }, // Slime Flare sprite sheets (CC-BY-SA)
   snake: { sprite: 'x_spider_large', tint: 0x90b070, size: 2.5 },
   squidle: { sprite: 'skeleton_mage', tint: 0x80d0a0 },
-  mushnub_evo: { sprite: 'zombie', tint: 0x90c080 },
+  mushnub_evo: { sprite: 'x_zombie', tint: 0xa0c090, size: 2.6 }, // Zombie Sprites (CC-BY)
   bog_witch: { sprite: 'x_scathelocke', size: 3.9 },
   bog_king: { sprite: 'wyvern_water', size: 1.1 },
   yeti: { sprite: 'x_werebear', tint: 0xd8e8ff, size: 2.7 },
@@ -111,7 +111,7 @@ export const MONSTER_LOOK = {
   trex: { sprite: 'minotaur', tint: 0xff9a60, size: 1.4 },
   flame_imp: { sprite: 'fire_ant' },
   fiend: { sprite: 'x_demon', size: 1.5 },
-  magma_golem: { sprite: 'x_demon_statue', tint: 0xff9a60, size: 1.35 },
+  magma_golem: { sprite: 'x_golem', tint: 0xff9a60, size: 2.8 }, // Golem (CC-BY)
   ember_skull: { sprite: 'skeleton', tint: 0xff9a60 },
   drake: { sprite: 'wyvern_fire' },
   flame_lord: { sprite: 'x_vesuvvio', size: 4.6 },
@@ -227,7 +227,7 @@ Object.assign(ZONE_PROPS, { ashland: ZONE_PROPS.valley, crypt: [...ZONE_PROPS.fr
 for (const [id, base, , tint] of _VAR) if (MONSTER_LOOK[base]) MONSTER_LOOK[id] = { ...MONSTER_LOOK[base], tint, size: (MONSTER_LOOK[base].size || 1) * (id === 'doom_king' ? 1.25 : 1) };
 // v0.40 새 그림 (skeleton_quest 사람 적 · Flare 원본 고유 적, CC-BY-SA): 변종 일부는 바탕과 다른 몸
 const VAR_SPRITE = { crypt_mage: ['x_chainmail_mage', 2.9], temple_priest: ['x_plate_mage', 2.9], blood_witch: ['x_leather_mage', 2.9], storm_wraith: ['x_shadow_wyvern', 3.0],
-  crystal_bat: ['x_shadow_wyvern', 3.0], storm_brute: ['x_chainmail_brute', 3.0], ash_shade: ['x_thug_slinger', 2.9], temple_lord: ['x_grisbon', 4.4], doom_knight: ['x_plate_brute', 3.1],
+  crystal_bat: ['x_shadow_wyvern', 3.0], crystal_golem: ['x_golem', 3.0], storm_brute: ['x_chainmail_brute', 3.0], ash_shade: ['x_thug_slinger', 2.9], temple_lord: ['x_grisbon', 4.4], doom_knight: ['x_plate_brute', 3.1],
   crypt_ghoul: ['x_cloth_brute', 2.9], blood_snake: ['x_leather_archer', 2.9], temple_shade: ['x_plate_archer', 2.9], abyss_eye: ['x_chainmail_archer', 2.9], doom_shade: ['x_cloth_archer', 2.9] };
 for (const [id, [sprite, size]] of Object.entries(VAR_SPRITE)) if (MONSTER_LOOK[id]) MONSTER_LOOK[id] = { ...MONSTER_LOOK[id], sprite, size };
 

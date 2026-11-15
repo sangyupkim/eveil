@@ -361,7 +361,7 @@ export function dispatchParty(st, ids, zoneId, expId, pack = [], now = Date.now(
   if (ids.length > partyMax(st)) return { ok: false, why: `한 번에 ${partyMax(st)}명까지` };
   const total = pack.reduce((a, p) => a + p.qty, 0);
   if (total > packMax(st)) return { ok: false, why: `물건은 ${packMax(st)}개까지` };
-  for (const p of pack) if (!BASES[p.base] || !['potion', 'elixir'].includes(BASES[p.base].type) || countOf(st, p.base) < p.qty) return { ok: false, why: '챙길 물건이 모자랍니다' };
+  for (const p of pack) if (!BASES[p.base] || !['potion', 'elixir'].includes(BASES[p.base].type) || resCount(st, p.base) < p.qty) return { ok: false, why: '챙길 물건이 모자랍니다' };
   const ms = ids.map((id) => mercById(st, id));
   const staNeed = Math.round(EXP_STA[expId] * (1 - SHELTER.sta * shelterLv(st, zoneId)));
   for (const m of ms) {
@@ -369,7 +369,7 @@ export function dispatchParty(st, ids, zoneId, expId, pack = [], now = Date.now(
     if (m.work) return { ok: false, why: `${m.name}은(는) 건물에서 일하는 중입니다` };
     if (m.sta < staNeed) return { ok: false, why: `${m.name}의 체력이 모자랍니다` };
   }
-  for (const p of pack) for (let i = 0; i < p.qty; i++) takeOneItem(st, p.base);
+  for (const p of pack) resTake(st, p.base, p.qty); // 가방 · 창고 (v0.41.3)
   const boost = packBoost(pack), share = { safe: boost.safe, pow: boost.pow }; // 함께 간 모두가 나눠 쓴다
   const party = `pt${now.toString(36)}`;
   const until = now + ex.min * 60000 * (1 - researchK(st, 'merc')) * (1 - bonusOf(st, 'guild'));

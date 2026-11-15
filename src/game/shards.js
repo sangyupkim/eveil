@@ -3,6 +3,7 @@
 // 대장간 단계가 오르면 옵션을 최대 3개까지 잠가 바뀌지 않게 할 수 있다.
 import { AFFIXES, BASES, RARITY } from '../data/items.js';
 import { R, pick } from './rng.js';
+import { vault, vaultSave } from './vault.js';
 
 export const SHARD = {
   swapChance: 0.1,    // 장비를 갈아 끼울 때 빠진 장비에서 파편이 나올 확률
@@ -44,8 +45,10 @@ export function canApply(it, sh, locks = []) {
 
 // 파편 쓰기: 잠그지 않은 옵션 하나를 무작위로 파편 옵션과 바꾼다 (같은 옵션이 있으면 그것을 바꾼다)
 export function applyShard(st, it, shardUid, locks = [], smithLv = 0, rng = R) {
-  const i = st.inv.findIndex((x) => x.uid === shardUid);
-  const sh = st.inv[i]?.shard;
+  // 가방 · 창고 어디의 파편이든 (v0.41.3)
+  const V = vault().items, inInv = st.inv.some((x) => x.uid === shardUid), list = inInv ? st.inv : V;
+  const i = list.findIndex((x) => x?.uid === shardUid);
+  const sh = list[i]?.shard;
   if (!sh) return { ok: false, why: '파편이 없습니다' };
   if (locks.length > lockMax(smithLv)) return { ok: false, why: '대장간 단계를 올려야 더 잠글 수 있습니다' };
   const c = canApply(it, sh, locks);
@@ -58,6 +61,6 @@ export function applyShard(st, it, shardUid, locks = [], smithLv = 0, rng = R) {
   const k = c.same >= 0 ? c.same : pick(free, rng);
   const old = it.affixes[k];
   it.affixes[k] = { id: sh.id, v: sh.v };
-  st.inv.splice(i, 1);
+  list.splice(i, 1); if (!inInv) vaultSave();
   return { ok: true, old, now: it.affixes[k] };
 }
