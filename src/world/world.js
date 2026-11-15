@@ -173,19 +173,20 @@ export class World {
       for (let u = -1.8; u <= 1.8; u += 0.9) for (let v = -1; v <= 1; v += 0.9) col(x0 + 0.75 * k + u * k, z0 + v * k, 0.6);
     };
     // 건물 설계: 그림 · 바닥 크기(가로 반 w, 세로 반 h)는 그림 크기에서 잰 값. 소품은 바닥 밖 앞쪽에
-    //  대장간 = 그을린 돌오두막(가로 7.6) + 화로 · 모루    여관 = 큰 돌오두막(가로 8.6) + 통 · 상자 · 횃불
+    //  v0.41: 대장간 · 여관 · 제작소 · 숙소 · 파견소는 Bleed's Game Art 등 중세 건물 그림 (tiles.props)
+//  대장간 = 그을린 돌오두막(가로 7.6) + 화로 · 모루    여관 = 큰 돌오두막(가로 8.6) + 통 · 상자 · 횃불
     //  광산 = 땅속 갱도 계단(가로 9) + 바위 · 종유석      연구소 = 마법진(가로 6) + 돌기둥 넷 · 석상
     //  제작소 = 창문 통나무집(가로 7.4) + 통나무 · 모루     숙소 = 문 통나무집, 3단계부터 한 채 더
     //  약초밭 = 작물 7 × 4 줄
     const LOOK = {
-      smithy: (b) => { big('grassland', 296, 0, 0, 0.55, -7.3, 2.2, 'brightness(0.78) sepia(0.35) saturate(1.2)', 3.6); return [['dungeon', 167, 3.6, 3.4], ['grassland', 103, -3.4, 3.6], ['dungeon', 167, -1.2, 4.4], ['grassland', 100, 4.4, 1.0]]; },
-      inn: (b) => { big('grassland', 296, 0, 0, 0.62, -7.3, 2.2, 'saturate(1.35) hue-rotate(-12deg) brightness(1.08)', 4.2); return [['grassland', 98, 4.2, 3.6], ['grassland', 96, -4.2, 3.4], ['dungeon', 167, -1.4, 4.8], ['dungeon', 167, 1.4, 4.8]]; },
+      smithy: (b) => { big('props', 5, 0, -0.4, 0.95, 0, 0, 'brightness(0.78) sepia(0.2)', 3.6); return [['dungeon', 167, 3.6, 3.4], ['grassland', 103, -3.4, 3.6], ['dungeon', 167, -1.2, 4.4], ['grassland', 100, 4.4, 1.0]]; },
+      inn: (b) => { big('props', 4, 0, -0.4, 1, 0, 0, 'brightness(0.82) saturate(0.85)', 4.2); return [['grassland', 98, 4.2, 3.6], ['grassland', 96, -4.2, 3.4], ['dungeon', 167, -1.4, 4.8], ['dungeon', 167, 1.4, 4.8]]; },
       mine: (b) => { big('dungeon', 286, 0, -0.6, 0.75, 0, 0, 'sepia(0.4) brightness(0.9)', 2.8); return [['cave', 148, 4.6, -1.8], ['cave', 130, -4.4, 1.2], ['cave', 131, 3.8, 3.2], ['cave', 151, -3.6, -2.8], ['grassland', 100, -4.6, 3.6]]; },
       lab: (b) => { big('ruins', 380, 0, 0.4, 1.0, 0, 0, '', 0); return [['ruins', 243, 0.0, -3.0], ['ruins', 223, -3.6, -1.6], ['ruins', 231, 3.6, -1.6], ['ruins', 152, -3.8, 2.8], ['ruins', 223, 3.8, 2.8], ['ruins', 241, 0.0, 4.2], ['dungeon', 167, -1.8, 4.0], ['dungeon', 167, 1.8, 4.0]]; },
-      workshop: (b) => { cabin('A', 0, -0.6, 'brightness(0.86) sepia(0.2)'); return [['grassland', 76, 4.6, 2.2], ['grassland', 103, -4.2, 2.8], ['grassland', 100, 2.2, 3.8], ['grassland', 101, -1.8, 4.0]]; },
+      workshop: (b) => { big('props', 3, 0, -0.6, 0.95, 0, 0, 'brightness(0.82) saturate(0.85)', 3.6); return [['grassland', 76, 4.6, 2.2], ['grassland', 103, -4.2, 2.8], ['grassland', 100, 2.2, 3.8], ['grassland', 101, -1.8, 4.0]]; },
       // 파견소 = 천막 야영 (단계마다 천막이 늘어난다) + 횃불
-      guild: (b) => { tent('A', -2.0, -0.8, 0.95, 'brightness(0.92) sepia(0.15)'); tent('B', 2.6, 0.4, 0.85, 'saturate(1.2) hue-rotate(-10deg)'); if (b.lv >= 3) tent('A', 0.2, -3.4, 0.8, 'brightness(0.85)'); return [['dungeon', 167, 4.2, 3.4], ['dungeon', 167, -4.2, 3.4], ['grassland', 96, 0.4, 4.0], ['grassland', 98, -3.0, 4.2]]; },
-      house: (b) => { cabin('B', b.lv >= 3 ? -2.2 : 0, -0.6, 'saturate(1.15) brightness(1.08)'); if (b.lv >= 3) cabin('A', 3.4, -3.6, 'saturate(1.1) brightness(1.04)'); return [['grassland', 98, 4.4, 2.8], ['grassland', 122, -4.4, 2.8], ['grassland', 121, -3.4, 3.8]]; },
+      guild: (b) => { big('props', 7, -0.6, -0.6, 1, 0, 0, 'brightness(0.82) saturate(0.85)', 3.6); if (b.lv >= 3) tent('B', 3.4, -2.6, 0.8, 'brightness(0.85)'); return [['dungeon', 167, 4.2, 3.4], ['dungeon', 167, -4.2, 3.4], ['grassland', 96, 0.4, 4.0], ['grassland', 98, -3.0, 4.2]]; },
+      house: (b) => { big('props', 1, b.lv >= 3 ? -1.8 : 0, -0.6, 0.95, 0, 0, 'brightness(0.82) saturate(0.85)', 3.4); if (b.lv >= 3) big('props', 9, 3.4, -3.4, 1, 0, 0, 'brightness(0.82) saturate(0.85)', 2.2); return [['grassland', 98, 4.4, 2.8], ['grassland', 122, -4.4, 2.8], ['grassland', 121, -3.4, 3.8]]; },
     };
     // 공용 창고 상자
     tile('grassland', 76, VAULT_SPOT.x, VAULT_SPOT.z); col(VAULT_SPOT.x, VAULT_SPOT.z, 0.7);

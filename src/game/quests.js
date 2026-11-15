@@ -46,13 +46,15 @@ export function rewardItems(st, q) {
   if (r.gear) {
     const [slot, rarity, ilvl] = r.gear;
     // v0.40.2: 지금 능력치로 낄 수 있는 것 중 고른다 — 요구 능력치를 채우고, 내 가장 높은 능력치를 요구하는 것(내 빌드)을 먼저, 그다음 높은 레벨
-    const S = totalStats(st), top = Object.keys(S).filter((k) => ['str', 'dex', 'int', 'wis', 'vit'].includes(k)).sort((a, b) => (S[b] || 0) - (S[a] || 0));
-    const fit = (b) => { const ks = Object.keys(b.req || {}); if (!ks.length) return 1; return Math.max(...ks.map((k) => (top.indexOf(k) < 0 ? 0 : 5 - top.indexOf(k)))); };
+    const CLS_STAT = { sword: 'str', bow: 'dex', staff: 'int', mace: 'vit', scepter: 'wis' }; // 요구 능력치가 없는 무기는 계열의 능력치로 본다
+    const S = totalStats(st), MAIN = ['str', 'dex', 'int', 'wis', 'vit'], smax = Math.max(1, ...MAIN.map((k) => S[k] || 0));
+    // 요구 능력치 중 내 값이 가장 큰 것 (가장 높은 능력치를 요구하면 100). 비슷하면(1% 안) 시작 무기 계열이 이긴다
+    const fit = (b) => { const ks = Object.keys(b.req || {}).filter((k) => MAIN.includes(k)); if (!ks.length && b.cls) ks.push(CLS_STAT[b.cls]); return ks.length ? Math.round((100 * Math.max(...ks.map((k) => S[k] || 0))) / smax) : 100; };
     const pool = Object.keys(BASES).filter((id) => {
       const b = BASES[id];
       return b.slot === slot && ((b.minLvl ?? 1) <= ilvl || b.shop) && b.minLvl !== 99 && !b.noDrop;
     });
-    const score = (id) => { const b = BASES[id], ok = meetsReq(st, b.req, S); return (ok ? 1e6 : 0) + (slot === 'weapon' && b.cls === cls ? 5e3 : 0) * (ok ? 1 : 0) + fit(b) * 1e4 + (b.minLvl ?? 1); };
+    const score = (id) => { const b = BASES[id], ok = meetsReq(st, b.req, S); return (ok ? 1e6 : 0) + (slot === 'weapon' && b.cls === cls ? 500 : 0) + fit(b) * 1e3 + (b.minLvl ?? 1); };
     pool.sort((a, b) => score(b) - score(a));
     if (pool.length) out.push(makeItem(pool[0], { rarity, ilvl }, st));
   }

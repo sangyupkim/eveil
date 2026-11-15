@@ -44,3 +44,10 @@
 - 몬스터 `x_{chainmail,cloth,leather,plate}_{archer,brute,mage}` · `x_shadow_wyvern` · `x_thug_slinger` — m7600 "skeleton_quest" Flare 모드 (github.com/m7600/skeleton_quest). Flare 그림 바탕, CC-BY-SA 3.0으로 다룬다 (원작자 표기는 모드 안 credits 기준: Flare 팀 · VWolfDog 외)
 - 몬스터 `x_wyvern_adult` · `x_stealth` — DrBenson "Flare-Remodify" (github.com/DrBenson/Flare-Remodify)의 fantasycore, CC-BY-SA 3.0
 - 변환: `node tools/prep-enemies-extra.mjs --each <몬스터별 폴더>...`
+
+## v0.41 건물 · 폐허 조각 (assets/flare/props, tiles.json의 props) — OpenGameArt
+- "Hut", "Medieval Building 01 ~ 03, 06", "Watermill" — Bleed (Bleed's Game Art, opengameart.org/users/bleed), CC-BY 3.0
+- "Medieval Stable (Isometric 2.5D)", "Medieval Archery Range (Isometric 2.5D)", "Western-European Medieval Houses (Isometric 2.5D)" — CC0
+- "isometric medieval buildings" (mhouse) — OpenGameArt, CC0/CC-BY (원 페이지 표기 따름)
+- "Old ruins tileset" (돌무더기 · 기둥 · 벽감 · 석상 · 아치 문, 얼어붙은 것 포함) — CC-BY-SA 3.0. 모델: Spelle (blendswap, CC-BY 3.0), Flare grassland walls
+- 변환: `node tools/prep-props.mjs <받아 푼 폴더>`
