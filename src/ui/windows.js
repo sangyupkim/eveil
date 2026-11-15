@@ -452,12 +452,13 @@ export class Windows {
     const st = this.w.st, d = this.w.d;
     const stats = d.stats;
     const apSum = STATS.reduce((a, s) => a + st.ap[s], 0) || 1;
+    const statMax = Math.max(1, ...STATS.map((s) => stats[s])); // 막대 = 능력치 (가장 높은 능력치 = 꽉 참), 오각형과 같은 기준 (v0.41.5)
     let rows = '';
     for (const s of STATS) {
       const bonus = stats[s] - st.stats[s];
       const share = st.ap[s] / apSum;
       rows += `<div class="statRow"><span style="color:${STAT_COLORS[s]}">${STAT_NAMES[s]}</span><b>${stats[s]}${bonus > 0 ? `<small style="color:#8fb4ff;font-size:.7em"> +${bonus}</small>` : ''}</b>
-        <div><div class="mini" style="height:8px"><i style="width:${share * 100}%;background:${STAT_COLORS[s]}"></i></div><div class="note">${STAT_DESC[s]} · 성향 ${Math.round(share * 100)}%</div></div></div>`;
+        <div><div class="mini" style="height:8px"><i style="width:${(stats[s] / statMax) * 100}%;background:${STAT_COLORS[s]}"></i></div><div class="note">${STAT_DESC[s]} · 성향 ${Math.round(share * 100)}%</div></div></div>`;
     }
     const need = expNeeded(st.awakenings);
     const pct = (v) => `${Math.round(v * 100)}%`;
