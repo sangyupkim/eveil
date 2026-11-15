@@ -1,4 +1,5 @@
 import { MORE_SKILLS } from './skills_more.js';
+import { AWAKEN_SKILLS } from './awaken_skills.js';
 // 스킬 정의. 상점에서 팔지 않는다 — 몬스터가 떨어뜨리는 스킬북으로만 배운다.
 // tier: 1 하급 · 2 중급 · 3 상급 · 4 고대 · 5 전설
 // type: melee(단일) · spin(주변) · cleave(전방 부채꼴) · bolt(투사체 주문) · arrow(투사체 사격)
@@ -154,9 +155,10 @@ const SCHOOL_OF = { power_strike: 'sword', whirlwind: 'sword', earth_cleave: 'sw
   chain_lightning: 'storm', iron_skin: 'guard', divine_shield: 'holy' };
 for (const id in SCHOOL_OF) if (SKILLS[id]) SKILLS[id].school = SCHOOL_OF[id];
 for (const [id, sk] of Object.entries(MORE_SKILLS)) SKILLS[id] = { glyph: sk.name[0], ...sk };
-export const SCHOOL_NAMES = { sword: '검술', bow: '궁술', fire: '화염', frost: '냉기', storm: '번개', holy: '신성', guard: '수호', trick: '기교', mix: '혼합', bulwark: '철벽', arcane: '비전' };
+for (const [id, sk] of Object.entries(AWAKEN_SKILLS)) SKILLS[id] = { glyph: sk.name[0], ...sk };
+export const SCHOOL_NAMES = { sword: '검술', bow: '궁술', fire: '화염', frost: '냉기', storm: '번개', holy: '신성', guard: '수호', trick: '기교', mix: '혼합', bulwark: '철벽', arcane: '비전', awaken: '각성' };
 
 export const SKILL_IDS = Object.keys(SKILLS);
 export function skillsOfTier(t) {
-  return SKILL_IDS.filter((id) => SKILLS[id].tier === t);
+  return SKILL_IDS.filter((id) => SKILLS[id].tier === t && !SKILLS[id].awaken); // 각성 스킬은 책으로 떨어지지 않는다
 }

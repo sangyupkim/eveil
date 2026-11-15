@@ -6,7 +6,7 @@ import { BASES, SLOTS, SLOT_NAMES, RARITY, WEAPON_CLASSES, isTwoHandedBase } fro
 import { itemName, itemColor, itemValue, affixText, isBook, makeItem } from '../game/items.js';
 import { scaledArmor, scaledDmg, totalStats, derive } from '../game/player.js';
 import { addItem } from '../game/inventory.js';
-import { skillExpNeeded, skillValues, meetsReq } from '../game/skills.js';
+import { skillExpNeeded, skillValues, meetsReq, learn } from '../game/skills.js';
 import { expNeeded } from '../game/growth.js';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -33,6 +33,7 @@ import { uiSettings, applyUi, editUi } from './layout.js';
 import { TITLE_AT, titleKey, titleName, UNIQUES, perkChoices } from '../data/titles.js';
 import { variantsOf, VARIANT_RANKS, modsOf, skillEff } from '../game/skills.js';
 import { SCHOOL_NAMES } from '../data/skills.js';
+import { awakenOk } from '../data/awaken_skills.js';
 import { GEMS, GEM_GRADES, gemId } from '../data/legends.js';
 import { applyShard, canApply, lockMax, shardCost } from '../game/shards.js';
 import { HERBS, HERB_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
@@ -431,7 +432,7 @@ export class Windows {
       det += `</div>${st.quick.includes(id) ? '<div class="btns"><button class="btn" data-qs="-1">빼기</button></div>' : ''}`;
     }
     const tabs = ['all', ...Object.keys(SCHOOL_NAMES)].filter((k) => k === 'all' || all.some((id) => SKILLS[id].school === k)).map((k) => `<button class="btn${school === k ? ' on' : ''}" data-school="${k}">${k === 'all' ? '전체' : SCHOOL_NAMES[k]}</button>`).join('');
-    return `<div class="cols"><div class="frame" style="flex:1"><h3>배운 스킬 <span class="cnt">${all.length}</span></h3><div class="btns" style="flex-wrap:wrap;margin:0 0 6px">${tabs}</div>${list}</div>
+    return `<div class="cols"><div class="frame" style="flex:1"><h3>배운 스킬 <span class="cnt">${all.length}</span><button class="btn gold" data-awsk="1" style="margin-left:auto">각성 스킬</button></h3><div class="btns" style="flex-wrap:wrap;margin:0 0 6px">${tabs}</div>${list}</div>
       <div class="frame detail" style="flex:0 0 44%">${det}</div></div>`;
   }
 
@@ -563,6 +564,20 @@ export class Windows {
     const notices = this.newsList.map((n) => `<div class="row" style="display:block"><b style="color:#ffd84a">${e(n.title)}</b> <small class="note">${new Date(n.at).toLocaleDateString()}</small><div class="note" style="white-space:pre-wrap">${e(n.body)}</div></div>`).join('') || '<div class="note">공지가 없습니다</div>';
     const notes = PATCH_NOTES.map((n) => `<div class="row" style="display:block"><b style="color:#ffd84a">${n.ver}</b> <small class="note">${n.date}</small><div>${n.head}</div><div class="note" style="margin-top:4px">${n.items.map((x) => `<div>${x}</div>`).join('')}</div></div>`).join('');
     return `<div class="cols"><div class="frame" style="flex:1"><h3>공지사항</h3>${notices}</div><div class="frame" style="flex:1.3"><h3>패치 노트 <small>${GAME_VERSION}</small></h3>${notes}</div></div>`;
+  }
+
+  // 각성 스킬 배우기: 차수 · 능력치(4차는 갈래)를 채우면 책 없이 배운다
+  awakenSkills() {
+    const w = this.w, st = w.st, d = w.d;
+    const ids = Object.keys(SKILLS).filter((id) => SKILLS[id].awaken).sort((a, b) => SKILLS[a].awaken - SKILLS[b].awaken);
+    const SN = { str: '힘', dex: '민첩', int: '지능', wis: '정신', vit: '체력' };
+    const rows = [1, 2, 3, 4].map((n) => `<h3>${n}차 각성${n === 4 ? ' · 내 4차 갈래 전용' : ''}</h3>` + ids.filter((id) => SKILLS[id].awaken === n).map((id) => {
+      const sk = SKILLS[id], have = !!st.skills[id], a = awakenOk(st, sk), statOk = meetsReq(st, sk.req, d.stats);
+      const need = Object.entries(sk.req).map(([k, v]) => `${SN[k]} ${v}`).join(' · ');
+      return `<div class="row">${sicon(id)}<div class="grow"><b>${sk.name}</b> <small class="note">${SN[sk.line]}</small><div class="note">${esc(sk.desc)}</div></div><div class="note" style="min-width:7em;color:${a.ok && statOk ? '' : '#ff8a7a'}">${a.ok ? need : a.why}</div>${have ? '<span class="note">배움</span>' : `<button class="btn gold" data-awlearn="${id}" ${a.ok && statOk ? '' : 'disabled'}>배우기</button>`}</div>`;
+    }).join('')).join('');
+    this.popup('각성 스킬', `<div class="noticeList">${rows}</div>`);
+    document.querySelectorAll('#winAlert [data-awlearn]').forEach((b) => { b.onclick = () => { const id = b.dataset.awlearn; if (st.skills[id]) return; learn(st, id); audio.play('learn'); w.ui.toast(`각성 스킬: ${SKILLS[id].name}`, '#ffd84a'); w.ui.dirty(); this.save?.(true); this.awakenSkills(); this.render(); }; });
   }
 
   // 우편함: 운영자가 보낸 금화 받기 (계정마다 한 번, 지금 캐릭터에게)
@@ -1110,6 +1125,7 @@ export class Windows {
     on('[data-notices]', () => { this.newsList = null; this.show('news'); });
     on('[data-apick]', (el) => { const f = (st.settings.autoPick ||= {}), k = el.dataset.apick; f[k] = f[k] === false; audio.play('click'); this.render(); });
     on('[data-mailbox]', () => this.mailbox());
+    on('[data-awsk]', () => this.awakenSkills());
     on('[data-title]', () => { this.save(true); window.__noSave = true; setTimeout(() => location.reload(), 400); });
     on('[data-nick]', () => { this.close(); window.__askNick?.(); });
   }

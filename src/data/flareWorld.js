@@ -174,6 +174,7 @@ export const LOOT_LOOK = { weapon: { sword: 'longsword', bow: 'longbow', staff: 
 
 // 스킬 아이콘 번호
 export const SKILL_ICON = {
+  aw_str1: 5, aw_str2: 46, aw_str3: 39, aw_str4a: 44, aw_str4b: 33, aw_dex1: 8, aw_dex2: 23, aw_dex3: 41, aw_dex4a: 13, aw_dex4b: 35, aw_int1: 34, aw_int2: 37, aw_int3: 24, aw_int4a: 7, aw_int4b: 18, aw_wis1: 10, aw_wis2: 42, aw_wis3: 23, aw_wis4a: 29, aw_wis4b: 24, aw_vit1: 4, aw_vit2: 39, aw_vit3: 40, aw_vit4a: 15, aw_vit4b: 5,
   shield_slam: 4, bulwark_wave: 39, iron_quake: 39, titan_crush: 5, mana_shield: 26, arcane_surge: 10, mana_burst: 42, overload: 23, arcane_storm: 24,
   power_strike: 5, whirlwind: 46, earth_cleave: 39, judgement: 45, berserk: 31, dash_strike: 9, war_cry: 10, blade_storm: 44,
   aimed_shot: 16, multishot: 8, piercing_arrow: 23, arrow_rain: 41, eagle_eye: 6, storm_volley: 35, phantom_arrow: 13,

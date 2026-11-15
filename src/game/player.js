@@ -123,7 +123,7 @@ export function derive(st, buffs = {}) {
     armor,
     spellMult: (1 + s.int * 0.035) * (1 + (g.spellPct || 0) / 100),
     // 주문 기준 피해: 무기 평균 피해 × 지능 배율 × 피해% × 주문 피해% (주문 스킬 = 이 값 × 계수)
-    spellBase: ((wd[0] + wd[1]) / 2) * (1 + s.int * 0.03) * (1 + ((g.dmgPct || 0) + (buffs.might || 0)) / 100) * (1 + berserk / 100) * (1 + (g.spellPct || 0) / 100),
+    spellBase: ((wd[0] + wd[1]) / 2) * (1 + s.int * 0.03) * (1 + ((g.dmgPct || 0) + (buffs.might || 0)) / 100) * (1 + berserk / 100) * (1 + (g.spellPct || 0) / 100 * 0.2), // 주문 피해 %는 1/5만 (v0.38: 장비마다 겹쳐 주문이 3 ~ 5배가 되던 문제)
     healMult: 1 + s.wis * 0.035,
     hpRegen: 0.5 + s.vit * 0.04 + (g.hpRegen || 0),
     mpRegen: 0.6 + s.wis * 0.07 + (g.mpRegen || 0),

@@ -455,6 +455,20 @@ test('자동 판매는 땅에서 주운 장비만: 입었다 벗은 장비는 �
   assert.equal(keep(it), true);                  // 한 번 입으면 자동 판매 대상이 아니다
 });
 
+test('각성 스킬: 1~3차는 차수만, 4차는 갈래에 그 스탯이 있어야', async () => {
+  const { awakenOk, AWAKEN_SKILLS } = await import('../src/data/awaken_skills.js');
+  const { skillsOfTier } = await import('../src/data/skills.js');
+  const st = { titles: [] };
+  assert.equal(awakenOk(st, AWAKEN_SKILLS.aw_str1).ok, false);
+  st.titles.push({ tier: 0, key: 'int' }, { tier: 1, key: 'int' }, { tier: 2, key: 'str+int' });
+  assert.ok(awakenOk(st, AWAKEN_SKILLS.aw_str1).ok && awakenOk(st, AWAKEN_SKILLS.aw_vit3).ok); // 하위 차수는 갈래와 상관없이
+  assert.equal(awakenOk(st, AWAKEN_SKILLS.aw_str4b).ok, false);       // 4차 각성 전
+  st.titles.push({ tier: 3, key: 'str+int+wis' });
+  assert.ok(awakenOk(st, AWAKEN_SKILLS.aw_str4b).ok && awakenOk(st, AWAKEN_SKILLS.aw_wis4a).ok);
+  assert.equal(awakenOk(st, AWAKEN_SKILLS.aw_dex4a).ok, false);       // 갈래에 민첩이 없다
+  for (let t = 1; t <= 5; t++) for (const id of skillsOfTier(t)) assert.ok(!AWAKEN_SKILLS[id], id + ' 책으로 떨어지면 안 됨');
+});
+
 test('모든 src 파일 문법', () => {
   const walk = (d) => _rd(d).flatMap((f) => { const q = d + '/' + f; return _st(q).isDirectory() ? walk(q) : q.endsWith('.js') ? [q] : []; });
   for (const f of walk(new URL('../src', import.meta.url).pathname)) _ex(process.execPath, ['--check', f], { stdio: 'pipe' });

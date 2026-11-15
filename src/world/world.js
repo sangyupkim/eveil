@@ -1,6 +1,7 @@
 import { bagSize } from '../game/inventory.js';
 import { ZONES as ALL_ZONES } from '../data/world.js';
 import { chapterK } from '../data/chapters.js';
+import { awakenOk } from '../data/awaken_skills.js';
 import { DUNGEON_X, entranceOf, MAX_STAGE, stageMods, dungeonLevel, layout as dungeonLayout, cellPos, N } from '../data/dungeons.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { gemGradeFor } from '../data/legends.js';
@@ -1539,6 +1540,7 @@ export class World {
     if (sk.needs === 'melee' && !this.st.equip.weapon) return { ok: false, why: '검이 필요합니다' };
     if (sk.needs === 'bow' && kind !== 'ranged') return { ok: false, why: '활이 필요합니다' };
     if (!meetsReq(this.st, sk.req, this.d.stats)) return { ok: false, why: '스탯 조건이 부족합니다' };
+    { const a = awakenOk(this.st, sk); if (!a.ok) return a; } // 각성 스킬: 차수 · 4차 갈래
     return { ok: true, v };
   }
 
