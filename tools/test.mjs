@@ -437,7 +437,7 @@ test('주문 피해: 평타 기준 × 계수 (0.34.2에 1/3로 낮춤)', () => {
   for (const id of ['blizzard', 'inferno_field', 'thunderstorm']) assert.ok(skillValues(id, 10, []).power * SKILLS[id].waves < hail * 1.2, id);
   // 검 · 활도 같은 식: 같은 1단계 강타 · 징벌, 5단계 심판의 검 · 절대 영도가 비슷
   const ps = skillValues('power_strike', 10, []).power, sm = skillValues('smite', 10, []).power;
-  assert.ok(ps > sm * 0.8 && ps < sm * 1.2);
+  assert.ok(ps > sm * 1.05 && ps < sm * 1.4);      // 근접은 ×1.3
   assert.ok(skillValues('judgement', 10, []).power > big * 0.7);
 });
 
