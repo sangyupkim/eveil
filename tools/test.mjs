@@ -466,7 +466,18 @@ test('각성 스킬: 1~3차는 차수만, 4차는 갈래에 그 스탯이 있어
   st.titles.push({ tier: 3, key: 'str+int+wis' });
   assert.ok(awakenOk(st, AWAKEN_SKILLS.aw_str4b).ok && awakenOk(st, AWAKEN_SKILLS.aw_wis4a).ok);
   assert.equal(awakenOk(st, AWAKEN_SKILLS.aw_dex4a).ok, false);       // 갈래에 민첩이 없다
-  for (let t = 1; t <= 5; t++) for (const id of skillsOfTier(t)) assert.ok(!AWAKEN_SKILLS[id], id + ' 책으로 떨어지면 안 됨');
+  for (let t = 1; t <= 5; t++) for (const id of skillsOfTier(t)) assert.ok(!AWAKEN_SKILLS[id], id + ' 일반 책 풀에 섞이면 안 됨');
+  // 각성 스킬북: 레벨 100 보스는 가끔 각성 스킬북을 떨어뜨리고, 각성 전이면 배울 수 없다
+  const { rollLoot } = await import('../src/game/loot.js');
+  const { canLearn } = await import('../src/game/skills.js');
+  let aw = 0; for (let i = 0; i < 400; i++) for (const d of rollLoot({ tier: 'boss', level: 110 })) if (d.item?.book && AWAKEN_SKILLS[d.item.book]) aw++;
+  assert.ok(aw > 5, '각성 스킬북 ' + aw);
+  let low = 0; for (let i = 0; i < 400; i++) for (const d of rollLoot({ tier: 'boss', level: 10 })) if (d.item?.book && AWAKEN_SKILLS[d.item.book]) low++;
+  assert.equal(low, 0);
+  const p0 = { skills: {}, titles: [], stats: { str: 999, dex: 999, int: 999, wis: 999, vit: 999 } };
+  assert.equal(canLearn(p0, 'aw_str1', p0.stats).ok, false);
+  p0.titles.push({ tier: 0, key: 'str' });
+  assert.ok(canLearn(p0, 'aw_str1', p0.stats).ok);
 });
 
 test('모든 src 파일 문법', () => {
