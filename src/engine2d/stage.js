@@ -238,7 +238,7 @@ export function createStage(canvas) {
     stage.shakeK = Math.max(0, stage.shakeK - dt * 2.5);
   };
   stage.add = (d) => stage.drawables.add(d);
-  stage.remove = (d) => stage.drawables.delete(d);
+  stage.remove = (d) => stage.drawables.delete(d?.drawable || d); // 캐릭터(Actor)를 넘겨도 그 그림을 지운다 (예전엔 몬스터 잔상이 남았다)
   stage.scene = { add: stage.add, remove: stage.remove }; // 예전 코드와 맞춤
   stage.render = (dt) => render(stage, dt);
   stage.debugColliders = false;
