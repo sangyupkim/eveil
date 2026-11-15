@@ -1298,6 +1298,7 @@ export class World {
       this.fx.text(this.player.pos.clone().setY(2.4), `+${g.amount}G`, 'gold');
       sfx('coin');
     } else {
+      if (g.item && BASES[g.item.base]?.slot && !g.item.worn) g.item.loot = true; // 자동 판매 대상 표시
       if (!addItem(st, g.item)) {
         if (this.time - (this.fullMsgT || -9) > 3) { this.ui.toast('가방이 가득 찼습니다'); this.fullMsgT = this.time; }
         return false;
@@ -1489,7 +1490,8 @@ export class World {
     const st = this.st;
     let g = 0, n = 0;
     st.inv = st.inv.filter((it) => {
-      if (it.book || !BASES[it.base]?.slot || it.set || it.rarity === 'hero' || it.rarity === 'legend') return true;
+      // 땅에서 막 주운 장비만 판다 — 한 번이라도 입었던 것 · 벗은 것 · 창고에서 꺼낸 것은 절대 팔지 않는다
+      if (!it.loot || it.worn || it.book || !BASES[it.base]?.slot || it.set || it.named || it.rarity === 'hero' || it.rarity === 'legend') return true;
       g += itemValue(it); n++; return false;
     });
     if (n) { st.gold += g; this.ui.log(`자동 판매: 장비 ${n}개 +${g.toLocaleString()}G`, '#ffd84a'); sfx('coin'); this.ui.dirty(); }

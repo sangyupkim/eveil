@@ -57,6 +57,7 @@ export function equip(st, uid, rng = Math.random) {
   const back = [];
   if (st.equip[slot]) back.push(st.equip[slot]);
   st.equip[slot] = it;
+  it.worn = true; delete it.loot; // 한 번 입은 장비는 자동 판매하지 않는다
   // 양손 무기 ↔ 보조 장비
   const base = BASES[it.base];
   if (slot === 'weapon' && isTwoHanded(it) && st.equip.offhand) { back.push(st.equip.offhand); st.equip.offhand = null; }

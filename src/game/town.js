@@ -523,6 +523,7 @@ export function mercUngear(st, id) {
   if (!m?.gearItem) { if (m) m.gear = null; return { ok: !!m }; }
   const it = m.gearItem;
   m.gearItem = null; m.gear = null;
+  it.worn = true; delete it.loot;
   if (!addItem(st, it)) vaultAdd(st, it);
   return { ok: true, item: it };
 }

@@ -54,6 +54,7 @@ export function vaultTake(st, idx) {
   const it = V.items[idx];
   if (!it) return { ok: false };
   const copy = { ...it, uid: st.nextUid++ };
+  delete copy.loot; // 창고에서 꺼낸 것은 자동 판매하지 않는다
   if (!stack(it) && st.inv.length >= bagSize(st)) return { ok: false, why: '가방이 가득 찼습니다' };
   if (!addItem(st, copy)) return { ok: false, why: '가방이 가득 찼습니다' };
   V.items.splice(idx, 1);

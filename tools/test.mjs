@@ -441,6 +441,17 @@ test('주문 피해: 평타 기준 × 계수 (0.34.2에 1/3로 낮춤)', () => {
   assert.ok(skillValues('judgement', 10, []).power > big * 0.7);
 });
 
+test('자동 판매는 땅에서 주운 장비만: 입었다 벗은 장비는 남는다', () => {
+  // 화면 없이 autoSell 규칙만 확인 (world.js와 같은 조건)
+  const keep = (it) => !it.loot || it.worn || it.rarity === 'hero' || it.rarity === 'legend';
+  const p = newPlayer('t', { face: 'm01' }, 'sword');
+  const it = makeItem('short_sword', { rarity: 'rare', ilvl: 5 }, p);
+  p.inv.push(it); it.loot = true;
+  assert.equal(keep(it), false);                 // 막 주운 희귀 장비는 팔 수 있다
+  assert.ok(equip(p, it.uid).ok && it.worn && !it.loot);
+  assert.equal(keep(it), true);                  // 한 번 입으면 자동 판매 대상이 아니다
+});
+
 test('모든 src 파일 문법', () => {
   const walk = (d) => _rd(d).flatMap((f) => { const q = d + '/' + f; return _st(q).isDirectory() ? walk(q) : q.endsWith('.js') ? [q] : []; });
   for (const f of walk(new URL('../src', import.meta.url).pathname)) _ex(process.execPath, ['--check', f], { stdio: 'pipe' });
