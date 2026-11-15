@@ -38,11 +38,16 @@ export const AWAKEN_SKILLS = {
   aw_vit4a: A('vit', 4, { name: '불멸의 의지', color: '#e0c080', type: 'buff', ap: 'vit', buff: 'armorPct', mp: 36, cd: 40, duration: 14, power: 60, perRank: 4, desc: '14초 동안 방어력이 크게 오른다.' }),
   aw_vit4b: W('vit', 4, { name: '성벽 붕괴', color: '#d8a868', type: 'melee', needs: 'melee', scale: 'hp', hpCost: 0.1, mp: 40, cd: 18, power: 7.0, perRank: 0.5, anim: 'heavy', desc: '성벽을 무너뜨리듯 내리친다.' }),
 };
-// 이 스킬을 지금 쓸 수 있나 (차수 · 4차 갈래)
+// 스킬의 각성 등급 (v0.39.3: 모든 스킬): 각성 스킬은 정한 차수, 책 스킬은 책 단계로 —
+// 하급 · 중급 = 0 (각성 전에도), 상급 = 1차, 고대 = 2차, 전설 = 3차 각성
+export const skillGrade = (sk) => (sk.awaken != null ? sk.awaken : Math.max(0, (sk.tier || 1) - 2));
+export const gradeName = (g) => (g ? `${g}차 각성` : '각성 전');
+// 이 스킬을 지금 배우고 쓸 수 있나: 내 차수가 등급 이상 (4차 전용 스킬은 내 4차 갈래에 그 스탯)
 export function awakenOk(st, sk) {
-  if (!sk.awaken) return { ok: true };
-  const tier = sk.awaken - 1, t = (st.titles || []).find((x) => x.tier === tier);
-  if (!t) return { ok: false, why: `${sk.awaken}차 각성 필요` };
+  const g = skillGrade(sk);
+  if (!g) return { ok: true };
+  const t = (st.titles || []).find((x) => x.tier === g - 1);
+  if (!t) return { ok: false, why: `${g}차 각성 필요` };
   if (sk.awaken === 4 && !t.key.split('+').includes(sk.line)) return { ok: false, why: '4차 갈래에 맞지 않는 스킬' };
   return { ok: true };
 }

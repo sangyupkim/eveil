@@ -478,6 +478,16 @@ test('각성 스킬: 1~3차는 차수만, 4차는 갈래에 그 스탯이 있어
   assert.equal(canLearn(p0, 'aw_str1', p0.stats).ok, false);
   p0.titles.push({ tier: 0, key: 'str' });
   assert.ok(canLearn(p0, 'aw_str1', p0.stats).ok);
+  // 모든 스킬: 책 3단계 = 1차, 4단계 = 2차, 5단계 = 3차 각성이 있어야 배운다 (1 · 2단계는 바로)
+  const { SKILLS: S } = await import('../src/data/skills.js');
+  const byTier = (t) => Object.keys(S).find((id) => S[id].tier === t && !S[id].awaken);
+  const p1 = { skills: {}, titles: [], stats: p0.stats };
+  assert.ok(canLearn(p1, byTier(2), p1.stats).ok);
+  assert.equal(canLearn(p1, byTier(3), p1.stats).ok, false);
+  p1.titles.push({ tier: 0, key: 'str' });
+  assert.ok(canLearn(p1, byTier(3), p1.stats).ok && !canLearn(p1, byTier(4), p1.stats).ok);
+  p1.titles.push({ tier: 1, key: 'str' }, { tier: 2, key: 'str' });
+  assert.ok(canLearn(p1, byTier(5), p1.stats).ok);
 });
 
 test('모든 src 파일 문법', () => {
