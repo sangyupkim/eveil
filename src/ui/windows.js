@@ -118,7 +118,7 @@ export class Windows {
   talkTo(kinds, first, mode = null) { this.talk = kinds; this.townMode = mode; this.show(first); }
 
   close() {
-    this.talk = null; this.townMode = null; this.vsel = null;
+    this.talk = null; this.townMode = null; this.vsel = null; this.sellPick = null;
     this.waitKey = null;
     this.portalAt = null; this.mapZoom = null; this.mapCenter = true;
     this.el.hidden = true;
@@ -219,7 +219,10 @@ export class Windows {
         const on = st.potSlot?.[k] === it.base;
         h += `<button class="btn${on ? ' on' : ''}" data-pslot="${k}|${on ? '' : it.base}">${on ? `${nm}에서 빼기` : `${nm}에 두기`}</button>`;
       }
-      if (this.w.canShop && b?.type !== 'mat') h += `<button class="btn" data-act="sell">판매</button>`;
+      if (this.w.canShop && b?.type !== 'mat') {
+        if ((it.qty || 1) > 1) h += `<div class="sellQty"><input type="range" min="1" max="${it.qty}" value="1" id="sellN" /><b id="sellNv">1개 · ${itemValue({ ...it, qty: 1 }).toLocaleString()}G</b><button class="btn" data-act="sell">판매</button><button class="btn" data-act="sellall">모두 판매</button></div>`;
+        else h += `<button class="btn" data-act="sell">판매</button>`;
+      }
       h += `<button class="btn danger" data-act="drop">버리기</button>`;
     } else if (where === 'equip') {
       h += `<button class="btn" data-act="unequip">해제</button>`;
@@ -320,7 +323,7 @@ export class Windows {
     for (let i = 0; i < bagSize(st); i++) {
       const it = st.inv[i];
       if (!it) { h += '<div class="cell"></div>'; continue; }
-      const sel = this.sel?.from === 'inv' && this.sel.uid === it.uid ? ' sel' : '';
+      const sel = (this.sellPick ? this.sellPick.includes(it.uid) : this.sel?.from === 'inv' && this.sel.uid === it.uid) ? ' sel' : '';
       h += `<div class="cell${sel}${rar(it)}" data-uid="${it.uid}">${ico(it)}${cellTag(it)}${it.qty > 1 ? `<span class="q">${it.qty}</span>` : ''}</div>`;
     }
     return h + '</div>';
@@ -351,7 +354,9 @@ export class Windows {
   bagHead() {
     const st = this.w.st;
     const shards = st.inv.filter((x) => x.shard);
-    return `<h3>가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span>${this.w.canShop ? '<button class="btn" data-selljunk="1" style="margin-left:auto">일반 · 마법 팔기</button>' : ''}<span class="goldTxt">${st.gold.toLocaleString()} G · ◆${townOf(st).ore.toLocaleString()}</span></h3>` + (shards.length ? `<div class="note shardRow">능력치 파편 ${shards.length} · ${shards.map((x) => `<span style="color:#c58cff">${affixText(x.shard)}</span>`).join(' · ')}</div>` : '');
+    const pk = this.kind === 'shop' && this.sellPick, pkG = pk ? st.inv.filter((x) => pk.includes(x.uid)).reduce((a, x) => a + itemValue(x), 0) : 0;
+    const shopBtns = this.kind === 'shop' ? (pk ? `<button class="btn gold" data-sellpick="go" ${pk.length ? '' : 'disabled'}>${pk.length}개 판매 ${pkG.toLocaleString()}G</button><button class="btn" data-sellpick="off">취소</button>` : '<button class="btn" data-sellpick="on">여러 개 팔기</button>') : '';
+    return `<h3>가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span><button class="btn" data-bagsort="1" style="margin-left:auto">정렬</button>${shopBtns}${this.w.canShop ? '<button class="btn" data-selljunk="1">일반 · 마법 팔기</button>' : ''}<span class="goldTxt">${st.gold.toLocaleString()} G · ◆${townOf(st).ore.toLocaleString()}</span></h3>` + (shards.length ? `<div class="note shardRow">능력치 파편 ${shards.length} · ${shards.map((x) => `<span style="color:#c58cff">${affixText(x.shard)}</span>`).join(' · ')}</div>` : '');
   }
 
   // 고른 가방 아이템과 같은 칸에 끼고 있는 장비
@@ -839,19 +844,29 @@ export class Windows {
     const on = (sel, fn) => body.querySelectorAll(sel).forEach((el) => { el.onclick = () => fn(el); });
     on('[data-uid]', (el) => {
       const uid = Number(el.dataset.uid);
+      // 여러 개 팔기: 눌러서 고르기 · 풀기 (재료는 팔 수 없다)
+      if (this.kind === 'shop' && this.sellPick) { const it = st.inv.find((x) => x.uid === uid); if (it && BASES[it.base]?.type !== 'mat') { const i = this.sellPick.indexOf(uid); if (i >= 0) this.sellPick.splice(i, 1); else this.sellPick.push(uid); audio.play('click'); } this.render(); return; }
       if (this.kind !== 'shop' && this.sel?.from === 'inv' && this.sel.uid === uid) { w.useItem(uid); this.sel = null; }
       else { this.sel = { from: 'inv', uid }; audio.play('click'); }
       this.render();
     });
+    const sn = body.querySelector('#sellN');
+    if (sn) sn.oninput = () => { const it = st.inv.find((x) => x.uid === this.sel?.uid); if (it) body.querySelector('#sellNv').textContent = `${sn.value}개 · ${itemValue({ ...it, qty: Number(sn.value) }).toLocaleString()}G`; };
     on('[data-eq]', (el) => { if (st.equip[el.dataset.eq]) { this.sel = { from: 'equip', slot: el.dataset.eq }; audio.play('click'); this.render(); } });
     on('[data-act]', (el) => {
       const a = el.dataset.act;
       if (a === 'use') w.useItem(this.sel.uid);
       if (a === 'unequip') w.unequip(this.sel.slot);
       if (a === 'drop') w.dropItem(this.sel.uid);
-      if (a === 'sell') {
-        const i = st.inv.findIndex((x) => x.uid === this.sel.uid);
-        if (i >= 0) { const it = st.inv.splice(i, 1)[0]; st.gold += itemValue(it); w.ui.toast(`${itemName(it)} 판매: +${itemValue(it)}G`); audio.play('coin'); }
+      if (a === 'sell' || a === 'sellall') {
+        const i = st.inv.findIndex((x) => x.uid === this.sel.uid), it = st.inv[i];
+        if (it) {
+          // 쌓인 물건은 고른 개수만 판다
+          const n = a === 'sellall' || !(it.qty > 1) ? (it.qty || 1) : Math.max(1, Math.min(it.qty, Number(document.getElementById('sellN')?.value) || 1));
+          const g = itemValue({ ...it, qty: n });
+          if (it.qty > n) it.qty -= n; else st.inv.splice(i, 1);
+          st.gold += g; w.ui.toast(`${itemName(it)}${n > 1 ? ` ×${n}` : ''} 판매: +${g.toLocaleString()}G`); audio.play('coin');
+        }
         w.ui.dirty();
       }
       // 물약처럼 남아 있으면 계속 골라 둔다
@@ -1000,6 +1015,24 @@ export class Windows {
       w.ui.titlePick({ tier: t.tier, key: t.key, name: t.name, choices: perkChoices(t.key, t.tier) }, (perk) => { st.gold -= cost; t.perk = perk; w.ui.toast(`${t.name}: ${perk.text}`, '#ffd860'); w.ui.dirty(); this.render(); });
     });
     on('[data-rank]', async () => { this.rankList = await cloud.rank(); this.render(); });
+    on('[data-sellpick]', (el) => {
+      const a = el.dataset.sellpick;
+      if (a === 'on') this.sellPick = [];
+      else if (a === 'off') this.sellPick = null;
+      else if (this.sellPick?.length) {
+        let g = 0, n = 0;
+        st.inv = st.inv.filter((it) => { if (!this.sellPick.includes(it.uid)) return true; g += itemValue(it); n++; return false; });
+        st.gold += g; audio.play('coin'); w.ui.toast(`${n}개 판매: +${g.toLocaleString()}G`, '#ffd84a'); this.sellPick = null; w.ui.dirty();
+      }
+      audio.play('click'); this.render();
+    });
+    // 가방 정렬: 장비(등급 · 레벨 높은 순) → 물약 · 영약 → 보석 → 파편 → 스킬북 → 재료 → 그 밖
+    on('[data-bagsort]', () => {
+      const RK = { legend: 5, hero: 4, rare: 3, magic: 2, common: 1 };
+      const grp = (it) => { const b = BASES[it.base] || {}; return it.book ? 5 : it.shard ? 4 : b.slot ? 0 : b.type === 'potion' || b.type === 'elixir' ? 1 : b.type === 'gem' ? 3 : b.type === 'mat' ? 6 : 7; };
+      st.inv.sort((a, b) => grp(a) - grp(b) || (RK[b.rarity] || 0) - (RK[a.rarity] || 0) || (b.ilvl || 0) - (a.ilvl || 0) || String(a.base).localeCompare(String(b.base)));
+      audio.play('click'); w.ui.dirty(); this.render();
+    });
     on('[data-selljunk]', () => {
       let g = 0, n = 0;
       st.inv = st.inv.filter((it) => { if (it.book || !BASES[it.base]?.slot || it.set || !['common', 'magic'].includes(it.rarity)) return true; g += itemValue(it); n++; return false; });

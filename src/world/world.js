@@ -1,5 +1,6 @@
 import { bagSize } from '../game/inventory.js';
 import { ZONES as ALL_ZONES } from '../data/world.js';
+import { chapterK } from '../data/chapters.js';
 import { DUNGEON_X, entranceOf, MAX_STAGE, stageMods, dungeonLevel, layout as dungeonLayout, cellPos, N } from '../data/dungeons.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { gemGradeFor } from '../data/legends.js';
@@ -575,9 +576,19 @@ export class World {
     const left = this.ground.filter((g) => !g.deathDrop && dist2(g, this.player.pos) < 400).length;
     this.ui.ask('던전 나가기', left ? `주변에 줍지 않은 물건이 ${left}개 있습니다. 나갈까요?` : '밖으로 나갈까요?', '나가기', (yes) => { if (yes) this.leaveDungeon(); });
   }
+  // 세계 단계 열기: 지금 단계에서 종말의 왕좌 보스를 잡았고(순서 상관없음) + 그 던전을 3 · 6단계까지 돌파
+  checkTierUnlock() {
+    const st = this.st, t = st.worldTier || 1;
+    if (t >= 3 || (st.maxTier || 1) > t) return;
+    const boss = (st.finalBoss || 0) >= t || (t === 1 && (st.bossDone?.[FINAL_ZONE] || 0)); // 예전 저장: 1단계 보스 기록
+    if (!boss || (st.dungeons?.[FINAL_ZONE] || 0) < 3 * t) return;
+    st.maxTier = t + 1; this.ui.toast(`세계 ${TIER_NAMES[st.maxTier - 1]} 단계가 열렸습니다`, '#ff9a6a'); sfx('awaken');
+  }
+
   dungeonCleared(m) {
     const st = this.st, dg = this.dungeon, zn = dg.zone;
     st.dungeons[zn.id] = Math.max(st.dungeons[zn.id] || 0, dg.stage);
+    this.checkTierUnlock();
     this.dailyDone(dailyProgress(st, { kind: 'dungeon', zone: zn.id }));
     // 보상: 영웅 이상 2개 (단계가 높을수록 전설), 상급 스킬북 하나, 금화
     const lv = dungeonLevel(zn, dg.stage) + this.tierOffset;
@@ -688,6 +699,8 @@ export class World {
     }
     const def = MONSTERS[type];
     const T = TIERS[tier];
+    // 챕터(지역) 보정: 지역마다 머무는 시간 · 처치 시간 · 보스 세기를 맞춘다 (data/chapters.js, 던전도 그 지역 값)
+    const czn = sp.zone || this.dungeon?.zone, CK = chapterK(czn ? ALL_ZONES.indexOf(czn) : -1, tier);
     const L = sp.level + this.tierOffset;
     const look = MONSTER_LOOK[type] || { sprite: 'goblin' };
     const fam = familyOf(look.sprite);
@@ -703,10 +716,10 @@ export class World {
     const m = {
       id: actor.id, def, type, tier, level: L, actor, sp, fam,
       name: name || (tier === 'elite' ? `정예 ${def.name}` : def.name),
-      maxHp: Math.round(def.hp * (1 + 0.4 * (L - 1)) * T.hp * TIER_K[this.wt].hp),
-      dmg: def.dmg.map((v) => v * (1 + 0.27 * (L - 1)) * T.dmg * TIER_K[this.wt].dmg),
+      maxHp: Math.round(def.hp * (1 + 0.4 * (L - 1)) * T.hp * TIER_K[this.wt].hp * CK.hp),
+      dmg: def.dmg.map((v) => v * (1 + 0.27 * (L - 1)) * T.dmg * TIER_K[this.wt].dmg * CK.dmg),
       armor: L * 2,
-      exp: def.exp * (1 + 0.3 * (L - 1)) * T.exp,
+      exp: def.exp * (1 + 0.3 * (L - 1)) * T.exp * CK.exp,
       speed: def.speed * (tier === 'boss' ? 1.1 : 1),
       state: 'idle', atkT: 1, wanderT: Math.random() * 4, deadT: 0, slowT: 0, showHp: 0,
       home: { x: sp.x, z: sp.z },
@@ -1187,9 +1200,7 @@ export class World {
     else if (best === 'hero') { sfx('rare', 0.8); this.fx.pillar(m.pos.x, m.pos.z, 0xff9a3c, 1.2, 4, 1); }
     if (m.tier !== 'normal') this.ui.log(`${m.name} 처치!`, TIERS[m.tier].color);
     if (!m.dungeon && m.tier === 'boss') { (st.rec ||= {}).bosses = (st.rec.bosses || 0) + 1; if (m.sp?.zone?.id) (st.bossDone ||= {})[m.sp.zone.id] = 1; } // 지역 보스를 잡으면 그 지역 던전이 열린다
-    if (!m.dungeon && m.tier === 'boss' && m.sp?.zone?.id === FINAL_ZONE && (st.worldTier || 1) < 3 && (st.maxTier || 1) <= (st.worldTier || 1) && (st.dungeons?.[FINAL_ZONE] || 0) >= 3 * (st.worldTier || 1)) { // 종말의 왕좌 보스 + 그 던전 3 · 6단계
-      st.maxTier = (st.worldTier || 1) + 1; this.ui.toast(`세계 ${TIER_NAMES[st.maxTier - 1]} 단계가 열렸습니다`, '#ff9a6a'); sfx('awaken');
-    }
+    if (!m.dungeon && m.tier === 'boss' && m.sp?.zone?.id === FINAL_ZONE) { st.finalBoss = Math.max(st.finalBoss || 0, st.worldTier || 1); this.checkTierUnlock(); }
     if (!m.dungeon && !m.noLoot && m.tier === 'boss' && Math.random() < 0.3) { // 보스가 가끔 열쇠
       if (addItem(st, makeItem('dungeon_key', { qty: 1 }, st))) { this.ui.toast('던전 열쇠를 얻었습니다', '#ffd84a'); sfx('rare', 0.7); }
     }
@@ -2048,6 +2059,7 @@ export class World {
       const done = researchTick(st);
       if (done) this.ui.toast(`연구 완료: ${RESEARCH[done].name} ${researchLv(st, done)}단계`, '#7fe07a');
       this.checkAchievements();
+      this.checkTierUnlock(); // 예전 저장도 조건을 채웠으면 열린다
       const back = townOf(st).mercs.filter((m) => m.job && Date.now() >= m.job.until && !m.job.told);
       for (const m of back) { m.job.told = true; this.ui.toast(`용병 ${m.name}이(가) 사냥에서 돌아왔습니다`, '#ffd84a'); }
     }

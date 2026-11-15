@@ -1,3 +1,4 @@
+import { BASES } from './items.js';
 // 업적: 이룬 것마다 금화 + 업적 칭호(이름만). 5초마다 확인한다.
 export const ACHIEVEMENTS = [
   { id: 'kill100', name: '첫 사냥꾼', text: '몬스터 100마리', check: (st) => (st.rec?.kills || 0) >= 100, gold: 300 },
@@ -15,6 +16,7 @@ export const ACHIEVEMENTS = [
   { id: 'dg10', name: '심연을 본 자', text: '던전 10단계 돌파', check: (st) => Object.values(st.dungeons || {}).some((v) => v >= 10), gold: 20000 },
   { id: 'lib1', name: '해방자', text: '지역 하나 해방', check: (st) => Object.values(st.liberate || {}).some((v) => v >= 400), gold: 2000 },
   { id: 'lib8', name: '땅을 되찾은 자', text: '모든 지역 해방', check: (st) => Object.values(st.liberate || {}).filter((v) => v >= 400).length >= 8, gold: 50000 },
-  { id: 'set4', name: '세트 수집가', text: '지역 세트 4부위', check: (st) => { const n = {}; for (const it of Object.values(st.equip)) if (it?.set) n[it.set] = (n[it.set] || 0) + 1; return Object.values(n).some((v) => v >= 4); }, gold: 5000 },
+  // 세트: 예전 지역 세트(it.set) 또는 이름 앞말이 같은 방어구(서리 투구 · 서리 갑옷 · 서리 건틀릿 · 서리 장화) 4부위
+  { id: 'set4', name: '세트 수집가', text: '같은 세트 방어구 4부위', check: (st) => { const n = {}; for (const [slot, it] of Object.entries(st.equip)) { if (!it) continue; const k = it.set || (['helm', 'armor', 'gloves', 'boots'].includes(slot) && BASES[it.base]?.name?.includes(' ') ? 'p:' + BASES[it.base].name.split(' ')[0] : null); if (k) n[k] = (n[k] || 0) + 1; } return Object.values(n).some((v) => v >= 4); }, gold: 5000 },
   { id: 'daily10', name: '성실한 일꾼', text: '오늘의 의뢰 10개', check: (st) => (st.rec?.daily || 0) >= 10, gold: 3000 },
 ];
