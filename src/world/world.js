@@ -1540,7 +1540,7 @@ export class World {
     if (sk.needs === 'melee' && !this.st.equip.weapon) return { ok: false, why: '검이 필요합니다' };
     if (sk.needs === 'bow' && kind !== 'ranged') return { ok: false, why: '활이 필요합니다' };
     if (!meetsReq(this.st, sk.req, this.d.stats)) return { ok: false, why: '스탯 조건이 부족합니다' };
-    if (sk.awaken) { const a = awakenOk(this.st, sk); if (!a.ok) return a; } // 각성 전용 스킬은 쓸 때도 차수 · 4차 갈래 (책 스킬의 등급은 배울 때만 — 이미 배운 스킬은 그대로)
+    if (sk.awaken) { const a = awakenOk(this.st, sk); if (!a.ok) return a; } // awaken 등급이 정해진 스킬은 쓸 때도 차수 · 4차 갈래 (책 단계로 정한 등급은 배울 때만 — 이미 배운 스킬은 그대로)
     return { ok: true, v };
   }
 

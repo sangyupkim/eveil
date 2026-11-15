@@ -8,7 +8,7 @@ import { rollShard, SHARD } from './shards.js';
 import { makeItem, makeBook, rollBase, rollRarity, isStack, makeNamed, namedOf } from './items.js';
 import { NAMED_CHANCE, GEM_DROP, GEMS, GEM_GRADES, gemId, gemGradeFor } from '../data/legends.js';
 
-// 각성 스킬북이 나오기 시작하는 몬스터 레벨 (1 · 2 · 3 · 4차)
+// 각성 등급 1 · 2 · 3 · 4가 정해진 스킬북이 나오기 시작하는 몬스터 레벨
 const AWAKEN_LV = [20, 40, 60, 100];
 // mon: { tier, level }, opt: { auto, magicFind, goldFind }
 export function rollLoot(mon, opt = {}, st = null, rng = R) {
@@ -43,7 +43,7 @@ export function rollLoot(mon, opt = {}, st = null, rng = R) {
     const tier = Number(weighted(t.bookTiers, rng));
     const zs = ZONE_SCHOOLS[mon.sp?.zone?.id] || [];
     const big = mon.tier === 'named' || mon.tier === 'boss';
-    // 각성 스킬북: 몬스터 레벨이 그 차수에 닿으면 가끔 (네임드 · 보스는 더 자주). 차수는 그 레벨에서 나올 수 있는 것 중 높을수록 자주
+    // 각성 등급이 정해진 스킬북: 몬스터 레벨이 그 등급에 닿으면 가끔 (네임드 · 보스는 더 자주). 차수는 그 레벨에서 나올 수 있는 것 중 높을수록 자주
     const awMax = AWAKEN_LV.filter((lv) => mon.level >= lv).length;
     if (awMax && chance(big ? 0.35 : 0.12, rng)) {
       const n = Number(weighted(Object.fromEntries(Array.from({ length: awMax }, (_, i) => [i + 1, i + 1])), rng));

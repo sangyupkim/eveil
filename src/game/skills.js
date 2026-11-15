@@ -17,7 +17,7 @@ export function canLearn(st, id, stats) {
   if (!sk) return { ok: false, why: '알 수 없는 스킬' };
   if (st.skills[id]) return { ok: false, why: '이미 배운 스킬', known: true };
   if (!meetsReq(st, sk.req, stats)) return { ok: false, why: '스탯 조건 부족' };
-  { const a = awakenOk(st, sk); if (!a.ok) return a; } // 각성 스킬북: 그 차수 각성(4차는 내 갈래)이어야 배운다
+  { const a = awakenOk(st, sk); if (!a.ok) return a; } // 각성 등급: 내 차수가 등급 이상이어야 배운다 (4차 갈래 스킬은 내 갈래에 그 스탯)
   return { ok: true };
 }
 

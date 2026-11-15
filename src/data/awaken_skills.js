@@ -1,9 +1,11 @@
-// 각성 전용 스킬 (v0.39): 스킬북으로 떨어진다 (몬스터 레벨 20 · 40 · 60 · 100부터, game/loot.js). 그 차수 각성이어야 배우고 쓴다.
+// 높은 각성 등급 스킬 (v0.39): 다른 스킬과 같은 스킬북. 각성 등급 1 ~ 4가 붙어 있고(awaken), 몬스터 레벨 20 · 40 · 60 · 100부터 떨어진다 (game/loot.js).
+// '각성 스킬'이라는 따로 된 종류는 없다 — 모든 스킬에 각성 등급이 있다 (skillGrade). 갈래(school)는 스탯마다 검술 · 궁술 · 화염 · 비전 · 철벽.
 // awaken 1 · 2 · 3 = 1차 · 2차 · 3차 각성(20 · 40 · 60)에 닿고 필요 능력치를 넘으면 누구나 쓴다 (윗 차수가 되어도 아래 차수 스킬은 그대로).
 // awaken 4 = 4차 각성(100) 전용: 내 4차 갈래에 그 스탯(line)이 들어 있어야 쓴다 (직업 스킬).
 // 세기: 같은 계수 체계(평타 × 계수) — 같은 레벨의 책 스킬보다 한 단계 위. 회복 효과 없음.
 const R = { 1: 40, 2: 80, 3: 120, 4: 180 }; // 차수별 필요 능력치
-const A = (stat, awaken, o) => ({ awaken, line: stat, school: 'awaken', tier: Math.min(5, awaken + 1), req: { [stat]: R[awaken] }, ...o });
+const SCH = { str: 'sword', dex: 'bow', int: 'fire', wis: 'arcane', vit: 'bulwark' };
+const A = (stat, awaken, o) => ({ awaken, line: stat, school: SCH[stat], tier: Math.min(5, awaken + 1), req: { [stat]: R[awaken] }, ...o });
 const W = (stat, awaken, o) => A(stat, awaken, { ap: 'weapon', ...o });
 
 export const AWAKEN_SKILLS = {
@@ -38,7 +40,7 @@ export const AWAKEN_SKILLS = {
   aw_vit4a: A('vit', 4, { name: '불멸의 의지', color: '#e0c080', type: 'buff', ap: 'vit', buff: 'armorPct', mp: 36, cd: 40, duration: 14, power: 60, perRank: 4, desc: '14초 동안 방어력이 크게 오른다.' }),
   aw_vit4b: W('vit', 4, { name: '성벽 붕괴', color: '#d8a868', type: 'melee', needs: 'melee', scale: 'hp', hpCost: 0.1, mp: 40, cd: 18, power: 7.0, perRank: 0.5, anim: 'heavy', desc: '성벽을 무너뜨리듯 내리친다.' }),
 };
-// 스킬의 각성 등급 (v0.39.3: 모든 스킬): 각성 스킬은 정한 차수, 책 스킬은 책 단계로 —
+// 스킬의 각성 등급 (v0.39.3: 모든 스킬): awaken이 정해진 스킬은 그 차수, 나머지는 책 단계로 —
 // 하급 · 중급 = 0 (각성 전에도), 상급 = 1차, 고대 = 2차, 전설 = 3차 각성
 export const skillGrade = (sk) => (sk.awaken != null ? sk.awaken : Math.max(0, (sk.tier || 1) - 2));
 export const gradeName = (g) => (g ? `${g}차 각성` : '각성 전');
