@@ -595,9 +595,12 @@ export class World {
     const lv = dungeonLevel(zn, dg.stage) + this.tierOffset;
     for (let i = 0; i < 2; i++) {
       const rarity = Math.random() < 0.08 + dg.stage * 0.035 ? 'legend' : 'hero';
-      this.dropGround({ kind: 'item', item: makeItem(rollBase(lv), { rarity, ilvl: lv }, st) }, m.pos.x + i * 1.2, m.pos.z + 1);
+      // 절반은 내 무기 종류(무기 · 보조 칸)로 — 장비 줄이 많아져 지팡이 등이 묻히지 않게 (v0.39.6)
+      let base = rollBase(lv);
+      if (i === 0) { const cls = this.d.cls && BASES[st.equip.weapon?.base]?.cls, mine = Array.from({ length: 30 }, () => rollBase(lv)).find((id) => BASES[id].cls === cls || (BASES[id].slot === 'offhand' && BASES[st.equip.offhand?.base])); if (mine) base = mine; }
+      this.dropGround({ kind: 'item', item: makeItem(base, { rarity, ilvl: lv }, st) }, m.pos.x + i * 1.2, m.pos.z + 1);
     }
-    const tier = dg.stage >= 7 ? 5 : dg.stage >= 4 ? 4 : 3, pool = Object.keys(SKILLS).filter((id) => SKILLS[id].tier === tier);
+    const tier = dg.stage >= 7 ? 5 : dg.stage >= 4 ? 4 : 3, pool = Object.keys(SKILLS).filter((id) => SKILLS[id].tier === tier && !SKILLS[id].awaken); // 각성 등급이 정해진 스킬은 몬스터 레벨로만
     this.dropGround({ kind: 'item', item: makeBook(pool[Math.floor(Math.random() * pool.length)], st) }, m.pos.x - 1.2, m.pos.z + 1);
     this.dropGround({ kind: 'gold', amount: Math.round(lv * 60 * (1 + dg.stage * 0.2)) }, m.pos.x, m.pos.z - 1);
     this.ui.toast(`던전 ${dg.stage}단계 돌파!`, '#ffd84a');

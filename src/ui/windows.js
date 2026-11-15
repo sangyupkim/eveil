@@ -207,7 +207,7 @@ export class Windows {
       if (b.mods) for (const k in b.mods) h += `<div>${k === 'maxMp' ? '최대 MP' : k} +${b.mods[k]}</div>`;
       if (it.q) h += `<div class="sub">품질 <b style="color:${it.q >= 1.1 ? '#ffd84a' : it.q <= 0.9 ? '#a09a8a' : '#e8e2d4'}">${Math.round(it.q * 100)}%</b> · 85~115%</div>`;
       // 옵션마다 이 아이템 레벨 · 등급에서 나올 수 있는 범위
-      for (const a of it.affixes) { const A = AFFIXES[a.id], mx = A ? Math.round(Math.max(A.min, A.max(it.ilvl) * (RARITY[it.rarity]?.mult || 1))) : null; h += `<div class="aff">${affixText(a)}${A ? ` <small class="note">${A.min}~${mx}</small>` : ''}</div>`; }
+      for (const a of it.affixes) { const A = AFFIXES[a.id], mx = A ? Math.round(Math.max(A.min, A.max(it.ilvl) * (RARITY[it.rarity]?.mult || 1))) : null; h += `<div class="aff"${a.great ? ' style="color:#ffb84a"' : ''}>${affixText(a)}${a.great ? ' <b style="color:#ffb84a">탁월</b>' : ''}${A ? ` <small class="note">${A.min}~${mx}</small>` : ''}</div>`; }
       if (it.unique != null) h += `<div class="aff" style="color:#41e07a">◆ ${UNIQUES[it.unique].text}</div>`;
       if (it.sockets) {
         h += `<div class="aff" style="color:#c0b0ff">구멍 ${it.gems.length} / ${it.sockets}${it.gems.map((g) => ` · ${BASES[g].name} ${STAT_NAMES[GEMS[BASES[g].gem].stat]} +${GEM_GRADES[BASES[g].grade].v}`).join('')}</div>`;

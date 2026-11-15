@@ -37,8 +37,11 @@ export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1 } = {}, 
     const id = pool.splice(Math.floor(rng() * pool.length), 1)[0];
     const a = AFFIXES[id];
     const max = Math.max(a.min, a.max(ilvl) * r.mult);
-    const v = Math.max(a.min, Math.round(a.min + rng() * (max - a.min)));
-    it.affixes.push({ id, v });
+    let v = Math.max(a.min, Math.round(a.min + rng() * (max - a.min)));
+    // 탁월한 옵션 (영웅 · 전설, 옵션마다 8%): 최대치의 110 ~ 130% — 같은 전설이라도 눈에 띄는 장비가 나오게 (v0.39.6)
+    const great = (rarity === 'hero' || rarity === 'legend') && rng() < 0.08;
+    if (great) v = Math.max(v + 1, Math.round(max * (1.1 + rng() * 0.2)));
+    it.affixes.push(great ? { id, v, great: true } : { id, v });
   }
   if (rarity === 'legend') { it.title = pick(LEGEND_NAMES, rng); it.unique = Math.floor(rng() * UNIQUES.length); }
   const sk = socketRoll(rarity, rng);

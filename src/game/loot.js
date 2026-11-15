@@ -48,10 +48,13 @@ export function rollLoot(mon, opt = {}, st = null, rng = R) {
     if (awMax && chance(big ? 0.35 : 0.12, rng)) {
       const n = Number(weighted(Object.fromEntries(Array.from({ length: awMax }, (_, i) => [i + 1, i + 1])), rng));
       const ap = Object.keys(SKILLS).filter((id) => SKILLS[id].awaken === n);
-      if (ap.length) { out.push({ kind: 'item', item: makeBook(pick(ap, rng), st) }); return out; }
+      if (ap.length) out.push({ kind: 'item', item: makeBook(pick(ap, rng), st) });
     }
+    // (v0.39.6: 위에서 바로 return 해서 이름 있는 전설 · 보석 굴림을 건너뛰던 오류)
+    if (!out.some((d) => d.item?.book)) {
     const pool = skillsOfTier(tier).filter((id) => big || SKILLS[id].school !== 'mix').flatMap((id) => (zs.includes(SKILLS[id].school) ? [id, id, id] : [id]));
     if (pool.length) out.push({ kind: 'item', item: makeBook(pick(pool, rng), st) });
+    }
   }
   // 이름 있는 전설 (지역 보스 · 드물게 네임드)
   const zid = mon.sp?.zone?.id, nc = mon.dungeon ? (mon.tier === 'boss' ? NAMED_CHANCE.dungeon : 0) : NAMED_CHANCE[mon.tier] || 0;
