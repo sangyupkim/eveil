@@ -18,7 +18,7 @@ import { CAMPS, inCamp } from '../engine2d/stage.js';
 import { TIER_NAMES } from '../world/world.js';
 import { entranceOf } from '../data/dungeons.js';
 import { MATERIALS, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
-import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, mercUngear, mercById, recruits, assignMerc, SKILL_OF, SKILLS_ALL, BONUS, bonusOf, awakenMerc, awakenCost, dismiss, staMax, SKILL_NAMES, GRADES, MERC, EXP_STA, deathChance, salvage, salvageValue, reforge, reforgeCost } from '../game/town.js';
+import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, mercUngear, mercById, recruits, assignMerc, SKILL_OF, SKILLS_ALL, BONUS, bonusOf, awakenMerc, awakenCost, dismiss, staMax, SKILL_NAMES, GRADES, MERC, EXP_STA, deathChance, salvage, salvageValue, reforge, reforgeCost, resCount, resTake } from '../game/town.js';
 import { RESEARCH, researchCost } from '../data/buildings.js';
 import { AFFIXES } from '../data/items.js';
 import { PLOTS, BUILDINGS, EXPEDITIONS, townOf, buildingAt, build, upgrade, collect, enhance, enhanceCap, enhanceCost, hire, mercSlots, dispatch, claim, tick } from '../game/town.js';
@@ -211,8 +211,6 @@ export class Windows {
       if (it.unique != null) h += `<div class="aff" style="color:#41e07a">◆ ${UNIQUES[it.unique].text}</div>`;
       if (it.sockets) {
         h += `<div class="aff" style="color:#c0b0ff">구멍 ${it.gems.length} / ${it.sockets}${it.gems.map((g) => ` · ${BASES[g].name} ${STAT_NAMES[GEMS[BASES[g].gem].stat]} +${GEM_GRADES[BASES[g].grade].v}`).join('')}</div>`;
-        const gems = it.gems.length < it.sockets ? this.w.st.inv.filter((x) => BASES[x.base]?.type === 'gem') : [];
-        if (gems.length && where !== 'none') h += `<div class="btns" style="flex-wrap:wrap">${gems.map((x) => `<button class="btn" data-socket="${x.base}">${BASES[x.base].name} 박기</button>`).join('')}</div>`;
       }
       if (it.set) {
         const s = SETS[it.set], n = setCounts(this.w.st.equip)[it.set] || 0;
@@ -780,7 +778,8 @@ export class Windows {
   gems() {
     const st = this.w.st;
     const row = (icon, title, sub, btns) => `<div class="grow-row"><div class="cell shopIco">${icon}</div><div class="gtxt"><b>${title}</b><div class="note">${sub}</div><div class="gbtns">${btns}</div></div></div>`;
-    const have = st.inv.filter((x) => BASES[x.base]?.type === 'gem').sort((a, b) => BASES[a.base].grade - BASES[b.base].grade || a.base.localeCompare(b.base));
+    // 보석은 가방 + 창고 (v0.40.1)
+    const have = [...new Set([...st.inv, ...vault().items].filter((x) => BASES[x.base]?.type === 'gem').map((x) => x.base))].map((base) => ({ base, qty: resCount(st, base) })).sort((a, b) => BASES[a.base].grade - BASES[b.base].grade || a.base.localeCompare(b.base));
     // 구멍 있는 장비: 착용 (e:부위) + 가방 (b:uid)
     const targets = [...SLOTS.filter((sl) => st.equip[sl]?.sockets).map((sl) => ['e:' + sl, st.equip[sl]]), ...st.inv.filter((x) => x.sockets).map((x) => ['b:' + x.uid, x])];
     if (!targets.some((t) => t[0] === this.gemSel)) this.gemSel = targets[0]?.[0];
@@ -1027,19 +1026,14 @@ export class Windows {
     on('[data-gsel]', (el) => { this.gemSel = el.dataset.gsel; audio.play('click'); this.render(); });
     const gemItem = (key) => { const [k, v] = key.split(':'); return k === 'e' ? st.equip[v] : st.inv.find((x) => x.uid === Number(v)); };
     on('[data-gmerge]', (el) => {
-      const id = el.dataset.gmerge, b = BASES[id], cost = mergeCost(b.grade); if (countOf(st, id) < 3 || st.gold < cost) return;
+      const id = el.dataset.gmerge, b = BASES[id], cost = mergeCost(b.grade); if (resCount(st, id) < 3 || st.gold < cost) return;
       st.gold -= cost;
-      if (Math.random() < mergeChance(b.grade)) { for (let i = 0; i < 3; i++) takeOne(st, id); const nid = gemId(b.gem, b.grade + 1); addItem(st, makeItem(nid, { qty: 1 }, st)); audio.play('rankup'); this.popup('합치기 성공', `<div class="aff" style="color:#c0b0ff">${BASES[nid].name}</div>`); }
-      else { const lost = Math.floor(Math.random() * 3); for (let i = 0; i < lost; i++) takeOne(st, id); audio.play('error'); this.popup('합치기 실패', `<div class="aff">${b.name} ${lost}개를 잃었습니다</div>`); } // 실패: 0~2개가 사라진다
+      if (Math.random() < mergeChance(b.grade)) { resTake(st, id, 3); const nid = gemId(b.gem, b.grade + 1); addItem(st, makeItem(nid, { qty: 1 }, st)); audio.play('rankup'); this.popup('합치기 성공', `<div class="aff" style="color:#c0b0ff">${BASES[nid].name}</div>`); }
+      else { const lost = Math.floor(Math.random() * 3); resTake(st, id, lost); audio.play('error'); this.popup('합치기 실패', `<div class="aff">${b.name} ${lost}개를 잃었습니다</div>`); } // 실패: 0~2개가 사라진다
       w.ui.dirty(); this.render();
     });
-    on('[data-gput]', (el) => { const i = el.dataset.gput.lastIndexOf('|'), key = el.dataset.gput.slice(0, i), id = el.dataset.gput.slice(i + 1), it = gemItem(key); if (!it || it.gems.length >= it.sockets || !takeOne(st, id)) return; it.gems.push(id); audio.play('rankup'); w.refreshGear(); w.ui.dirty(); this.render(); });
+    on('[data-gput]', (el) => { const i = el.dataset.gput.lastIndexOf('|'), key = el.dataset.gput.slice(0, i), id = el.dataset.gput.slice(i + 1), it = gemItem(key); if (!it || it.gems.length >= it.sockets || resCount(st, id) < 1) return; resTake(st, id, 1); it.gems.push(id); audio.play('rankup'); w.refreshGear(); w.ui.dirty(); this.render(); });
     on('[data-gpull]', (el) => { const i = el.dataset.gpull.lastIndexOf('|'), key = el.dataset.gpull.slice(0, i), k = Number(el.dataset.gpull.slice(i + 1)), it = gemItem(key), g = it?.gems[k]; if (!g) return; const c = pullCost(g); if (st.gold < c) { w.ui.toast('금화가 모자랍니다'); return; } st.gold -= c; it.gems.splice(k, 1); addItem(st, makeItem(g, { qty: 1 }, st)); audio.play('click'); w.refreshGear(); w.ui.dirty(); this.render(); });
-    on('[data-socket]', (el) => {
-      const it = this.cur(); if (!it?.sockets || it.gems.length >= it.sockets) return;
-      if (!takeOne(st, el.dataset.socket)) return;
-      it.gems.push(el.dataset.socket); audio.play('rankup'); w.ui.toast(`${BASES[el.dataset.socket].name}을(를) 박았습니다`, '#c0b0ff'); w.refreshGear(); w.ui.dirty(); this.render();
-    });
     on('[data-var]', (el) => { const s = st.skills[this.skillSel]; if (!s) return; const [r, k] = el.dataset.var.split('|'); if (s.rank < +r || s.mod?.[r]) return; (s.mod ||= {})[r] = k; audio.play('rankup'); w.ui.dirty(); this.render(); });
     on('[data-repick]', (el) => {
       const t = st.titles[Number(el.dataset.repick)], cost = repickCost(t);

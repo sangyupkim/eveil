@@ -639,7 +639,7 @@ export class World {
     this.gemNpc = new Actor(this.scene, { npc: 'guild_man' }); this.gemNpc.pos.set(9, 0, -4); this.gemNpc.facing = -0.4; this.gemNpc.play('idle'); this.gemNpc.name = '보석상 리엔';
     this.sage = new Actor(this.scene, { npc: 'peasant_woman1' }); this.sage.pos.set(-10, 0, -3); this.sage.facing = 0.6; this.sage.play('idle'); this.sage.name = '현자 에라';
     // 마을 꾸밈 (v0.40): 주민 둘 · 귀환 오벨리스크
-    for (const [npc, x, z, f] of [['peasant_man2', 6, 7, -0.8], ['peasant_woman2', 7.2, 6.2, 2.2], ['return_obelisk1', 0, 3.5, 0]]) {
+    for (const [npc, x, z, f] of [['peasant_man2', 6, 7, -0.8], ['peasant_woman2', 7.2, 6.2, 2.2], ['return_obelisk1', 5.5, 1.5, 0]]) {
       const a = new Actor(this.scene, { npc }); a.pos.set(x, 0, z); a.facing = f; a.play('idle');
     }
   }

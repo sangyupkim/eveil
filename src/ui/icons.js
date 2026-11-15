@@ -5,22 +5,24 @@ import { ITEM_LOOK, SKILL_ICON, faceOf } from '../data/flareWorld.js';
 import { SCHOOL_ICON } from '../data/skills_more.js';
 import { image, DATA, animImage } from '../engine2d/sprites.js';
 import { ELIXIRS, HERBS } from '../data/potions.js';
-export const herbIcon = (id) => iconUrl(HERBS[id].icon, HERBS[id].color);
+export const herbIcon = (id) => iconUrl(40, HERBS[id].color); // v0.40.1 약초는 모두 풀 그림 + 색 테두리 (보석과 구분)
 
 const SHEET = 'icons.webp', S = 64;
 const cache = new Map();
 export const iconsReady = () => image(SHEET).p;
 
 // 아이콘 번호 → 그림 주소 (frame: 테두리 색, 없으면 테두리 없음)
-export function iconUrl(index, frame = null) {
-  const key = index + '|' + frame;
+export function iconUrl(index, frame = null, filter = '') {
+  const key = index + '|' + frame + '|' + filter;
   if (cache.has(key)) return cache.get(key);
   const src = image(SHEET);
   if (!src.ok) return '';
   const c = document.createElement('canvas');
   c.width = c.height = S;
   const g = c.getContext('2d');
+  if (filter) g.filter = filter;
   g.drawImage(src.im, (index % 8) * S, Math.floor(index / 8) * S, S, S, 0, 0, S, S);
+  g.filter = 'none';
   if (frame) { g.strokeStyle = frame; g.lineWidth = 4; g.globalAlpha = 0.9; g.strokeRect(2, 2, S - 4, S - 4); }
   const url = c.toDataURL();
   cache.set(key, url);
@@ -29,10 +31,11 @@ export function iconUrl(index, frame = null) {
 
 export function itemIcon(it) {
   if (it.book) return iconUrl(225, BOOK_TIERS[SKILLS[it.book].tier].color);
-  if (it.shard) return iconUrl(68, '#c58cff');
+  if (it.shard) return iconUrl(46, '#c58cff'); // 능력치 파편: 모두 같은 그림 + 칸 아래 옵션 글 (cellTag)
   if (BASES[it.base]?.type === 'pet') return petIcon(BASES[it.base].pet);
   if (ELIXIRS[it.base]) return iconUrl(ITEM_LOOK[it.base]?.icon ?? 84, ELIXIRS[it.base].color);
-  if (BASES[it.base]?.type === 'mat') return iconUrl(BASES[it.base].icon, it.base === 'ore' ? null : '#9ad06a');
+  if (it.base === 'ore') return oreIcon();
+  if (BASES[it.base]?.type === 'mat') return iconUrl(BASES[it.base].icon, '#9ad06a');
   const L = ITEM_LOOK[it.base];
   if (L) return iconUrl(L.icon);
   const b = BASES[it.base];
@@ -48,7 +51,8 @@ export const homeIcon = () => iconUrl(19);
 export const duelIcon = () => iconUrl(1);
 export const swordIcon = () => iconUrl(1);
 export const townIcon = () => iconUrl(103);
-export const oreIcon = () => iconUrl(71);
+// 강화석: 금강석(보석)과 헷갈리지 않게 잿빛 돌 + 주황 테두리
+export const oreIcon = () => iconUrl(71, '#e0903a', 'grayscale(1) sepia(.6) brightness(.62) contrast(1.3)');
 
 // 펫 아이콘: 펫 그림(서 있는 모습, 오른쪽 아래 방향)을 칸에 맞춰 찍는다
 export function petIcon(kind) {
