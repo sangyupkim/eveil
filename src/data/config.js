@@ -16,7 +16,8 @@ export const CONFIG = {
   // 각성(스탯 성장)
   awakenPoints: 5,          // 각성 1회에 오르는 스탯 총량
   expBase: 150,
-  expGrowth: 1.17,          // (옛날 게임처럼 느리게, v2 기본 방향)          // 필요 EXP = expBase × expGrowth^각성횟수
+  expGrowth: 1.17,
+  expLatePow: 2.6,          // 각성 40 뒤 필요 경험치 곡선 지수 (클수록 가파름, 관리 페이지에서 조절)          // (옛날 게임처럼 느리게, v2 기본 방향)          // 필요 EXP = expBase × expGrowth^각성횟수
   apKeepAfterAwaken: 0.5,   // 각성 후 남기는 행동 기록 비율
   apSoftCapStart: 10,       // 이 값을 넘는 스탯은 같은 행동의 AP 효율이 떨어진다
   apSoftCapScale: 60,
@@ -25,6 +26,8 @@ export const CONFIG = {
 
   // 자동 사냥 불이익 (EXP · 행동 기록 · 스킬 숙련 · 드랍 확률에 곱한다)
   autoPenalty: 0.8,
+  autoExpPenalty: 0.45,     // 자동 사냥 각성 경험치는 더 크게 깎는다 (v0.37)
+  bookDrop: 0.4,            // 스킬북 드랍 배율 (v0.37: 너무 잘 떨어져서)
 
   // 사망 불이익: 확률적으로 아이템 1개를 그 자리에 떨어뜨린다
   deathDropChance: 0.35,

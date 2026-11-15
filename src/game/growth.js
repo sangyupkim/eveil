@@ -3,8 +3,8 @@
 import { CONFIG, STATS } from '../data/config.js';
 import { R } from './rng.js';
 
-// 각성 40회까지는 1.17배씩, 그 뒤는 완만하게(제곱) 늘어난다 — 120레벨 지역 · 악몽 · 지옥까지 끝없이 막히지 않게
-export const expNeeded = (n) => Math.floor(CONFIG.expBase * Math.pow(CONFIG.expGrowth, Math.min(n, 40)) * Math.pow(1 + Math.max(0, n - 40) / 12, 2));
+// 각성 40회까지는 1.17배씩, 그 뒤는 2.6제곱으로 늘어난다 (v0.37: 2제곱이라 너무 빨리 각성 250을 넘겨서 더 가파르게)
+export const expNeeded = (n) => Math.floor(CONFIG.expBase * Math.pow(CONFIG.expGrowth, Math.min(n, 40)) * Math.pow(1 + Math.max(0, n - 40) / 12, CONFIG.expLatePow ?? 2.6));
 // 지역 위험도에 맞는 권장 각성 (위험도 1 → 0, 60 → 59, 120 → 119 …)
 export const recAwaken = (lv) => Math.max(0, Math.round(lv - 1));
 

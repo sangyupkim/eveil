@@ -37,7 +37,7 @@ export function rollLoot(mon, opt = {}, st = null, rng = R) {
     out.push({ kind: 'item', item: makeItem(id, { qty: 1 }, st) });
   }
   // 스킬북 — 강한 몬스터일수록 높은 등급
-  if (chance(Math.min(1, t.book * dropMult), rng)) {
+  if (chance(Math.min(1, t.book * dropMult * (CONFIG.bookDrop ?? 1)), rng)) {
     const tier = Number(weighted(t.bookTiers, rng));
     const zs = ZONE_SCHOOLS[mon.sp?.zone?.id] || [];
     const big = mon.tier === 'named' || mon.tier === 'boss';

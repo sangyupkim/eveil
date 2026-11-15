@@ -844,6 +844,7 @@ export class Windows {
         <div class="setRow"><span>떠다니는 조이스틱</span><div class="opts">${onoff('joyFloat', set.joyFloat !== false)}</div></div>
         <div class="setRow"><span>화면 흔들림</span><div class="opts">${onoff('shake', set.shake !== false)}</div></div>
         <div class="setRow"><span>자동 물약</span><div class="opts">${[0.3, 0.4, 0.5, 0.6].map((v) => `<button class="btn${set.autoPotion === v ? ' on' : ''}" data-pot="${v}">${v * 100}%</button>`).join('')}</div></div>
+        <div class="setRow"><span>자동 사냥 줍기</span><div class="opts" style="flex-wrap:wrap">${[['common', '일반'], ['magic', '마법'], ['rare', '희귀'], ['hero', '영웅'], ['legend', '전설'], ['potion', '물약'], ['gem', '보석'], ['book', '스킬북'], ['mat', '재료 · 파편']].map(([k, n]) => `<button class="btn${(set.autoPick || {})[k] !== false ? ' on' : ''}" data-apick="${k}">${n}</button>`).join('')}</div></div>
         <div class="setRow"><span>물약 자동 구매</span><div class="opts">${onoff('autoBuy', set.autoBuy !== false)}</div></div>
         <div class="setRow"><span>단축키 (PC)</span><div class="opts"><button class="btn${this.keyEdit ? ' on' : ''}" data-keyedit="1">단축키 지정</button></div></div>
         <div class="setRow"><span>전체 화면</span><div class="opts"><button class="btn" data-full="1">전환</button></div></div>
@@ -1107,6 +1108,7 @@ export class Windows {
     });
     // 메인 화면(캐릭터 고르기)으로: 저장하고 다시 연다
     on('[data-notices]', () => { this.newsList = null; this.show('news'); });
+    on('[data-apick]', (el) => { const f = (st.settings.autoPick ||= {}), k = el.dataset.apick; f[k] = f[k] === false; audio.play('click'); this.render(); });
     on('[data-mailbox]', () => this.mailbox());
     on('[data-title]', () => { this.save(true); window.__noSave = true; setTimeout(() => location.reload(), 400); });
     on('[data-nick]', () => { this.close(); window.__askNick?.(); });

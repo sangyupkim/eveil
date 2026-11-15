@@ -1060,6 +1060,13 @@ export class World {
 
   // ───────── 플레이어가 주는 피해 ─────────
 
+  // 자동 사냥이 주울 물건 (설정 → 자동 사냥 줍기). 금화는 늘 줍는다
+  autoWants(g) {
+    if (g.kind !== 'item' || !g.item) return true;
+    const f = this.st.settings.autoPick || {}, it = g.item, b = BASES[it.base] || {};
+    const cat = it.book ? 'book' : b.type === 'potion' || b.type === 'elixir' ? 'potion' : b.type === 'gem' ? 'gem' : b.type === 'mat' || it.shard ? 'mat' : b.slot ? (it.rarity || 'common') : 'etc';
+    return f[cat] !== false;
+  }
   get autoMult() { return this.auto ? CONFIG.autoPenalty : 1; }
 
   rollWeapon() {
@@ -1182,7 +1189,7 @@ export class World {
     this.lastKillT = this.time;
     if (this.chain >= 3) this.fx.text(this.player.pos.clone().setY(3.2), `연쇄 ${this.chain}`, this.chain >= 10 ? 'crit' : 'heal');
     if (this.chain % 10 === 0) { this.chainSpdT = 5; sfx('buff', 0.6); }
-    const exp = m.exp * rf.exp * this.autoMult * (1 + Math.min(20, this.chain) * 0.02) * (this.night > 0.5 ? 1.2 : 1);
+    const exp = m.exp * rf.exp * (this.auto ? CONFIG.autoExpPenalty ?? CONFIG.autoPenalty : 1) * (1 + Math.min(20, this.chain) * 0.02) * (this.night > 0.5 ? 1.2 : 1);
     const results = gainExp(st, exp * (1 + researchK(st, 'exp')));
     for (const r of results) this.onAwaken(r);
 
@@ -1896,7 +1903,7 @@ export class World {
     // 가까운 전리품 먼저 (싸우는 중이 아닐 때)
     const fighting = this.monsters.some((m) => !m.dead && m.state === 'chase' && dist2(m.pos, P) < 6);
     if (!fighting) {
-      const g = this.ground.filter((x) => !x.deathDrop && dist2(x, P) < 12).sort((a, b) => dist2(a, P) - dist2(b, P))[0];
+      const g = this.ground.filter((x) => !x.deathDrop && dist2(x, P) < 12 && this.autoWants(x)).sort((a, b) => dist2(a, P) - dist2(b, P))[0];
       if (g && !(g.kind === 'item' && st.inv.length >= bagSize(st) && !BASES[g.item.base]?.stack)) {
         if (!this.moveTo || dist2(this.moveTo, g) > 0.5) this.autoGo({ x: g.x, z: g.z }); else this.target = null;
         return;
