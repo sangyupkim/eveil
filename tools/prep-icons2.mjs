@@ -23,6 +23,12 @@ export const LIST = [
     shield_slam: P1(80), bulwark_wave: P1(58), iron_quake: P1(167), titan_crush: P1(161),
     aw_int1: P2(114), aw_int2: P1(157), aw_int3: P2(45), aw_int4a: P1(136), aw_int4b: P1(185), aw_wis1: P1(86), aw_wis2: P1(181), aw_wis3: P2(84), aw_wis4a: P2(18), aw_wis4b: P2(72),
     aw_vit1: P1(79), aw_vit2: P1(64), aw_vit3: P1(166), aw_vit4a: P1(74), aw_vit4b: P1(164),
+    // 검 · 활 · 버프 (v0.41.2)
+    power_strike: P2(178), aimed_shot: P2(133), whirlwind: P2(44), multishot: P2(136), iron_skin: P1(78), earth_cleave: P1(160), divine_shield: P1(116), berserk: P1(31), judgement: P1(110),
+    dash_strike: P2(185), war_cry: P1(238), blade_storm: P2(182), piercing_arrow: P2(142), arrow_rain: P2(75), eagle_eye: P1(28), storm_volley: P2(41), phantom_arrow: P2(139),
+    counter_slash: P2(176), shield_bash: P1(70), execute: P1(17), leap_slam: P1(154), flurry: P2(175), snipe: P2(130), scatter_shot: P2(64), trap_arrow: P1(170), hail_of_arrows: P2(73),
+    ricochet: P2(65), ice_armor: P1(59), holy_ward: P1(113), sanctuary: P2(116), focus_mind: P1(27), taunt_roar: P1(236), stand_fast: P1(75), thorn_mail: P1(176), earth_stomp: P1(165),
+    smoke_step: P2(94), poison_edge: P1(2), arcane_shield: P1(67), battle_mage: P1(14), iron_monk: P1(62), swift_fury: P2(189), hunters_mark: P2(27), mana_shield: P1(57),
     aw_str1: P2(177), aw_str2: P2(147), aw_str3: P2(180), aw_str4a: P2(183), aw_str4b: P2(179), aw_dex1: P2(137), aw_dex2: P2(144), aw_dex3: P2(74), aw_dex4a: P2(141), aw_dex4b: P2(131),
   }).map(([k, f]) => ['sk:' + k, f]),
 ];

@@ -13,7 +13,7 @@ export const MONSTERS = {
   mushking: { name: '고블린 두목', model: 'm_mushking', h: 2.6, attack: 'melee', atk: 'attack2', hp: 30, dmg: [5, 8], speed: 2.5, interval: 1.9, range: 2.4, aggro: 11, exp: 16,
     patterns: ['spores', 'summon', 'slam'], minion: 'mushnub' },
   // 썩은 숲
-  wolf: { behave: 'charge', name: '고블린 정찰병', model: 'm_wolf', h: 1.5, attack: 'melee', hp: 40, dmg: [5, 8], speed: 4.2, interval: 1.3, range: 2.0, aggro: 10, exp: 13 },
+  wolf: { behave: 'charge', name: '고블린 창병', model: 'm_wolf', h: 1.5, attack: 'melee', hp: 40, dmg: [5, 8], speed: 4.2, interval: 1.3, range: 2.0, aggro: 10, exp: 13 },
   spider: { name: '숲 개미귀신', model: 'm_spider', h: 1.1, attack: 'melee', hp: 34, dmg: [5, 7], speed: 3.4, interval: 1.4, range: 1.8, aggro: 8, exp: 12 },
   wasp: { name: '호브고블린 궁수', model: 'm_wasp', h: 1.2, attack: 'ranged', fly: 1.0, hp: 28, dmg: [6, 9], speed: 3.2, interval: 2.0, range: 8, aggro: 11, exp: 13 },
   orc_grunt: { behave: 'shield', name: '호브고블린', model: 'm_orc_grunt', h: 1.7, attack: 'melee', hp: 52, dmg: [6, 9], speed: 2.8, interval: 1.7, range: 1.9, aggro: 9, exp: 14 },

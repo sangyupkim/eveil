@@ -63,3 +63,9 @@
 - "Orbs Collection" (보주) — CC0
 - "Painterly Spell Icons" part 1 ~ 4 — J. W. Bjerk (eleazzaar), CC-BY 3.0 (CC-BY-SA 3.0/4.0 중 선택)
 - 만들기: `node tools/prep-icons2.mjs <받아 푼 폴더>` → src/data/icons2.js
+
+## v0.41.2 더한 것
+- 몬스터 `x_goblin_spearman_elite` — "FLARE Mod - Goblin Spearman Elite", Short-Ribs (OpenGameArt), CC-BY 3.0. 동작 정의는 옛 Flare 격자(128×128)로 직접 적음
+- 효과 `inferno_aura` — "Fire Aura (Compatible with FLARE)", astiar_rpg (OpenGameArt), CC-BY 4.0
+- 소품 (props 20~25 · 30~35) — "Isometric Tileset: Gothic Archways" · "Dark Fantasy Isometric Tiles", Of Far Different Nature (OpenGameArt), CC-BY 4.0
+- 스킬 아이콘: 검 · 활 · 버프 스킬까지 모두 "Painterly Spell Icons" (J. W. Bjerk, CC-BY 3.0)

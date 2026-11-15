@@ -1865,7 +1865,7 @@ export class World {
     if (!act || this.dead) return;
     if (!this.aura) {
       const sk = SKILLS[act.id], c = new THREE.Color(sk.color), warm = c.r > c.b; // 따뜻한 색 = 주황 고리, 차가운 색 = 파란 고리
-      const it = this.fx.play(warm ? 'shield_orange' : 'shield', P.x, P.z, { y: 0, scale: 0.5, loop: true, dur: 9999, alpha: 0.8 });
+      const it = this.fx.play(sk.aura || (warm ? 'shield_orange' : 'shield'), P.x, P.z, { y: 0, scale: sk.aura ? 0.9 : 0.5, loop: true, dur: 9999, alpha: 0.8 }); // v0.41 sk.aura: 고유 오라 그림
       if (!it) return;
       this.aura = { key, it };
     }

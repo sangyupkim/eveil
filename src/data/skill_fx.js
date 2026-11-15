@@ -14,3 +14,6 @@ export const SKILL_FX = {
   mind_blast: 'dark_mist_alt', fan_of_knives: 'caltrops', aw_int3: 'c_icemultispike',
 };
 for (const [id, fx] of Object.entries(SKILL_FX)) if (SKILLS[id] && !SKILLS[id].fx) SKILLS[id].fx = fx;
+// 버프 오라 (v0.41): 불꽃 오라 (astiar_rpg "Fire Aura", CC-BY 4.0) · 얼음 결정 (Flare status_freeze)
+export const SKILL_AURA = { berserk: 'inferno_aura', war_cry: 'inferno_aura', swift_fury: 'inferno_aura', battle_mage: 'inferno_aura', ice_armor: 'status_freeze' };
+for (const [id, a] of Object.entries(SKILL_AURA)) if (SKILLS[id]) SKILLS[id].aura = a;

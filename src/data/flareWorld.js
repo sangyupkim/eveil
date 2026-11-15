@@ -69,7 +69,7 @@ export const MONSTER_LOOK = {
   mushnub: { sprite: 'skeleton_weak' },
   slime_spiky: { sprite: 'antlion' },
   mushking: { sprite: 'goblin_elite', size: 1.3 },
-  wolf: { sprite: 'goblin_elite', tint: 0xc8d0a0 },
+  wolf: { sprite: 'x_goblin_spearman_elite', size: 1.9 }, // v0.41 고블린 창병 정예 (Short-Ribs, CC-BY 3.0)
   spider: { sprite: 'antlion', tint: 0x90b070 },
   wasp: { sprite: 'hobgoblin_archer' },
   orc_grunt: { sprite: 'hobgoblin' },
@@ -216,13 +216,14 @@ Object.assign(ZONE_LOOK, {
 // v0.41 폐허 조각 (OpenGameArt "Old ruins tileset", CC-BY-SA): tiles.props 100~117 = 돌무더기 5 · 기둥 5 · 벽감 2 · 석상 6, 200~217 = 얼어붙은 것, 151~157 · 251~257 = 아치 문
 const RUBBLE = range(100, 104), PILLAR = range(105, 109), NICHE = [110, 111], STATUE = range(112, 117), GATE = [151, 153, 155, 157];
 const frozen = (ids) => ids.map((i) => i + 100);
+const ARCH = range(20, 25), DARK = range(30, 35); // v0.41 고딕 아치 · 다크 판타지 바위 · 빛나는 수정
 ZONE_PROPS.ruins = [...ZONE_PROPS.ruins, ['props', RUBBLE, 16, 0.5], ['props', PILLAR, 10, 0.7], ['props', STATUE, 4, 0.6], ['props', GATE, 2, 1.4]];
 ZONE_PROPS.frost = [...ZONE_PROPS.frost, ['props', frozen(RUBBLE), 12, 0.5], ['props', frozen(PILLAR), 6, 0.7]];
 ZONE_PROPS.harbor = [...ZONE_PROPS.harbor, ['props', [2, 3, 9, 10], 3, 3.0], ['props', RUBBLE, 8, 0.5]];
 ZONE_PROPS.orcfort = [...ZONE_PROPS.orcfort, ['props', RUBBLE, 10, 0.5], ['props', [8], 1, 2.6]];
-Object.assign(ZONE_PROPS, { ashland: ZONE_PROPS.valley, crypt: [...ZONE_PROPS.frost, ['props', frozen(STATUE), 8, 0.6], ['props', frozen(NICHE), 4, 1.0], ['props', frozen(GATE), 3, 1.4]], crystal: ZONE_PROPS.demongate, bloodmire: ZONE_PROPS.swamp,
-  stormpeak: [...ZONE_PROPS.frost, ['props', frozen(PILLAR), 6, 0.7]], temple: [...ZONE_PROPS.ruins, ['props', STATUE, 12, 0.6], ['props', NICHE, 6, 1.0], ['props', PILLAR, 12, 0.7], ['props', GATE, 3, 1.4]], abyss: ZONE_PROPS.inferno,
-  throne: [...ZONE_PROPS.demongate, ['props', PILLAR, 12, 0.7], ['props', STATUE, 6, 0.6], ['props', GATE, 3, 1.4]] });
+Object.assign(ZONE_PROPS, { ashland: ZONE_PROPS.valley, crypt: [...ZONE_PROPS.frost, ['props', frozen(STATUE), 8, 0.6], ['props', frozen(NICHE), 4, 1.0], ['props', frozen(GATE), 3, 1.4]], crystal: [...ZONE_PROPS.demongate, ['props', [34, 35], 14, 0.8]], bloodmire: ZONE_PROPS.swamp,
+  stormpeak: [...ZONE_PROPS.frost, ['props', frozen(PILLAR), 6, 0.7]], temple: [...ZONE_PROPS.ruins, ['props', ARCH, 8, 1.2], ['props', STATUE, 12, 0.6], ['props', NICHE, 6, 1.0], ['props', PILLAR, 12, 0.7], ['props', GATE, 3, 1.4]], abyss: [...ZONE_PROPS.inferno, ['props', DARK, 18, 0.8]],
+  throne: [...ZONE_PROPS.demongate, ['props', ARCH, 8, 1.2], ['props', DARK, 8, 0.8], ['props', PILLAR, 12, 0.7], ['props', STATUE, 6, 0.6], ['props', GATE, 3, 1.4]] });
 for (const [id, base, , tint] of _VAR) if (MONSTER_LOOK[base]) MONSTER_LOOK[id] = { ...MONSTER_LOOK[base], tint, size: (MONSTER_LOOK[base].size || 1) * (id === 'doom_king' ? 1.25 : 1) };
 // v0.40 새 그림 (skeleton_quest 사람 적 · Flare 원본 고유 적, CC-BY-SA): 변종 일부는 바탕과 다른 몸
 const VAR_SPRITE = { crypt_mage: ['x_chainmail_mage', 2.9], temple_priest: ['x_plate_mage', 2.9], blood_witch: ['x_leather_mage', 2.9], storm_wraith: ['x_shadow_wyvern', 3.0],
