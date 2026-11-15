@@ -39,7 +39,7 @@ export function goalText(q) {
 // 보상으로 줄 아이템 목록을 만든다 (가방에 넣지는 않는다)
 export function rewardItems(st, q) {
   const r = q.reward, out = [];
-  const cls = BASES[{ sword: 'short_sword', bow: 'short_bow', staff: 'oak_staff' }[st.start] || 'short_sword'].cls;
+  const cls = BASES[{ sword: 'short_sword', bow: 'short_bow', staff: 'oak_staff', mace: 'oak_club', scepter: 'oak_scepter' }[st.start] || 'short_sword'].cls;
   for (const [id, n] of r.items || []) out.push(makeItem(id, { qty: n }, st));
   if (r.gear) {
     const [slot, rarity, ilvl] = r.gear;

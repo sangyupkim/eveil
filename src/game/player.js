@@ -47,6 +47,7 @@ export function chooseStart(st, id) {
   const k = STARTS[id];
   st.start = id;
   st.equip.weapon = makeItem(k.base, { rarity: 'common', ilvl: 1 }, st);
+  if (k.off) { st.equip.offhand = makeItem(k.off, { rarity: 'common', ilvl: 1 }, st); st.equip.offhand.noDrop = true; }
   st.stats[k.stat] += START_BONUS;
 }
 
@@ -93,9 +94,15 @@ export function derive(st, buffs = {}) {
   const cls = WEAPON_CLASSES[weapon ? BASES[weapon.base].cls : 'unarmed'];
   const wd = weapon ? scaledDmg(weapon) : [2, 4];
   const speed = weapon ? BASES[weapon.base].speed : 1.2;
-  const statMult = 1 + s[cls.ap] * 0.03;
+  // 체력 · 정신은 HP · 방어 · MP도 함께 주므로 피해 배율을 조금 낮춘다 (딜탱 균형)
+  const statMult = 1 + s[cls.ap] * (cls.ap === 'vit' ? 0.02 : cls.ap === 'wis' ? 0.025 : 0.03);
   const berserk = buffs.berserk || 0;
   const dmgMult = statMult * (1 + ((g.dmgPct || 0) + (buffs.might || 0)) / 100) * (1 + berserk / 100);
+  // 자원 보너스 1 ~ 2배: 능력치만으로 생기는 양보다 장비로 더 늘린 HP · MP, 레벨 대비 방어력 (철벽 · 비전 스킬, 둔기 · 홀 평타)
+  const hpK = 1 + 0.5 * Math.min(2, Math.max(0, (g.maxHp || 0) / (60 + s.vit * 6)));
+  const mpK = 1 + 0.5 * Math.min(2, Math.max(0, (g.maxMp || 0) / (15 + s.wis * 4.5)));
+  const armorK0 = (g.armor + s.vit * 0.4), armK = 1 + armorK0 / (armorK0 + 40 + 8 * (1 + (st.awakenings || 0)));
+  const basicK = cls.ap === 'vit' ? 1 + 0.25 * (hpK - 1) : cls.ap === 'wis' ? 1 + 0.25 * (mpK - 1) : 1;
   const armor = (g.armor + s.vit * 0.4) * (1 + ((g.armorPct || 0) + (buffs.armorPct || 0)) / 100);
   return {
     stats: s,
@@ -104,7 +111,9 @@ export function derive(st, buffs = {}) {
     two: weapon ? isTwoHandedBase(BASES[weapon.base]) : false,
     maxHp: Math.round(60 + s.vit * 6 + (g.maxHp || 0)),
     maxMp: Math.round(15 + s.wis * 4.5 + (g.maxMp || 0)),
-    dmg: [wd[0] * dmgMult, wd[1] * dmgMult],
+    // 둔기 평타는 HP 보너스, 홀 평타는 MP 보너스를 조금 받는다 (딜탱)
+    dmg: [wd[0] * dmgMult * basicK, wd[1] * dmgMult * basicK],
+    resK: { hp: hpK, mp: mpK, armor: armK },
     atkRate: Math.min(2.2, speed * (1 + s.dex * 0.004 + (g.atkSpd || 0) / 100 + berserk / 100 + (buffs.haste || 0) / 100)),
     range: cls.range,
     crit: Math.min(0.75, 0.05 + s.dex * 0.0015 + ((g.crit || 0) + (buffs.focus || 0)) / 100),

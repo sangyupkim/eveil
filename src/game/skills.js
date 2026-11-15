@@ -101,6 +101,7 @@ export function skillValues(id, rank, vars = []) {
     // 주문(지능 공격 스킬)은 「평타 피해 × 계수」: 무기가 좋아지면 함께 커지고, 큰 위력 · 랭크는 0.6제곱으로 눌러 지나치게 세지지 않는다
     // 공격 스킬은 모두 같은 식 (0.34.3~): 평타 × 계수. 주문은 위력을 0.6제곱으로 누르고, 검 · 활은 무기 배율(1.8 = 주문 위력 28급)을
     // 같은 계수로 맞춘다. 재사용 3초 미만은 감쇠. 여러 번 내리는 주문은 한 번당 계수를 (횟수 × 0.5)로 나눈다 (검 · 활 연타 스킬은 원래 한 번당 위력이 작게 짜여 있어 나누지 않는다)
+    // 자원 스킬(scale: hp · armor · mp)도 검 · 활과 같은 계수 (자원 보너스 1~2배는 싸울 때 곱한다)
     power: sk.type === 'buff' ? raw : isSpell(sk) ? spellCoef(raw, sk.cd) / multiDiv(sk) : weaponCoef(raw, sk.cd) * (isMelee(sk) ? MELEE_K : 1),
     mp: Math.round(sk.mp * (1 + 0.05 * Math.min(rank - 1, 9) + 0.01 * Math.max(0, rank - 10)) * (fr ? 0.55 : 1)),
     cd: sk.cd * (1 - 0.02 * Math.min(rank - 1, 15)) * (q ? 0.65 : 1) * (f ? 0.85 : 1),

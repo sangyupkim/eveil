@@ -606,9 +606,11 @@ export class World {
 
   // 각성 20 · 40 · 60: 키운 스탯으로 칭호를 받고 특성 하나를 고른다
   offerTitle(tier) {
-    const st = this.st, key = titleKey(st.stats, CONFIG.startStat);
-    if ((st.titles ||= []).some((t) => t.tier === tier)) return;
+    const st = this.st, key = titleKey(st.stats, CONFIG.startStat, tier);
+    if ((st.titles ||= []).some((t) => t.tier === tier) || this.titleOpen) return;
+    this.titleOpen = true;
     this.ui.titlePick({ tier, key, name: titleName(key, tier), choices: perkChoices(key, tier) }, (perk) => {
+      this.titleOpen = false;
       st.titles.push({ tier, key, name: titleName(key, tier), perk });
       const seen = (st.titleSeen ||= []); if (!seen.includes(key + tier)) seen.push(key + tier);
       sfx('awaken'); this.fx.pillar(this.player.pos.x, this.player.pos.z, 0xffe080, 1.4);
@@ -1046,9 +1048,19 @@ export class World {
       sh.v -= ab; dmg -= ab;
       if (sh.v <= 0) sh.t = 0;
     }
+    // 마나 방패: 남은 피해를 MP로 막는다 (MP 1당 피해 1/비율). 막은 만큼 정신
+    const ms = this.buffs.manaShield;
+    if (ms && ms.t > 0 && st.mp > 0 && dmg > 0) {
+      const ratio = Math.max(0.6, ms.v || 1), ab = Math.min(dmg, st.mp / ratio);
+      st.mp -= ab * ratio; dmg -= ab;
+      addAP(st, 'wis', (ab / d.maxHp) * AP_TABLE.hurtScale, apMult);
+      if (dmg <= 0.5) { this.fx.text(head, '마나 방패', 'miss'); this.perk('hurt'); return; }
+    }
     dmg = Math.max(1, Math.round(dmg));
     st.hp -= dmg;
-    addAP(st, 'vit', (dmg / d.maxHp) * AP_TABLE.hurtScale, apMult);
+    // 체력: 맞은 횟수 + 줄이기 전 피해(방어 · 막기로 줄인 만큼도), 방패를 들면 1.5배 — HP가 많이 닳지 않아도 쌓인다
+    const shieldK = BASES[st.equip.offhand?.base]?.block ? 1.5 : 1;
+    addAP(st, 'vit', (AP_TABLE.hurtHit + (raw / d.maxHp) * AP_TABLE.hurtScale) * shieldK, apMult);
     this.perk('hurt');
     this.player.hitFlash(0xff2000);
     this.fx.burst(this.player.pos.x, 1.2, this.player.pos.z, 0xff3020, 5, 2.5, 0.3);
@@ -1115,12 +1127,12 @@ export class World {
     const cls = d.cls;
     if (src === 'melee' || (ctx && SKILLS[ctx.id].ap === 'weapon')) {
       if (cls.kind === 'ranged') { addAP(st, 'dex', AP_TABLE.rangedHit, apMult); addAP(st, 'str', AP_TABLE.rangedHitSide, apMult); }
-      else if (cls.kind === 'magic') addAP(st, 'int', AP_TABLE.magicBasicHit, apMult);
+      else if (cls.kind === 'magic') addAP(st, cls.ap === 'wis' ? 'wis' : 'int', AP_TABLE.magicBasicHit, apMult);
       else { addAP(st, cls.ap, AP_TABLE.meleeHit, apMult); addAP(st, cls.side, AP_TABLE.meleeHitSide, apMult); }
     } else if (src === 'ranged') {
       addAP(st, 'dex', AP_TABLE.rangedHit, apMult); addAP(st, 'str', AP_TABLE.rangedHitSide, apMult);
     } else if (src === 'magic') {
-      addAP(st, 'int', AP_TABLE.magicBasicHit, apMult);
+      addAP(st, cls.ap === 'wis' ? 'wis' : 'int', AP_TABLE.magicBasicHit, apMult); // 홀은 정신
     }
     if (ctx) {
       const sk = SKILLS[ctx.id];
@@ -1519,6 +1531,7 @@ export class World {
     if (!s) return { ok: false, why: '배우지 않은 스킬' };
     const sk = SKILLS[id];
     const v = skillValues(id, s.rank, modsOf(s));
+    if (sk.mpPct) v.mp = Math.max(v.mp, Math.ceil(this.d.maxMp * sk.mpPct * (modsOf(s).includes('frugal') ? 0.55 : 1))); // 비전: 최대 MP의 %
     if ((this.cds[id] || 0) > 0) return { ok: false, why: '재사용 대기 중' };
     if (this.st.mp < v.mp) return { ok: false, why: 'MP가 부족합니다' };
     const kind = this.d.cls.kind;
@@ -1563,6 +1576,8 @@ export class World {
     st.mp -= v.mp;
     this.perk(sk.type === 'buff' ? 'buff' : sk.ap === 'int' ? 'spell' : 'skill', this.target?.pos);
     this.cds[id] = v.cd;
+    // 쓴 횟수도 성장에: 스킬의 필요 스탯에 필요량 비율대로 (각성 때 그 스탯으로 나뉜다)
+    if (!v.echoed && sk.req) { const tot = Object.values(sk.req).reduce((a, b) => a + b, 0) || 1; for (const [k, n] of Object.entries(sk.req)) addAP(st, k, AP_TABLE.skillUse * (1 + 0.5 * ((sk.tier || 1) - 1)) * (n / tot), this.autoMult); }
     if (!v.echoed) this.skillExp(id, 1);
     const ctx = { id, mp: v.mp, hits: 0, apGiven: false, slow: sk.slow };
     // 변형 「메아리」: 잠시 뒤 약하게 한 번 더
@@ -1577,9 +1592,19 @@ export class World {
     const pw = v.power * mixK;
     // 주문 피해 = 평타 기준 피해(spellBase) × 계수, 치명타는 평타와 같은 확률 · 배율 (spell() 다음에 spellCrit()을 부른다)
     let lastCrit = false;
-    const spell = () => { lastCrit = Math.random() < d.crit; return randRange(0.9, 1.1) * pw * d.spellBase * (lastCrit ? d.critMult : 1); };
+    let spell = () => { lastCrit = Math.random() < d.crit; return randRange(0.9, 1.1) * pw * d.spellBase * (lastCrit ? d.critMult : 1); };
     const spellCrit = () => lastCrit;
-    const weaponHit = () => { const w = this.rollWeapon(); return { v: w.v * pw, crit: w.crit }; };
+    // 자원 스킬 (철벽 · 비전): 평타 × 계수 × 자원 보너스, 치명타는 평타와 같다
+    if (sk.scale) {
+      // 평타 × 계수 × 자원 보너스(1 ~ 2배: 장비로 늘린 HP · MP, 레벨 대비 방어력)
+      const rk = d.resK?.[sk.scale] || 1;
+      const roll = () => { const w = this.rollWeapon(); lastCrit = w.crit; return w.v * pw * rk; };
+      spell = roll;
+      weaponHit = () => { const v0 = roll(); return { v: v0, crit: lastCrit }; };
+    }
+    if (sk.hpCost) st.hp = Math.max(1, st.hp - d.maxHp * sk.hpCost); // HP도 쓴다
+    if (sk.ap === 'wis' && v.mp > 0) addAP(st, 'wis', v.mp * AP_TABLE.supportPerMp, this.autoMult); // 정신: 쓴 MP만큼
+    let weaponHit = () => { const w = this.rollWeapon(); return { v: w.v * pw, crit: w.crit }; };
     const color = new THREE.Color(sk.color).getHex();
     if (sk.type !== 'buff') this.fx.circle(P.pos.x, P.pos.z, 1.8, color, 0.9); // 버프는 따로 (보호막 · 오라)
     this.fx.castFlash(P.pos.x, P.pos.z, color);
@@ -2069,6 +2094,7 @@ export class World {
       if (done) this.ui.toast(`연구 완료: ${RESEARCH[done].name} ${researchLv(st, done)}단계`, '#7fe07a');
       this.checkAchievements();
       this.checkTierUnlock(); // 예전 저장도 조건을 채웠으면 열린다
+      { const ti = TITLE_AT.findIndex((n, i) => st.awakenings >= n && !(st.titles || []).some((t) => t.tier === i)); if (ti >= 0 && !this.dead) this.offerTitle(ti); } // 4차 각성이 새로 생겨 이미 넘긴 캐릭터도 받는다
       const back = townOf(st).mercs.filter((m) => m.job && Date.now() >= m.job.until && !m.job.told);
       for (const m of back) { m.job.told = true; this.ui.toast(`용병 ${m.name}이(가) 사냥에서 돌아왔습니다`, '#ffd84a'); }
     }

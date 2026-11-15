@@ -125,6 +125,12 @@ export const ANIM_MAP = {
 // layers: 입었을 때 끼우는 겹 { chest, legs, hands, feet, head, main, off } · tint: 색 · icon: 아이콘 번호
 const C = { ice: 0xa8d8ff, red: 0xff8a70, vio: 0xb8a0ff, grn: 0xa0d090, gold: 0xffd880, dark: 0x8a8898, brown: 0xc0a090 };
 export const ITEM_LOOK = {
+  // v0.37 둔기 · 홀 · 보주 (보주는 손에 그리지 않고 아이콘만)
+  rusty_club: { layers: { main: 'hand_axe' }, icon: 117, tint: 0x8a6a4a }, oak_club: { layers: { main: 'hand_axe' }, icon: 117, tint: 0x9a7a52 }, iron_mace: { layers: { main: 'hand_axe' }, icon: 117 },
+  war_hammer: { layers: { main: 'hand_axe' }, icon: 117, tint: 0x8a8a9a }, spiked_mace: { layers: { main: 'hand_axe' }, icon: 117, tint: 0x6a6a7a }, knight_axe: { layers: { main: 'hand_axe' }, icon: 117, tint: 0xd8c070 }, dragon_mace: { layers: { main: 'hand_axe' }, icon: 117, tint: 0xff7a5a },
+  novice_scepter: { layers: { main: 'wand' }, icon: 104, tint: 0x9a8aa0 }, oak_scepter: { layers: { main: 'wand' }, icon: 104 }, moon_scepter: { layers: { main: 'rod' }, icon: 105, tint: 0xb8d8ff },
+  sage_scepter: { layers: { main: 'rod' }, icon: 105, tint: 0x9ad0ff }, rune_scepter: { layers: { main: 'rod' }, icon: 105, tint: 0x8ab0ff }, astral_scepter: { layers: { main: 'rod' }, icon: 105, tint: 0xd0b0ff }, void_scepter: { layers: { main: 'rod' }, icon: 105, tint: 0xb07aff },
+  glass_orb: { icon: 68, tint: 0xd0e8ff }, moon_orb: { icon: 68 }, rune_orb: { icon: 68, tint: 0x8ab0ff }, void_orb: { icon: 68, tint: 0xb07aff },
   rusty_sword: { layers: { main: 'shortsword' }, icon: 97, tint: C.brown }, short_sword: { layers: { main: 'shortsword' }, icon: 97 }, broad_sword: { layers: { main: 'longsword' }, icon: 98 },
   greatsword: { layers: { main: 'greatsword' }, icon: 99 }, claymore: { layers: { main: 'zweihander' }, icon: 100 }, golden_sword: { layers: { main: 'longsword' }, icon: 98, tint: C.gold },
   war_axe: { layers: { main: 'hand_axe' }, icon: 117 }, great_axe: { layers: { main: 'battle_axe' }, icon: 119 }, frost_blade: { layers: { main: 'longsword' }, icon: 98, tint: C.ice },
@@ -168,6 +174,7 @@ export const LOOT_LOOK = { weapon: { sword: 'longsword', bow: 'longbow', staff: 
 
 // 스킬 아이콘 번호
 export const SKILL_ICON = {
+  shield_slam: 4, bulwark_wave: 39, iron_quake: 39, titan_crush: 5, mana_shield: 26, arcane_surge: 10, mana_burst: 42, overload: 23, arcane_storm: 24,
   power_strike: 5, whirlwind: 46, earth_cleave: 39, judgement: 45, berserk: 31, dash_strike: 9, war_cry: 10, blade_storm: 44,
   aimed_shot: 16, multishot: 8, piercing_arrow: 23, arrow_rain: 41, eagle_eye: 6, storm_volley: 35, phantom_arrow: 13,
   fire_bolt: 18, fireball: 34, chain_lightning: 7, meteor: 37, absolute_zero: 20, frost_bolt: 38, flame_wave: 21, blizzard: 24,

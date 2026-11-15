@@ -97,4 +97,6 @@ export const QUEST_BOOKS = {
   sword: { 2: 'dash_strike', 3: 'earth_cleave', 4: 'blade_storm', 5: 'judgement' },
   bow: { 2: 'piercing_arrow', 3: 'arrow_rain', 4: 'storm_volley', 5: 'phantom_arrow' },
   staff: { 2: 'fireball', 3: 'chain_lightning', 4: 'blizzard', 5: 'absolute_zero' },
+  mace: { 2: 'bulwark_wave', 3: 'iron_quake', 4: 'titan_crush', 5: 'titan_crush' },
+  scepter: { 2: 'mana_burst', 3: 'overload', 4: 'arcane_storm', 5: 'arcane_storm' },
 };

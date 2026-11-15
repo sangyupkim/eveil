@@ -13,6 +13,9 @@ export const WEAPON_CLASSES = {
   sword: { name: '검', kind: 'melee', ap: 'str', side: 'dex', range: 2.2 },
   bow: { name: '활', kind: 'ranged', ap: 'dex', side: 'str', range: 12, two: true },
   staff: { name: '지팡이', kind: 'magic', ap: 'int', side: null, range: 10, two: true },
+  // v0.37 딜탱 둘: 한손 무기 + 보조 (방패 · 보주)
+  mace: { name: '둔기', kind: 'melee', ap: 'vit', side: 'str', range: 2.0 },        // 맞으면서 버티는 탱커 — 체력으로 피해
+  scepter: { name: '홀', kind: 'magic', ap: 'wis', side: 'int', range: 6.5 },       // 마나로 버티고 마나로 때리는 딜탱 — 정신으로 피해
 };
 
 // minLvl: 이 아이템 레벨부터 드랍된다. shop: 상점 판매 여부
@@ -148,6 +151,27 @@ export const BASES = {
   el_swift: { name: '바람걸음 물약', type: 'elixir', price: 80, stack: true },
   el_focus: { name: '매의 눈 물약', type: 'elixir', price: 80, stack: true },
   el_luck: { name: '행운의 물약', type: 'elixir', price: 80, stack: true },
+  // ── v0.37 둔기 · 도끼 (체력, 한손 — 방패와 함께) ──
+  rusty_club: { name: '낡은 몽둥이', slot: 'weapon', cls: 'mace', model: 'w_axe', dmg: [4, 7], speed: 1.0, price: 5, minLvl: 1, noDrop: true, mods: { maxHp: 10 } },
+  oak_club: { name: '참나무 곤봉', slot: 'weapon', cls: 'mace', model: 'w_axe', dmg: [6, 10], speed: 1.0, price: 90, shop: true, mods: { maxHp: 15 } },
+  iron_mace: { name: '철퇴', slot: 'weapon', cls: 'mace', model: 'w_axe', dmg: [10, 15], speed: 0.95, req: { vit: 16 }, minLvl: 4, mods: { maxHp: 25 } },
+  war_hammer: { name: '전투 망치', slot: 'weapon', cls: 'mace', model: 'w_axe', dmg: [15, 23], speed: 0.9, req: { vit: 26 }, minLvl: 9, mods: { maxHp: 40, armorPct: 5 } },
+  spiked_mace: { name: '가시 철퇴', slot: 'weapon', cls: 'mace', model: 'w_axe', dmg: [20, 30], speed: 0.95, req: { vit: 34 }, minLvl: 14, mods: { maxHp: 60, armorPct: 8 } },
+  knight_axe: { name: '기사의 손도끼', slot: 'weapon', cls: 'mace', model: 'w_axe', dmg: [27, 40], speed: 1.0, req: { vit: 44 }, minLvl: 22, mods: { maxHp: 90, armorPct: 10 } },
+  dragon_mace: { name: '용뼈 철퇴', slot: 'weapon', cls: 'mace', model: 'w_axe', dmg: [38, 56], speed: 0.95, req: { vit: 58 }, minLvl: 36, mods: { maxHp: 150, armorPct: 14 } },
+  // ── v0.37 홀 (정신, 한손 — 보주와 함께) ──
+  novice_scepter: { name: '견습 홀', slot: 'weapon', cls: 'scepter', model: 'w_wand', dmg: [4, 7], speed: 1.0, price: 5, minLvl: 1, noDrop: true, mods: { maxMp: 10 } },
+  oak_scepter: { name: '참나무 홀', slot: 'weapon', cls: 'scepter', model: 'w_wand', dmg: [6, 10], speed: 1.0, price: 100, shop: true, mods: { maxMp: 20 } },
+  moon_scepter: { name: '달빛 홀', slot: 'weapon', cls: 'scepter', model: 'w_wand', dmg: [10, 15], speed: 1.0, req: { wis: 16 }, minLvl: 4, mods: { maxMp: 35, mpRegen: 1 } },
+  sage_scepter: { name: '현자의 홀', slot: 'weapon', cls: 'scepter', model: 'w_wand', dmg: [15, 23], speed: 1.0, req: { wis: 26 }, minLvl: 9, mods: { maxMp: 55, mpRegen: 2 } },
+  rune_scepter: { name: '룬 홀', slot: 'weapon', cls: 'scepter', model: 'w_wand', dmg: [20, 30], speed: 1.0, req: { wis: 34 }, minLvl: 14, mods: { maxMp: 80, mpRegen: 3 } },
+  astral_scepter: { name: '성좌의 홀', slot: 'weapon', cls: 'scepter', model: 'w_wand', dmg: [27, 40], speed: 1.05, req: { wis: 44 }, minLvl: 22, mods: { maxMp: 120, mpRegen: 4 } },
+  void_scepter: { name: '공허의 홀', slot: 'weapon', cls: 'scepter', model: 'w_wand', dmg: [38, 56], speed: 1.05, req: { wis: 58 }, minLvl: 36, mods: { maxMp: 180, mpRegen: 6 } },
+  // ── v0.37 보주 (보조 칸, 홀과 함께): MP · MP 회복 · 조금의 방어 ──
+  glass_orb: { name: '유리 보주', slot: 'offhand', armor: 2, price: 80, shop: true, mods: { maxMp: 20 } },
+  moon_orb: { name: '달빛 보주', slot: 'offhand', armor: 5, req: { wis: 20 }, minLvl: 5, mods: { maxMp: 45, mpRegen: 1 } },
+  rune_orb: { name: '룬 보주', slot: 'offhand', armor: 9, req: { wis: 32 }, minLvl: 14, mods: { maxMp: 80, mpRegen: 2 } },
+  void_orb: { name: '공허의 보주', slot: 'offhand', armor: 16, req: { wis: 56 }, minLvl: 32, mods: { maxMp: 150, mpRegen: 4 } },
 };
 export const isTwoHandedBase = (b) => !!(b.two ?? WEAPON_CLASSES[b.cls]?.two);
 
@@ -200,6 +224,8 @@ export const STARTS = {
   sword: { base: 'rusty_sword', stat: 'str', book: 'power_strike', line: '가까이서 묵직하게' },
   bow: { base: 'old_bow', stat: 'dex', book: 'aimed_shot', line: '멀리서 정확하게' },
   staff: { base: 'novice_staff', stat: 'int', book: 'fire_bolt', line: '주문으로 태운다' },
+  mace: { base: 'rusty_club', off: 'round_shield', stat: 'vit', book: 'shield_slam', line: '맞으면서 버틴다' },
+  scepter: { base: 'novice_scepter', off: 'glass_orb', stat: 'wis', book: 'mana_shield', line: '마나로 막고 마나로 친다' },
 };
 export const START_BONUS = 2;
 
@@ -210,7 +236,7 @@ export const HIGH_TIERS = [
 ];
 export const HIGH_TEMPLATES = {
   sword: ['inferno_sword', '검'], greatsword: ['rune_blade', '대검'], axe: ['dragon_cleaver', '도끼'], bow: ['dragon_bow', '활'], staff: ['archmage_staff', '지팡이'],
-  shield: ['dragon_shield', '방패'], plate: ['dragon_plate', '판금'], leather: ['shadow_leather', '가죽 갑옷'], robe: ['inferno_robe', '로브'],
+  shield: ['dragon_shield', '방패'], mace: ['dragon_mace', '철퇴'], scepter: ['void_scepter', '홀'], orb: ['void_orb', '보주'], plate: ['dragon_plate', '판금'], leather: ['shadow_leather', '가죽 갑옷'], robe: ['inferno_robe', '로브'],
   helm: ['dragon_helm', '투구'], hood: ['shadow_hood', '두건'], hat: ['archmage_hat', '모자'],
   gaunt: ['dragon_gauntlets', '건틀릿'], lglove: ['shadow_gloves', '장갑'], sleeve: ['ember_sleeves', '소매'],
   boot: ['dragon_boots', '장화'], lboot: ['shadow_boots', '가죽 장화'], mboot: ['ember_boots', '신'],

@@ -154,7 +154,7 @@ const SCHOOL_OF = { power_strike: 'sword', whirlwind: 'sword', earth_cleave: 'sw
   chain_lightning: 'storm', iron_skin: 'guard', divine_shield: 'holy' };
 for (const id in SCHOOL_OF) if (SKILLS[id]) SKILLS[id].school = SCHOOL_OF[id];
 for (const [id, sk] of Object.entries(MORE_SKILLS)) SKILLS[id] = { glyph: sk.name[0], ...sk };
-export const SCHOOL_NAMES = { sword: '검술', bow: '궁술', fire: '화염', frost: '냉기', storm: '번개', holy: '신성', guard: '수호', trick: '기교', mix: '혼합' };
+export const SCHOOL_NAMES = { sword: '검술', bow: '궁술', fire: '화염', frost: '냉기', storm: '번개', holy: '신성', guard: '수호', trick: '기교', mix: '혼합', bulwark: '철벽', arcane: '비전' };
 
 export const SKILL_IDS = Object.keys(SKILLS);
 export function skillsOfTier(t) {

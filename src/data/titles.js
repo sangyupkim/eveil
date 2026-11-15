@@ -1,26 +1,38 @@
-// 칭호(전직): 직업을 고르지 않는다. 각성 20 · 40 · 60에 가장 많이 키운 스탯 둘로 갈래가 정해진다.
+// 칭호(전직): 직업을 고르지 않는다. 1차 · 2차 · 3차 각성(20 · 40 · 60)에 가장 많이 키운 스탯 둘로, 4차 각성(100)은 셋까지 보고 갈래가 정해진다.
 // 순수 5 + 혼합 10 = 15갈래 × 3단계. 특성은 스탯마다의 "조건 조각" + "효과 조각"을 이어 만든다 (회복 효과는 없다).
 import { STATS } from './config.js';
 
-export const TITLE_AT = [20, 40, 60];
+export const TITLE_AT = [20, 40, 60, 100];
+export const AWAKEN_NAMES = ['1차 각성', '2차 각성', '3차 각성', '4차 각성'];
 
 // 갈래 이름 (두 스탯은 STATS 순서로 정렬한 키)
 export const TITLE_NAMES = {
-  str: ['전사', '광전사', '전쟁군주'],
-  dex: ['사냥꾼', '명사수', '바람의 궁신'],
-  int: ['마법사', '원소술사', '대마도사'],
-  wis: ['수련사', '예언자', '성현'],
-  vit: ['파수꾼', '수호자', '불굴의 성벽'],
-  'str+dex': ['검객', '검무사', '검성'],
-  'str+int': ['마검사', '마검 기사', '마검성'],
-  'str+wis': ['성전사', '성기사', '성기사단장'],
-  'str+vit': ['투사', '철기병', '철혈의 군주'],
-  'dex+int': ['마궁사', '원소 궁수', '별빛 사수'],
-  'dex+wis': ['순례자', '바람의 추적자', '영혼 사냥꾼'],
-  'dex+vit': ['정찰병', '레인저', '황야의 왕'],
-  'int+wis': ['학자', '현자', '대현자'],
-  'int+vit': ['전투 마법사', '주문 기사', '마도 장군'],
-  'wis+vit': ['수도사', '수호 수도사', '금강'],
+  str: ['전사', '광전사', '전쟁군주', '패왕'],
+  dex: ['사냥꾼', '명사수', '바람의 궁신', '신궁'],
+  int: ['마법사', '원소술사', '대마도사', '마도왕'],
+  wis: ['수련사', '예언자', '성현', '대성자'],
+  vit: ['파수꾼', '수호자', '불굴의 성벽', '불멸자'],
+  'str+dex': ['검객', '검무사', '검성', '검신'],
+  'str+int': ['마검사', '마검 기사', '마검성', '마검제'],
+  'str+wis': ['성전사', '성기사', '성기사단장', '성검왕'],
+  'str+vit': ['투사', '철기병', '철혈의 군주', '철혈제'],
+  'dex+int': ['마궁사', '원소 궁수', '별빛 사수', '성좌의 사수'],
+  'dex+wis': ['순례자', '바람의 추적자', '영혼 사냥꾼', '영혼의 사냥신'],
+  'dex+vit': ['정찰병', '레인저', '황야의 왕', '야생의 군주'],
+  'int+wis': ['학자', '현자', '대현자', '현자왕'],
+  'int+vit': ['전투 마법사', '주문 기사', '마도 장군', '마도 대원수'],
+  'wis+vit': ['수도사', '수호 수도사', '금강', '금강불괴'],
+  // 4차 각성 전용: 세 스탯 갈래
+  'str+dex+int': [null, null, null, '마도 검무사'],
+  'str+dex+wis': [null, null, null, '성검 순례자'],
+  'str+dex+vit': [null, null, null, '전장의 패자'],
+  'str+int+wis': [null, null, null, '신성 마검사'],
+  'str+int+vit': [null, null, null, '마갑 전차'],
+  'str+wis+vit': [null, null, null, '성채 기사'],
+  'dex+int+wis': [null, null, null, '별의 현자'],
+  'dex+int+vit': [null, null, null, '원소 사냥꾼'],
+  'dex+wis+vit': [null, null, null, '대지의 수호자'],
+  'int+wis+vit': [null, null, null, '대마법 수호자'],
 };
 
 // 조건 조각: trig = 일어나는 일, p = 확률
@@ -39,19 +51,21 @@ export const EFFECTS = {
   wis: [{ id: 'mp', text: (v) => `MP ${v} 회복`, v: 6 }, { id: 'ward', text: (v) => `3초 동안 받는 피해 -${v}%`, v: 20 }],
   vit: [{ id: 'ward', text: (v) => `3초 동안 받는 피해 -${v}%`, v: 20 }, { id: 'thorns', text: (v) => `가까운 적에게 무기 피해 ${v}% 반격`, v: 50 }],
 };
-const TIER_K = [1, 1.4, 1.8];
+const TIER_K = [1, 1.4, 1.8, 2.4];
 
 // 스탯에서 갈래 키: 시작값(10)을 뺀 성장량으로 본다
-export function titleKey(stats, start = 10) {
+// 2등이 1등의 60% 이상이면 두 스탯, 4차 각성(tier 3)에서는 3등도 60% 이상이면 세 스탯 갈래
+export function titleKey(stats, start = 10, tier = 0) {
   const g = STATS.map((s) => [s, Math.max(0, stats[s] - start)]).sort((a, b) => b[1] - a[1]);
   if (g[1][1] < g[0][1] * 0.6) return g[0][0];
-  return [g[0][0], g[1][0]].sort((a, b) => STATS.indexOf(a) - STATS.indexOf(b)).join('+');
+  const n = tier >= 3 && g[2][1] >= g[0][1] * 0.6 ? 3 : 2;
+  return g.slice(0, n).map((x) => x[0]).sort((a, b) => STATS.indexOf(a) - STATS.indexOf(b)).join('+');
 }
 
 // 갈래의 특성 후보 셋 (같은 갈래 · 단계면 늘 같은 셋)
 export function perkChoices(key, tier) {
   const parts = key.split('+'), pool = [];
-  const pairs = parts.length === 1 ? [[parts[0], parts[0]]] : [[parts[0], parts[1]], [parts[1], parts[0]]];
+  const pairs = parts.length === 1 ? [[parts[0], parts[0]]] : parts.flatMap((a) => parts.filter((b) => b !== a).map((b) => [a, b]));
   for (const [a, b] of pairs) for (const t of TRIGGERS[a]) for (const e of EFFECTS[b]) pool.push({ trig: t.id, p: t.p, eff: e.id, v: Math.round(e.v * TIER_K[tier]), text: `${t.text} ${e.text(Math.round(e.v * TIER_K[tier]))}` });
   // 갈래 · 단계로 정해지는 순서로 섞어 셋
   let h = [...key].reduce((x, c) => (x * 31 + c.charCodeAt(0)) >>> 0, 7 + tier * 101);

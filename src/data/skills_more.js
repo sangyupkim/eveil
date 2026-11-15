@@ -81,13 +81,24 @@ export const MORE_SKILLS = {
   iron_monk: W({ name: '금강불괴', color: '#e0c090', tier: 4, type: 'buff', ap: 'vit', school: 'mix', mix: 'wis', buff: 'shield', req: { vit: req(4), wis: req(4) - 8 }, mp: 30, cd: 34, duration: 14, power: 260, perRank: 45, desc: '몸과 마음을 굳혀 큰 보호막을 두른다.' }),
   swift_fury: W({ name: '질풍노도', color: '#ffb070', tier: 4, type: 'buff', ap: 'dex', school: 'mix', mix: 'str', buff: 'berserk', req: { dex: req(4), str: req(4) - 8 }, mp: 24, cd: 36, duration: 12, power: 25, perRank: 3, desc: '바람처럼 몰아친다.' }),
   hunters_mark: W({ name: '사냥꾼의 표식', color: '#e0e080', tier: 2, type: 'buff', ap: 'dex', school: 'mix', mix: 'vit', buff: 'focus', req: { dex: req(2), vit: req(2) - 4 }, mp: 12, cd: 24, duration: 14, power: 14, perRank: 2, desc: '먹잇감을 노려 치명타를 높인다.' }),
+  // ── v0.37 철벽 (체력 · 둔기): 최대 HP · 방어력으로 피해, 몇몇은 HP도 쓴다 (scale · hpCost) ──
+  shield_slam: W({ name: '방패 강타', color: '#c8b080', tier: 1, type: 'melee', needs: 'melee', school: 'bulwark', scale: 'hp', hpCost: 0.03, req: { vit: 12 }, mp: 6, cd: 4, power: 1.7, perRank: 0.14, anim: 'heavy', desc: '방패로 후려친다. 장비로 늘린 최대 HP가 많을수록 세다 (HP도 조금 쓴다).' }),
+  bulwark_wave: W({ name: '방벽 충격', color: '#a0a8b8', tier: 2, type: 'cleave', needs: 'melee', school: 'bulwark', scale: 'armor', slow: 2, req: { vit: req(2) }, mp: 12, cd: 7, radius: 4.5, power: 1.6, perRank: 0.13, anim: 'heavy', desc: '단단한 몸으로 앞을 밀어낸다. 방어력이 높을수록 세다.' }),
+  iron_quake: W({ name: '강철 지진', color: '#9a8a6a', tier: 3, type: 'spin', needs: 'melee', school: 'bulwark', scale: 'hp', hpCost: 0.06, req: { vit: req(3) }, mp: 22, cd: 10, radius: 5, power: 2.4, perRank: 0.19, anim: 'spin', desc: '땅을 내리찍어 둘레를 흔든다. 장비로 늘린 최대 HP가 많을수록 세다 (HP도 쓴다).' }),
+  titan_crush: W({ name: '거인의 일격', color: '#d0a060', tier: 4, type: 'melee', needs: 'melee', school: 'bulwark', scale: 'armor', hpCost: 0.05, req: { vit: req(4) }, mp: 30, cd: 14, power: 3.6, perRank: 0.27, anim: 'heavy', desc: '온 무게를 실어 내리친다. 방어력이 높을수록 세다.' }),
+  // ── v0.37 비전 (정신 · 홀): 최대 MP로 피해, 최대 MP의 몇 %를 쓴다 (scale · mpPct) ──
+  mana_shield: { name: '마나 방패', color: '#7ab0ff', tier: 1, type: 'buff', ap: 'wis', school: 'arcane', buff: 'manaShield', req: { wis: 12 }, mp: 8, cd: 20, duration: 12, power: 1.0, perRank: -0.02, desc: '받는 피해를 HP 대신 MP로 막는다 (랭크가 오를수록 MP를 덜 쓴다).' },
+  arcane_surge: { name: '비전 쇄도', color: '#9ab8ff', tier: 1, type: 'bolt', ap: 'wis', school: 'arcane', scale: 'mp', mpPct: 0.06, req: { wis: 12 }, mp: 5, cd: 1.5, range: 10, power: 1.4, perRank: 0.11, fx: 'arcane', desc: '마력 덩어리를 쏜다. 장비로 늘린 최대 MP가 많을수록 세다.' },
+  mana_burst: { name: '마력 폭발', color: '#b090ff', tier: 2, type: 'nova', ap: 'wis', school: 'arcane', scale: 'mp', mpPct: 0.14, req: { wis: req(2) }, mp: 12, cd: 6, radius: 4.5, power: 2.1, perRank: 0.17, desc: '몸에서 마력을 터뜨린다. 장비로 늘린 최대 MP가 많을수록 세다.' },
+  overload: { name: '과부하', color: '#c0a0ff', tier: 3, type: 'line', ap: 'wis', school: 'arcane', scale: 'mp', mpPct: 0.2, req: { wis: req(3) }, mp: 20, cd: 9, range: 11, width: 2, power: 2.9, perRank: 0.23, desc: '넘치는 마력을 한 줄로 내뿜는다.' },
+  arcane_storm: { name: '비전 폭풍', color: '#8a7aff', tier: 4, type: 'rain', ap: 'wis', school: 'arcane', scale: 'mp', mpPct: 0.28, req: { wis: req(4) }, mp: 30, cd: 14, radius: 5, waves: 4, power: 1.25, perRank: 0.1, desc: '마력 비를 네 번 내린다.' },
 };
 
 // 갈래 → 기본 아이콘 (Flare 기술 아이콘 번호)
 export const SCHOOL_ICON = { sword: 5, bow: 16, fire: 34, frost: 38, storm: 7, holy: 26, guard: 4, trick: 6, mix: 45 };
 // 지역마다 잘 나오는 갈래 (스킬북 드랍 가중치 3배)
 export const ZONE_SCHOOLS = {
-  field: ['sword', 'bow'], forest: ['bow', 'trick'], grave: ['holy', 'frost'], ruins: ['sword', 'guard'],
-  swamp: ['storm', 'trick'], frost: ['frost', 'guard'], valley: ['bow', 'storm'], inferno: ['fire', 'sword'],
-  orcfort: ['sword', 'guard'], webwood: ['bow', 'trick'], harbor: ['holy', 'frost'], demongate: ['fire', 'storm'],
+  field: ['sword', 'bow', 'bulwark', 'arcane'], forest: ['bow', 'trick', 'arcane'], grave: ['holy', 'frost', 'arcane'], ruins: ['sword', 'guard', 'bulwark'],
+  swamp: ['storm', 'trick', 'arcane'], frost: ['frost', 'guard', 'bulwark'], valley: ['bow', 'storm'], inferno: ['fire', 'sword'],
+  orcfort: ['sword', 'guard', 'bulwark'], webwood: ['bow', 'trick'], harbor: ['holy', 'frost', 'arcane'], demongate: ['fire', 'storm'],
 };

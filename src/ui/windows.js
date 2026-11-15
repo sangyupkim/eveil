@@ -61,7 +61,7 @@ export function showNotes() {
   el.querySelector('.nclose').onclick = () => { el.hidden = true; };
 }
 const repickCost = (t) => 2000 * (t.tier + 1) ** 2;
-const nextTitle = (st) => { const i = TITLE_AT.findIndex((n) => st.awakenings < n); return i < 0 ? '' : ` · ${titleName(titleKey(st.stats), i)}까지 각성 ${TITLE_AT[i] - st.awakenings}`; };
+const nextTitle = (st) => { const i = TITLE_AT.findIndex((n) => st.awakenings < n); return i < 0 ? '' : ` · ${i + 1}차 각성 ${titleName(titleKey(st.stats, 10, i), i)}까지 ${TITLE_AT[i] - st.awakenings}`; };
 const TITLES = { gems: '보석상', map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', news: '공지 · 패치', menu: '메뉴' };
 // 진행 게이지 (시작 ~ 끝 시각). 예전 저장은 시작 시각이 없어 dur로 어림
 const gauge = (from, until, dur = 3600000, color = '#7ad0ff') => { const f = from || until - dur, k = Math.max(0, Math.min(1, (Date.now() - f) / Math.max(1, until - f))); return `<div class="mini" style="margin-top:3px"><i style="width:${(k * 100).toFixed(1)}%;background:linear-gradient(#bfe8ff,${color})"></i></div>`; };

@@ -9,20 +9,22 @@ import { BASES } from '../../src/data/items.js';
 import { makeItem } from '../../src/game/items.js';
 import { chapterK } from '../../src/data/chapters.js';
 
-const MAINS = { sword: 'str', bow: 'dex', staff: 'int' };
+const MAINS = { sword: 'str', bow: 'dex', staff: 'int', mace: 'vit', scepter: 'wis' };
 let CLS = process.argv[2] || 'staff';
 export const setClass = (c) => { CLS = c; };
 const SKILL_MIX = 1.3;   // 스킬을 섞은 실제 딜 / 평타 딜 (0.34 스킬 계수 기준 대략)
 const TRAVEL = 2.5;      // 몬스터 사이 이동 · 줍기(초)
-const best = (slot, L, cls) => Object.keys(BASES).filter((k) => { const b = BASES[k]; return b.slot === slot && (!cls || b.cls === cls) && (b.minLvl ?? 1) <= L && (b.minLvl ?? 1) < 99 && !b.noDrop; })
+const best = (slot, L, cls, f) => Object.keys(BASES).filter((k) => { const b = BASES[k]; return b.slot === slot && (!cls || b.cls === cls) && (!f || f(b)) && (b.minLvl ?? 1) <= L && (b.minLvl ?? 1) < 99 && !b.noDrop; })
   .sort((a, b) => (BASES[b].minLvl ?? 1) - (BASES[a].minLvl ?? 1))[0];
 // 기준 캐릭터: 각성 A, 장비 레벨 G(희귀), 강화 P
-export function refPlayer(A, G, P) {
+export function refPlayer(A, G, P, cls) {
+  if (cls) CLS = cls;
   const st = newPlayer('ref', { face: 'm01' }, CLS);
   const pts = A * CONFIG.awakenPoints;
-  st.stats[MAINS[CLS]] += Math.round(pts * 0.55); st.stats.vit += Math.round(pts * 0.2); st.stats.wis += Math.round(pts * 0.15); st.stats.dex += Math.round(pts * 0.1);
-  for (const slot of ['weapon', 'helm', 'armor', 'gloves', 'boots', 'belt', 'amulet', 'ring1', 'ring2']) {
-    const id = best(slot.startsWith('ring') ? 'ring' : slot, Math.max(1, G), slot === 'weapon' ? CLS : null); if (!id) continue;
+  const M = MAINS[CLS], split = M === 'vit' ? { vit: 0.55, str: 0.2, wis: 0.15, dex: 0.1 } : M === 'wis' ? { wis: 0.55, vit: 0.2, int: 0.15, dex: 0.1 } : { [M]: 0.55, vit: 0.2, wis: 0.15, dex: 0.1 };
+  for (const [k, f] of Object.entries(split)) st.stats[k] += Math.round(pts * f);
+  for (const slot of [...(CLS === 'mace' || CLS === 'scepter' ? ['offhand'] : []), 'weapon', 'helm', 'armor', 'gloves', 'boots', 'belt', 'amulet', 'ring1', 'ring2']) {
+    const id = slot === 'offhand' ? best('offhand', Math.max(1, G), null, CLS === 'mace' ? (b) => b.block : (b) => !b.block && b.mods?.maxMp) : best(slot.startsWith('ring') ? 'ring' : slot, Math.max(1, G), slot === 'weapon' ? CLS : null); if (!id) continue;
     const it = makeItem(id, { rarity: 'rare', ilvl: Math.max(1, G) }, st, () => 0.5); it.plus = P; it.q = 1; it.req = null; st.equip[slot] = it;
   }
   return derive(st);

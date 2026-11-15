@@ -58,10 +58,12 @@ export const AP_TABLE = {
   spellPerMp: 0.2,    // 공격 주문: 소모 MP ÷ 5 → 지능
   supportPerMp: 0.2,  // 보조 주문: 소모 MP ÷ 5 → 그 스킬의 스탯
   mpRecover: 0.06,    // 회복한 MP 1마다 정신 (마을 밖 자연 회복 · 마나 물약)
-  hurtScale: 10,      // 받은 피해 ÷ 최대 HP × 10 → 체력
+  hurtScale: 10,
+  hurtHit: 0.3,       // 맞을 때마다 체력 (v0.37: 맞은 횟수도)      // 받은 피해 ÷ 최대 HP × 10 → 체력
   lowHpKill: 1.5,     // HP 30% 이하에서 처치 → 체력
   blockVit: 0.5,
   blockStr: 0.3,
+  skillUse: 1.5,      // 스킬을 쓸 때마다 그 스킬의 필요 스탯에 (필요량 비율대로, 높은 등급일수록 더) — v0.37
 };
 
 export const TIERS = {

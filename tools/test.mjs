@@ -210,8 +210,11 @@ test('칭호: 키운 스탯 둘로 갈래 · 특성 셋', () => {
   assert.equal(titleKey({ str: 40, dex: 12, int: 11, wis: 10, vit: 14 }), 'str');
   assert.equal(titleKey({ str: 10, dex: 30, int: 28, wis: 10, vit: 12 }), 'dex+int');
   assert.equal(titleName('dex+int', 0), '마궁사');
-  assert.equal(Object.keys(TITLE_NAMES).length, 15);
-  for (const k of Object.keys(TITLE_NAMES)) for (const t of [0, 1, 2]) {
+  assert.equal(Object.keys(TITLE_NAMES).length, 25);                 // 한 스탯 5 + 두 스탯 10 + 세 스탯 10 (4차 각성 전용)
+  assert.equal(titleKey({ str: 80, dex: 20, int: 90, wis: 70, vit: 10 }, 10, 2), 'str+int'); // 3차까지는 두 스탯
+  assert.equal(titleKey({ str: 80, dex: 20, int: 90, wis: 70, vit: 10 }, 10, 3), 'str+int+wis'); // 4차는 셋
+  for (const k of Object.keys(TITLE_NAMES)) for (const t of [0, 1, 2, 3]) {
+    if (!TITLE_NAMES[k][t]) continue;
     const c = perkChoices(k, t);
     assert.equal(c.length, 3, k);
     assert.deepEqual(c, perkChoices(k, t)); // 늘 같은 셋
