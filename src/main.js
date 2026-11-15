@@ -52,6 +52,8 @@ globalThis.__stage = stage;
   // 정의(JSON)와 처음 보이는 그림(마을 타일 · 아이콘 · 기본 옷)을 먼저 받는다
   const bar = (p) => { $('#loadBar i').style.width = `${Math.round(p * 100)}%`; };
   await loadAllJson();
+  // 관리 페이지에서 고친 밸런스를 게임 표에 덮는다 (몬스터 · 드랍 · 챕터 · 설정 · 아이템)
+  try { const { applyOverrides } = await import('./data/overrides.js'); const n = applyOverrides(await cloud.balance()); if (n) console.info(`밸런스 덮어쓰기 ${n}칸`); } catch (e) { console.warn('밸런스 덮어쓰기 실패', e); }
   bar(0.3);
   const first = [...DATA.tiles.grassland.imgs, 'icons.webp',
     ...['cloth_shirt', 'cloth_pants', 'cloth_sandals', 'default_hands'].flatMap((l) => ['m', 'f'].map((sx) => `avatar/${sx}/${l}.webp`)), 'avatar/m/head_short.webp', 'avatar/f/head_long.webp'];
@@ -151,6 +153,14 @@ globalThis.__stage = stage;
       };
     });
   };
+  // 공지: 가장 새 공지 제목 한 줄, 누르면 전체 목록
+  cloud.notices().then((list) => {
+    const el = $('#notice');
+    if (!list.length || !el) return;
+    el.hidden = false;
+    el.innerHTML = `<b>공지</b> ${list[0].title.replace(/[<>&]/g, '')}`;
+    el.onclick = () => showNotices(list);
+  });
   drawAccount();
   await refreshChars();
 
@@ -190,6 +200,17 @@ globalThis.__stage = stage;
     saveChar(st);
     start(st, true);
   };
+}
+
+// 공지 목록 창 (제목 화면 · 메뉴)
+export function showNotices(list) {
+  document.getElementById('winAlert')?.remove();
+  const esc = (t) => String(t).replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' })[c]);
+  const el = document.createElement('div');
+  el.id = 'winAlert';
+  el.innerHTML = `<div class="popWide"><b>공지사항</b><div class="noticeList">${list.map((n) => `<div class="row" style="display:block"><b style="color:#ffd84a">${esc(n.title)}</b> <small>${new Date(n.at).toLocaleDateString()}</small><div class="note" style="white-space:pre-wrap">${esc(n.body)}</div></div>`).join('') || '<div class="note">공지가 없습니다</div>'}</div><button class="plate gold">확인</button></div>`;
+  el.querySelector('button').onclick = () => el.remove();
+  document.body.appendChild(el);
 }
 
 function startGame(stage, st) {
@@ -244,6 +265,8 @@ function startGame(stage, st) {
   if (!st.nick) { const wait = setInterval(() => { if (st.tut !== 0) { clearInterval(wait); askNick(); } }, 300); }
   else if (cloud.id && !st.nickOk) cloud.nick(st.cid, st.nick).then((r) => { if (r.ok) { st.nickOk = true; save(true); } else if (r.error === 'nick_taken' || r.error === 'bad_nick') askNick(cloudError(r.error)); });
   window.__askNick = askNick;
+  // 우편이 와 있으면 알려 준다 (메뉴 → 우편함)
+  if (cloud.id) cloud.mail().then((l) => { if (l.length) hud.toast?.(`우편 ${l.length}통이 와 있습니다 (메뉴 → 우편함)`, '#ffd84a'); });
 
   let saveT = CONFIG.autosaveInterval;
   const loopErr = {};

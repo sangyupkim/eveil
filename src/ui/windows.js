@@ -556,6 +556,23 @@ export class Windows {
       <div class="note">${sk}</div><div class="mini" style="height:5px;max-width:12em"><i style="width:${Math.round((m.sta / sm) * 100)}%;background:#6ad07a"></i></div></div>`;
   }
 
+  // 우편함: 운영자가 보낸 금화 받기 (계정마다 한 번, 지금 캐릭터에게)
+  async mailbox() {
+    const w = this.w, st = w.st;
+    if (!cloud.id) { this.alert('우편함', '로그인해야 우편을 받을 수 있습니다'); return; }
+    const list = await cloud.mail();
+    const rows = list.map((m) => `<div class="row"><div class="grow"><b>${esc(m.title)}</b><div class="note" style="white-space:pre-wrap">${esc(m.body || '')}</div></div><b class="goldTxt">${Number(m.gold).toLocaleString()} G</b><button class="btn gold" data-mclaim="${m.id}">받기</button></div>`).join('') || '<div class="note">우편이 없습니다</div>';
+    this.popup('우편함', `<div class="noticeList">${rows}</div>${list.length > 1 ? '<button class="btn gold" data-mclaim="all">모두 받기</button>' : ''}`);
+    const box = document.getElementById('winAlert');
+    box.querySelectorAll('[data-mclaim]').forEach((b) => { b.onclick = async () => {
+      b.disabled = true;
+      const r = await cloud.mailClaim(b.dataset.mclaim === 'all' ? null : [Number(b.dataset.mclaim)]);
+      if (!r.ok) { w.ui.toast('받지 못했습니다'); audio.play('error'); return; }
+      if (r.gold > 0) { st.gold += r.gold; audio.play('coin'); w.ui.toast(`우편 ${r.n}통 · +${r.gold.toLocaleString()}G`, '#ffd84a'); w.ui.dirty(); this.save?.(true); }
+      this.mailbox(); this.render();
+    }; });
+  }
+
   // 용병 장비 고르기: 가방 | 창고에서 장비를 골라 입힌다 (입던 것은 가방으로)
   mercGearPick(id) {
     const st = this.w.st, m = mercById(st, id);
@@ -802,6 +819,7 @@ export class Windows {
     const card = (win, img, name, dis) => `<button class="card" data-go="${win}" ${dis ? 'disabled' : ''}>${img}<span>${name}</span></button>`;
     return `<div class="cols"><div class="frame" style="flex:1.1">
         <div class="btns" style="margin:0 0 6px"><button class="plate gold" data-close="1">계속하기</button><button class="plate" data-title="1">메인 화면으로</button></div>
+        <div class="btns" style="margin:0 0 6px"><button class="btn" data-mailbox="1">우편함</button><button class="btn" data-notices="1">공지사항</button></div>
         <div class="setRow"><span>닉네임</span><div class="opts"><b>${esc(st.nick || '없음')}</b><button class="btn" data-nick="1">바꾸기</button></div></div>
         <div class="setRow"><span>배경음</span><div class="opts">${vol('music')}</div></div>
         <div class="setRow"><span>효과음</span><div class="opts">${vol('sfx')}</div></div>
@@ -1079,6 +1097,8 @@ export class Windows {
       }
     });
     // 메인 화면(캐릭터 고르기)으로: 저장하고 다시 연다
+    on('[data-notices]', async () => { const { showNotices } = await import('../main.js'); showNotices(await cloud.notices()); });
+    on('[data-mailbox]', () => this.mailbox());
     on('[data-title]', () => { this.save(true); window.__noSave = true; setTimeout(() => location.reload(), 400); });
     on('[data-nick]', () => { this.close(); window.__askNick?.(); });
   }

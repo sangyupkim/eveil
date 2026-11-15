@@ -9,6 +9,7 @@
  *  - POST /api { type: 'ash_err', ver, msg, stack, ua }         오류 보고 (로그인 없음, IP당 하루 50개)
  *  - POST /api { type: 'ash_restore', token }                  → 한 단계 전 저장 (백업)
  *  - POST /api { type: 'ash_claim', token }                    → 이 기기를 지금 하는 기기로 (다른 기기는 저장이 막힌다), 최신 저장을 돌려준다
+ *  관리(v0.36): ash_cfg(밸런스 받기) · ash_notices · ash_mail / ash_mail_claim {ids?} · ash_admin_*(d.admin = ADMIN_KEY): cfg · notice_add/del · mail · mails · mail_del
  *  - POST /api { type: 'ash_ping', token }                     → { moved } 다른 기기가 가져갔는가
  *  캐릭터 여럿 (v0.20): 저장 · 순위 열쇠는 '아이디/cid'. cid가 없으면 예전처럼 아이디 하나
  *  - POST /api { type: 'ash_chars', token }                    → { list: [{ cid, at, name, aw }] }
@@ -61,6 +62,11 @@ function setup(db: DB): Promise<unknown> {
       db.prepare('CREATE TABLE IF NOT EXISTS ash_active (id TEXT PRIMARY KEY, token_hash TEXT NOT NULL, at INTEGER NOT NULL)'),
       // 닉네임: 소문자로 맞춘 이름 하나에 캐릭터 하나
       db.prepare('CREATE TABLE IF NOT EXISTS ash_names (lname TEXT PRIMARY KEY, name TEXT NOT NULL, k TEXT NOT NULL, at INTEGER NOT NULL)'),
+      // 관리 페이지: 밸런스 덮어쓰기(kv) · 공지 · 우편 (계정마다, '*' = 모두)
+      db.prepare('CREATE TABLE IF NOT EXISTS ash_kv (k TEXT PRIMARY KEY, v TEXT NOT NULL, at INTEGER NOT NULL)'),
+      db.prepare('CREATE TABLE IF NOT EXISTS ash_notice (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, body TEXT NOT NULL, at INTEGER NOT NULL)'),
+      db.prepare('CREATE TABLE IF NOT EXISTS ash_mail (id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, gold INTEGER NOT NULL, at INTEGER NOT NULL)'),
+      db.prepare('CREATE TABLE IF NOT EXISTS ash_mail_got (mid INTEGER NOT NULL, uid TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (mid, uid))'),
       db.prepare('CREATE TABLE IF NOT EXISTS ash_rank (id TEXT PRIMARY KEY, name TEXT, aw INTEGER, dg INTEGER, title TEXT, at INTEGER)'),
       // 계정 공용 창고 (캐릭터끼리 나눠 쓴다)
       db.prepare('CREATE TABLE IF NOT EXISTS ash_vault (id TEXT PRIMARY KEY, data TEXT NOT NULL, at INTEGER NOT NULL)'),
@@ -99,7 +105,7 @@ async function who(db: DB, d: Record<string, unknown>): Promise<string | null> {
   return r?.id ?? null;
 }
 
-export async function ashen(db: DB, d: Record<string, unknown>, ip: string): Promise<Record<string, unknown>> {
+export async function ashen(db: DB, d: Record<string, unknown>, ip: string, adminKey?: string): Promise<Record<string, unknown>> {
   await setup(db);
   const type = String(d.type);
   if (type === 'ash_err') {
@@ -133,8 +139,78 @@ export async function ashen(db: DB, d: Record<string, unknown>, ip: string): Pro
     if (!u || !same(await pwHash(pw, u.salt), u.hash)) return { ok: false, error: 'wrong' };
     return { ok: true, id, token: await issue(db, id) };
   }
+  // ── 누구나: 밸런스 덮어쓰기 · 공지 ──
+  if (type === 'ash_cfg') {
+    const r = await db.prepare("SELECT v, at FROM ash_kv WHERE k = 'balance'").first<{ v: string; at: number }>();
+    return { ok: true, data: r ? JSON.parse(r.v) : {}, at: r?.at ?? 0 };
+  }
+  if (type === 'ash_notices') {
+    const r = await db.prepare('SELECT id, title, body, at FROM ash_notice ORDER BY id DESC LIMIT 20').all();
+    return { ok: true, list: r.results || [] };
+  }
+  // ── 관리 페이지 (열쇠 d.admin = Secret ADMIN_KEY) ──
+  if (type.startsWith('ash_admin_')) {
+    if (!adminKey || String(d.admin ?? '').trim() !== String(adminKey).trim()) return { ok: false, error: 'admin' };
+    const now = Date.now();
+    if (type === 'ash_admin_cfg') {
+      const o = d.overrides;
+      if (!o || typeof o !== 'object') return { ok: false, error: 'bad' };
+      const v = JSON.stringify(o);
+      if (v.length > 200_000) return { ok: false, error: 'too_big' };
+      await db.prepare("INSERT INTO ash_kv (k, v, at) VALUES ('balance', ?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v, at = excluded.at").bind(v, now).run();
+      return { ok: true, at: now };
+    }
+    if (type === 'ash_admin_notice_add') {
+      const title = String(d.title ?? '').trim().slice(0, 60), body = String(d.body ?? '').trim().slice(0, 2000);
+      if (!title) return { ok: false, error: 'bad' };
+      await db.prepare('INSERT INTO ash_notice (title, body, at) VALUES (?, ?, ?)').bind(title, body, now).run();
+      return { ok: true };
+    }
+    if (type === 'ash_admin_notice_del') { await db.prepare('DELETE FROM ash_notice WHERE id = ?').bind(Number(d.id) || 0).run(); return { ok: true }; }
+    // 받는 사람: 계정 아이디 · 닉네임 · '*'(모두)
+    if (type === 'ash_admin_mail') {
+      const title = String(d.title ?? '').trim().slice(0, 40), body = String(d.body ?? '').trim().slice(0, 500), gold = Math.max(0, Math.min(1e12, Math.floor(Number(d.gold) || 0)));
+      if (!title) return { ok: false, error: 'bad' };
+      let to = String(d.to ?? '').trim();
+      if (to !== '*') {
+        const byId = await db.prepare('SELECT id FROM ash_users WHERE id = ?').bind(to.toLowerCase()).first<{ id: string }>();
+        if (byId) to = byId.id;
+        else {
+          const byNick = await db.prepare('SELECT k FROM ash_names WHERE lname = ?').bind(to.toLowerCase()).first<{ k: string }>();
+          if (!byNick) return { ok: false, error: 'no_user' };
+          to = byNick.k.split('/')[0];
+        }
+      }
+      await db.prepare('INSERT INTO ash_mail (uid, title, body, gold, at) VALUES (?, ?, ?, ?, ?)').bind(to, title, body, gold, now).run();
+      return { ok: true, to };
+    }
+    if (type === 'ash_admin_mails') {
+      const r = await db.prepare('SELECT m.id, m.uid, m.title, m.gold, m.at, (SELECT COUNT(*) FROM ash_mail_got g WHERE g.mid = m.id) AS got FROM ash_mail m ORDER BY m.id DESC LIMIT 50').all();
+      return { ok: true, list: r.results || [] };
+    }
+    if (type === 'ash_admin_mail_del') { await db.prepare('DELETE FROM ash_mail WHERE id = ?').bind(Number(d.id) || 0).run(); return { ok: true }; }
+    return { ok: false, error: 'bad_type' };
+  }
   const id = await who(db, d);
   if (!id) return { ok: false, error: 'auth' };
+  // ── 우편함: 내 계정 앞 + 모두에게(계정을 만든 뒤 보낸 것) 중 아직 안 받은 것 ──
+  if (type === 'ash_mail' || type === 'ash_mail_claim') {
+    const u = await db.prepare('SELECT created FROM ash_users WHERE id = ?').bind(id).first<{ created: number }>();
+    const r = await db.prepare("SELECT id, title, body, gold, at FROM ash_mail m WHERE (uid = ? OR (uid = '*' AND at >= ?)) AND NOT EXISTS (SELECT 1 FROM ash_mail_got g WHERE g.mid = m.id AND g.uid = ?) ORDER BY id DESC LIMIT 50")
+      .bind(id, u?.created ?? 0, id).all();
+    let list = (r.results || []) as { id: number; gold: number }[];
+    if (type === 'ash_mail') return { ok: true, list };
+    const want = Array.isArray(d.ids) ? (d.ids as unknown[]).map(Number) : null;
+    if (want) list = list.filter((m) => want.includes(m.id));
+    if (!list.length) return { ok: true, gold: 0, n: 0 };
+    // 한 번만: 먼저 받은 기록을 넣고(겹치면 무시), 넣어진 것만 금화로 친다
+    let gold = 0, n = 0;
+    for (const m of list) {
+      const ins = await db.prepare('INSERT OR IGNORE INTO ash_mail_got (mid, uid, at) VALUES (?, ?, ?)').bind(m.id, id, Date.now()).run() as { meta?: { changes?: number } };
+      if ((ins?.meta?.changes ?? 1) > 0) { gold += m.gold; n++; }
+    }
+    return { ok: true, gold, n };
+  }
   const th = await sha(String(d.token));
   // 다른 기기가 이 계정을 가져갔는가 (가져간 기기가 없으면 예전 클라이언트도 저장할 수 있다)
   const movedAway = async () => {

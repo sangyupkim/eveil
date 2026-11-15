@@ -6,6 +6,7 @@ import { ashen } from './ashen';
 interface Env {
   DB: Parameters<typeof ashen>[0];
   ASSETS: { fetch(r: Request): Promise<Response> };
+  ADMIN_KEY?: string; // 관리 페이지 열쇠 (Cloudflare 대시보드 → Worker eveil → 설정 → 변수 및 비밀에 Secret으로)
 }
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' };
 const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...CORS } });
@@ -27,7 +28,7 @@ export default {
       }
       if (req.method === 'POST') {
         const d = (await req.json().catch(() => null)) as Record<string, unknown> | null;
-        if (d && typeof d.type === 'string' && d.type.startsWith('ash_')) return json(await ashen(env.DB, d, req.headers.get('CF-Connecting-IP') ?? 'x'));
+        if (d && typeof d.type === 'string' && d.type.startsWith('ash_')) return json(await ashen(env.DB, d, req.headers.get('CF-Connecting-IP') ?? 'x', env.ADMIN_KEY));
         return json({ ok: false, error: 'bad' }, 400);
       }
       return json({ ok: false }, 405);

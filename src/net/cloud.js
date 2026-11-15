@@ -58,6 +58,14 @@ export const cloud = {
   },
 
   // 순위 (각성 · 던전 단계 합)
+  // 관리 페이지에서 고친 밸런스 (로그인 없이). 3초 안에 안 오면 기본값으로 시작
+  async balance() {
+    try { const r = await Promise.race([post({ type: 'ash_cfg' }), new Promise((ok) => setTimeout(() => ok({}), 3000))]); return r.ok ? r.data || {} : {}; } catch { return {}; }
+  },
+  async notices() { const r = await post({ type: 'ash_notices' }); return r.ok ? r.list || [] : []; },
+  // 우편함 (계정마다). claim은 받은 금화 합계를 돌려준다
+  async mail() { if (!account) return []; const r = await post({ type: 'ash_mail', token: account.token }); return r.ok ? r.list || [] : []; },
+  async mailClaim(ids) { if (!account) return { ok: false }; return post({ type: 'ash_mail_claim', token: account.token, ...(ids ? { ids } : {}) }); },
   async rank() {
     if (!(await this.available())) return [];
     const r = await post({ type: 'ash_rank' });

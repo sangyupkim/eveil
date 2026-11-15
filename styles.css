@@ -531,3 +531,7 @@ html.force-land #rotate { display: none !important; }
 .sellQty { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; width: 100%; margin: 4px 0; }
 .sellQty input { flex: 1 1 8em; }
 .sellQty b { min-width: 7em; font-size: .9em; }
+
+.noticeBar { margin-top: 8px; padding: 4px 10px; border: 1px solid #6a5430; border-radius: 6px; background: rgba(20, 15, 10, 0.75); color: #e8dcc0; cursor: pointer; max-width: 92vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .9em; }
+.noticeBar b { color: #ffd84a; margin-right: 6px; }
+.noticeList { max-height: 60vh; overflow-y: auto; text-align: left; min-width: min(80vw, 640px); }
