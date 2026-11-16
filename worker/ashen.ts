@@ -73,6 +73,8 @@ function setup(db: DB): Promise<unknown> {
       db.prepare('CREATE TABLE IF NOT EXISTS ash_rank (id TEXT PRIMARY KEY, name TEXT, aw INTEGER, dg INTEGER, title TEXT, at INTEGER)'),
       // 계정 공용 창고 (캐릭터끼리 나눠 쓴다)
       db.prepare('CREATE TABLE IF NOT EXISTS ash_vault (id TEXT PRIMARY KEY, data TEXT NOT NULL, at INTEGER NOT NULL)'),
+      // v0.44.23 창고 백업: 덮어쓰기 전 내용을 하루 한 번 남긴다 (최근 10개) — 창고가 통째로 바뀌는 사고 복구용
+      db.prepare('CREATE TABLE IF NOT EXISTS ash_vault_bak (id TEXT NOT NULL, data TEXT NOT NULL, at INTEGER NOT NULL, saved INTEGER NOT NULL)'),
     ])
     .catch((e) => {
       ready = null;
@@ -292,6 +294,11 @@ export async function ashen(db: DB, d: Record<string, unknown>, ip: string, admi
     if (await movedAway()) return { ok: false, error: 'moved' };
     const data = String(d.data ?? ''), at = Number(d.at) || Date.now();
     if (data.length > 600000) return { ok: false, error: 'big' };
+    const last = await db.prepare('SELECT MAX(saved) AS s FROM ash_vault_bak WHERE id = ?').bind(id).first<{ s: number | null }>();
+    if (!last?.s || Date.now() - last.s > 6 * 3600e3) {
+      await db.prepare('INSERT INTO ash_vault_bak (id, data, at, saved) SELECT id, data, at, ? FROM ash_vault WHERE id = ?').bind(Date.now(), id).run();
+      await db.prepare('DELETE FROM ash_vault_bak WHERE id = ? AND saved NOT IN (SELECT saved FROM ash_vault_bak WHERE id = ? ORDER BY saved DESC LIMIT 10)').bind(id, id).run();
+    }
     await db.prepare('INSERT INTO ash_vault (id, data, at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data, at = excluded.at WHERE excluded.at >= ash_vault.at').bind(id, data, at).run();
     return { ok: true };
   }

@@ -40,7 +40,7 @@ import { HERBS, HERB_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
 import { buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
 import { RESEARCH_MAX, SHELTER } from '../data/buildings.js';
 import { herbIcon, homeIcon } from './icons.js';
-import { vault, vaultSize, vaultPut, vaultTake, vaultAdd, vaultSave } from '../game/vault.js';
+import { vault, vaultSize, vaultPut, vaultTake, vaultAdd, vaultSave, oldVault, restoreOldVault } from '../game/vault.js';
 import { GAME_VERSION, PATCH_NOTES } from '../data/patchnotes.js';
 import { KEY_ACTIONS, keyMap, keyName } from '../data/keys.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
@@ -355,7 +355,8 @@ export class Windows {
     let sel = this.vsel; // { from: 'v' | 'b', keys: [창고 칸 번호 | 가방 uid] }
     if (sel) { sel.keys = sel.keys.filter((k) => (sel.from === 'v' ? !!V.items[k] : st.inv.some((x) => x.uid === k))); if (!sel.keys.length) sel = this.vsel = null; }
     const on = (f, k) => (sel && sel.from === f && sel.keys.includes(k) ? ' sel' : '');
-    let left = `<h3>창고 <span class="cnt">${V.items.length}/${n}</span><button class="btn" data-vall="v" style="margin-left:auto">모두 고르기</button></h3><div class="grid">`;
+    const old = oldVault();
+    let left = `<h3>창고 <span class="cnt">${V.items.length}/${n}</span>${old ? `<button class="btn gold" data-voldrestore="1">예전 창고 되살리기 ${old.length}</button>` : ''}<button class="btn" data-vall="v" style="margin-left:auto">모두 고르기</button></h3><div class="grid">`;
     for (let i = 0; i < n; i++) { const it = V.items[i]; left += it ? `<div class="cell${rar(it)}${on('v', i)}" data-vsel="v|${i}">${ico(it)}${cellTag(it)}${it.qty > 1 ? `<span class="q">${it.qty}</span>` : ''}</div>` : '<div class="cell"></div>'; }
     left += '</div>';
     let right = `<h3>가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span><button class="btn" data-vall="b" style="margin-left:auto">모두 고르기</button></h3><div class="grid">`;
@@ -1050,6 +1051,7 @@ export class Windows {
       this.vsel = null; audio.play(moved ? 'click' : 'error'); if (why) w.ui.toast(`${moved}개 옮김 · ${why}`); w.ui.dirty(); this.render();
     });
     on('[data-vput]', (el) => { const r = vaultPut(st, Number(el.dataset.vput)); if (!r.ok && r.why) { w.ui.toast(r.why); audio.play('error'); } else audio.play('click'); w.ui.dirty(); this.render(); });
+    on('[data-voldrestore]', () => { const r = restoreOldVault(st); if (r.ok) { audio.play('rankup'); w.ui.toast(`예전 창고 물건 ${r.n}개를 되살렸습니다`, '#7fe07a'); } this.render(); });
     on('[data-vtake]', (el) => { const r = vaultTake(st, Number(el.dataset.vtake)); if (!r.ok && r.why) { w.ui.toast(r.why); audio.play('error'); } else audio.play('click'); w.ui.dirty(); this.render(); });
     on('[data-notes]', () => showNotes());
     on('[data-restore]', async () => {
