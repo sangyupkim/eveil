@@ -84,15 +84,15 @@ export const MONSTER_LOOK = {
   ghost: { sprite: 'zombie', tint: 0x9fb0ff },
   ghost_skull: { sprite: 'zombie_dark' },
   raider: { sprite: 'x_leather_brute', size: 2.9 },
-  fallen_knight: { sprite: 'x_plate_brute', size: 3.0 },
+  fallen_knight: { sprite: 'x_knight', size: 2.8 },
   imp: { sprite: 'fire_ant' },
   blue_demon: { sprite: 'zombie_dark', tint: 0x8090ff, size: 1.2 },
   goleling: { sprite: 'cursed_grave', size: 0.9 },
   dragon: { sprite: 'x_centipede', size: 2.8 },
-  frog: { sprite: 'antlion', tint: 0x80c070 },
+  frog: { sprite: 'x_fishman_mace', size: 2.9 },
   bog_slime: { sprite: 'x_slime', size: 1.6 }, // Slime Flare sprite sheets (CC-BY-SA)
   snake: { sprite: 'x_snake', size: 2.4 },
-  squidle: { sprite: 'skeleton_mage', tint: 0x80d0a0 },
+  squidle: { sprite: 'x_fishman_blade', size: 2.9 },
   mushnub_evo: { sprite: 'x_zombie', tint: 0xa0c090, size: 2.6 }, // Zombie Sprites (CC-BY)
   bog_witch: { sprite: 'x_scathelocke', size: 3.9 },
   bog_king: { sprite: 'x_fishman', size: 4.2 },
@@ -231,7 +231,7 @@ Object.assign(ZONE_PROPS, { ashland: ZONE_PROPS.valley, crypt: [...ZONE_PROPS.fr
   throne: [...ZONE_PROPS.demongate, ['props', ARCH, 8, 1.2], ['props', DARK, 8, 0.8], ['props', PILLAR, 12, 0.7], ['props', STATUE, 6, 0.6], ['props', GATE, 3, 1.4]] });
 for (const [id, base, , tint] of _VAR) if (MONSTER_LOOK[base]) MONSTER_LOOK[id] = { ...MONSTER_LOOK[base], tint, size: (MONSTER_LOOK[base].size || 1) * (id === 'doom_king' ? 1.25 : 1) };
 // v0.40 새 그림 (skeleton_quest 사람 적 · Flare 원본 고유 적, CC-BY-SA): 변종 일부는 바탕과 다른 몸
-const VAR_SPRITE = { crypt_mage: ['x_chainmail_mage', 2.9], temple_priest: ['x_plate_mage', 2.9], blood_witch: ['x_leather_mage', 2.9], storm_wraith: ['x_ice_mummy', 2.9],
+const VAR_SPRITE = { crystal_lord: ['x_spider_horror', 3.4], ash_king: ['x_spearman', 3.4], crypt_mage: ['x_chainmail_mage', 2.9], temple_priest: ['x_plate_mage', 2.9], blood_witch: ['x_leather_mage', 2.9], storm_wraith: ['x_ice_mummy', 2.9],
   crystal_bat: ['x_spider_horror', 2.8], crystal_golem: ['x_golem', 3.0], temple_king: ['x_troll', 3.5], storm_brute: ['x_chainmail_brute', 3.0], ash_shade: ['x_thug_slinger', 2.9], temple_lord: ['x_grisbon', 4.4], doom_knight: ['x_plate_brute', 3.1],
   crypt_ghoul: ['x_cloth_brute', 2.9], blood_snake: ['x_leather_archer', 2.9], temple_shade: ['x_plate_archer', 2.9], abyss_eye: ['x_chainmail_archer', 2.9], doom_shade: ['x_cloth_archer', 2.9] };
 for (const [id, [sprite, size]] of Object.entries(VAR_SPRITE)) if (MONSTER_LOOK[id]) MONSTER_LOOK[id] = { ...MONSTER_LOOK[id], sprite, size };

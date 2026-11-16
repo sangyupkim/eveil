@@ -34,9 +34,9 @@ export const QUESTS = [
     reward: { gold: 1600, gear: ['armor', 'hero', 16] } },
   { id: 'r4', zone: 'ruins', name: '황혼 대지네 베르크', goal: { boss: 'ruins' }, text: '첫 장의 끝.',
     reward: { gold: 4000, book: 3, gear: ['weapon', 'legend', 18] } },
-  { id: 's1', zone: 'swamp', name: '안개 속의 개미귀신', goal: { kill: 'frog', n: 12 }, text: '남서쪽 늪에 개미귀신이 들끓는다.',
+  { id: 's1', zone: 'swamp', name: '안개 속의 어인', goal: { kill: 'frog', n: 12 }, text: '남서쪽 늪에 어인 무리가 들끓는다.',
     reward: { gold: 1800, gear: ['boots', 'rare', 20] } },
-  { id: 's2', zone: 'swamp', name: '갑각 사냥', goal: { kill: 'snake', n: 12 }, text: '늪을 건너는 길에 갑각 개미귀신이 버틴다.',
+  { id: 's2', zone: 'swamp', name: '독사 사냥', goal: { kill: 'snake', n: 12 }, text: '늪을 건너는 길에 독사가 버틴다.',
     reward: { gold: 2000, gear: ['gloves', 'rare', 21] } },
   { id: 's3', zone: 'swamp', name: '늪의 대주술사 모르가', goal: { named: 'swamp' }, text: '안개를 부르는 주술사가 늪 한가운데 산다.',
     reward: { gold: 2600, gear: ['armor', 'hero', 22] } },
@@ -84,7 +84,7 @@ export const QUESTS = [
   { id: 'd3', zone: 'demongate', name: '구덩이 군주 모르독', goal: { named: 'demongate' }, text: '관문을 지키는 군주.', reward: { gold: 28000, gear: ['amulet', 'legend', 65] } },
   { id: 'd4', zone: 'demongate', name: '대악마 벨가로스', goal: { boss: 'demongate' }, text: '깨어남의 끝. 모든 것을 걸어라.', reward: { gold: 60000, book: 5, gear: ['weapon', 'legend', 66] } },
   // 지역 13~20 (v0.33)
-  ...[['ashland', 'ash_hound', 'ash_golem', '잿빛 사냥개', '잿빛 골렘'], ['crypt', 'crypt_knight', 'crypt_mage', '얼어붙은 기사', '서리 사교도'], ['crystal', 'crystal_spider', 'crystal_golem', '수정 거미', '수정 골렘'], ['bloodmire', 'blood_frog', 'blood_witch', '피 두꺼비', '피의 주술사'],
+  ...[['ashland', 'ash_hound', 'ash_golem', '잿빛 사냥개', '잿빛 골렘'], ['crypt', 'crypt_knight', 'crypt_mage', '얼어붙은 기사', '서리 사교도'], ['crystal', 'crystal_spider', 'crystal_golem', '수정 거미', '수정 골렘'], ['bloodmire', 'blood_frog', 'blood_witch', '피의 어인', '피의 주술사'],
     ['stormpeak', 'storm_wolf', 'storm_brute', '번개 늑대', '천둥 오크'], ['temple', 'temple_guard', 'temple_statue', '사원 수호병', '사원 석상'], ['abyss', 'abyss_hound', 'abyss_golem', '심연 사냥개', '심연 골렘'], ['throne', 'doom_knight', 'doom_gargoyle', '종말 기사', '종말 석상']]
     .flatMap(([z, a, b, an, bn], i) => { const lv = 67 + i * 6; return [
       { id: z + '1', zone: z, name: an + ' 사냥', goal: { kill: a, n: 25 }, text: '', reward: { gold: 30000 + i * 6000, gear: ['boots', 'hero', lv] } },

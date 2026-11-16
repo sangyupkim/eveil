@@ -23,7 +23,19 @@ const SPECS = [
   ['h_soul_orbit', 'haunted/effects/soul_orbit/frames/effect', 150, 16, 1000, 0.75],
   ['h_ghost_mist', 'haunted/effects/ghost_mist/frames/effect', 170, 12, 900, 0.8],
   ['h_spectral', 'haunted/effects/spectral_spawn/frames/effect', 150, 6, 500, 0.85],
-];
+  // 격자 한 장을 낱장으로 나눈 것 (grid/<이름>): Brackeys VFX Bundle predrawn (CC0) · PIPOYA FREE VFX Bell
+  ['b_big_hit', 'grid/b_big_hit', 170, 15, 450, 0.6],
+  ['b_electric_ring', 'grid/b_electric_ring', 170, 15, 600, 0.6],
+  ['b_star_explosion', 'grid/b_star_explosion', 150, 15, 600, 0.6],
+  ['b_vortex', 'grid/b_vortex', 180, 15, 800, 0.6],
+  ['b_fire_ring', 'grid/b_fire_ring', 180, 15, 700, 0.6],
+  ['b_impact_white', 'grid/b_impact_white', 140, 12, 400, 0.6],
+  ['b_charge', 'grid/b_charge', 150, 16, 900, 0.7],
+  ['b_wavy_purple', 'grid/b_wavy_purple', 170, 15, 700, 0.6],
+  ['bell_gold', 'grid/bell217', 150, 15, 900, 0.75],
+  ['bell_blue', 'grid/bell218', 150, 15, 900, 0.75],
+  ['bell_dark', 'grid/bell219', 150, 15, 900, 0.75],
+].filter((S) => !process.argv[3] || process.argv[3].split(',').includes(S[0]));
 const powers = JSON.parse(fs.readFileSync(J, 'utf8'));
 const pickN = (a, n) => (a.length <= n ? a : Array.from({ length: n }, (_, i) => a[Math.round((i * (a.length - 1)) / (n - 1))]));
 for (const [name, dir, px, n, dur, ay] of SPECS) {

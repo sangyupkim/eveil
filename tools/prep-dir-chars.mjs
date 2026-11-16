@@ -26,6 +26,15 @@ const SPECS = [
     anims: { stance: ['Idle', 1000, 'looped'], run: ['Walk', 600, 'looped'], swing: ['Attack', 650, 'play_once'], cast: ['Alert', 900, 'play_once'], hit: ['Hit', 300, 'play_once'], die: ['Death', 900, 'play_once'] } },
   { name: 'x_spider_horror', k: 0.6, frames: { dir: 'spider/256x256', cell: 256 },
     anims: { stance: ['Idle_Nervous', 1000, 'looped'], run: ['Run', 500, 'looped'], swing: ['Attack1', 600, 'play_once'], cast: ['Attack_Capture', 900, 'play_once'], hit: ['Hit', 300, 'play_once'], die: ['Die1', 900, 'play_once'], block: ['Defense', 600, 'looped'] } },
+  { name: 'x_fishman_mace', k: 0.45, sheet: { dir: 'fishaxe2/x320p_Spritesheets', cell: 320 },
+    anims: { stance: ['Idle_BattlePose', 1000, 'looped'], run: ['Run_Forward', 600, 'looped'], swing: ['Attack_01', 650, 'play_once'], cast: ['Attack_03', 800, 'play_once'], hit: ['Hit_Stomach', 300, 'play_once'], die: ['Death_FallBack', 900, 'play_once'] } },
+  { name: 'x_fishman_blade', k: 0.45, sheet: { dir: 'fishsw1/x320p_Spritesheets', cell: 320 },
+    anims: { stance: ['Idle_BattlePose', 1000, 'looped'], run: ['Run_Forward', 600, 'looped'], swing: ['Attack_01', 650, 'play_once'], cast: ['Attack_03', 800, 'play_once'], hit: ['Hit_Stomach', 300, 'play_once'], die: ['Death_FallBack', 900, 'play_once'] } },
+  { name: 'x_spearman', k: 0.6, sheet: { dir: 'unk1/x256p_Spritesheets', cell: 256 },
+    anims: { stance: ['Idle', 1000, 'looped'], run: ['Run', 600, 'looped'], swing: ['Attack1', 650, 'play_once'], cast: ['Attack3', 800, 'play_once'], hit: ['Hit', 300, 'play_once'], die: ['Death', 900, 'play_once'] } },
+  // 2D HD Character Knight: 동작마다 한 장, 줄 = Flare 방향 그대로 (0 서 · 2 북 · 4 동 · 6 남), 칸 128
+  { name: 'x_knight', k: 1, rows: { dir: 'knight/2D HD Character Knight/Spritesheets/With shadows', cell: 128 },
+    anims: { stance: ['Idle', 1000, 'looped'], run: ['Run', 600, 'looped'], swing: ['Melee', 650, 'play_once'], cast: ['MeleeSpin', 800, 'play_once'], hit: ['TakeDamage', 300, 'play_once'], die: ['Die', 900, 'play_once'], block: ['ShieldBlockMid', 600, 'looped'] } },
 ].filter((S) => !process.argv[3] || process.argv[3].split(',').includes(S.name));
 // 각도 이름이 0 · 000 · 'Body 0' 등 묶음마다 달라 숫자로 맞춘다
 const angNum = (d) => ((6 - d + 8) % 8) * 45;
@@ -44,10 +53,11 @@ async function sheetFrames(file, cell) {
 }
 const enemies = JSON.parse(fs.readFileSync(J, 'utf8'));
 for (const S of SPECS) {
-  const cell = (S.sheet || S.frames).cell, cs = Math.round(cell * S.k), pieces = [];
+  const cell = (S.sheet || S.frames || S.rows).cell, cs = Math.round(cell * S.k), pieces = [];
   for (const [an, [src]] of Object.entries(S.anims)) for (let d = 0; d < 8; d++) {
     let fr;
-    if (S.sheet) fr = await sheetFrames(findAng(path.join(ROOT, S.sheet.dir, src), d, /Body/), cell);
+    if (S.rows) { const file = path.join(ROOT, S.rows.dir, src + '.png'); fr = (await sheetFrames(file, cell)).filter((f) => f.top === d * cell); }
+    else if (S.sheet) fr = await sheetFrames(findAng(path.join(ROOT, S.sheet.dir, src), d, /Body/), cell);
     else { const dir = findAng(path.join(ROOT, S.frames.dir, src, 'Body'), d, /^\d+$/); fr = fs.readdirSync(dir).filter((f) => f.endsWith('.png')).sort().map((f) => ({ file: path.join(dir, f) })); }
     pickN(fr).forEach((f, i) => pieces.push({ an, d, i, ...f }));
   }

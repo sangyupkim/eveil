@@ -38,6 +38,7 @@ export async function loadAllJson() {
 export function frameIndex(a, t, once = false) {
   const n = a.frames, dur = a.dur / 1000;
   if (n <= 1) return 0;
+  if (once && a.type !== 'play_once') return Math.min(n - 1, Math.floor((t / dur) * n)); // 죽음 등 한 번만: 왕복 · 반복 그림도 끝에서 멈춘다
   if (a.type === 'back_forth') {
     const span = (n * 2 - 2);
     const k = Math.floor((t / dur) * span) % span;
