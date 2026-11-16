@@ -640,7 +640,7 @@ export class World {
       const rarity = i === 0 && myth ? 'myth' : i === 0 && legend ? 'legend' : Math.random() < 0.35 ? 'hero' : 'rare';
       // 절반은 내 무기 종류(무기 · 보조 칸)로 — 장비 줄이 많아져 지팡이 등이 묻히지 않게 (v0.39.6)
       let base = rollBase(lv);
-      if (i === 0) { const cls = this.d.cls && BASES[st.equip.weapon?.base]?.cls, mine = Array.from({ length: 30 }, () => rollBase(lv)).find((id) => BASES[id].cls === cls || (BASES[id].slot === 'offhand' && BASES[st.equip.offhand?.base])); if (mine) base = mine; }
+      // (예전: 첫 장비는 내 무기 종류로 — 디아블로식으로 완전히 무작위가 되게 없앰)
       this.dropGround({ kind: 'item', item: makeItem(base, { rarity, ilvl: lv }, st) }, m.pos.x + i * 1.2, m.pos.z + 1);
     }
     const tier = dg.stage >= 7 ? 5 : dg.stage >= 4 ? 4 : 3, pool = Object.keys(SKILLS).filter((id) => SKILLS[id].tier === tier && !SKILLS[id].awaken); // 각성 등급이 정해진 스킬은 몬스터 레벨로만
