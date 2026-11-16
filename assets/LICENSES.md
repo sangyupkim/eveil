@@ -79,3 +79,10 @@
 ## v0.43 사용자가 받은 16방향 렌더 캐릭터 (itch.io)
 - `x_beast_warrior` (Optimized_Spritesheets) · `x_heavy_orc` (2D Directional Heavy Orc) · `x_orc_brute` (NoArmor 256x256 / 2D Directional Base Orc) — 사용자가 itch.io에서 받은 묶음. 묶음 안에 라이선스 파일이 없어 원 페이지의 사용 조건을 사용자가 확인함 (출처 페이지 주소를 받으면 여기에 적는다)
 - 변환: `node tools/prep-dir-chars.mjs <푼 폴더>` (16방향 중 8방향 · 동작당 10프레임 · 잘라 한 장으로)
+
+## v0.44 사용자가 받은 묶음 (구글 드라이브 「에베이에셋」)
+- 몬스터 `x_snake` (뱀) · `x_fishman` (Ichtian 어인) · `x_ice_mummy` (Opaque Ice) · `x_tusk_beast` (엄니 짐승) · `x_centipede` (지네) · `x_spider_horror` (거미) — 「2D Directional」 계열 16방향 렌더 묶음. 묶음 안에 라이선스 파일이 없어 원 페이지의 사용 조건을 사용자가 확인함
+- 효과 `p_*` — Painted Spells Free Sample 2: 게임 안 사용 자유 · 표기 불필요 · 파일 재배포 금지 · AI 학습 금지
+- 효과 `v_*` — Free VFX Sampler (묶음 안 VERIFICATION 파일만 있음, 사용 조건은 원 페이지)
+- 효과 `h_*` — Free Haunted Effects by SovDigital: 게임 안 사용 자유 · 표기 권장 · 단독 재배포 금지 · AI 학습 금지
+- 변환: `node tools/prep-dir-chars.mjs <폴더> <이름,...>` · `node tools/prep-powers-frames.mjs <폴더>`

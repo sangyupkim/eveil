@@ -88,21 +88,21 @@ export const MONSTER_LOOK = {
   imp: { sprite: 'fire_ant' },
   blue_demon: { sprite: 'zombie_dark', tint: 0x8090ff, size: 1.2 },
   goleling: { sprite: 'cursed_grave', size: 0.9 },
-  dragon: { sprite: 'x_wyvern_adult', size: 2.7 },
+  dragon: { sprite: 'x_centipede', size: 2.8 },
   frog: { sprite: 'antlion', tint: 0x80c070 },
   bog_slime: { sprite: 'x_slime', size: 1.6 }, // Slime Flare sprite sheets (CC-BY-SA)
-  snake: { sprite: 'x_spider_large', tint: 0x90b070, size: 2.5 },
+  snake: { sprite: 'x_snake', size: 2.4 },
   squidle: { sprite: 'skeleton_mage', tint: 0x80d0a0 },
   mushnub_evo: { sprite: 'x_zombie', tint: 0xa0c090, size: 2.6 }, // Zombie Sprites (CC-BY)
   bog_witch: { sprite: 'x_scathelocke', size: 3.9 },
-  bog_king: { sprite: 'wyvern_water', size: 1.1 },
+  bog_king: { sprite: 'x_fishman', size: 4.2 },
   yeti: { sprite: 'x_werebear', tint: 0xd8e8ff, size: 2.7 },
   ice_wolf: { sprite: 'ice_ant' },
   snow_fox: { sprite: 'ice_ant', size: 0.8 },
   frost_wraith: { sprite: 'skeleton_mage', tint: 0xa8d8ff },
   ice_golem: { sprite: 'x_troll', tint: 0xb0d8ff, size: 2.15 },
-  frost_stag: { sprite: 'wyvern_air' },
-  yeti_king: { sprite: 'wyvern_air_boss' },
+  frost_stag: { sprite: 'x_ice_mummy', size: 3.2 },
+  yeti_king: { sprite: 'x_tusk_beast', tint: 0xd8e8ff, size: 3.6 },
   raptor: { sprite: 'antlion', tint: 0xd8b070 },
   tricer: { sprite: 'antlion_armored' },
   stego: { sprite: 'antlion_armored', tint: 0xb0a080, size: 1.15 },
@@ -114,7 +114,7 @@ export const MONSTER_LOOK = {
   fiend: { sprite: 'x_demon', size: 1.5 },
   magma_golem: { sprite: 'x_golem', tint: 0xff9a60, size: 2.8 }, // Golem (CC-BY)
   ember_skull: { sprite: 'skeleton', tint: 0xff9a60 },
-  drake: { sprite: 'wyvern_fire' },
+  drake: { sprite: 'x_snake', tint: 0xff8060, size: 2.8 },
   flame_lord: { sprite: 'x_vesuvvio', size: 4.6 },
 };
 // 게임 동작 이름 → Flare 동작 이름
@@ -231,8 +231,8 @@ Object.assign(ZONE_PROPS, { ashland: ZONE_PROPS.valley, crypt: [...ZONE_PROPS.fr
   throne: [...ZONE_PROPS.demongate, ['props', ARCH, 8, 1.2], ['props', DARK, 8, 0.8], ['props', PILLAR, 12, 0.7], ['props', STATUE, 6, 0.6], ['props', GATE, 3, 1.4]] });
 for (const [id, base, , tint] of _VAR) if (MONSTER_LOOK[base]) MONSTER_LOOK[id] = { ...MONSTER_LOOK[base], tint, size: (MONSTER_LOOK[base].size || 1) * (id === 'doom_king' ? 1.25 : 1) };
 // v0.40 새 그림 (skeleton_quest 사람 적 · Flare 원본 고유 적, CC-BY-SA): 변종 일부는 바탕과 다른 몸
-const VAR_SPRITE = { crypt_mage: ['x_chainmail_mage', 2.9], temple_priest: ['x_plate_mage', 2.9], blood_witch: ['x_leather_mage', 2.9], storm_wraith: ['x_shadow_wyvern', 3.0],
-  crystal_bat: ['x_shadow_wyvern', 3.0], crystal_golem: ['x_golem', 3.0], temple_king: ['x_troll', 3.5], storm_brute: ['x_chainmail_brute', 3.0], ash_shade: ['x_thug_slinger', 2.9], temple_lord: ['x_grisbon', 4.4], doom_knight: ['x_plate_brute', 3.1],
+const VAR_SPRITE = { crypt_mage: ['x_chainmail_mage', 2.9], temple_priest: ['x_plate_mage', 2.9], blood_witch: ['x_leather_mage', 2.9], storm_wraith: ['x_ice_mummy', 2.9],
+  crystal_bat: ['x_spider_horror', 2.8], crystal_golem: ['x_golem', 3.0], temple_king: ['x_troll', 3.5], storm_brute: ['x_chainmail_brute', 3.0], ash_shade: ['x_thug_slinger', 2.9], temple_lord: ['x_grisbon', 4.4], doom_knight: ['x_plate_brute', 3.1],
   crypt_ghoul: ['x_cloth_brute', 2.9], blood_snake: ['x_leather_archer', 2.9], temple_shade: ['x_plate_archer', 2.9], abyss_eye: ['x_chainmail_archer', 2.9], doom_shade: ['x_cloth_archer', 2.9] };
 for (const [id, [sprite, size]] of Object.entries(VAR_SPRITE)) if (MONSTER_LOOK[id]) MONSTER_LOOK[id] = { ...MONSTER_LOOK[id], sprite, size };
 

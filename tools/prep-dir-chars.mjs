@@ -13,7 +13,23 @@ const SPECS = [
     anims: { stance: ['Idle_Armed', 1000, 'looped'], run: ['Run_Armed', 600, 'looped'], swing: ['Attack_01', 700, 'play_once'], cast: ['Roar', 1000, 'play_once'], hit: ['Hit_Armed', 300, 'play_once'], die: ['Death_Armed', 1000, 'play_once'], block: ['Idle_Block', 600, 'looped'] } },
   { name: 'x_orc_brute', k: 0.56, frames: { dir: 'noarm/256x256', cell: 256 },
     anims: { stance: ['Idle_Armed', 1000, 'looped'], run: ['Run_Armed', 600, 'looped'], swing: ['Attack_01', 700, 'play_once'], cast: ['Roar', 1000, 'play_once'], hit: ['Hit_Armed', 300, 'play_once'], die: ['Death_Armed', 1000, 'play_once'] } },
-];
+  // v0.44 — 비룡 돌려쓰던 보스 교체용
+  { name: 'x_snake', k: 0.8, frames: { dir: 'snake/Frames_180x180', cell: 180 },
+    anims: { stance: ['Idle_Standing', 1000, 'looped'], run: ['Move_High', 600, 'looped'], swing: ['Attack', 650, 'play_once'], cast: ['Attack', 800, 'play_once'], hit: ['Hit', 300, 'play_once'], die: ['Death', 900, 'play_once'] } },
+  { name: 'x_fishman', k: 0.45, sheet: { dir: 'fish/x320p_Spritesheets', cell: 320 },
+    anims: { stance: ['Idle_BattlePose', 1000, 'looped'], run: ['Run_Forward', 600, 'looped'], swing: ['Attack_01', 650, 'play_once'], cast: ['Attack_03', 800, 'play_once'], hit: ['Hit_Stomach', 300, 'play_once'], die: ['Death_FallBack', 900, 'play_once'] } },
+  { name: 'x_ice_mummy', k: 0.8, frames: { dir: 'ice/Frames_180x180', cell: 180 },
+    anims: { stance: ['Idle', 1000, 'looped'], run: ['Run', 600, 'looped'], swing: ['Attack_Punch', 650, 'play_once'], cast: ['Attack_Bite', 800, 'play_once'], hit: ['Attack_Bite', 300, 'play_once'], die: ['Death_Back', 900, 'play_once'] } },
+  { name: 'x_tusk_beast', k: 0.6, sheet: { dir: 'lizard/x256_Spritesheets', cell: 256 },
+    anims: { stance: ['Idle', 1000, 'looped'], run: ['Run', 600, 'looped'], swing: ['Attack1', 650, 'play_once'], cast: ['Shout', 1000, 'play_once'], hit: ['Hit', 300, 'play_once'], die: ['Death', 900, 'play_once'] } },
+  { name: 'x_centipede', k: 0.6, sheet: { dir: 'brown/x256p_Spritesheets', cell: 256 },
+    anims: { stance: ['Idle', 1000, 'looped'], run: ['Walk', 600, 'looped'], swing: ['Attack', 650, 'play_once'], cast: ['Alert', 900, 'play_once'], hit: ['Hit', 300, 'play_once'], die: ['Death', 900, 'play_once'] } },
+  { name: 'x_spider_horror', k: 0.6, frames: { dir: 'spider/256x256', cell: 256 },
+    anims: { stance: ['Idle_Nervous', 1000, 'looped'], run: ['Run', 500, 'looped'], swing: ['Attack1', 600, 'play_once'], cast: ['Attack_Capture', 900, 'play_once'], hit: ['Hit', 300, 'play_once'], die: ['Die1', 900, 'play_once'], block: ['Defense', 600, 'looped'] } },
+].filter((S) => !process.argv[3] || process.argv[3].split(',').includes(S.name));
+// 각도 이름이 0 · 000 · 'Body 0' 등 묶음마다 달라 숫자로 맞춘다
+const angNum = (d) => ((6 - d + 8) % 8) * 45;
+const findAng = (dir, d, re) => { const n = fs.readdirSync(dir).find((f) => re.test(f) && +(f.match(/(\d+)(\.png)?$/) || [])[1] === angNum(d)); if (!n) throw new Error(`없음 ${dir} ${angNum(d)}`); return path.join(dir, n); };
 const ang = (d) => String(((6 - d + 8) % 8) * 45).padStart(3, '0');
 const pickN = (arr, n = 10) => (arr.length <= n ? arr : Array.from({ length: n }, (_, i) => arr[Math.round((i * (arr.length - 1)) / (n - 1))]));
 async function sheetFrames(file, cell) {
@@ -31,8 +47,8 @@ for (const S of SPECS) {
   const cell = (S.sheet || S.frames).cell, cs = Math.round(cell * S.k), pieces = [];
   for (const [an, [src]] of Object.entries(S.anims)) for (let d = 0; d < 8; d++) {
     let fr;
-    if (S.sheet) fr = await sheetFrames(path.join(ROOT, S.sheet.dir, src, `${src}_Body_${ang(d)}.png`), cell);
-    else { const dir = path.join(ROOT, S.frames.dir, src, 'Body', ang(d)); fr = fs.readdirSync(dir).filter((f) => f.endsWith('.png')).sort().map((f) => ({ file: path.join(dir, f) })); }
+    if (S.sheet) fr = await sheetFrames(findAng(path.join(ROOT, S.sheet.dir, src), d, /Body/), cell);
+    else { const dir = findAng(path.join(ROOT, S.frames.dir, src, 'Body'), d, /^\d+$/); fr = fs.readdirSync(dir).filter((f) => f.endsWith('.png')).sort().map((f) => ({ file: path.join(dir, f) })); }
     pickN(fr).forEach((f, i) => pieces.push({ an, d, i, ...f }));
   }
   // 자르기 · 줄이기

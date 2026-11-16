@@ -4,7 +4,7 @@ export const NAMED_LEGENDS = {
   field: [{ id: 'nl_antking', name: '개미왕의 송곳니', base: 'broad_sword', ilvl: 4, affixes: [['str', 4], ['atkSpd', 8]], unique: 8 }],
   forest: [{ id: 'nl_scout', name: '정찰대장의 눈', base: 'long_bow', ilvl: 8, affixes: [['dex', 6], ['crit', 4]], unique: 1 }],
   grave: [{ id: 'nl_priest', name: '저주받은 사제의 홀', base: 'sage_staff', ilvl: 12, affixes: [['int', 8], ['spellPct', 15]], unique: 5 }],
-  ruins: [{ id: 'nl_wyrm', name: '황혼 비룡의 비늘', base: 'chain_mail', ilvl: 18, affixes: [['vit', 10], ['armorPct', 20]], unique: 3 }],
+  ruins: [{ id: 'nl_wyrm', name: '황혼 대지네의 갑각', base: 'chain_mail', ilvl: 18, affixes: [['vit', 10], ['armorPct', 20]], unique: 3 }],
   swamp: [{ id: 'nl_bog', name: '늪 왕의 고리', base: 'jade_ring', ilvl: 24, affixes: [['allStats', 4], ['lifeSteal', 3]], unique: 6 }],
   frost: [{ id: 'nl_frost', name: '서리 폭군의 왕관', base: 'frost_helm', ilvl: 30, affixes: [['vit', 12], ['maxHp', 120]], unique: 9 }],
   valley: [{ id: 'nl_mino', name: '미노타우로스 왕의 도끼', base: 'great_axe', ilvl: 36, affixes: [['str', 14], ['dmgPct', 35]], unique: 0 }],
