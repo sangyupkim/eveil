@@ -10,15 +10,17 @@ export const herbIcon = (id) => iconUrl(40, HERBS[id].color); // v0.40.1 약초�
 const SHEET = 'icons.webp', S = 64;
 export const ESS_COLOR = { 2: '#8ab0ff', 3: '#c58cff', 4: '#ff9a4a', 5: '#ff4a6a' };
 const cache = new Map();
-export const iconsReady = () => Promise.all([image(SHEET).p, image('icons2.webp').p]); // 둘째 묶음 (256번부터, v0.41)
+export const iconsReady = () => Promise.all([image(SHEET).p, image('icons2.webp').p, image('icons3.webp').p]); // 둘째 묶음 (256번부터, v0.41) · 셋째 (1000번부터, v0.44.8)
+// 번호 → [묶음 그림, 그 안 번호]
+const sheetOf = (i) => (i >= 1000 ? ['icons3.webp', i - 1000] : i >= 256 ? ['icons2.webp', i - 256] : [SHEET, i]);
 
 // 아이콘 번호 → 그림 주소 (frame: 테두리 색, 없으면 테두리 없음)
 export function iconUrl(index, frame = null, filter = '') {
   const key = index + '|' + frame + '|' + filter;
   if (cache.has(key)) return cache.get(key);
-  const src = image(index >= 256 ? 'icons2.webp' : SHEET);
+  const [sheet, at] = sheetOf(index), src = image(sheet);
   if (!src.ok) return '';
-  if (index >= 256) index -= 256;
+  index = at;
   const c = document.createElement('canvas');
   c.width = c.height = S;
   const g = c.getContext('2d');
@@ -36,13 +38,13 @@ export function itemIcon(it) {
   if (it.shard) return iconUrl(46, '#c58cff'); // 능력치 파편: 모두 같은 그림 + 칸 아래 옵션 글 (cellTag)
   if (BASES[it.base]?.type === 'pet') return petIcon(BASES[it.base].pet);
   if (ELIXIRS[it.base]) return iconUrl(ITEM_LOOK[it.base]?.icon ?? 84, ELIXIRS[it.base].color);
-  if (it.base === 'myth_mark') return iconUrl(42, '#ff4a8a'); // 신화의 흔적: 분홍 테두리
-  if (it.base === 'dungeon_key2') return iconUrl(226, '#5aa8ff'); // 강화 열쇠: 푸른 테두리
-  if (it.base === 'dungeon_key3') return iconUrl(226, '#ff4a6a'); // 극한 열쇠: 붉은 테두리
+  if (it.base === 'myth_mark') return iconUrl(1011, '#ff4a8a'); // 신화의 흔적: 분홍 테두리
+  if (it.base === 'dungeon_key2') return iconUrl(1006, '#5aa8ff'); // 강화 열쇠: 푸른 테두리
+  if (it.base === 'dungeon_key3') return iconUrl(1007, '#ff4a6a'); // 극한 열쇠: 붉은 테두리
   if (it.base === 'ore') return oreIcon();
   if (it.base === 'ore2') return iconUrl(71, '#5aa8ff', 'grayscale(1) sepia(1) hue-rotate(170deg) saturate(2.4) brightness(0.8)'); // 상급: 푸른 돌
   if (it.base === 'ore3') return iconUrl(71, '#c070ff', 'grayscale(1) sepia(1) hue-rotate(230deg) saturate(2.6) brightness(0.8)'); // 최상급: 보랏빛 돌
-  if (/^ess\d$/.test(it.base)) return iconUrl(42, ESS_COLOR[BASES[it.base].grade]); // 정수: 빛 구슬 그림 + 단계 색 테두리
+  if (/^ess\d$/.test(it.base)) return iconUrl(1010, ESS_COLOR[BASES[it.base].grade]); // 정수: 마력 구슬 그림 + 단계 색 테두리
   if (BASES[it.base]?.type === 'mat') return iconUrl(BASES[it.base].icon, '#9ad06a');
   const L = ITEM_LOOK[it.base];
   if (L) return iconUrl(L.icon);
@@ -51,9 +53,9 @@ export function itemIcon(it) {
 }
 export const skillIcon = (id) => iconUrl(SKILL_ICON[id] ?? SCHOOL_ICON[SKILLS[id]?.school] ?? 0);
 export const portrait = (look) => 'assets/flare/portraits/' + faceOf(look?.face)[1] + '.webp';
-export const chestIcon = () => iconUrl(30);
+export const chestIcon = () => iconUrl(1009);
 export const bookIcon = () => iconUrl(28);
-export const coinIcon = () => iconUrl(88);
+export const coinIcon = () => iconUrl(1008);
 export const scrollIcon = () => iconUrl(224);
 export const homeIcon = () => iconUrl(19);
 export const duelIcon = () => iconUrl(1);
@@ -83,9 +85,9 @@ export function petIcon(kind) {
 export function iconCut(index) {
   const key = 'cut|' + index;
   if (cache.has(key)) return cache.get(key);
-  const src = image(index >= 256 ? 'icons2.webp' : SHEET);
+  const [sheet, at] = sheetOf(index), src = image(sheet);
   if (!src.ok) return '';
-  if (index >= 256) index -= 256;
+  index = at;
   const c = document.createElement('canvas'); c.width = c.height = S;
   const g = c.getContext('2d');
   g.drawImage(src.im, (index % 8) * S, Math.floor(index / 8) * S, S, S, 0, 0, S, S);

@@ -89,3 +89,9 @@
 - 효과 `b_*` — Brackeys VFX Bundle predrawn, CC0 (Picster · Kenney · Thomas Iché, 묶음 안 CREDITS)
 - 효과 `bell_*` — PIPOYA FREE VFX Bell (사용자가 사용 조건 확인)
 - 변환: `node tools/prep-dir-chars.mjs <폴더> <이름,...>` · `node tools/prep-powers-frames.mjs <폴더>`
+
+## v0.44.8 셋째 아이콘 묶음 (assets/flare/icons3.webp, 번호 1000부터)
+- 보석 · 열쇠 · 금화 · 상자 · 구슬: "Dark Fantasy Currency and Chests vol.05" (사용자가 받은 묶음, Readme의 사용 조건)
+- 재료 · 신화의 흔적: "Free RPG Dragon Loot Icons" (craftpix.net, https://craftpix.net/file-licenses/)
+- 금강석: "256x256 Gemstones Icon Pack" (사용자가 사용 조건 확인)
+- 변환: `node tools/prep-icons3.mjs <푼 폴더>`

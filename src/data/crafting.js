@@ -1,8 +1,8 @@
 // 지역 재료 · 지역 세트 장비 (제작소에서 만든다)
 export const MATERIALS = {
-  field: { name: '개미 껍질', icon: 72 }, forest: { name: '썩은 나무심', icon: 73 }, grave: { name: '뼛가루', icon: 74 },
-  ruins: { name: '녹슨 문장', icon: 75 }, swamp: { name: '늪 이끼', icon: 76 }, frost: { name: '서리 결정', icon: 77 },
-  valley: { name: '고대 파편', icon: 78 }, inferno: { name: '불씨 핵', icon: 79 }, // v0.40.1 재료는 모두 룬 두루마리 (보석과 구분)
+  field: { name: '개미 껍질', icon: 1012 }, forest: { name: '썩은 나무심', icon: 1013 }, grave: { name: '뼛가루', icon: 1014 },
+  ruins: { name: '녹슨 문장', icon: 1015 }, swamp: { name: '늪 이끼', icon: 1016 }, frost: { name: '서리 결정', icon: 1017 },
+  valley: { name: '고대 파편', icon: 1018 }, inferno: { name: '불씨 핵', icon: 1019 }, // v0.44.8 재료마다 다른 그림 (용 전리품 아이콘)
 };
 // 한 마리당 재료: 확률 · 개수
 export const MAT_DROP = { normal: [0.25, 1], elite: [1, 2], named: [1, 4], boss: [1, 8] };

@@ -19,11 +19,11 @@ Object.assign(NAMED_LEGENDS, {
 export const NAMED_CHANCE = { boss: 0.02, named: 0.005, dungeon: 0.005 }; // v0.42.10 이름 있는 전설도 귀하게 (예전 6% · 1.5% · 8%)
 
 export const GEMS = {
-  ruby: { name: '홍옥', stat: 'str', icon: 70 },
-  emerald: { name: '취옥', stat: 'dex', icon: 69 },
-  sapphire: { name: '청옥', stat: 'int', icon: 68 },
-  amethyst: { name: '자수정', stat: 'wis', icon: 68, tint: 0xc090ff },
-  diamond: { name: '금강석', stat: 'vit', icon: 71 },
+  ruby: { name: '홍옥', stat: 'str', icon: 1000 },
+  emerald: { name: '취옥', stat: 'dex', icon: 1001 },
+  sapphire: { name: '청옥', stat: 'int', icon: 1002 },
+  amethyst: { name: '자수정', stat: 'wis', icon: 1003 },
+  diamond: { name: '금강석', stat: 'vit', icon: 1004 },
 };
 // 보석 5단계: 상점은 조각난 것만, 그 위는 몬스터 · 상자에서만
 export const GEM_GRADES = [{ pre: '조각난', v: 2, lvl: 1 }, { pre: '흐린', v: 3, lvl: 12 }, { pre: '', v: 5, lvl: 25 }, { pre: '빛나는', v: 7, lvl: 40 }, { pre: '완벽한', v: 10, lvl: 55 },
