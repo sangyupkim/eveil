@@ -1231,12 +1231,12 @@ export class World {
     this.lastKillT = this.time;
     if (this.chain >= 3) this.fx.text(this.player.pos.clone().setY(3.2), `연쇄 ${this.chain}`, this.chain >= 10 ? 'crit' : 'heal');
     if (this.chain % 10 === 0) { this.chainSpdT = 5; sfx('buff', 0.6); }
-    const exp = m.exp * rf.exp * (this.auto ? CONFIG.autoExpPenalty ?? CONFIG.autoPenalty : 1) * (1 + Math.min(20, this.chain) * 0.02) * (this.night > 0.5 ? 1.2 : 1);
+    const exp = m.exp * rf.exp * (this.autoKill ? CONFIG.autoExpPenalty ?? CONFIG.autoPenalty : 1) * (1 + Math.min(20, this.chain) * 0.02) * (this.night > 0.5 ? 1.2 : 1);
     const results = gainExp(st, exp * (1 + researchK(st, 'exp')));
     for (const r of results) this.onAwaken(r);
 
     // 드랍
-    const drops = m.noLoot ? [] : rollLoot(m, { auto: this.auto, magicFind: d.magicFind + researchK(st, 'luck'), goldFind: d.goldFind * (1 + researchK(st, 'gold')) }, st);
+    const drops = m.noLoot ? [] : rollLoot(m, { auto: this.autoKill, magicFind: d.magicFind + researchK(st, 'luck'), goldFind: d.goldFind * (1 + researchK(st, 'gold')) }, st);
     drops.forEach((dr, i) => {
       const a = (i / Math.max(1, drops.length)) * Math.PI * 2 + Math.random();
       const r = drops.length > 1 ? 1.2 + Math.random() : 0.6;
@@ -1250,7 +1250,7 @@ export class World {
     if (m.tier !== 'normal') this.ui.log(`${m.name} 처치!`, TIERS[m.tier].color);
     if (!m.dungeon && m.tier === 'boss') { (st.rec ||= {}).bosses = (st.rec.bosses || 0) + 1; if (m.sp?.zone?.id) (st.bossDone ||= {})[m.sp.zone.id] = 1; } // 지역 보스를 잡으면 그 지역 던전이 열린다
     if (!m.dungeon && m.tier === 'boss' && m.sp?.zone?.id === FINAL_ZONE) { st.finalBoss = Math.max(st.finalBoss || 0, st.worldTier || 1); this.checkTierUnlock(); }
-    if (!m.dungeon && !m.noLoot && m.tier === 'boss' && Math.random() < 0.3 * (this.auto ? CONFIG.autoDrop ?? 0.3 : 1)) { // 보스가 가끔 열쇠
+    if (!m.dungeon && !m.noLoot && m.tier === 'boss' && Math.random() < 0.3 * (this.autoKill ? CONFIG.autoDrop ?? 0.3 : 1)) { // 보스가 가끔 열쇠
       if (addItem(st, makeItem('dungeon_key', { qty: 1 }, st))) { this.ui.toast('던전 열쇠를 얻었습니다', '#ffd84a'); sfx('rare', 0.7); }
     }
     if (m.dungeon && m.tier === 'boss' && this.dungeon) this.dungeonCleared(m);
@@ -1258,14 +1258,14 @@ export class World {
     // 강화석: 강한 몬스터는 가끔, 일반 몬스터는 아주 가끔
     if (!m.noLoot) {
       const oc = { normal: 0.015, elite: 0.12, named: 0.3, boss: 0.6 }[m.tier] || 0;
-      if (Math.random() < oc * (this.auto ? CONFIG.autoDrop ?? 0.3 : 1)) {
+      if (Math.random() < oc * (this.autoKill ? CONFIG.autoDrop ?? 0.3 : 1)) {
         const n = (m.tier === 'boss' ? 3 : m.tier === 'named' ? 2 : 1) + Math.floor(Math.random() * (1 + m.level / 15));
         townOf(st).ore += n; this.fx.text(m.pos.clone().setY(2.6), `+${n} 강화석`, 'gold'); this.ui.log(`강화석 +${n}`, '#d8e8ff'); this.ui.dirty();
       }
     }
     // v0.42 정수 (몬스터 레벨 100 · 200 · 300 · 400부터 2 ~ 5단계, 던전 2배)
-    if (!m.noLoot) { const e = dropEss(st, m.level, m.tier, (this.auto ? CONFIG.autoDrop ?? 0.3 : 1) * (m.dungeon ? 2 : 1)); if (e) { this.fx.text(m.pos.clone().setY(2.9), `+${e.n} ${BASES[e.id].name}`, 'gold'); if (m.tier !== 'normal') this.ui.log(`${BASES[e.id].name} +${e.n}`, '#c8b0ff'); } }
-    const zid = m.sp?.zone?.id, got = zid && !m.noLoot && (!this.auto || Math.random() < (CONFIG.autoDrop ?? 0.3)) ? dropMats(st, zid, m.tier) : 0;
+    if (!m.noLoot) { const e = dropEss(st, m.level, m.tier, (this.autoKill ? CONFIG.autoDrop ?? 0.3 : 1) * (m.dungeon ? 2 : 1)); if (e) { this.fx.text(m.pos.clone().setY(2.9), `+${e.n} ${BASES[e.id].name}`, 'gold'); if (m.tier !== 'normal') this.ui.log(`${BASES[e.id].name} +${e.n}`, '#c8b0ff'); } }
+    const zid = m.sp?.zone?.id, got = zid && !m.noLoot && (!this.autoKill || Math.random() < (CONFIG.autoDrop ?? 0.3)) ? dropMats(st, zid, m.tier) : 0;
     if (zid && !m.dungeon && !m.noLoot && liberateAdd(st, zid, m.tier)) {
       const zn = ALL_ZONES.find((z) => z.id === zid);
       this.ui.toast(`${zn.name} 해방! 여관에서 용병을 보낼 수 있습니다`, '#7fe07a'); sfx('awaken');
@@ -1414,7 +1414,9 @@ export class World {
 
   // ───────── 명령 (입력 · 자동 사냥에서 호출) ─────────
 
-  manual() { this.autoPause = 1.6; }
+  manual() { this.autoPause = 1.6; this.lastManual = this.time; }
+  // 처치 보상에서 자동 사냥으로 볼까: 자동이 켜져 있어도 10초 안에 직접 조작했으면 직접 사냥 (v0.42.8: 자동을 켠 채 손으로 잡은 보스가 자동으로 계산되던 문제)
+  get autoKill() { return this.auto && this.time - (this.lastManual ?? -99) > 10; }
 
   cmdMove(x, z) {
     if (this.dead) return;

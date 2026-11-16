@@ -28,12 +28,13 @@ export function rollLoot(mon, opt = {}, st = null, rng = R) {
     const n = randInt(t.items[0], t.items[1], rng);
     for (let i = 0; i < n; i++) {
       // 보스는 가끔 장비 대신 능력치 파편
-      if (mon.tier === 'boss' && rng() < SHARD.bossChance * (1 + 0.2 * (st?.town?.research?.shard || 0))) { out.push({ kind: 'item', item: rollShard(mon.level, st, rng) }); continue; }
       const rr = { ...t.rarity, hero: (t.rarity.hero || 0) * rareK, legend: (t.rarity.legend || 0) * rareK * rareK }; // 높은 곳의 영웅 · 전설은 더 드물다
       const rarity = rollRarity(rr, opt.magicFind || 0, rng);
       out.push({ kind: 'item', item: makeItem(rollBase(mon.level, rng), { rarity, ilvl: mon.level }, st, rng) });
     }
   }
+  // 능력치 파편: 네임드 · 보스는 장비와 따로 가끔 (v0.42.8, 예전엔 보스 장비 하나가 파편으로 바뀌었다)
+  if (t.shard && chance(t.shard * dropMult * (1 + 0.2 * (st?.town?.research?.shard || 0)), rng)) out.push({ kind: 'item', item: rollShard(mon.level, st, rng) });
   // 물약
   if (chance(t.potion * dropMult, rng)) {
     const big = mon.level >= 8 && chance(0.5, rng);
