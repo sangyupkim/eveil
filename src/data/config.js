@@ -83,8 +83,8 @@ export const LOOT = {
     rarity: { common: 78, magic: 20.5, rare: 1.45, hero: 0.05, legend: 0 } },
   elite: { itemChance: 0.035, items: [1, 1], gold: [1, 3], potion: 0.25, book: 0.03, bookTiers: { 1: 70, 2: 30 },
     rarity: { common: 25, magic: 60, rare: 13.8, hero: 1.1, legend: 0.1 } },
-  named: { itemChance: 0.12, items: [1, 1], gold: [1, 8], potion: 0.5, book: 0.15, bookTiers: { 2: 60, 3: 40 },
+  named: { itemChance: 0.5, items: [1, 1], gold: [1, 8], potion: 0.5, book: 0.15, bookTiers: { 2: 60, 3: 40 },
     rarity: { common: 5, magic: 45, rare: 42, hero: 7.4, legend: 0.6 } },
-  boss: { itemChance: 0.22, items: [1, 2], gold: [1, 20], potion: 1, book: 0.6, bookTiers: { 3: 60, 4: 35, 5: 5 },
+  boss: { itemChance: 1, items: [1, 2], gold: [1, 20], potion: 1, book: 0.6, bookTiers: { 3: 60, 4: 35, 5: 5 },
     rarity: { common: 0, magic: 18, rare: 57, hero: 22, legend: 3 } },
 };
