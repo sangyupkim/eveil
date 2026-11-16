@@ -16,6 +16,9 @@ const LIST = [
   ['sc_str', SC('26_rolled-scroll_blood-oath')], ['sc_dex', SC('45_rolled-scroll_emerald-dragon')], ['sc_int', SC('28_rolled-scroll_navy-inkstorm')], ['sc_wis', SC('30_rolled-scroll_dream-weaver')],
   ['sc_vit', SC('27_rolled-scroll_amber-memory')], ['sc_armor', SC('54_rolled-scroll_salt-banishment')], ['sc_might', SC('8_rolled-scroll_charred-ember')], ['sc_haste', SC('43_rolled-scroll_aurora-borealis')],
   ['sc_swift', SC('17_rolled-scroll_crystal-prism')], ['sc_focus', SC('21_rolled-scroll_golden-harvest')], ['sc_luck', SC('57_rolled-scroll_lantern-festival')],
+  // v0.44.10 무기: "3D Fantasy Weapons Pack" GLB를 찍은 그림 (wicons/ = 렌더 · 45도 · 밝기 손질한 64칸)
+  ...['bone_club', 'crystal_greatsword', 'duelists_rapier', 'dwarven_war_axe', 'elven_leaf_blade', 'falchion', 'giants_maul', 'halberd', 'highland_claymore', 'hunting_spear', 'jeweled_dagger', 'katana', 'knights_longsword',
+    'morning_star', 'orcish_cleaver', 'paladins_mace', 'pirate_cutlass', 'reapers_scythe', 'rogues_dagger', 'spiked_mace', 'tidal_trident', 'twin_moon_battle_axe', 'war_pick', 'warhammer', 'wizards_staff'].map((n) => ['w_' + n, `wicons/${n}.png`]),
 ];
 const S = 64, W = 8, H = Math.ceil(LIST.length / W);
 const parts = await Promise.all(LIST.map(async ([, f], i) => {

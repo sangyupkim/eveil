@@ -1,0 +1,26 @@
+<!doctype html><html><body style="margin:0;background:transparent">
+<script type="importmap">{"imports":{"three":"./three/build/three.module.js","three/addons/":"./three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three'; import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+const R = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true }); R.setSize(256, 256); R.setClearColor(0, 0); R.outputColorSpace = THREE.SRGBColorSpace; document.body.appendChild(R.domElement);
+window.shot = async (file, flip) => {
+  const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff4e0, 0x606070, 3.0)); const d = new THREE.DirectionalLight(0xffffff, 2.4); d.position.set(-2, 3, 5); d.intensity = 3.5; sc.add(d); const r = new THREE.DirectionalLight(0x9fc0ff, 1.2); r.position.set(3, -1, -2); sc.add(r);
+  const g = await new GLTFLoader().loadAsync(file); const m = g.scene;
+  // 가장 긴 축을 세운 뒤 45도로 눕힌다 (칼끝 오른쪽 위)
+  m.updateMatrixWorld(true);
+  let b = new THREE.Box3().setFromObject(m), s = b.getSize(new THREE.Vector3());
+  const inner = new THREE.Group(); inner.add(m);
+  if (s.x >= s.y && s.x >= s.z) inner.rotation.z = Math.PI / 2; else if (s.z >= s.y) inner.rotation.x = Math.PI / 2;
+  // 넓은 면이 카메라를 보게: 세운 뒤 x · z 폭 중 넓은 쪽이 앞
+  inner.updateMatrixWorld(true); b = new THREE.Box3().setFromObject(inner); s = b.getSize(new THREE.Vector3());
+  const mid = new THREE.Group(); mid.add(inner); if (s.z > s.x) mid.rotation.y = Math.PI / 2;
+  if (flip) mid.rotation.x = Math.PI; // 머리(칼끝 · 도끼날)가 위로 오게
+  const piv = new THREE.Group(); piv.add(mid); sc.add(piv); // 기울이기는 그림에서 (prep-weapon-icons)
+  piv.updateMatrixWorld(true);
+  b = new THREE.Box3().setFromObject(piv); const c = b.getCenter(new THREE.Vector3()); piv.position.sub(c); s = b.getSize(new THREE.Vector3());
+  const k = Math.max(s.x, s.y) * 0.5;
+ const cam = new THREE.OrthographicCamera(-k, k, k, -k, -100, 100); cam.position.set(0, 0, 10);
+  R.render(sc, cam); return R.domElement.toDataURL('image/png');
+};
+window.ready = true;
+</script></body></html>

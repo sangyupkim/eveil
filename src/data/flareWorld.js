@@ -255,3 +255,15 @@ Object.assign(ITEM_LOOK.rusty_club, { icon: ICONS2.club }); Object.assign(ITEM_L
 Object.assign(ITEM_LOOK.war_hammer, { icon: ICONS2.warhammer }); Object.assign(ITEM_LOOK.spiked_mace, { icon: ICONS2.reinforced_club }); Object.assign(ITEM_LOOK.knight_axe, { icon: ICONS2.infantry_axe }); Object.assign(ITEM_LOOK.dragon_mace, { icon: ICONS2.maul });
 Object.assign(ITEM_LOOK.glass_orb, { icon: ICONS2.orb_cyan, tint: undefined }); Object.assign(ITEM_LOOK.moon_orb, { icon: ICONS2.orb_blue }); Object.assign(ITEM_LOOK.rune_orb, { icon: ICONS2.orb_rune, tint: undefined }); Object.assign(ITEM_LOOK.void_orb, { icon: ICONS2.orb_void, tint: undefined });
 for (const [k, n] of Object.entries(ICONS2)) if (k.startsWith('sk:')) SKILL_ICON[k.slice(3)] = n;
+// v0.44.10 무기 아이콘: 3D 무기 모델(GLB)을 찍은 그림 (icons3, tools/glb-icons)
+import { ICONS3 as _I3 } from './icons3.js';
+const _W = (k, n) => { if (ITEM_LOOK[k]) ITEM_LOOK[k].icon = _I3['w_' + n]; };
+for (const [k, n] of Object.entries({
+  rusty_sword: 'pirate_cutlass', short_sword: 'knights_longsword', broad_sword: 'falchion', greatsword: 'highland_claymore', claymore: 'highland_claymore', golden_sword: 'elven_leaf_blade',
+  frost_blade: 'katana', inferno_sword: 'falchion', rune_blade: 'crystal_greatsword', war_axe: 'dwarven_war_axe', great_axe: 'twin_moon_battle_axe', dragon_cleaver: 'orcish_cleaver', knight_axe: 'dwarven_war_axe',
+  rusty_club: 'bone_club', oak_club: 'bone_club', iron_mace: 'spiked_mace', spiked_mace: 'morning_star', war_hammer: 'warhammer', dragon_mace: 'giants_maul',
+  l_str_hammer1: 'warhammer', l_str_hammer2: 'warhammer', l_str_hammer3: 'warhammer', l_str_hammer4: 'warhammer', sage_staff: 'wizards_staff', archmage_staff: 'wizards_staff',
+})) _W(k, n);
+// 높은 단계 장비 (h44_ ~): 종류마다 한 그림
+const _HW = { sword: 'knights_longsword', greatsword: 'crystal_greatsword', axe: 'twin_moon_battle_axe', mace: 'morning_star', staff: 'wizards_staff', scepter: 'paladins_mace', l_str_hammer: 'warhammer' };
+for (const k of Object.keys(ITEM_LOOK)) { const m = /^h\d+_(.+)$/.exec(k); if (m && _HW[m[1]]) _W(k, _HW[m[1]]); }

@@ -95,4 +95,5 @@
 - 재료 · 신화의 흔적: "Free RPG Dragon Loot Icons" (craftpix.net, https://craftpix.net/file-licenses/)
 - 금강석: "256x256 Gemstones Icon Pack" (사용자가 사용 조건 확인)
 - 강화 주문서(v0.44.9): "Scrolls" 묶음 part 1 (사용자가 사용 조건 확인)
+- 무기(v0.44.10): "3D Fantasy Weapons Pack" (low) GLB를 직접 찍은 그림 (README · LICENSE 묶음 안, 사용자가 사용 조건 확인) — tools/glb-icons
 - 변환: `node tools/prep-icons3.mjs <푼 폴더>`
