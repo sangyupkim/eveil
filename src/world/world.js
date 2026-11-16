@@ -626,11 +626,14 @@ export class World {
     const lv = dungeonLevel(zn, dg.stage) + this.tierOffset;
     const D = DUNGEON_DIFFS[(dg.diff || 1) - 1];
     // 신화: 강화 · 극한 던전 우두머리에서만, 한 번 돌파에 한 번 굴린다 (극한 10단계도 3%) · 못 나오면 신화의 흔적이 쌓인다
-    let myth = dg.diff > 1 && Math.random() < D.myth(dg.stage) ? 1 : 0;
+    // v0.44.18 좋은 아이템 발견: 신화 100%마다 +0.1%p (최대 3%), 전설 100%마다 +0.3%p (최대 +5%p)
+    const mf = Math.max(0, this.d.magicFind + researchK(st, 'luck'));
+    const mythP = Math.min(0.03, D.myth(dg.stage) + (mf / 100) * 0.001), legendP = D.legend(dg.stage) + Math.min(0.05, (mf / 100) * 0.003);
+    let myth = dg.diff > 1 && Math.random() < mythP ? 1 : 0;
     // v0.44.16 신화의 흔적은 내 수준에 맞는 던전에서만 (던전 레벨이 각성보다 20 넘게 낮으면 없음)
     if (dg.diff > 1) { if (lv >= (st.awakenings || 0) - 20) { resAdd(st, 'myth_mark', 1); this.ui.log(`신화의 흔적 +1 (${resCount(st, 'myth_mark')})`, '#ff7aa8'); } else this.ui.log('너무 쉬운 던전이라 신화의 흔적이 나오지 않았습니다', '#a09080'); }
     // 전설: 돌파에 한 번만 굴린다 — 보통 1 → 4%, 강화 2 → 6%, 극한 3 → 9% (v0.42.11, 최대 10% 미만). 나머지는 영웅 35% · 희귀
-    const legend = !myth && Math.random() < D.legend(dg.stage);
+    const legend = !myth && Math.random() < legendP;
     for (let i = 0; i < D.items; i++) {
       const rarity = i === 0 && myth ? 'myth' : i === 0 && legend ? 'legend' : Math.random() < 0.35 ? 'hero' : 'rare';
       // 절반은 내 무기 종류(무기 · 보조 칸)로 — 장비 줄이 많아져 지팡이 등이 묻히지 않게 (v0.39.6)

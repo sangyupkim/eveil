@@ -34,6 +34,7 @@ export function vaultPut(st, uid) {
   const i = st.inv.findIndex((x) => x.uid === uid);
   if (i < 0) return { ok: false };
   const it = st.inv[i];
+  if (it.rarity === 'myth') return { ok: false, why: '신화 장비는 공용 창고에 넣을 수 없습니다' }; // v0.44.18 캐릭터끼리 나눠 쓰지 않게
   const same = stack(it) && V.items.find((x) => x.base === it.base);
   if (!same && V.items.length >= vaultSize(st)) return { ok: false, why: '창고가 가득 찼습니다' };
   st.inv.splice(i, 1);
@@ -43,6 +44,7 @@ export function vaultPut(st, uid) {
 }
 // 새 아이템을 창고에 바로 (제작소 결과물)
 export function vaultAdd(st, it) {
+  if (it?.rarity === 'myth') return false;
   const same = stack(it) && V.items.find((x) => x.base === it.base);
   if (!same && V.items.length >= vaultSize(st)) return false;
   if (same) same.qty += it.qty; else V.items.push(it);

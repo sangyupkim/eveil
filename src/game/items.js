@@ -24,7 +24,7 @@ export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1 } = {}, 
   if (!base) throw new Error('없는 아이템: ' + baseId);
   if (base.type === 'potion' || base.stack) return { uid: uid(st), base: baseId, qty };
   const it = { uid: uid(st), base: baseId, rarity, ilvl, affixes: [] };
-  if (base.slot && (base.dmg || base.armor)) it.q = Math.round((0.85 + rng() * 0.3) * 100) / 100; // 품질: 같은 아이템도 기본 피해 · 방어력이 85~115%
+  if (base.slot && (base.dmg || base.armor)) it.q = Math.round((rarity === 'myth' ? 1.15 + rng() * 0.15 : 0.85 + rng() * 0.3) * 100) / 100; // 품질: 기본 피해 · 방어력 85~115% (신화는 115~130%, v0.44.18)
   const r = RARITY[rarity];
   const n = randInt(r.affix[0], r.affix[1], rng);
   const slot = base.slot;
@@ -34,13 +34,13 @@ export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1 } = {}, 
     if (a.mythOnly) return false; // 신화 옵션은 아래에서 따로 두 개
     return !a.slots || a.slots.includes(slot);
   });
-  // 신화: 신화 전용 옵션 두 개를 먼저 (부위에 맞는 것 중)
-  if (rarity === 'myth') { const mp = Object.keys(AFFIXES).filter((id) => AFFIXES[id].mythOnly && (!AFFIXES[id].slots || AFFIXES[id].slots.includes(slot))); for (let i = 0; i < 2 && mp.length; i++) { const id = mp.splice(Math.floor(rng() * mp.length), 1)[0], a = AFFIXES[id], mx = a.max(ilvl); it.affixes.push({ id, v: Math.max(a.min, Math.round(mx * (0.7 + rng() * 0.3))), myth: true }); } }
-  for (let i = 0; i < n - (rarity === 'myth' ? 2 : 0) && pool.length; i++) {
+  // 신화: 신화 전용 옵션 세 개를 먼저 (v0.44.18 두 개 → 세 개) (부위에 맞는 것 중)
+  if (rarity === 'myth') { const mp = Object.keys(AFFIXES).filter((id) => AFFIXES[id].mythOnly && (!AFFIXES[id].slots || AFFIXES[id].slots.includes(slot))); for (let i = 0; i < 3 && mp.length; i++) { const id = mp.splice(Math.floor(rng() * mp.length), 1)[0], a = AFFIXES[id], mx = a.max(ilvl); it.affixes.push({ id, v: Math.max(a.min, Math.round(mx * (0.7 + rng() * 0.3))), myth: true }); } }
+  for (let i = 0; i < n - (rarity === 'myth' ? it.affixes.length : 0) && pool.length; i++) {
     const id = pool.splice(Math.floor(rng() * pool.length), 1)[0];
     const a = AFFIXES[id];
     const max = Math.max(a.min, a.max(ilvl) * r.mult);
-    let v = Math.max(a.min, Math.round(a.min + rng() * (max - a.min)));
+    let v = Math.max(a.min, Math.round(a.min + (rarity === 'myth' ? 0.5 + rng() * 0.5 : rng()) * (max - a.min))); // 신화는 옵션이 범위의 위쪽 절반에서만
     // 탁월한 옵션 (영웅 · 전설, 옵션마다 8%): 최대치의 110 ~ 130% — 같은 전설이라도 눈에 띄는 장비가 나오게 (v0.39.6)
     const great = (rarity === 'hero' || rarity === 'legend' || rarity === 'myth') && rng() < (rarity === 'myth' ? 0.2 : 0.08);
     if (great) v = Math.max(v + 1, Math.round(max * (1.1 + rng() * 0.2)));
@@ -109,7 +109,9 @@ export function rollBase(ilvl, rng = R) {
 
 export function rollRarity(table, magicFind = 0, rng = R) {
   const t = {};
-  for (const k of RARITY_ORDER) t[k] = (table[k] || 0) * (k === 'common' ? 1 : k === 'legend' ? 1 + magicFind / 300 : 1 + magicFind / 100); // 좋은 아이템 발견은 전설에 1/3만 (v0.42.10)
+  for (const k of RARITY_ORDER) t[k] = (table[k] || 0) * (k === 'common' || k === 'legend' ? 1 : 1 + magicFind / 100);
+  // v0.44.18 전설: 나올 수 있는 몬스터라면 좋은 아이템 발견 100%마다 전설 비율 +0.3%p (최대 +5%p). 예전엔 1/3만 반영돼 높일수록 전설 비율이 줄었다
+  if (t.legend > 0 && magicFind > 0) { const T = Object.values(t).reduce((a, v) => a + v, 0), rest = T - t.legend, T0 = RARITY_ORDER.reduce((a, k) => a + (table[k] || 0), 0), p = Math.min(0.95, (table.legend || 0) / T0 + Math.min(0.05, magicFind * 0.00003)); t.legend = (p * rest) / (1 - p); }
   return weighted(t, rng);
 }
 
