@@ -569,10 +569,10 @@ export function dropEss(st, level, tier, mult = 1, rng = Math.random) {
   resAdd(st, 'ess' + g, n);
   return { id: 'ess' + g, n };
 }
-// v0.44.11 정수 교환 (제작소 2단계~): 아래 5개 → 위 1개, 위 1개 → 아래 3개
+// v0.44.11 정수 교환 (제작소 2단계~): 아래 5개 → 위 1개, 위 1개 → 아래 3개. v0.44.13 금화 소모처로 값을 올림 (올리기 2 · 4.5 · 8만, 내리기 0.8 · 1.8 · 3.2만)
 export const ESS_RECIPES = [2, 3, 4].flatMap((g) => [
-  { rid: `up${g + 1}`, id: `ess${g + 1}`, lv: 2, gold: 1000 * g * g, need: { [`ess${g}`]: 5 }, zoneMats: 0, out: 1 },
-  { rid: `dn${g}`, id: `ess${g}`, lv: 2, gold: 300 * g * g, need: { [`ess${g + 1}`]: 1 }, zoneMats: 0, out: 3 },
+  { rid: `up${g + 1}`, id: `ess${g + 1}`, lv: 2, gold: 5000 * g * g, need: { [`ess${g}`]: 5 }, zoneMats: 0, out: 1 },
+  { rid: `dn${g}`, id: `ess${g}`, lv: 2, gold: 2000 * g * g, need: { [`ess${g + 1}`]: 1 }, zoneMats: 0, out: 3 },
 ]);
 export function craftEss(st, rid, times = 1) {
   const r = ESS_RECIPES.find((x) => x.rid === rid), ok = r && oreRecipeOk(st, r, times);
