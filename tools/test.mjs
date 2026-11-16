@@ -7,6 +7,7 @@ import { learn, addSkillExp, canLearn, skillValues } from '../src/game/skills.js
 import { rollLoot, rollDeathDrop } from '../src/game/loot.js';
 import { makeItem, itemName, rollBase } from '../src/game/items.js';
 import * as await_fs from 'node:fs';
+import { craftOre, enhanceCost, resAdd, resCount, essGrade } from '../src/game/town.js';
 import { finishBuilds, brew, brewCollect, dispatchParty, shelterUp, deathChance, rollMerc, researchStart } from '../src/game/town.js';
 import { HERBS } from '../src/data/potions.js';
 import { countOf } from '../src/game/inventory.js';
@@ -239,7 +240,7 @@ test('재료 · 제작소 · 세트 효과', () => {
   for (const sl of ['helm', 'armor']) { const r = craft(p, 'field', sl); assert.ok(r.ok, r.why); equip(p, r.item.uid); }
   assert.ok(derive(p).maxHp >= hp0 + 30, '2세트 효과');
   // 단계 올리기는 각성 · 재료가 든다 (5단계는 각성 60 이하)
-  for (const d of Object.values(BUILDINGS)) assert.ok(d.up.length === 4 && d.up[3] <= 60 && d.up.every((v, i) => !i || v > d.up[i - 1]));
+  for (const d of Object.values(BUILDINGS)) assert.ok(d.max === 10 && d.up.length === 9 && d.up[3] <= 60 && d.up[8] === 300 && d.up.every((v, i) => !i || v > d.up[i - 1])); // v0.42 10단계
   const aw = p.awakenings; p.awakenings = 0;
   assert.equal(upgrade(p, 'p5').ok, false);
   p.awakenings = aw;
@@ -498,6 +499,17 @@ test('드랍: 각성 등급 책이 나와도 이름 있는 전설 · 보석 굴�
   assert.ok(named / 6000 > 0.045, '이름 있는 전설 ' + named); // NAMED_CHANCE.boss 6%
   let g = 0, n = 0; for (let i = 0; i < 400; i++) { const it = makeItem('short_sword', { rarity: 'legend', ilvl: 50 }); for (const a of it.affixes) { n++; if (a.great) g++; } }
   assert.ok(g / n > 0.05 && g / n < 0.11, '탁월 ' + g / n);
+});
+
+test('v0.42: 강화 +20 · 높은 강화석 제작 · 정수 단계', () => {
+  const p = newPlayer('t', { face: 'm01' }, 'sword'); p.gold = 1e8;
+  townOf(p).plots.p1 = { type: 'workshop', lv: 8, stock: 0, since: Date.now() };
+  assert.equal(craftOre(p, 'ore2').ok, false);
+  resAdd(p, 'ore', 100); resAdd(p, 'ess2', 10); resAdd(p, 'ess3', 10); resAdd(p, 'mat_field', 50);
+  assert.ok(craftOre(p, 'ore2', 2).ok); assert.equal(resCount(p, 'ore2'), 2); assert.equal(resCount(p, 'ore'), 50);
+  const it = makeItem('short_sword', { rarity: 'rare', ilvl: 100 }, p);
+  it.plus = 10; assert.equal(enhanceCost(it, p).oreId, 'ore2'); it.plus = 15; assert.equal(enhanceCost(it, p).oreId, 'ore3'); it.plus = 9; assert.equal(enhanceCost(it, p).oreId, 'ore');
+  assert.equal(essGrade(50), 1); assert.equal(essGrade(150), 2); assert.equal(essGrade(480), 5);
 });
 
 test('모든 src 파일 문법', () => {

@@ -166,7 +166,7 @@ export const ITEM_LOOK = {
   dungeon_key: { icon: 226 }, shard: { icon: 46 }, el_str: { icon: 84 }, el_dex: { icon: 86 }, el_int: { icon: 86 }, el_wis: { icon: 86 }, el_vit: { icon: 84 }, el_armor: { icon: 84 }, el_might: { icon: 84 }, el_haste: { icon: 86 }, el_swift: { icon: 86 }, el_focus: { icon: 86 }, el_luck: { icon: 84 }, pet_egg: { icon: 234 }, pet_cat: { icon: 234 }, hp_potion: { icon: 64 }, mp_potion: { icon: 65 }, hp_potion_l: { icon: 84 }, mp_potion_l: { icon: 86 },
 };
 // 강화석 · 지역 재료 (가방 아이템, v0.30)
-Object.assign(ITEM_LOOK, { ore: { icon: 71 }, mat_field: { icon: 72 }, mat_forest: { icon: 73 }, mat_grave: { icon: 74 }, mat_ruins: { icon: 75 }, mat_swamp: { icon: 76 }, mat_frost: { icon: 77 }, mat_valley: { icon: 78 }, mat_inferno: { icon: 79 } });
+Object.assign(ITEM_LOOK, { ore2: { icon: 71 }, ore3: { icon: 71 }, ess2: { icon: 42 }, ess3: { icon: 42 }, ess4: { icon: 42 }, ess5: { icon: 42 }, ore: { icon: 71 }, mat_field: { icon: 72 }, mat_forest: { icon: 73 }, mat_grave: { icon: 74 }, mat_ruins: { icon: 75 }, mat_swamp: { icon: 76 }, mat_frost: { icon: 77 }, mat_valley: { icon: 78 }, mat_inferno: { icon: 79 } });
 
 // 처음 복장 (안 입은 부위)
 export const BASE_CLOTHES = { chest: 'cloth_shirt', legs: 'cloth_pants', feet: 'cloth_sandals', hands: 'default_hands' };

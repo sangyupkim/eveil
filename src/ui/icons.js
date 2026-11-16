@@ -8,6 +8,7 @@ import { ELIXIRS, HERBS } from '../data/potions.js';
 export const herbIcon = (id) => iconUrl(40, HERBS[id].color); // v0.40.1 약초는 모두 풀 그림 + 색 테두리 (보석과 구분)
 
 const SHEET = 'icons.webp', S = 64;
+export const ESS_COLOR = { 2: '#8ab0ff', 3: '#c58cff', 4: '#ff9a4a', 5: '#ff4a6a' };
 const cache = new Map();
 export const iconsReady = () => Promise.all([image(SHEET).p, image('icons2.webp').p]); // 둘째 묶음 (256번부터, v0.41)
 
@@ -36,6 +37,9 @@ export function itemIcon(it) {
   if (BASES[it.base]?.type === 'pet') return petIcon(BASES[it.base].pet);
   if (ELIXIRS[it.base]) return iconUrl(ITEM_LOOK[it.base]?.icon ?? 84, ELIXIRS[it.base].color);
   if (it.base === 'ore') return oreIcon();
+  if (it.base === 'ore2') return iconUrl(71, '#5aa8ff', 'grayscale(1) sepia(1) hue-rotate(170deg) saturate(2.4) brightness(0.8)'); // 상급: 푸른 돌
+  if (it.base === 'ore3') return iconUrl(71, '#c070ff', 'grayscale(1) sepia(1) hue-rotate(230deg) saturate(2.6) brightness(0.8)'); // 최상급: 보랏빛 돌
+  if (BASES[it.base]?.grade) return iconUrl(42, ESS_COLOR[BASES[it.base].grade]); // 정수: 빛 구슬 그림 + 단계 색 테두리
   if (BASES[it.base]?.type === 'mat') return iconUrl(BASES[it.base].icon, '#9ad06a');
   const L = ITEM_LOOK[it.base];
   if (L) return iconUrl(L.icon);

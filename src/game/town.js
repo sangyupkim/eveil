@@ -88,10 +88,10 @@ export function upgrade(st, plot) {
   const an = def.up?.[b.lv - 1] ?? 0;
   if ((st.awakenings || 0) < an) return { ok: false, why: `각성 ${an} 필요` };
   if (st.gold < cost) return { ok: false, why: '금화가 모자랍니다' };
-  const um = upgradeMats(b.lv), mats = townOf(st).mats;
-  if (um && (mats[um.zone] || 0) < um.n) return { ok: false, why: `${MATERIALS[um.zone].name} ${um.n}개가 필요합니다` };
+  const um = upgradeMats(b.lv);
+  if (um && resCount(st, um.base) < um.n) return { ok: false, why: `${BASES[um.base].name} ${um.n}개가 필요합니다` };
   st.gold -= cost;
-  if (um) mats[um.zone] -= um.n;
+  if (um) resTake(st, um.base, um.n);
   const now = Date.now();
   b.bld = { to: b.lv + 1, from: now, until: now + buildTime(b.lv + 1) };
   return { ok: true };
@@ -148,7 +148,8 @@ export const jangOf = (it) => it.jang || 0;
 export function enhanceCost(it, st = null) {
   const n = it.plus || 0, hk = Math.max(0.5, 1 - (it.ilvl || 1) / 750), base = n < 2 ? ENHANCE.chance(n) : ENHANCE.chance(n) * hk, up = Math.min(base, base * 0.1 * (it.fails || 0)); // 높은 장비는 성공률이 낮다 (레벨 200 ×0.56)
   const chance = jangOf(it) >= 1 ? 1 : Math.min(1, base + up + (st ? researchK(st, 'enh') : 0));
-  return { gold: Math.round(ENHANCE.gold(n, it.ilvl || 1) * (1 - (st ? bonusOf(st, 'smithy') : 0))), ore: Math.round(ENHANCE.ore(n) * (1 + (it.ilvl || 1) / 130)), chance, base, jang: jangOf(it) }; // 강화석도 높은 장비일수록 많이
+  const oreId = ENHANCE.oreId(n), oreK = oreId === 'ore' ? 1 + (it.ilvl || 1) / 130 : 1 + (it.ilvl || 1) / 400;
+  return { gold: Math.round(ENHANCE.gold(n, it.ilvl || 1) * (1 - (st ? bonusOf(st, 'smithy') : 0))), ore: Math.round(ENHANCE.ore(n) * oreK), oreId, oreName: BASES[oreId].name, chance, base, jang: jangOf(it) }; // 강화석도 높은 장비일수록 많이
 }
 // rng: 0~1. 실패해도 단계가 떨어지지는 않는다 (재료만 사라진다)
 export function enhance(st, it, rng = Math.random) {
@@ -156,8 +157,8 @@ export function enhance(st, it, rng = Math.random) {
   if (n >= enhanceCap(st)) return { ok: false, why: '대장간 단계를 올려야 합니다' };
   const c = enhanceCost(it, st), t = townOf(st);
   if (st.gold < c.gold) return { ok: false, why: '금화가 모자랍니다' };
-  if (t.ore < c.ore) return { ok: false, why: '강화석이 모자랍니다' };
-  st.gold -= c.gold; t.ore -= c.ore;
+  if (resCount(st, c.oreId) < c.ore) return { ok: false, why: `${c.oreName}이 모자랍니다` };
+  st.gold -= c.gold; resTake(st, c.oreId, c.ore);
   if (rng() < c.chance) { it.plus = n + 1; it.jang = 0; it.fails = 0; return { ok: true, success: true, plus: it.plus }; }
   it.fails = (it.fails || 0) + 1;
   it.jang = Math.min(1, jangOf(it) + c.chance * 0.465);
@@ -528,3 +529,40 @@ export function mercUngear(st, id) {
   return { ok: true, item: it };
 }
 export { PLOTS, BUILDINGS, EXPEDITIONS };
+
+// ── v0.42 높은 강화석 · 강화 열쇠 제작 (제작소) ──
+// 상급 강화석(+11 ~ 15) · 최상급 강화석(+16 ~ 20): 강화석 · 지역 재료(가장 많은 것부터) · 정수를 섞는다
+export const ORE_RECIPES = [
+  { id: 'ore2', lv: 6, gold: 20000, need: { ore: 25, ess2: 2, ess3: 1 }, zoneMats: 10 },
+  { id: 'ore3', lv: 8, gold: 80000, need: { ore2: 4, ess4: 2, ess5: 1 }, zoneMats: 20 },
+];
+const zoneMatTotal = (st) => Object.keys(MATERIALS).reduce((a, k) => a + resCount(st, 'mat_' + k), 0);
+function takeZoneMats(st, n) { for (const k of Object.keys(MATERIALS).sort((a, b) => resCount(st, 'mat_' + b) - resCount(st, 'mat_' + a))) { if (n <= 0) break; const c = Math.min(n, resCount(st, 'mat_' + k)); resTake(st, 'mat_' + k, c); n -= c; } }
+export function oreRecipeOk(st, r, times = 1) {
+  const w = findBuilding(st, 'workshop');
+  if (!w || w.lv < r.lv) return { ok: false, why: `제작소 ${r.lv}단계 필요` };
+  if (st.gold < r.gold * times) return { ok: false, why: '금화가 모자랍니다' };
+  for (const [id, q] of Object.entries(r.need)) if (resCount(st, id) < q * times) return { ok: false, why: `${BASES[id].name}이 모자랍니다` };
+  if (zoneMatTotal(st) < r.zoneMats * times) return { ok: false, why: '지역 재료가 모자랍니다' };
+  return { ok: true };
+}
+export function craftOre(st, id, times = 1) {
+  const r = ORE_RECIPES.find((x) => x.id === id), ok = r && oreRecipeOk(st, r, times);
+  if (!ok?.ok) return ok || { ok: false };
+  st.gold -= r.gold * times;
+  for (const [k, q] of Object.entries(r.need)) resTake(st, k, q * times);
+  takeZoneMats(st, r.zoneMats * times);
+  resAdd(st, r.id, times);
+  return { ok: true, n: times };
+}
+// 정수: 몬스터 레벨 100 · 200 · 300 · 400부터 2 · 3 · 4 · 5단계
+export const essGrade = (level) => Math.min(5, 1 + Math.floor(level / 100));
+export function dropEss(st, level, tier, mult = 1, rng = Math.random) {
+  const g = essGrade(level);
+  if (g < 2) return null;
+  const p = ({ normal: 0.04, elite: 0.25, named: 0.6, boss: 1 }[tier] || 0) * mult;
+  if (rng() >= p) return null;
+  const n = tier === 'boss' ? 2 + Math.floor(rng() * 3) : tier === 'named' ? 1 + Math.floor(rng() * 2) : 1;
+  resAdd(st, 'ess' + g, n);
+  return { id: 'ess' + g, n };
+}

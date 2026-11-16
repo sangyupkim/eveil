@@ -19,7 +19,7 @@ import { ELIXIRS, ELIXIR_TIME } from '../data/potions.js';
 import { addAP, gainExp, rewardFactor, recAwaken } from '../game/growth.js';
 import { addSkillExp, skillValues, skillEff, modsOf, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
 import { rollLoot, rollDeathDrop } from '../game/loot.js';
-import { dropMats, liberateAdd } from '../game/town.js';
+import { dropMats, liberateAdd, dropEss } from '../game/town.js';
 import { dailyProgress, dailyReward, dailyText, dayKey, dailyOf } from '../game/daily.js';
 import { MATERIALS } from '../data/crafting.js';
 import { addItem, takeOne, countOf, equip as equipItem, unequip as unequipItem } from '../game/inventory.js';
@@ -1254,6 +1254,8 @@ export class World {
         townOf(st).ore += n; this.fx.text(m.pos.clone().setY(2.6), `+${n} 강화석`, 'gold'); this.ui.log(`강화석 +${n}`, '#d8e8ff'); this.ui.dirty();
       }
     }
+    // v0.42 정수 (몬스터 레벨 100 · 200 · 300 · 400부터 2 ~ 5단계, 던전 2배)
+    if (!m.noLoot) { const e = dropEss(st, m.level, m.tier, (this.auto ? CONFIG.autoDrop ?? 0.3 : 1) * (m.dungeon ? 2 : 1)); if (e) { this.fx.text(m.pos.clone().setY(2.9), `+${e.n} ${BASES[e.id].name}`, 'gold'); if (m.tier !== 'normal') this.ui.log(`${BASES[e.id].name} +${e.n}`, '#c8b0ff'); } }
     const zid = m.sp?.zone?.id, got = zid && !m.noLoot && (!this.auto || Math.random() < (CONFIG.autoDrop ?? 0.3)) ? dropMats(st, zid, m.tier) : 0;
     if (zid && !m.dungeon && !m.noLoot && liberateAdd(st, zid, m.tier)) {
       const zn = ALL_ZONES.find((z) => z.id === zid);

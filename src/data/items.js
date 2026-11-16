@@ -22,7 +22,11 @@ export const WEAPON_CLASSES = {
 // model: 손에 드는 모델 · icon: 가방 그림(없으면 model)
 // wear: 입었을 때 끼우는 KayKit 조각의 캐릭터 (knight · mage · barbarian) · hat: [캐릭터, 'Hat'|'Helmet'] · tint: 조각 색
 export const BASES = {
-  ore: { name: '강화석', type: 'mat', price: 0, stack: true, icon: 71 }, // 가방 · 창고 어디에 있든 강화 · 건물에 쓴다
+  ore: { name: '강화석', type: 'mat', price: 0, stack: true, icon: 71 },
+  // v0.42 높은 강화석 (제작소에서 만든다) · 정수 (레벨 100 · 200 · 300 · 400 넘는 몬스터가 떨어뜨리는 2 ~ 5단계 재료)
+  ore2: { name: '상급 강화석', type: 'mat', price: 0, stack: true, icon: 71 }, ore3: { name: '최상급 강화석', type: 'mat', price: 0, stack: true, icon: 71 },
+  ess2: { name: '빛바랜 정수', type: 'mat', price: 0, stack: true, icon: 42, grade: 2 }, ess3: { name: '응축된 정수', type: 'mat', price: 0, stack: true, icon: 42, grade: 3 },
+  ess4: { name: '심연의 정수', type: 'mat', price: 0, stack: true, icon: 42, grade: 4 }, ess5: { name: '혼돈의 정수', type: 'mat', price: 0, stack: true, icon: 42, grade: 5 }, // 가방 · 창고 어디에 있든 강화 · 건물에 쓴다
   shard: { name: '능력치 파편', type: 'shard', price: 120 },
   rusty_sword: { name: '낡은 검', slot: 'weapon', cls: 'sword', model: 'w_sword', mtint: 0x9a8a7a, dmg: [4, 7], speed: 1.1, price: 5, minLvl: 1, noDrop: true },
   short_sword: { name: '장검', slot: 'weapon', cls: 'sword', model: 'w_sword', dmg: [6, 10], speed: 1.15, price: 90, shop: true },

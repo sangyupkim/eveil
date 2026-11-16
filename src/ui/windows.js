@@ -18,7 +18,7 @@ import { CAMPS, inCamp } from '../engine2d/stage.js';
 import { TIER_NAMES } from '../world/world.js';
 import { entranceOf } from '../data/dungeons.js';
 import { MATERIALS, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
-import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, mercUngear, mercById, recruits, assignMerc, SKILL_OF, SKILLS_ALL, BONUS, bonusOf, awakenMerc, awakenCost, dismiss, staMax, SKILL_NAMES, GRADES, MERC, EXP_STA, deathChance, salvage, salvageValue, reforge, reforgeCost, resCount, resTake } from '../game/town.js';
+import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, mercUngear, mercById, recruits, assignMerc, SKILL_OF, SKILLS_ALL, BONUS, bonusOf, awakenMerc, awakenCost, dismiss, staMax, SKILL_NAMES, GRADES, MERC, EXP_STA, deathChance, salvage, salvageValue, reforge, reforgeCost, resCount, resTake, ORE_RECIPES, oreRecipeOk, craftOre } from '../game/town.js';
 import { RESEARCH, researchCost } from '../data/buildings.js';
 import { AFFIXES } from '../data/items.js';
 import { PLOTS, BUILDINGS, EXPEDITIONS, townOf, buildingAt, build, upgrade, collect, enhance, enhanceCap, enhanceCost, hire, mercSlots, dispatch, claim, tick } from '../game/town.js';
@@ -89,6 +89,7 @@ const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '
 // 장비 찾기 (v0.41.3): 'e:부위' 착용 · 'b:uid' 가방 · 'v:uid' 창고 — 대장간 · 보석상은 세 곳 모두에서 고른다
 const gearAt = (st, key) => { const [k, v] = String(key || '').split(':'); return k === 'e' ? st.equip[v] : k === 'v' ? vault().items.find((x) => x.uid === Number(v)) : st.inv.find((x) => x.uid === Number(v)); };
 const gearList = (st, ok) => [...SLOTS.filter((sl) => st.equip[sl] && ok(st.equip[sl])).map((sl) => ['e:' + sl, st.equip[sl], '착용']), ...st.inv.filter((x) => BASES[x.base]?.slot && ok(x)).map((x) => ['b:' + x.uid, x, '가방']), ...vault().items.filter((x) => x && BASES[x.base]?.slot && ok(x)).map((x) => ['v:' + x.uid, x, '창고'])];
+let KEY_PANEL = () => ''; // 강화 열쇠 (v0.42, 아래에서 채운다)
 const ico = (it) => `<img src="${itemIcon(it)}" alt="" draggable="false" />`;
 const sicon = (id) => `<div class="sicon" style="background:radial-gradient(circle at 35% 30%, ${SKILLS[id].color}, #17111f 90%)"><img src="${skillIcon(id)}" alt="" /></div>`;
 
@@ -696,13 +697,13 @@ export class Windows {
       }).join('');
     } else {
       const def = BUILDINGS[b.type], up = def.cost(b.lv);
-      const um = up == null ? null : upgradeMats(b.lv), umOk = !um || (t.mats[um.zone] || 0) >= um.n;
+      const um = up == null ? null : upgradeMats(b.lv), umOk = !um || resCount(st, um.base) >= um.n;
       const an = def.up?.[b.lv - 1] ?? 0, anOk = (st.awakenings || 0) >= an;
       const fmtT = (ms) => ms >= 3600000 ? `${ms / 3600000}시간` : `${Math.round(ms / 60000)}분`;
       // 단계별 비용표: 금화 · 재료 · 각성 · 시간
       const costTable = `<h3 style="margin-top:8px">단계별 비용</h3><div class="kv costT">` + Array.from({ length: def.max }, (_, i) => i).map((lv) => {
         const g = def.cost(lv), m = lv ? upgradeMats(lv) : null, aw = lv ? def.up?.[lv - 1] ?? 0 : def.need || 0;
-        return `<span${b.lv === lv + 1 ? ' style="color:#ffd84a"' : ''}>${lv + 1}단계</span><b>${g.toLocaleString()} G${m ? ` · ${MATERIALS[m.zone].name} ${m.n}` : ''} · 각성 ${aw} · ${fmtT(buildTime(lv + 1))}</b>`;
+        return `<span${b.lv === lv + 1 ? ' style="color:#ffd84a"' : ''}>${lv + 1}단계</span><b>${g.toLocaleString()} G${m ? ` · ${BASES[m.base].name} ${m.n}` : ''} · 각성 ${aw} · ${fmtT(buildTime(lv + 1))}</b>`;
       }).join('') + '</div>';
       if (b.bld) right = `<h3>${def.name} · ${b.bld.to === 1 ? '짓는 중' : `${b.bld.to}단계로 올리는 중`} <small class="note">${fmtT(Math.max(60000, b.bld.until - Date.now()))}</small></h3>${gauge(b.bld.from, b.bld.until, 60000, '#ffd84a')}` + (bmode ? costTable : '');
       else right = `<h3>${def.name} · ${b.lv}단계</h3>` + (one ? '' : `<div class="btns" style="margin:0 0 8px"><button class="btn" data-upgrade="1" ${up == null || st.gold < up || !umOk || !anOk ? 'disabled' : ''}>${up == null ? '최고 단계' : !anOk ? `각성 ${an} 필요` : `단계 올리기 ${up.toLocaleString()} G${um ? ` · ${MATERIALS[um.zone].name} ${um.n}` : ''}`}</button></div><div class="note">${def.desc}</div>`);
@@ -710,6 +711,9 @@ export class Windows {
       if (!bmode && !(b.bld?.to === 1)) {
       if (b.type === 'workshop') {
         right += `<h3>약초</h3><div class="herbList">${HERB_IDS.map((h) => `<span class="hb"><img src="${herbIcon(h)}" alt="" />${HERBS[h].name} <b>${t.herbs[h] || 0}</b></span>`).join('')}</div>`;
+        // v0.42 높은 강화석 (제작소 6 · 8단계)
+        right += `<h3>강화석 제작</h3>` + ORE_RECIPES.map((r) => { const ok = oreRecipeOk(st, r); const need = Object.entries(r.need).map(([id, q]) => `${BASES[id].name} ${q} (${resCount(st, id)})`).join(' · ');
+          return `<div class="row"><div class="cell shopIco">${ico({ base: r.id })}</div><div class="grow"><b>${BASES[r.id].name}</b><div class="note">${b.lv < r.lv ? `제작소 ${r.lv}단계` : `${need} · 지역 재료 ${r.zoneMats} · ${r.gold.toLocaleString()} G`}</div></div><button class="btn" data-orecraft="${r.id}|1" ${ok.ok ? '' : 'disabled'}>1개</button><button class="btn" data-orecraft="${r.id}|5" ${oreRecipeOk(st, r, 5).ok ? '' : 'disabled'}>5개</button></div>`; }).join('') + KEY_PANEL(st, b);
         const q = t.brew || [], ready = q.filter((x) => x.until <= Date.now()).length;
         if (q.length) right += `<h3>제작 중 <span class="cnt">${q.length} / ${BREW_QUEUE}</span>${ready ? '<button class="btn gold" data-brewget="bag" style="margin-left:auto">가방으로</button><button class="btn gold" data-brewget="vault">창고로</button>' : ''}</h3>` + q.map((x) => `<div class="row"><div class="cell shopIco">${ico({ base: x.id })}</div><div class="grow"><b>${BASES[x.id].name} ×${x.n}</b> <small class="note">${x.until <= Date.now() ? '완성' : `${Math.ceil((x.until - Date.now()) / 1000)}초`}</small>${gauge(x.from, x.until, 60000, '#7fe07a')}</div></div>`).join('');
         right += COL + '<h3>만들기</h3>';
@@ -738,8 +742,8 @@ export class Windows {
         for (const [key, it, where] of gearList(st, (x) => !x.book && !x.noDrop)) {
           const c = enhanceCost(it, st), max = (it.plus || 0) >= cap, rc = reforgeCost(it);
           right += `<div class="row"><div class="cell shopIco${rar(it)}">${ico(it)}</div><div class="grow"><b style="color:${itemColor(it)}">${esc(itemName(it))}</b> <small class="note">${where}</small>
-            <div class="note">${max ? '상한' : `+${(it.plus || 0) + 1} · ${c.jang >= 1 ? '<b style="color:#ffd84a">100%</b>' : `${+(c.chance * 100).toFixed(1)}%`} · 장인의 기운 ${+(c.jang * 100).toFixed(1)}% · ${c.gold.toLocaleString()} G · 강화석 ${c.ore}`}</div></div>
-            <button class="btn" data-enh="${key}" ${max || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>강화</button></div>`;
+            <div class="note">${max ? '상한' : `+${(it.plus || 0) + 1} · ${c.jang >= 1 ? '<b style="color:#ffd84a">100%</b>' : `${+(c.chance * 100).toFixed(1)}%`} · 장인의 기운 ${+(c.jang * 100).toFixed(1)}% · ${c.gold.toLocaleString()} G · ${c.oreName} ${c.ore} (${resCount(st, c.oreId)})`}</div></div>
+            <button class="btn" data-enh="${key}" ${max || st.gold < c.gold || resCount(st, c.oreId) < c.ore ? 'disabled' : ''}>강화</button></div>`;
         }
         const junk = st.inv.filter((x) => !x.book && BASES[x.base]?.slot && !x.named);
         if (junk.length) right += `<h3 style="margin-top:8px">분해 <button class="btn" data-salvageall="1">일반 · 마법 모두</button></h3>` + junk.map((x) => { const v = salvageValue(x); return `<div class="row"><div class="cell shopIco${rar(x)}">${ico(x)}</div><div class="grow"><b style="color:${itemColor(x)}">${esc(itemName(x))}</b><div class="note">강화석 ${v.ore} · ${MATERIALS[v.mat].name} ${v.matN}</div></div><button class="btn" data-salvage="${x.uid}">분해</button></div>`; }).join('');
@@ -979,6 +983,7 @@ export class Windows {
       else { audio.play('error'); w.ui.toast(`강화 실패 · 장인의 기운 ${+((r.jang || 0) * 100).toFixed(1)}%`); }
       w.ui.dirty(); this.render();
     });
+    on('[data-orecraft]', (el) => { const [id, n] = el.dataset.orecraft.split('|'); const r = craftOre(st, id, Number(n)); if (r.ok) audio.play('rankup'); townDone(r, `${BASES[id].name} ${n}개를 만들었습니다`); });
     on('[data-hirem]', (el) => townDone(hire(st, el.dataset.hirem), '용병을 고용했습니다'));
     on('[data-mwork]', (el) => { const [id, pl] = el.dataset.mwork.split('|'); townDone(assignMerc(st, id, pl || null)); });
     on('[data-mawk]', (el) => { const r = awakenMerc(st, el.dataset.mawk); if (r.ok) audio.play('awaken'); townDone(r, '용병이 각성했습니다'); });

@@ -27,4 +27,11 @@ export const SETS = {
 export const craftCost = (zi) => ({ mats: 12 + zi * 4, gold: 300 * (zi + 1) ** 2 });
 // 건물 단계 올리기에 드는 재료: 단계 n → n+1 은 n번째 지역 재료 (n*8개)
 // 1 → 2단계는 금화만 (방치만 해도 첫 단계는 올라간다)
-export const upgradeMats = (lv) => (lv >= 2 ? { zone: Object.keys(MATERIALS)[Math.min(7, lv - 2)], n: (lv - 1) * 8 } : null);
+// v0.42: 5 → 10단계는 정수 (2 ~ 5단계 재료). base = 아이템 id
+export const UP_ESS = { 5: ['ess2', 10], 6: ['ess2', 20], 7: ['ess3', 15], 8: ['ess4', 15], 9: ['ess5', 15] };
+export const upgradeMats = (lv) => {
+  if (lv < 2) return null;
+  if (UP_ESS[lv]) return { base: UP_ESS[lv][0], n: UP_ESS[lv][1] };
+  const zone = Object.keys(MATERIALS)[Math.min(7, lv - 2)];
+  return { base: 'mat_' + zone, zone, n: (lv - 1) * 8 };
+};
