@@ -559,13 +559,28 @@ export function craftOre(st, id, times = 1) {
 // 정수: 몬스터 레벨 100 · 200 · 300 · 400부터 2 · 3 · 4 · 5단계
 export const essGrade = (level) => Math.min(5, 1 + Math.floor(level / 100));
 export function dropEss(st, level, tier, mult = 1, rng = Math.random) {
-  const g = essGrade(level);
+  let g = essGrade(level);
   if (g < 2) return null;
   const p = ({ normal: 0.04, elite: 0.25, named: 0.6, boss: 1 }[tier] || 0) * mult;
   if (rng() >= p) return null;
-  const n = tier === 'boss' ? 2 + Math.floor(rng() * 3) : tier === 'named' ? 1 + Math.floor(rng() * 2) : 1;
+  let n = tier === 'boss' ? 2 + Math.floor(rng() * 3) : tier === 'named' ? 1 + Math.floor(rng() * 2) : 1;
+  // v0.44.11 높은 곳에서도 아래 단계 정수가 나온다 (35%는 한 단계 아래 · 2배): 빛바랜 정수가 100 ~ 199레벨에서만 나오던 것
+  if (g >= 3 && rng() < 0.35) { g -= 1; n *= 2; }
   resAdd(st, 'ess' + g, n);
   return { id: 'ess' + g, n };
+}
+// v0.44.11 정수 교환 (제작소 2단계~): 아래 5개 → 위 1개, 위 1개 → 아래 3개
+export const ESS_RECIPES = [2, 3, 4].flatMap((g) => [
+  { rid: `up${g + 1}`, id: `ess${g + 1}`, lv: 2, gold: 1000 * g * g, need: { [`ess${g}`]: 5 }, zoneMats: 0, out: 1 },
+  { rid: `dn${g}`, id: `ess${g}`, lv: 2, gold: 300 * g * g, need: { [`ess${g + 1}`]: 1 }, zoneMats: 0, out: 3 },
+]);
+export function craftEss(st, rid, times = 1) {
+  const r = ESS_RECIPES.find((x) => x.rid === rid), ok = r && oreRecipeOk(st, r, times);
+  if (!ok?.ok) return ok || { ok: false };
+  st.gold -= r.gold * times;
+  for (const [k, q] of Object.entries(r.need)) resTake(st, k, q * times);
+  resAdd(st, r.id, r.out * times);
+  return { ok: true, n: r.out * times, id: r.id };
 }
 
 // 강화 · 극한 던전 열쇠 (제작소 3 · 6단계): 아래 단계 열쇠 + 강화석 + 정수 + 지역 재료
