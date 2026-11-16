@@ -627,7 +627,8 @@ export class World {
     const D = DUNGEON_DIFFS[(dg.diff || 1) - 1];
     // 신화: 강화 · 극한 던전 우두머리에서만, 한 번 돌파에 한 번 굴린다 (극한 10단계도 3%) · 못 나오면 신화의 흔적이 쌓인다
     let myth = dg.diff > 1 && Math.random() < D.myth(dg.stage) ? 1 : 0;
-    if (dg.diff > 1) { resAdd(st, 'myth_mark', 1); this.ui.log(`신화의 흔적 +1 (${resCount(st, 'myth_mark')})`, '#ff7aa8'); }
+    // v0.44.16 신화의 흔적은 내 수준에 맞는 던전에서만 (던전 레벨이 각성보다 20 넘게 낮으면 없음)
+    if (dg.diff > 1) { if (lv >= (st.awakenings || 0) - 20) { resAdd(st, 'myth_mark', 1); this.ui.log(`신화의 흔적 +1 (${resCount(st, 'myth_mark')})`, '#ff7aa8'); } else this.ui.log('너무 쉬운 던전이라 신화의 흔적이 나오지 않았습니다', '#a09080'); }
     // 전설: 돌파에 한 번만 굴린다 — 보통 1 → 4%, 강화 2 → 6%, 극한 3 → 9% (v0.42.11, 최대 10% 미만). 나머지는 영웅 35% · 희귀
     const legend = !myth && Math.random() < D.legend(dg.stage);
     for (let i = 0; i < D.items; i++) {

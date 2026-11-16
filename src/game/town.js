@@ -610,13 +610,16 @@ export function craftKey(st, id, times = 1) {
 }
 
 // 신화 교환 (v0.42.10): 신화의 흔적 100개 → 지금 각성에 맞는 레벨의 신화 장비 하나 (불운 보정)
+// v0.44.16 각성이 높을수록 신화 교환에 흔적이 더 든다: 100 + 각성 25마다 10 (각성 100 → 140 · 300 → 220 · 500 → 300)
+export const mythMarks = (st) => 100 + 10 * Math.floor(Math.max(0, st?.awakenings || 0) / 25);
 export const MYTH_MARKS = 100;
 export function craftMyth(st, rng = Math.random) {
-  if (resCount(st, 'myth_mark') < MYTH_MARKS) return { ok: false, why: `신화의 흔적 ${MYTH_MARKS}개가 필요합니다` };
+  const need = mythMarks(st);
+  if (resCount(st, 'myth_mark') < need) return { ok: false, why: `신화의 흔적 ${need}개가 필요합니다` };
   const lv = Math.max(10, Math.min(500, st.awakenings || 1));
   const it = makeItem(rollBase(lv, rng), { rarity: 'myth', ilvl: lv }, st, rng);
   if (!addItem(st, it)) return { ok: false, why: '가방이 가득 찼습니다' };
-  resTake(st, 'myth_mark', MYTH_MARKS);
+  resTake(st, 'myth_mark', need);
   return { ok: true, item: it };
 }
 
