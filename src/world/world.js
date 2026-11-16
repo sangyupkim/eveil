@@ -15,11 +15,13 @@ import { SKILLS } from '../data/skills.js';
 import { BASES, WEAPON_CLASSES, RARITY_ORDER } from '../data/items.js';
 import { MONSTERS, ZONES, TOWN, TIER_STEP, FINAL_ZONE } from '../data/world.js';
 import { derive, damageReduction, totalStats } from '../game/player.js';
-import { ELIXIRS, ELIXIR_TIME } from '../data/potions.js';
+import { ELIXIRS, ELIXIR_TIME, HERBS } from '../data/potions.js';
 import { addAP, gainExp, rewardFactor, recAwaken } from '../game/growth.js';
 import { addSkillExp, skillValues, skillEff, modsOf, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
 import { rollLoot, rollDeathDrop } from '../game/loot.js';
-import { dropMats, liberateAdd, dropEss, resAdd, resCount } from '../game/town.js';
+import { dropMats, liberateAdd, dropEss, resAdd, resCount, claim as claimMerc, brewCollect, collect as collectPlot, repeatTick, autoBrewTick } from '../game/town.js';
+import { vaultAdd } from '../game/vault.js';
+import { itemIcon, iconUrl, coinIcon, oreIcon, herbIcon, townIcon, bookIcon } from '../ui/icons.js';
 import { dailyProgress, dailyReward, dailyText, dayKey, dailyOf } from '../game/daily.js';
 import { MATERIALS } from '../data/crafting.js';
 import { addItem, takeOne, countOf, equip as equipItem, unequip as unequipItem } from '../game/inventory.js';
@@ -211,12 +213,24 @@ export class World {
   // ───────── 일하는 용병 ─────────
   // 일을 맡은 용병을 그 건물 앞에 세우고 일하는 몸짓(연장 휘두르기 · 주문)을 되풀이한다
   syncWorkers() {
-    const t = townOf(this.st), want = t.mercs.filter((m) => m.work && t.plots[m.work] && !m.job);
-    const sig = want.map((m) => m.id + m.work + (m.tired ? 1 : 0)).join(',');
+    const t = townOf(this.st), want = t.mercs.filter((m) => m.work && t.plots[m.work] && !m.job && !m.rest);
+    // v0.44.15 여관에서 쉬는 용병: 있던 자리에서 여관 앞까지 걸어가 눕는다
+    const innE = Object.entries(t.plots).find(([, b]) => b.type === 'inn'), innPl = innE && PLOTS.find((q) => q.id === innE[0]);
+    const resting = innPl ? t.mercs.filter((m) => m.rest && !m.job) : [];
+    const sig = want.map((m) => m.id + m.work + (m.tired ? 1 : 0)).join(',') + '|' + resting.map((m) => m.id).join(',');
     if (sig === this.workerSig) return;
     this.workerSig = sig;
+    const was = new Map((this.workers || []).map((w) => [w.m.id, { x: w.a.pos.x, z: w.a.pos.z, kind: w.kind, lying: w.lying }]));
     for (const w of this.workers || []) w.a.dispose();
     this.workers = [];
+    resting.forEach((m, i) => {
+      const a = new Actor(this.scene, makeHero({ face: m.face })), to = { x: innPl.x - 3 + (i % 4) * 1.6, z: innPl.z + 4.6 + Math.floor(i / 4) * 1.4 };
+      const from = was.get(m.id) || (m.work && PLOTS.find((q) => q.id === m.work)) || { x: 0, z: 6 };
+      a.pos.set(from.x, 0, from.z); a.name = m.name;
+      const lying = from.kind === 'rest' && from.lying;
+      if (lying) { a.pos.set(to.x, 0, to.z); a.play('die', { once: true, force: true }); } else a.play('run');
+      this.workers.push({ a, m, kind: 'rest', to, lying, t: 2 + Math.random() * 3 });
+    });
     const TOOL = { mine: 'hand_axe', herb: 'dagger', smithy: 'smith_hammer', workshop: 'smith_hammer', lab: 'rod', inn: null, house: null };
     const SPOT = { herb: (i) => [(i % 3 - 1) * 3.0, (Math.floor(i / 3) - 0.5) * 2.2], mine: (i) => [-2.0 + i * 1.6, 4.6], lab: (i) => [-1.2 + i * 1.2, 2.2], smithy: (i) => [5.2 + (i % 2) * 1.2, 2.4 + i * 1.0], inn: (i) => [5.6 + (i % 2) * 1.2, 2.6 + i * 1.0] };
     const count = {};
@@ -237,6 +251,14 @@ export class World {
   updateWorkers(dt) {
     for (const w of this.workers || []) {
       w.a.update(dt);
+      if (w.kind === 'rest') { // 여관으로 걸어가 눕고, 가끔 졸음
+        if (!w.lying) {
+          const dx = w.to.x - w.a.pos.x, dz = w.to.z - w.a.pos.z, l = Math.hypot(dx, dz);
+          if (l < 0.15) { w.lying = true; w.a.play('die', { once: true, force: true }); }
+          else { const k = Math.min(1, (3.2 * dt) / l); w.a.pos.x += dx * k; w.a.pos.z += dz * k; w.a.face(w.to.x, w.to.z); if (w.a.current !== 'run') w.a.play('run'); }
+        } else if ((w.t -= dt) <= 0) { w.t = 3 + Math.random() * 2; this.fx.text(new THREE.Vector3(w.a.pos.x, 1.4, w.a.pos.z), 'z z', 'heal'); }
+        continue;
+      }
       if (w.m.tired) { if (w.a.current !== 'idle') w.a.play('idle'); continue; }
       w.t -= dt;
       if (w.back > 0 && (w.back -= dt) <= 0) w.a.play('idle');
@@ -2148,21 +2170,61 @@ export class World {
     this.townT = (this.townT || 0) - dt;
     if (this.townT <= 0) {
       this.townT = 5;
-      const bl = Object.values(townOf(st).plots).filter((b) => b.bld).length;
-      const br = (townOf(st).brew || []).filter((b) => b.until <= Date.now()).length;
-      if (br > (this.brewReady || 0)) { this.ui.toast('제작소: 다 만든 물건이 있습니다', '#7fe07a'); sfx('coin'); }
-      this.brewReady = br;
+      const T0 = townOf(st), building = Object.entries(T0.plots).filter(([, b]) => b.bld).map(([k, b]) => [k, b.type, b.bld.to]);
       townTick(st);
-      if (Object.values(townOf(st).plots).filter((b) => b.bld).length < bl) { this.refreshTown(); this.ui.toast('공사가 끝났습니다', '#ffd84a'); sfx('rankup'); }
+      const secs = [];
+      // 공사 끝 (v0.44.15 알림 팝업)
+      const built = building.filter(([k]) => !T0.plots[k]?.bld);
+      if (built.length) { this.refreshTown(); sfx('rankup'); secs.push({ title: '공사 완료', rows: built.map(([, ty, to]) => ({ img: townIcon(), name: `${BUILDINGS[ty].name} ${to}단계` })) }); }
       this.syncWorkers();
       const done = researchTick(st);
-      if (done) this.ui.toast(`연구 완료: ${RESEARCH[done].name} ${researchLv(st, done)}단계`, '#7fe07a');
+      if (done) secs.push({ title: '연구 완료', rows: [{ img: bookIcon(), name: `${RESEARCH[done].name} ${researchLv(st, done)}단계` }] });
+      secs.push(...this.townAuto());
+      if (secs.length) { sfx('coin'); if (globalThis.__game?.windows) globalThis.__game.windows.notice(secs); else for (const x of secs) this.ui.toast(x.title, '#7fe07a'); }
       this.checkAchievements();
       this.checkTierUnlock(); // 예전 저장도 조건을 채웠으면 열린다
       { const ti = TITLE_AT.findIndex((n, i) => st.awakenings >= n && !(st.titles || []).some((t) => t.tier === i)); if (ti >= 0 && !this.dead) this.offerTitle(ti); } // 4차 각성이 새로 생겨 이미 넘긴 캐릭터도 받는다
-      const back = townOf(st).mercs.filter((m) => m.job && Date.now() >= m.job.until && !m.job.told);
-      for (const m of back) { m.job.told = true; this.ui.toast(`용병 ${m.name}이(가) 사냥에서 돌아왔습니다`, '#ffd84a'); }
+
     }
+  }
+
+  // v0.44.15 마을 자동화: 돌아온 용병 전리품 받기 · 다 만든 물건 꺼내기 · 가득 찬 광산 · 약초밭 거두기 → 알림 줄
+  townAuto() {
+    const st = this.st, t = townOf(st), now = Date.now(), secs = [];
+    const put = (s2, it) => addItem(s2, it) || vaultAdd(s2, it); // 가방이 차면 창고로
+    const back = t.mercs.filter((m) => m.job && now >= m.job.until);
+    if (back.length) {
+      const rows = [], tot = { gold: 0, ore: 0, mats: 0 };
+      for (const m of back) {
+        const r = claimMerc(st, m.id, now, Math.random, put);
+        if (!r) continue;
+        if (r.dead) { rows.push({ name: `${r.name} 돌아오지 못함`, color: '#ff6a5a' }); continue; }
+        tot.gold += r.gold; tot.ore += r.ore; tot.mats += r.mats;
+        for (const it of r.items) rows.push({ img: itemIcon(it), name: itemName(it), color: itemColor(it), item: it });
+        if (r.lost) rows.push({ name: `가방 · 창고가 가득 차 ${r.lost}개를 두고 옴`, color: '#ff9a5a' });
+      }
+      rows.unshift({ img: coinIcon(), name: '금화', qty: tot.gold }, { img: oreIcon(), name: '강화석', qty: tot.ore }, { img: iconUrl(1012), name: '지역 재료', qty: tot.mats });
+      secs.push({ title: `파견 귀환 · ${back.map((m) => m.name).join(' · ')}`, rows });
+    }
+    const ready = (t.brew || []).filter((b) => b.until <= now);
+    if (ready.length) {
+      const before = ready.map((b) => ({ id: b.id, n: b.n }));
+      const r = brewCollect(st, now, put);
+      const got = before.slice(0, before.length - ((t.brew || []).filter((b) => b.until <= now).length));
+      if (got.length) secs.push({ title: '제작 완료', rows: got.map((b) => { const it = makeItem(b.id, { qty: b.n }, st); return { img: itemIcon(it), name: itemName(it), qty: b.n, item: it }; }) });
+      if (!r.ok && r.why) this.ui.toast(r.why);
+    }
+    autoBrewTick(st, now);
+    for (const names of repeatTick(st, now)) this.ui.toast(`반복 파견 출발: ${names}`, '#ffc860');
+    for (const [pid, b] of Object.entries(t.plots)) {
+      const def = BUILDINGS[b.type];
+      if (!def?.store || b.bld?.to === 1 || (b.stock || 0) < def.store(b.lv)) continue;
+      const r = collectPlot(st, pid);
+      if (!r?.n) continue;
+      if (b.type === 'mine') secs.push({ title: '광산 수확', rows: [{ img: oreIcon(), name: '강화석', qty: r.n }] });
+      else if (r.got) secs.push({ title: '약초밭 수확', rows: Object.entries(r.got).map(([h, q]) => ({ img: herbIcon(h), name: HERBS[h].name, qty: q })) });
+    }
+    return secs;
   }
 
   updatePlayer(dt) {

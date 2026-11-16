@@ -18,7 +18,7 @@ import { CAMPS, inCamp } from '../engine2d/stage.js';
 import { TIER_NAMES } from '../world/world.js';
 import { entranceOf } from '../data/dungeons.js';
 import { MATERIALS, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
-import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, mercUngear, mercById, recruits, assignMerc, SKILL_OF, SKILLS_ALL, BONUS, bonusOf, awakenMerc, awakenCost, dismiss, staMax, SKILL_NAMES, GRADES, MERC, EXP_STA, deathChance, salvage, salvageValue, reforge, reforgeCost, resCount, resTake, ORE_RECIPES, oreRecipeOk, craftOre, KEY_RECIPES, craftKey, ESS_RECIPES, craftEss, MYTH_MARKS, craftMyth } from '../game/town.js';
+import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, mercUngear, mercById, recruits, assignMerc, SKILL_OF, SKILLS_ALL, BONUS, bonusOf, awakenMerc, awakenCost, dismiss, staMax, SKILL_NAMES, GRADES, MERC, EXP_STA, deathChance, salvage, salvageValue, reforge, reforgeCost, resCount, resTake, ORE_RECIPES, oreRecipeOk, craftOre, KEY_RECIPES, craftKey, ESS_RECIPES, craftEss, INN_BEDS, innRestK, stopRepeat, MYTH_MARKS, craftMyth } from '../game/town.js';
 import { RESEARCH, researchCost } from '../data/buildings.js';
 import { AFFIXES } from '../data/items.js';
 import { PLOTS, BUILDINGS, EXPEDITIONS, townOf, buildingAt, build, upgrade, collect, enhance, enhanceCap, enhanceCost, hire, mercSlots, dispatch, claim, tick } from '../game/town.js';
@@ -267,13 +267,16 @@ export class Windows {
     h += `<h3 style="margin-top:8px">기간</h3><div class="btns" style="flex-wrap:wrap;margin:0">${EXPEDITIONS.map((e) => `<button class="btn ${e.id === P.exp ? 'on' : ''}" data-pexp="${e.id}" ${e.rest && sh < e.rest ? 'disabled' : ''}>${e.name} ${e.min >= 60 ? e.min / 60 + '시간' : e.min + '분'}${e.rest && sh < e.rest ? ` · 쉼터 ${e.rest}` : ''}</button>`).join('')}</div>`;
     const staNeed = Math.round(EXP_STA[P.exp] * (1 - SHELTER.sta * sh));
     h += COL + `<h3 style="margin-top:8px">용병 <small>${P.ids.length} / ${partyMax(st)} · 체력 ${staNeed}</small></h3>`;
-    h += t.mercs.filter((m) => !m.job && !m.work).map((m) => { const on = P.ids.includes(m.id), dc = zn ? deathChance(m, zn, P.exp, st, boost) : 0;
-      return `<div class="row mrow pick ${on ? 'on' : ''}" data-pm="${m.id}">${this.mercLine(m, 'hunt')}<div class="note" style="min-width:5.5em;color:${dc > 0.15 ? '#ff7060' : ''}">사망 ${Math.round(dc * 100)}%${m.sta < staNeed ? ` · <b style="color:#ff7060">체력 ${Math.floor(m.sta)} / ${staNeed}</b>` : ''}</div></div>`; }).join('') || '<div class="note">쉬는 용병 없음</div>';
+    h += t.mercs.filter((m) => !m.job && !m.work).map((m) => { const on = P.ids.includes(m.id), weak = Math.max(0, 1 - m.sta / Math.max(1, staNeed)), dc = zn ? Math.min(0.75, deathChance(m, zn, P.exp, st, boost) * (1 + 2 * weak)) : 0;
+      return `<div class="row mrow pick ${on ? 'on' : ''}" data-pm="${m.id}">${this.mercLine(m, 'hunt')}<div class="note" style="min-width:5.5em;color:${dc > 0.15 ? '#ff7060' : ''}">사망 ${Math.round(dc * 100)}%${m.sta < staNeed ? ` · <b style="color:#ff7060">지침 ${Math.floor(m.sta)} / ${staNeed}</b>` : ''}${m.rest ? ' · 여관' : ''}</div></div>`; }).join('') || '<div class="note">쉬는 용병 없음</div>';
     const goods = [...new Set([...st.inv, ...vault().items].filter((x) => ['potion', 'elixir'].includes(BASES[x?.base]?.type)).map((x) => x.base))].map((base) => ({ base, qty: resCount(st, base) })); // 가방 + 창고
     const tot = pack.reduce((a, p) => a + p.qty, 0);
     h += COL + `<h3 style="margin-top:8px">챙길 물건 <small>${tot} / ${packMax(st)} · 안전 +${Math.round(boost.safe * 100)}% · 힘 +${Math.round(boost.pow * 100)}%</small></h3>`;
-    h += goods.map((x) => `<div class="row"><div class="cell shopIco">${ico(x)}</div><div class="grow">${BASES[x.base].name} <small class="note">${x.qty}</small></div><button class="btn" data-ppack="${x.base}|-1">-</button><b style="min-width:1.6em;text-align:center">${P.pack[x.base] || 0}</b><button class="btn" data-ppack="${x.base}|1">+</button></div>`).join('') || '<div class="note">물약 · 영약 없음</div>';
-    h += `<div class="btns"><button class="btn gold" data-psend="1" ${P.ids.length ? '' : 'disabled'}>파견 보내기</button></div>`;
+    h += goods.map((x) => `<div class="row packrow"><div class="cell shopIco">${ico(x)}</div><div class="grow">${BASES[x.base].name} <small class="note">${x.qty}</small></div><button class="btn" data-ppack="${x.base}|-1">-</button><b style="min-width:1.6em;text-align:center">${P.pack[x.base] || 0}</b><button class="btn" data-ppack="${x.base}|1">+</button></div>`).join('') || '<div class="note">물약 · 영약 없음</div>';
+    h += `<div class="btns"><button class="btn gold" data-psend="1" ${P.ids.length ? '' : 'disabled'}>파견 보내기</button><button class="btn" data-psend="rep" ${P.ids.length ? '' : 'disabled'}>반복 파견</button></div>`;
+    // v0.44.15 반복 중인 무리
+    const reps = [...new Map(t.mercs.filter((m) => m.repeat).map((m) => [m.repeat.key, m.repeat])).values()];
+    if (reps.length) h += `<h3 style="margin-top:8px">반복 파견</h3>` + reps.map((r) => `<div class="row"><div class="grow">${r.key.split(',').map((id) => esc(mercById(st, id)?.name || '')).join(' · ')} <small class="note">${ZONES.find((z) => z.id === r.zone)?.name || ''} · ${EXPEDITIONS.find((e) => e.id === r.exp)?.name || ''}</small></div><button class="btn" data-prepstop="${r.key}">멈추기</button></div>`).join('');
     return h;
   }
 
@@ -625,6 +628,23 @@ export class Windows {
     closable(el);
     document.body.appendChild(el);
   }
+  // v0.44.15 완료 알림: 파견 귀환 · 제작 · 수확 · 연구 · 공사. sections = [{ title, rows: [{ img, name, qty, color, item }] }]
+  // 왼쪽 목록 · 오른쪽 고른 아이템 설명. 열려 있는 동안 새 알림은 같은 창에 더한다. ×· 바깥 · Esc · 확인으로 닫는다
+  notice(sections) {
+    const cur = document.getElementById('winAlert');
+    if (cur && !cur.dataset.notice) { (this.noticeWait ||= []).push(...sections); return; } // 다른 팝업이 떠 있으면 닫힌 뒤에
+    this.noticeQ = [...(cur ? this.noticeQ || [] : []), ...sections];
+    const all = this.noticeQ, items = [];
+    const html = `<div class="ntc">${'<div class="ntcList">' + all.map((sec) => `<h3>${esc(sec.title)}</h3><div class="ntcRows">${(sec.rows || []).map((r) => {
+      const k = r.item ? items.push(r.item) - 1 : -1;
+      return `<div class="ntcRow ${k >= 0 ? 'pick' : ''}" ${k >= 0 ? `data-ntc="${k}"` : ''}>${r.img ? `<img src="${r.img}" alt="" />` : ''}<span style="${r.color ? `color:${r.color}` : ''}">${esc(r.name)}</span>${r.qty != null ? `<b>${typeof r.qty === 'number' ? r.qty.toLocaleString() : esc(String(r.qty))}</b>` : ''}</div>`; }).join('') || '<div class="note">없음</div>'}</div>`).join('') + '</div>'}<div class="ntcInfo">${items.length ? '<div class="note">아이템을 누르면 설명</div>' : ''}</div></div>`;
+    this.popup('완료 알림', html, true);
+    const el = document.getElementById('winAlert');
+    el.dataset.notice = '1';
+    el.querySelectorAll('[data-ntc]').forEach((r) => { r.onclick = () => { el.querySelectorAll('.ntcRow.on').forEach((x) => x.classList.remove('on')); r.classList.add('on'); el.querySelector('.ntcInfo').innerHTML = this.describe(items[+r.dataset.ntc], 'notice'); audio.play('click'); }; });
+    // 닫히면 기다리던 알림을 띄운다
+    new MutationObserver((_, ob) => { if (!document.body.contains(el)) { ob.disconnect(); this.noticeQ = []; const w = this.noticeWait; this.noticeWait = null; if (w?.length) setTimeout(() => this.notice(w), 300); } }).observe(document.body, { childList: true });
+  }
   alert(title, text = '') { this.popup(title, text ? `<p>${esc(text)}</p>` : '', false); }
 
   keysPanel() {
@@ -726,7 +746,7 @@ export class Windows {
           const it = { base: rc.id }, E = ELIXIRS[rc.id], fx = E ? E.text : BASES[rc.id].restore.hp ? `HP ${BASES[rc.id].restore.hp}` : `MP ${BASES[rc.id].restore.mp}`;
           right += `<div class="row" style="${open ? '' : 'opacity:.45'}"><div class="cell shopIco">${ico(it)}</div><div class="grow"><b>${BASES[rc.id].name}${rc.n > 1 ? ` ×${rc.n}` : ''}</b> <small class="note">${fx}</small>
             <div class="note">${open ? Object.entries(rc.herbs).map(([h, q]) => `${HERBS[h].name} ${q}`).join(' · ') + ` · ${brewGold(st, rc)} G · ${brewTime(rc) / 1000}초` : `제작소 ${rc.lv}단계`}</div></div>
-            ${open ? `<button class="btn" data-brew="${rc.id}|1" ${can(1) ? '' : 'disabled'}>만들기</button><button class="btn" data-brew="${rc.id}|5" ${can(5) ? '' : 'disabled'}>×5</button>` : ''}</div>`;
+            ${open ? `<button class="btn" data-brew="${rc.id}|1" ${can(1) ? '' : 'disabled'}>만들기</button><button class="btn" data-brew="${rc.id}|5" ${can(5) ? '' : 'disabled'}>×5</button><button class="btn ${t.autoBrew === rc.id ? 'on' : ''}" data-autobrew="${rc.id}">반복</button>` : ''}</div>`;
         }
       }
       if (b.type === 'herb') right += `<h3>자라는 약초</h3><div class="herbList">${herbsAt(5).map((h) => { const on = HERBS[h].lv <= b.lv; return `<span class="hb" style="${on ? '' : 'opacity:.4'}"><img src="${herbIcon(h)}" alt="" />${HERBS[h].name} <b>${on ? (t.herbs[h] || 0) : `${HERBS[h].lv}단계`}</b></span>`; }).join('')}</div>`;
@@ -763,6 +783,9 @@ export class Windows {
       }
       if (b.type === 'house') right += `<div class="kv"><span>고용 한도</span><b>${mercSlots(st)}명</b><span>지금</span><b>${t.mercs.length}명</b></div>`;
       if (b.type === 'inn') {
+        // v0.44.15 침대: 지친 용병이 와서 쉰다 (단계 = 침대 수 · 회복 속도)
+        const beds = INN_BEDS(b.lv), resting = t.mercs.filter((m) => m.rest);
+        right += `<h3>쉬는 용병 <small>침대 ${resting.length} / ${beds} · 회복 ×${innRestK(st).toFixed(1)}</small></h3>` + (resting.map((m) => `<div class="row mrow">${this.mercLine(m)}<div class="note" style="min-width:6em">체력 ${Math.floor(m.sta)} / ${staMax(m)}</div></div>`).join('') || '<div class="note">없음</div>');
         const zones = ZONES.filter((z) => isLiberated(st, z.id)), rec = recruits(st), slots = mercSlots(st);
         const nextH = Math.ceil((3600000 - (Date.now() % 3600000)) / 60000);
         const gw = BUILDINGS.inn.grades(b.lv), gs = gw.reduce((a, v) => a + v, 0);
@@ -771,7 +794,7 @@ export class Windows {
         right += COL + `<h3>내 용병</h3>`;
         t.mercs.forEach((m) => {
           const left = m.job ? Math.max(0, m.job.until - Date.now()) : 0, where = m.work && t.plots[m.work] ? BUILDINGS[t.plots[m.work].type].name : '';
-          const state = m.job ? (left > 0 ? `${ZONES.find((z) => z.id === m.job.zone).name} 파견 · ${Math.ceil(left / 60000)}분` : '돌아옴') : m.tired ? '지쳐서 쉬는 중' : where ? `${where}에서 일함` : '쉬는 중';
+          const state = m.job ? (left > 0 ? `${ZONES.find((z) => z.id === m.job.zone).name} 파견 · ${Math.ceil(left / 60000)}분` : '돌아옴') : m.rest ? '여관에서 쉬는 중' : m.tired ? '지쳐서 쉬는 중' : where ? `${where}에서 일함` : '쉬는 중';
           right += `<div class="row mrow">${this.mercLine(m)}<div class="note" style="min-width:7em">${state}${m.job && left > 0 ? gauge(m.job.from, m.job.until, 1800000, '#ffc860') : ''}</div>
             ${m.job && left <= 0 ? `<button class="btn gold" data-claim="${m.id}">전리품</button>` : ''}
             ${m.lv >= MERC.lvMax && (m.aw || 0) < MERC.awMax ? `<button class="btn gold" data-mawk="${m.id}" ${st.gold < awakenCost(m) ? 'disabled' : ''}>각성 ${awakenCost(m).toLocaleString()}G</button>` : ''}
@@ -1087,13 +1110,15 @@ export class Windows {
       if (r.ok) { audio.play('rankup'); w.ui.toast(`${itemName(r.item)} 제작!`, '#7fe07a'); }
       townDone(r);
     });
+    on('[data-autobrew]', (el) => { const t2 = townOf(st); t2.autoBrew = t2.autoBrew === el.dataset.autobrew ? null : el.dataset.autobrew; audio.play('click'); this.render(); });
     on('[data-brew]', (el) => { const [id, k] = el.dataset.brew.split('|'), r = brew(st, id, Number(k)); if (r.ok) audio.play('click'); townDone(r); });
     on('[data-brewget]', (el) => { const v = el.dataset.brewget === 'vault', r = brewCollect(st, Date.now(), v ? vaultAdd : null); if (r.n) { audio.play('potion'); w.ui.toast(`${r.n}개를 ${v ? '창고' : '가방'}에 넣었습니다`, '#7fe07a'); } townDone(r); });
     on('[data-pm]', (el) => { const id = el.dataset.pm, P = (this.party ||= { ids: [], pack: {} }); const i = P.ids.indexOf(id); if (i >= 0) P.ids.splice(i, 1); else if (P.ids.length < partyMax(st)) P.ids.push(id); audio.play('click'); this.render(); });
     on('[data-pzone]', (el) => { (this.party ||= { ids: [], pack: {} }).zone = el.dataset.pzone; audio.play('click'); this.render(); });
     on('[data-pexp]', (el) => { (this.party ||= { ids: [], pack: {} }).exp = el.dataset.pexp; audio.play('click'); this.render(); });
     on('[data-ppack]', (el) => { const [base, d] = el.dataset.ppack.split('|'), P = (this.party ||= { ids: [], pack: {} }); const tot = Object.values(P.pack).reduce((a, v) => a + v, 0); const n = (P.pack[base] || 0) + Number(d); if (n < 0 || (Number(d) > 0 && (tot >= packMax(st) || n > resCount(st, base)))) return; P.pack[base] = n; audio.play('click'); this.render(); });
-    on('[data-psend]', () => { const P = this.party; const r = dispatchParty(st, P.ids, P.zone, P.exp, Object.entries(P.pack).filter(([, q]) => q > 0).map(([base, qty]) => ({ base, qty }))); if (r.ok) { this.party = { ids: [], pack: {}, zone: P.zone, exp: P.exp }; audio.play('rankup'); } townDone(r, `용병 ${r.n}명이 파견을 떠났습니다`); });
+    on('[data-prepstop]', (el) => { stopRepeat(st, el.dataset.prepstop); audio.play('click'); this.render(); });
+    on('[data-psend]', (el) => { const P = this.party; const r = dispatchParty(st, P.ids, P.zone, P.exp, Object.entries(P.pack).filter(([, q]) => q > 0).map(([base, qty]) => ({ base, qty })), Date.now(), { repeat: el.dataset.psend === 'rep' }); if (r.ok) { this.party = { ids: [], pack: {}, zone: P.zone, exp: P.exp }; audio.play('rankup'); } townDone(r, `용병 ${r.n}명이 파견을 떠났습니다`); });
     on('[data-claimall]', () => { let g = 0, dead = []; for (const m of [...townOf(st).mercs]) if (m.job && Date.now() >= m.job.until) { const r = claim(st, m.id); if (r?.dead) dead.push(r.name); else if (r) g += r.gold; } if (dead.length) { audio.play('error'); w.ui.toast(`${dead.join(' · ')}이(가) 돌아오지 못했습니다…`, '#ff7060'); } else audio.play('coin'); w.ui.toast(`전리품 ${g.toLocaleString()} G 외`, '#ffd84a'); w.ui.dirty(); this.render(); });
     on('[data-shelter]', (el) => { const r = shelterUp(st, el.dataset.shelter); if (r.ok) { audio.play('rankup'); w.refreshCamps(); } townDone(r, `쉼터 ${r.lv}단계`); });
     on('[data-go-exp]', (el) => {

@@ -548,3 +548,21 @@ html.force-land #rotate { display: none !important; }
 .pickGrid { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(6.5em, 1fr)); gap: 4px 10px; }
 .pickChk { display: flex; align-items: center; gap: 6px; white-space: nowrap; cursor: pointer; padding: 3px 0; }
 .pickChk input { width: 1.25em; height: 1.25em; accent-color: #e8c36a; flex: 0 0 auto; }
+/* v0.44.15 줄 안 이름 칸이 버튼에 밀려 한 글자씩 세로로 흐르던 것 (폴드 화면 파견 · 챙길 물건) */
+.row .grow { min-width: 4.5em; }
+.packrow .grow { min-width: 6em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.packrow .btn { min-width: 0; padding-left: 0.5em; padding-right: 0.5em; flex-shrink: 0; }
+/* v0.44.15 완료 알림 팝업: 왼쪽 목록 · 오른쪽 설명 */
+#winAlert .ntc { display: flex; gap: 1em; align-items: stretch; max-width: 92vw; width: 46em; max-height: 70vh; }
+#winAlert .ntcList { flex: 1.1; min-width: 0; overflow-y: auto; }
+#winAlert .ntcInfo { flex: 1; min-width: 0; overflow-y: auto; border-left: 1px solid rgba(217,182,106,.25); padding-left: .8em; }
+#winAlert .ntc h3 { margin: .4em 0 .2em; font-size: .95em; color: #ffd84a; }
+#winAlert .ntcRows { display: grid; grid-template-columns: repeat(auto-fill, minmax(11em, 1fr)); gap: 4px; }
+#winAlert .ntcRow { display: flex; align-items: center; gap: .4em; padding: 3px 4px; border: 1px solid transparent; border-radius: 4px; min-width: 0; }
+#winAlert .ntcRow span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#winAlert .ntcRow img { width: 2em; height: 2em; flex-shrink: 0; }
+#winAlert .ntcRow b { font-size: .95em; color: #e8dcc0; margin: 0; display: inline; }
+#winAlert .ntcRow.pick { cursor: pointer; background: rgba(255,255,255,.04); }
+#winAlert .ntcRow.on { border-color: #c9a050; }
+#winAlert .ntcInfo .bigico { width: 3em; height: 3em; }
+@media (max-width: 640px) { #winAlert .ntc { flex-direction: column; } #winAlert .ntcInfo { border-left: 0; padding-left: 0; } }

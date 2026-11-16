@@ -118,7 +118,9 @@ export function tick(st, now = Date.now()) {
       }
       for (const m of crew) { m.sta -= MERC.workSta * save * h; growSkill(m, SKILL_OF[b.type], h); gainExp(m, MERC.workExp * h); if (m.sta <= 0) { m.sta = 0; m.tired = true; } }
     }
-    for (const m of t.mercs) if (!m.job && (m.tired || !m.work)) { m.sta = Math.min(staMax(m), m.sta + MERC.restSta * rest * h); if (m.sta >= staMax(m)) m.tired = false; }
+    restAssign(st);
+    const innK = innRestK(st);
+    for (const m of t.mercs) if (!m.job && (m.tired || !m.work || m.rest)) { m.sta = Math.min(staMax(m), m.sta + MERC.restSta * rest * (m.rest ? innK : 1) * h); if (m.sta >= staMax(m)) { m.tired = false; m.rest = false; } }
   }
   return hours;
 }
@@ -227,6 +229,16 @@ export function bonusOf(st, type) {
 }
 export const GRADES = [{ name: '평범', color: '#c8c0b0', k: 1 }, { name: '숙련', color: '#6aa8ff', k: 1.5 }, { name: '정예', color: '#d080ff', k: 2.2 }, { name: '전설', color: '#ffb040', k: 3.2 }];
 const NA = ['브', '셀', '오', '이', '케', '도', '미', '하', '유', '바', '로', '카', '테', '루', '자', '에', '실', '아', '고', '네'], NB = ['란', '마', '덴', '라', '일', '르', '나', '스', '크', '린', '온', '벨', '렌', '드', '아', '토'];
+// v0.44.15 여관에서 쉬기: 지친(또는 체력이 반 아래인) 놀거나 지친 용병이 여관 침대에 눕는다. 여관 단계 = 침대 수 · 회복 속도
+export const INN_BEDS = (lv) => [0, 2, 3, 4, 6, 8, 10, 12, 14, 16, 20][lv] || 0;
+export const innRestK = (st) => { const b = findBuilding(st, 'inn'); return b ? 3 * (1 + 0.25 * b.lv) : 1; }; // 밖에서 쉬는 것의 3.75 ~ 10.5배
+export function restAssign(st) {
+  const t = townOf(st), b = findBuilding(st, 'inn'), beds = b && !(b.bld?.to === 1) ? INN_BEDS(b.lv) : 0;
+  const want = t.mercs.filter((m) => !m.job && (m.tired || m.rest || (!m.work && m.sta < staMax(m) * 0.5)) && m.sta < staMax(m))
+    .sort((x, y) => (y.tired ? 1 : 0) - (x.tired ? 1 : 0) || x.sta / staMax(x) - y.sta / staMax(y));
+  const inBed = new Set(want.slice(0, beds));
+  for (const m of t.mercs) m.rest = inBed.has(m);
+}
 export const staMax = (m) => 50 + m.lv * 2 + (m.aw || 0) * 8 + (m.vit || 0);
 export const workEff = (m, type) => (m[SKILL_OF[type]] || 0) / 10;  // 솜씨 10 = 한 자리 몫
 const growSkill = (m, k, h) => { m[k] ??= 1; const cap = 30 + (m.aw || 0) * 6; m[k] = Math.min(cap, m[k] + 0.12 * h * (1 - m[k] / (cap + 5))); };
@@ -353,7 +365,7 @@ export function mercPower(m, zn) {
 export const partyPower = (st, m, zn, boost = {}) => mercPower(m, zn) * (1 + (st ? researchK(st, 'mercPow') : 0)) * (1 + SHELTER.power * (st ? shelterLv(st, zn.id) : 0)) * (1 + (boost.pow || 0));
 export const deathChance = (m, zn, expId, st = null, boost = {}) => Math.min(0.5, EXP_RISK[expId] * Math.max(0.2, 1 / partyPower(st, m, zn, boost)) ** 2 * (1 - Math.min(0.6, SHELTER.safe * (st ? shelterLv(st, zn.id) : 0))) * (1 - (boost.safe || 0)));
 // 여러 명을 한 번에: 파견소 단계만큼 인원 · 챙길 물건. pack = [{ base, qty }] (물약 · 영약)
-export function dispatchParty(st, ids, zoneId, expId, pack = [], now = Date.now()) {
+export function dispatchParty(st, ids, zoneId, expId, pack = [], now = Date.now(), opt = {}) {
   const t = townOf(st), ex = EXPEDITIONS.find((e) => e.id === expId), zn = ZONES.find((z) => z.id === zoneId);
   if (!findBuilding(st, 'guild')) return { ok: false, why: '파견소가 필요합니다' };
   if (!ex || !zn || !ids?.length) return { ok: false, why: '보낼 용병을 고르세요' };
@@ -368,13 +380,12 @@ export function dispatchParty(st, ids, zoneId, expId, pack = [], now = Date.now(
   for (const m of ms) {
     if (!m || m.job) return { ok: false, why: '이미 파견 중인 용병이 있습니다' };
     if (m.work) return { ok: false, why: `${m.name}은(는) 건물에서 일하는 중입니다` };
-    if (m.sta < staNeed) return { ok: false, why: `${m.name}의 체력이 모자랍니다` };
-  }
+  } // v0.44.15 체력이 모자라도 보낼 수 있다 (모자란 만큼 죽을 확률이 오른다)
   for (const p of pack) resTake(st, p.base, p.qty); // 가방 · 창고 (v0.41.3)
   const boost = packBoost(pack), share = { safe: boost.safe, pow: boost.pow }; // 함께 간 모두가 나눠 쓴다
   const party = `pt${now.toString(36)}`;
   const until = now + ex.min * 60000 * (1 - researchK(st, 'merc')) * (1 - bonusOf(st, 'guild'));
-  for (const m of ms) { m.sta -= staNeed; m.work = null; m.job = { zone: zoneId, exp: expId, from: now, until, party, boost: share }; }
+  for (const m of ms) { const weak = Math.max(0, 1 - m.sta / Math.max(1, staNeed)); m.sta = Math.max(0, m.sta - staNeed); m.work = null; m.rest = false; m.job = { zone: zoneId, exp: expId, from: now, until, party, boost: share, weak }; m.repeat = opt.repeat ? { key: ids.slice().sort().join(','), zone: zoneId, exp: expId, pack } : null; }
   return { ok: true, n: ms.length };
 }
 function takeOneItem(st, base) { const it = st.inv.find((x) => x.base === base); if (!it) return; it.qty--; if (it.qty <= 0) st.inv.splice(st.inv.indexOf(it), 1); }
@@ -391,20 +402,20 @@ export function dispatch(st, id, zoneId, expId, now = Date.now()) {
   return { ok: true };
 }
 // 돌아온 용병의 전리품을 받는다 (죽었으면 dead: true, 전리품 없음)
-export function claim(st, id, now = Date.now(), rng = Math.random) {
+export function claim(st, id, now = Date.now(), rng = Math.random, put = null) {
   const t = townOf(st), m = typeof id === 'number' ? t.mercs[id] : mercById(st, id);
   if (!m?.job || now < m.job.until) return null;
   const ex = EXPEDITIONS.find((e) => e.id === m.job.exp), zn = ZONES.find((z) => z.id === m.job.zone);
   const boost = m.job.boost || {}, sh = shelterLv(st, zn.id);
   const lvl = zoneLvl(zn), eff = partyPower(st, m, zn, boost) * (1 + SHELTER.stay * sh);
-  if (rng() < deathChance(m, zn, ex.id, st, boost)) { t.mercs.splice(t.mercs.indexOf(m), 1); return { dead: true, name: m.name, gold: 0, ore: 0, mats: 0, items: [] }; }
+  if (rng() < Math.min(0.75, deathChance(m, zn, ex.id, st, boost) * (1 + 2 * (m.job.weak || 0)))) { /* 지친 채로 가면 더 위험 */ t.mercs.splice(t.mercs.indexOf(m), 1); return { dead: true, name: m.name, gold: 0, ore: 0, mats: 0, items: [] }; }
   const out = { gold: Math.round(lvl * 25 * ex.mult * eff), ore: Math.round(0.8 * ex.mult * eff), items: [] };
   const rolls = Math.round(ex.mult * eff * 1.5 * (1 + SHELTER.loot * sh));
   for (let k = 0; k < rolls; k++) for (const d of rollLoot({ tier: k % 6 === 5 ? 'elite' : 'normal', level: lvl }, {}, st, rng)) if (d.kind === 'item' && d.item.base && !d.item.book) out.items.push(d.item);
   out.mats = Math.round(ex.mult * 3 * eff * (1 + SHELTER.mats * sh));
   t.mats[zn.id] = (t.mats[zn.id] || 0) + out.mats;
   st.gold += out.gold; t.ore += out.ore;
-  out.items = out.items.filter((it) => addItem(st, it));
+  const n0 = out.items.length; out.items = out.items.filter((it) => (put ? put(st, it) : addItem(st, it))); out.lost = n0 - out.items.length;
   gainExp(m, ex.mult * 10);
   growSkill(m, 'hunt', ex.mult * 1.5);
   m.job = null;
@@ -607,4 +618,32 @@ export function craftMyth(st, rng = Math.random) {
   if (!addItem(st, it)) return { ok: false, why: '가방이 가득 찼습니다' };
   resTake(st, 'myth_mark', MYTH_MARKS);
   return { ok: true, item: it };
+}
+
+// ── v0.44.15 자동화: 반복 파견 · 반복 제작 ──
+// 반복 파견: 같은 무리가 모두 돌아와 체력이 찼으면(필요 체력 이상) 같은 지역 · 기간으로 다시 보낸다. 챙길 물건은 남은 만큼
+export function repeatTick(st, now = Date.now()) {
+  const t = townOf(st), groups = {}, sent = [];
+  for (const m of t.mercs) if (m.repeat && !m.job) (groups[m.repeat.key] ||= []).push(m);
+  for (const [key, ms] of Object.entries(groups)) {
+    const r = ms[0].repeat, ids = key.split(',');
+    if (ms.length !== ids.length && ids.some((id) => mercById(st, id)?.job)) continue; // 아직 덜 돌아왔다
+    const live = ms.filter((m) => ids.includes(m.id));
+    const sh = shelterLv(st, r.zone), need = Math.round(EXP_STA[r.exp] * (1 - SHELTER.sta * sh));
+    if (live.some((m) => m.work || m.sta < need)) continue; // 쉬는 중 (일을 맡기면 반복은 멈춘다)
+    const pack = (r.pack || []).map((p) => ({ base: p.base, qty: Math.min(p.qty, resCount(st, p.base)) })).filter((p) => p.qty > 0);
+    const res = dispatchParty(st, live.map((m) => m.id), r.zone, r.exp, pack, now, { repeat: true });
+    if (res.ok) sent.push(live.map((m) => m.name).join(' · '));
+    else for (const m of live) m.repeat = null; // 더 갈 수 없으면 반복을 끝낸다
+  }
+  return sent;
+}
+export const stopRepeat = (st, key) => { for (const m of townOf(st).mercs) if (m.repeat?.key === key) m.repeat = null; };
+// 반복 제작: 고른 물건을 줄이 빌 때마다 하나씩 (약초 · 금화가 있는 만큼)
+export function autoBrewTick(st, now = Date.now()) {
+  const t = townOf(st);
+  if (!t.autoBrew) return 0;
+  let n = 0;
+  while ((t.brew?.length || 0) < BREW_QUEUE && brew(st, t.autoBrew, 1, now).ok) n++;
+  return n;
 }
