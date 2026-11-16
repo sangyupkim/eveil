@@ -37,10 +37,11 @@ for (const name of NAMES) {
   if (size) for (const an of Object.values(a.anims)) for (let d = 0; d < 8; d++) an.f[d] = Array.from({ length: an.frames }, (_, i) => [(an.pos + i) * size[0], d * size[1], size[0], size[1], off[0], off[1]]);
   for (const an of Object.values(a.anims)) delete an.pos;
   const src = path.join(root, img), meta = await sharp(src).metadata();
-  const k2 = (size?.[0] || 128) >= 256 || meta.width > 6000 ? 0.4 : 0.6;
+  // v0.44.20 원본 크기 그대로 (가로 4096까지) — 예전 0.6 · 0.4배로 줄여 넣고 1.67 · 2.5배로 늘려 그려 뭉개졌다
+  const k2 = Math.min(1, 4096 / meta.width);
   const dst = `enemies/x_${name}.webp`;
   await sharp(src).resize(Math.round(meta.width * k2)).webp({ quality: 72, alphaQuality: 85 }).toFile(path.join(OUT, dst));
-  a.images.default = dst; a.px = 1 / k2;
+  a.images.default = dst; a.px = Math.round((1 / k2) * 1000) / 1000;
   for (const an of Object.values(a.anims)) for (const d in an.f) an.f[d] = an.f[d].map((r) => r && r.map((v) => Math.round(v * k2)));
   enemies['x_' + name] = a;
   console.log(name, Object.keys(a.anims).join(','), meta.width + 'x' + meta.height, '→', k2);

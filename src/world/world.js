@@ -408,6 +408,7 @@ export class World {
   refreshCamps() {
     for (const a of this.campNpcs || []) this.stage.remove(a);
     for (const d of this.campDraw || []) this.stage.remove(d);
+    for (const f of this.campFire || []) f.t = f.dur; this.campFire = []; // 모닥불 불꽃 (v0.44.20 움직이는 불)
     this.campNpcs = []; this.campDraw = [];
     for (const c of CAMPS) {
       const k = this.st.camps?.[c.zone]; if (!k) continue;
@@ -417,6 +418,7 @@ export class World {
         for (let i = 0; i < Math.min(5, k.rest); i++) { const [dx, dz] = spots[i], x = c.x + dx, z = c.z + dz; const d = { z: z + 1.5, draw: (ctx, stg) => { const src = image(DATA.tiles.grassland.imgs[tt[0]]); if (!src.ok || !stg.onScreen(x, z, 5)) return; const p = stg.toScreen(x, z); drawRect(ctx, src.im, tt.slice(1), p.x, p.y, stg.scale() * 0.8); } }; this.stage.add(d); this.campDraw.push(d); }
       }
       if (k.fire) { const tt = DATA.tiles.grassland.tiles[100]; const d = { z: c.z + 1.5, draw: (ctx, stg) => { const src = image(DATA.tiles.grassland.imgs[tt[0]]); if (!src.ok || !stg.onScreen(c.x, c.z, 4)) return; const s2 = stg.toScreen(c.x - 3, c.z + 1.5); drawRect(ctx, src.im, tt.slice(1), s2.x, s2.y, stg.scale()); } }; this.stage.add(d); this.campDraw.push(d); }
+      if (k.fire) this.campFire.push(this.fx.play('p_burning', c.x - 3, c.z + 1.4, { y: 0.1, loop: true, dur: 1e9, scale: 0.85 }));
     }
   }
   buildCamp(zone, what) {

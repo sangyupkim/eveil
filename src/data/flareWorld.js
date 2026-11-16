@@ -50,7 +50,7 @@ export const ZONE_PROPS = {
   wild: [['grassland', range(252, 255), 1, 0.9], ['grassland', range(248, 251), 1, 0.8], ['grassland', range(244, 247), 1, 0.6], ['grassland', range(124, 127), 2, 0], ['grassland', range(128, 131), 1, 1], ['grassland', range(112, 123), 3, 0]],
 };
 // 바닥에 눕는 물건 (앞뒤 정렬 없이 땅과 함께 그린다)
-export const FLAT = new Set(['grassland|264', 'grassland|265', 'cave|264', 'cave|265', ...range(176, 183).map((i) => 'dungeon|' + i)]);
+export const FLAT = new Set(['portalNG|265', 'grassland|264', 'grassland|265', 'cave|264', 'cave|265', ...range(176, 183).map((i) => 'dungeon|' + i)]);
 
 // ───── 몬스터 그림 ─────
 // sprite: Flare 몬스터 이름 · tint: 색 · size: 크기 배율 · fly: 떠 있음

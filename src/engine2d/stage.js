@@ -33,11 +33,20 @@ function groundAt(i, j) {
   if (farSide(x)) { const di = dungeonBox(x, z); return di >= 0 ? pick(ZONES[di].id, h) : ['void']; } // 던전 바닥은 그 지역 땅 그대로
   const dT = Math.hypot(x, z);
   if (dT < TOWN.r * 0.75) return pick('town', h);
-  for (const zn of ZONES) if (distToSeg(x, z, 0, 0, zn.x * 0.72, zn.z * 0.72) < 2.6 + noise(x, z) * 1.5) return pick('town', h);
   // 지역 경계는 들쭉날쭉하게
   let zn = null;
   for (const z0 of ZONES) if (Math.hypot(x - z0.x, z - z0.z) < zoneRadius(z0, Math.atan2(z - z0.z, x - z0.x)) * (1.02 + (noise(x * 2, z * 2) - 0.5) * 0.08)) { zn = z0; break; }
-  const L = ZONE_LOOK[zn ? zn.id : 'wild'];
+  let L = ZONE_LOOK[zn ? zn.id : 'wild'];
+  // v0.44.20 지역 바로 밖 황야는 그 지역 땅이 조금 더 이어진다 (눈 지역 경계에서 갑자기 네모난 풀밭이 되던 것)
+  if (!zn) { let best = null, bd = 1e9; for (const q of ZONES) { const d = Math.hypot(x - q.x, z - q.z) - zoneRadius(q, Math.atan2(z - q.z, x - q.x)); if (d < bd) { bd = d; best = q; } }
+    if (best && ZONE_LOOK[best.id].set !== 'grassland' && bd < 9 + noise(x * 0.12, z * 0.12) * 6) L = { ...ZONE_LOOK[best.id], patch: null }; }
+  // v0.44.20 언덕 위는 그 언덕을 만든 지역의 땅 (눈 지역 둘레 언덕 위가 풀밭이던 것)
+  { const me = inMesa(x, z); if (me?.gr && me.floor) return [me.floor[0], me.gr[0] + Math.floor(h * (me.gr[1] - me.gr[0] + 1))]; }
+  // 길: 풀밭 지역 밖(눈 · 사막 · 동굴 · 폐허)에서는 그 지역 땅의 길 무늬로 (v0.44.20 눈밭을 가로지르던 풀 돌길)
+  for (const q of ZONES) if (distToSeg(x, z, 0, 0, q.x * 0.72, q.z * 0.72) < 2.6 + noise(x, z) * 1.5) {
+    if (!zn || L.set === 'grassland') return pick('town', h);
+    const R = L.patch || L.ground; return [L.set, R[0] + Math.floor(h * (R[1] - R[0] + 1))];
+  }
   const lake = lakeCell(i, j);
   if (lake) {
     const k = edgeKind((a, b) => !!lakeCell(a, b), i, j);
@@ -68,7 +77,7 @@ function genTerrain(rng) {
   for (const zn of ZONES) {
     const L = ZONE_LOOK[zn.id], wet = ['swamp', 'harbor', 'webwood', 'frost', 'bloodmire', 'crypt'].includes(zn.id) || LAVA_ZONES.has(zn.id);
     const bs = HAS_BANKS.has(L.set) ? L.set : 'grassland', top = bs !== L.set ? [L.set, L.ground[0]] : null;
-    const base = { set: bs, top, lava: LAVA_ZONES.has(zn.id), chasm: L.set === 'ruins', floor: [L.set, L.ground[0]], ring: true };
+    const base = { set: bs, top, lava: LAVA_ZONES.has(zn.id), chasm: L.set === 'ruins', floor: [L.set, L.ground[0]], gr: L.ground, ring: true };
     const road = Math.atan2(-zn.z, -zn.x), gaps = [road, road + 1.6 + rng() * 1.2, road - 1.8 - rng() * 1.4];
     if (rng() < 0.5) gaps.pop();
     const circ = 2 * Math.PI * zn.r * 1.05;
@@ -85,7 +94,10 @@ function genTerrain(rng) {
   for (let k = 0, tries = 0; k < 34 && tries < 600; tries++) {
     const a = rng() * Math.PI * 2, d = TOWN.r + 12 + rng() * (WORLD_SIZE - TOWN.r - 20), x = Math.cos(a) * d, z = Math.sin(a) * d;
     if (zoneAt(x, z) || nearGate(x, z, 6)) continue;
-    const isLake = rng() < 0.45, base = { set: 'grassland', top: null, lava: false, chasm: false, floor: ['grassland', 16] };
+    // v0.44.20 지역 가까운 황야 언덕 · 호수는 그 지역 땅으로 (눈밭 옆 풀 언덕이 어색하던 것)
+    const nz = ZONES.reduce((b, q) => { const d = Math.hypot(x - q.x, z - q.z) - q.r; return d < b.d ? { q, d } : b; }, { q: null, d: 1e9 });
+    const NL = nz.q && nz.d < 22 ? ZONE_LOOK[nz.q.id] : null, ws = NL && HAS_BANKS.has(NL.set) ? NL.set : 'grassland';
+    const isLake = rng() < 0.45, base = { set: ws, top: null, lava: false, chasm: false, floor: [ws, ws === 'grassland' ? 16 : NL.ground[0]], gr: ws === 'grassland' ? null : NL.ground };
     let px = x, pz = z, dir = rng() * Math.PI * 2;
     for (let c = 0, len = 2 + Math.floor(rng() * 4); c < len; c++) {
       const r = 3.5 + rng() * 3;
@@ -99,7 +111,7 @@ function genTerrain(rng) {
     const L = ZONE_LOOK[zn.id];
     const bs = HAS_BANKS.has(L.set) ? L.set : 'grassland', top = bs !== L.set ? [L.set, L.ground[0]] : null, lava = LAVA_ZONES.has(zn.id);
     const chasm = L.set === 'ruins'; // 폐허는 물 대신 밑이 안 보이는 낭떠러지
-    const base = { set: bs, top, lava, chasm, floor: [L.set, L.ground[0]] };
+    const base = { set: bs, top, lava, chasm, floor: [L.set, L.ground[0]], gr: L.ground };
     const lakes = zn.id === 'swamp' ? 4 : L.set === 'ruins' ? 2 : LAVA_ZONES.has(zn.id) ? 3 : zn.id === 'harbor' ? 4 : 1 + (rng() < 0.6 ? 1 : 0);
     for (let k = 0, tries = 0; k < lakes && tries < 80; tries++) {
       const a = rng() * 6.28, d = rng() * zn.r * 0.75, r = 6.5 + rng() * 4;
@@ -152,7 +164,12 @@ export function generateWorld(seed) {
     zn.x = Math.cos(a) * d; zn.z = Math.sin(a) * d; zn.r = 55 + rng() * 8;
   }
   CAMPS.length = 0;
-  for (const zn of ZONES) { const a = Math.atan2(-zn.z, -zn.x), d = zoneRadius(zn, a) * 0.55; CAMPS.push({ zone: zn.id, x: zn.x + Math.cos(a) * d, z: zn.z + Math.sin(a) * d }); }
+  for (const zn of ZONES) {
+    let a = Math.atan2(-zn.z, -zn.x); const d = zoneRadius(zn, a) * 0.55, e = entranceOf(zn);
+    // v0.44.20 던전 입구와 겹치지 않게: 10 안이면 둘레를 따라 비켜 놓는다
+    for (let k = 0; k < 8 && Math.hypot(zn.x + Math.cos(a) * d - e.x, zn.z + Math.sin(a) * d - e.z) < 10; k++) a += 0.35 * (k % 2 ? -(k + 1) : k + 1);
+    CAMPS.push({ zone: zn.id, x: zn.x + Math.cos(a) * d, z: zn.z + Math.sin(a) * d });
+  }
   setDungeonSeed(seed);
   genTerrain(rng);
   dungeonHills();
@@ -318,9 +335,10 @@ export function buildWorldProps(stage) {
     const bp = cellPos(zi, L.boss[0], L.boss[1]);
     for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) addProp(stage, 'dungeon', 128 + Math.floor(rr() * 4), bp.x + a * T * 4.5, bp.z + b * T * 4.5, 0.6);
   }
+  DATA.tiles.portalNG ||= { imgs: DATA.tiles.grassland.imgs, tiles: { 265: DATA.tiles.grassland.tiles[265] } };
   for (const c of CAMPS) {
-    addProp(stage, 'grassland', 265, c.x, c.z, 0);
-    for (const [a, b] of [[-3.5, -2], [3.5, -2], [-3.5, 2.5], [3.5, 2.5]]) addProp(stage, 'dungeon', 167, c.x + a, c.z + b, 0.3);
+    addProp(stage, ZONE_LOOK[c.zone]?.set === 'grassland' ? 'grassland' : 'portalNG', 265, c.x, c.z, 0);
+    // v0.44.20 포탈 둘레 화로는 없앴다 (비대칭 · 멈춘 불이라 어색)
   }
   // 지역마다 던전 입구: 지형에 맞는 문 · 동굴 입구 + 양옆 횃불 (문 자체는 막혀 있고, 바로 앞에 서면 들어갈지 묻는다)
   for (const zn of ZONES) {
@@ -424,7 +442,21 @@ function tileAt(i, j) {
   if (!t) { t = groundAt(i, j); tileCache.set(k, t); if (tileCache.size > 60000) tileCache.clear(); }
   return t;
 }
+// v0.44.20 풀밭이 아닌 지역의 포탈: 마법진 그림에 붙은 풀 바닥을 지운 사본 (눈 · 사막 · 동굴에 풀 네모가 보이던 것)
+const nograssCache = new Map();
+function nograss(set, id) {
+  const key = set + id; let c = nograssCache.get(key);
+  if (c !== undefined) return c;
+  const def = DATA.tiles[set], t = def?.tiles[id], src = t && image(def.imgs[t[0]]);
+  if (!src?.ok) return null;
+  c = document.createElement('canvas'); c.width = t[3]; c.height = t[4];
+  const g = c.getContext('2d'); g.drawImage(src.im, t[1], t[2], t[3], t[4], 0, 0, t[3], t[4]);
+  const im = g.getImageData(0, 0, t[3], t[4]), d = im.data;
+  for (let q = 0; q < d.length; q += 4) { const r = d[q], gg = d[q + 1], b = d[q + 2]; if (gg > b + 6 && gg >= r - 4 && Math.max(r, gg, b) - Math.min(r, gg, b) > 10) d[q + 3] = 0; } // 풀빛(녹 · 황록) 픽셀만
+  g.putImageData(im, 0, 0); nograssCache.set(key, c); return c;
+}
 function drawTile(stage, ctx, set, id, sx, sy, s) {
+  if (set === 'portalNG') { const c = nograss('grassland', id), t = DATA.tiles.grassland?.tiles[id]; if (c) drawRect(ctx, c, [0, 0, t[3], t[4], t[5], t[6]], sx, sy, s); return; }
   const def = DATA.tiles[set];
   const t = def?.tiles[id];
   if (!t) return;
