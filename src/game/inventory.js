@@ -34,7 +34,7 @@ export function takeOne(st, baseId) {
 }
 
 // v0.42 장비 각성 제한: 필요 각성 = 아이템 레벨 (아이템 레벨 1 · 시작 장비는 제한 없음)
-export const needAwaken = (it) => (it.noDrop || (it.ilvl || 1) <= 1 ? 0 : it.ilvl || 0);
+export const needAwaken = (it) => (it.noDrop || (it.ilvl || 1) <= 5 ? 0 : it.ilvl || 0); // 아이템 레벨 5까지는 제한 없음 (초반 널널, v0.42.3)
 export function canEquip(st, it) {
   const base = BASES[it.base];
   if (!base?.slot) return { ok: false, why: '장착할 수 없는 아이템' };

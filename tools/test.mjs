@@ -127,9 +127,9 @@ test('장착 · 양손 무기는 방패를 벗긴다', () => {
   const p = newPlayer();
   p.stats.str = 30;
   const sh = makeItem('round_shield', {}, p); addItem(p, sh); assert.ok(equip(p, sh.uid).ok);
-  const gs = makeItem('greatsword', { rarity: 'rare', ilvl: 5 }, p); addItem(p, gs);
-  assert.equal(equip(p, gs.uid).ok, false); // 각성 5 필요 (v0.42)
-  p.awakenings = 5;
+  const gs = makeItem('greatsword', { rarity: 'rare', ilvl: 8 }, p); addItem(p, gs);
+  assert.equal(equip(p, gs.uid).ok, false); // 각성 8 필요 (v0.42)
+  p.awakenings = 8;
   assert.ok(equip(p, gs.uid).ok);
   assert.equal(p.equip.offhand, null);
   assert.ok(itemName(gs).includes('대검'));

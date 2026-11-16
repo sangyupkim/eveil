@@ -250,6 +250,30 @@ export const HIGH_TIERS = [
   // v0.42 세계 단계 혼돈 (각성 380 ~ 500)
   [395, '심판'], [408, '극광'], [421, '천벌'], [434, '파멸'], [447, '명계'], [460, '무극'], [473, '천상'], [486, '절대'], [499, '종극'],
 ];
+// ───── 스탯별 장비 줄 (v0.42.3): 어느 스탯으로 키워도 모든 부위에 낄 장비가 있게 ─────
+// [id, 부위, 요구 스탯, 본보기(수치 · 그림), 이름 4단계, 높은 단계 이름]. 레벨 3 · 12 · 22 · 34, 그 위는 HIGH_TIERS로 499까지
+const LINE_LV = [3, 12, 22, 34];
+const PRE = { str: ['투사의', '전사의', '용사의', '패자의'], dex: ['사냥꾼', '추적자', '바람의', '매의'], int: ['견습 마도', '마도사의', '룬', '대마도사의'], wis: ['수련자', '순례자', '현자의', '성자의'], vit: ['강건한', '수호자의', '철벽의', '불괴의'] };
+export const STAT_LINES = [
+  ['l_vit_helm', 'helm', 'vit', 'iron_helm', '투구'], ['l_wis_helm', 'helm', 'wis', 'wizard_hat', '관'], ['l_dex_helm', 'helm', 'dex', 'leather_hood', '두건'], ['l_int_helm', 'helm', 'int', 'sage_hat', '모자'],
+  ['l_vit_armor', 'armor', 'vit', 'chain_mail', '갑주'], ['l_wis_armor', 'armor', 'wis', 'arcane_robe', '로브'], ['l_dex_armor', 'armor', 'dex', 'leather_armor', '가죽옷'], ['l_int_armor', 'armor', 'int', 'cloth_robe', '법의'],
+  ['l_vit_gloves', 'gloves', 'vit', 'gauntlets', '건틀릿'], ['l_wis_gloves', 'gloves', 'wis', 'mage_sleeves', '소매'], ['l_dex_gloves', 'gloves', 'dex', 'leather_gloves', '장갑'], ['l_int_gloves', 'gloves', 'int', 'cloth_wraps', '손싸개'],
+  ['l_vit_boots', 'boots', 'vit', 'war_boots', '장화'], ['l_wis_boots', 'boots', 'wis', 'mage_boots', '신'], ['l_dex_boots', 'boots', 'dex', 'leather_boots', '가죽 장화'], ['l_int_boots', 'boots', 'int', 'cloth_shoes', '신발'],
+  ['l_str_belt', 'belt', 'str', 'chain_belt', '허리띠'], ['l_dex_belt', 'belt', 'dex', 'leather_belt', '띠'], ['l_wis_belt', 'belt', 'wis', 'cloth_sash', '띠'], ['l_vit_belt', 'belt', 'vit', 'warden_belt', '허리띠'],
+  ['l_str_amulet', 'amulet', 'str', 'bone_amulet', '목걸이'], ['l_dex_amulet', 'amulet', 'dex', 'bone_amulet', '목걸이'], ['l_int_amulet', 'amulet', 'int', 'bone_amulet', '목걸이'], ['l_vit_amulet', 'amulet', 'vit', 'bone_amulet', '목걸이'],
+  ['l_wis_ring', 'ring', 'wis', 'silver_ring', '반지'], ['l_vit_ring', 'ring', 'vit', 'silver_ring', '반지'], ['l_str_ring', 'ring', 'str', 'silver_ring', '반지'],
+  ['l_dex_off', 'offhand', 'dex', 'glass_orb', '화살통'], ['l_int_off', 'offhand', 'int', 'glass_orb', '마도서'], ['l_vit_off', 'offhand', 'vit', 'round_shield', '방패'],
+  ['l_int_wand', 'weapon', 'int', 'bone_staff', '완드'], ['l_str_hammer', 'weapon', 'str', 'war_axe', '전투 망치'],
+];
+for (const [id, slot, stat, tpl, noun] of STAT_LINES) LINE_LV.forEach((lv, i) => {
+  const b = BASES[tpl], g = Math.max(0.6, 1 + (lv - (b.minLvl || 1)) / 30);
+  const o = { ...b, name: `${PRE[stat][i]} ${noun}`, minLvl: lv, req: { [stat]: Math.round(6 + lv * 1.6) }, shop: false, line: stat, ltpl: tpl };
+  delete o.price; delete o.noDrop;
+  if (b.dmg) o.dmg = b.dmg.map((v) => Math.max(1, Math.round(v * g)));
+  if (b.armor) o.armor = Math.max(1, Math.round(b.armor * g));
+  o.mods = { ...(b.mods ? Object.fromEntries(Object.entries(b.mods).map(([a, v]) => [a, Math.round(v * g)])) : {}), [stat]: 1 + Math.round(lv / 6) }; // 그 스탯이 조금 붙는다
+  BASES[`${id}${i + 1}`] = o;
+});
 export const HIGH_TEMPLATES = {
   sword: ['inferno_sword', '검'], greatsword: ['rune_blade', '대검'], axe: ['dragon_cleaver', '도끼'], bow: ['dragon_bow', '활'], staff: ['archmage_staff', '지팡이'],
   shield: ['dragon_shield', '방패'], mace: ['dragon_mace', '철퇴'], scepter: ['void_scepter', '홀'], orb: ['void_orb', '보주'], plate: ['dragon_plate', '판금'], leather: ['shadow_leather', '가죽 갑옷'], robe: ['inferno_robe', '로브'],
@@ -257,6 +281,7 @@ export const HIGH_TEMPLATES = {
   gaunt: ['dragon_gauntlets', '건틀릿'], lglove: ['shadow_gloves', '장갑'], sleeve: ['ember_sleeves', '소매'],
   boot: ['dragon_boots', '장화'], lboot: ['shadow_boots', '가죽 장화'], mboot: ['ember_boots', '신'],
   belt: ['dragon_belt', '허리띠'], sash: ['rune_sash', '띠'], amulet: ['star_amulet', '목걸이'], ring: ['ruby_ring', '반지'],
+  ...Object.fromEntries(STAT_LINES.map(([id, , stat, , noun]) => [id, [`${id}4`, `${({ str: '힘의', dex: '민첩의', int: '지능의', wis: '정신의', vit: '체력의' })[stat]} ${noun}`]])),
 };
 for (const [lv, tn] of HIGH_TIERS) for (const [k, [tpl, nm]] of Object.entries(HIGH_TEMPLATES)) {
   const b = BASES[tpl], g = 1 + (lv - (b.minLvl || 36)) / 90;

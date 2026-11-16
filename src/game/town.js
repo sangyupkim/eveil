@@ -456,7 +456,7 @@ export const craftZones = (st) => { const w = findBuilding(st, 'workshop'); retu
 // 그 지역 레벨에 맞는 가장 좋은 부위 기본 아이템
 export function setBase(zi, slot) {
   const lvl = ZONES[zi].levels[1];
-  const ids = Object.keys(BASES).filter((id) => BASES[id].slot === slot && (BASES[id].minLvl ?? 1) <= lvl && (BASES[id].minLvl ?? 1) < 99);
+  const ids = Object.keys(BASES).filter((id) => BASES[id].slot === slot && (BASES[id].minLvl ?? 1) <= lvl && (BASES[id].minLvl ?? 1) < 99 && !BASES[id].line && !BASES[id].tpl?.startsWith('l_'));
   return ids.sort((a, b) => (BASES[b].minLvl ?? 1) - (BASES[a].minLvl ?? 1) || (BASES[b].armor || 0) - (BASES[a].armor || 0))[0];
 }
 export function craft(st, zoneId, slot, rng = Math.random) {

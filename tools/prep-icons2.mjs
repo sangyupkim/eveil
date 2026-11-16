@@ -33,6 +33,14 @@ export const LIST = [
     aw_str1: P2(177), aw_str2: P2(147), aw_str3: P2(180), aw_str4a: P2(183), aw_str4b: P2(179), aw_dex1: P2(137), aw_dex2: P2(144), aw_dex3: P2(74), aw_dex4a: P2(141), aw_dex4b: P2(131),
   }).map(([k, f]) => ['sk:' + k, f]),
 ];
+// 아이콘이 없는 스킬은 아직 안 쓴 Painterly 아이콘을 차례로 (v0.42.3: 5차 스킬 25종)
+const { SKILLS } = await import('../src/data/skills.js');
+const usedF = new Set(LIST.map((x) => x[1])), haveSk = new Set(LIST.map((x) => x[0]));
+const free = pa.filter((f) => !usedF.has(f) && !/display|preview/i.test(f) && !/(^|\/)(frame|border)/i.test(f));
+const FRAME_RANGE = (i) => i >= 195 && i <= 231; // 1부 195 ~ 231은 빈 테두리 그림
+const freeOk0 = free.filter((f) => !FRAME_RANGE(pa.indexOf(f)));
+const freeOk = [...freeOk0.filter((_, i) => i % 3 === 2), ...freeOk0.filter((_, i) => i % 3 !== 2)]; // 비슷한 색 변형이 몰리지 않게 셋마다 하나씩 먼저
+for (const id of Object.keys(SKILLS)) if (!haveSk.has('sk:' + id)) LIST.push(['sk:' + id, freeOk.shift()]);
 const S = 64, COLS = 8, rows = Math.ceil(LIST.length / COLS), parts = [], index = {};
 for (let i = 0; i < LIST.length; i++) {
   const [name, f] = LIST[i];

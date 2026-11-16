@@ -199,6 +199,10 @@ export const faceOf = (id) => FACES.find((f) => f[0] === id) || FACES[0];
 // 높은 단계 장비 그림: 본보기 그림 + 단계 색
 import { BASES as _B, HIGH_TIERS as _HT } from './items.js';
 const _TC = [0x8a8a96, 0xc0d8e8, 0xc8ccd8, 0xa8e0ff, 0xb08aff, 0x7fd08a, 0xffe08a, 0x9a7aff, 0x8af0ff, 0xffb070, 0xff8ac0, 0xffd040, 0xffffff, 0xff5a5a, 0x60ffd0];
+// 스탯별 장비 줄 (v0.42.3): 본보기 그림 + 스탯 색 (화살통 · 마도서는 아이콘만)
+const _SC = { str: 0xff9a7a, dex: 0x9ae0a0, int: 0x9ac0ff, wis: 0xd0a8ff, vit: 0xf0d090 };
+for (const [id, b] of Object.entries(_B)) if (b.ltpl && !b.tpl && ITEM_LOOK[b.ltpl]) ITEM_LOOK[id] = { ...ITEM_LOOK[b.ltpl], tint: _SC[b.line] };
+for (let i = 1; i <= 4; i++) { ITEM_LOOK['l_dex_off' + i] = { icon: 8 }; ITEM_LOOK['l_int_off' + i] = { icon: 225 }; ITEM_LOOK['l_int_wand' + i] = { layers: { main: 'wand' }, icon: 104, tint: _SC.int }; ITEM_LOOK['l_str_hammer' + i] = { layers: { main: 'war_hammer' }, icon: ICONS2.warhammer, tint: _SC.str }; }
 for (const [id, b] of Object.entries(_B)) if (b.tpl && ITEM_LOOK[b.tpl]) { const i = _HT.findIndex((t) => t[0] === b.minLvl); ITEM_LOOK[id] = { ...ITEM_LOOK[b.tpl], tint: _TC[i % _TC.length] }; }
 
 // ── 지역 13~20 · 변종 몬스터 (v0.33): 기존 지역의 땅 · 물건을 바탕으로 색만 바꾼다 ──

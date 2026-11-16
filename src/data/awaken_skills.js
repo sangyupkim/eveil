@@ -44,6 +44,27 @@ export const AWAKEN_SKILLS = {
   aw_int5: A('int', 5, { name: '창세의 불꽃', color: '#ff6020', type: 'meteor', ap: 'int', mp: 90, cd: 22, radius: 7, power: 520, perRank: 90, desc: '하늘에서 창세의 불을 떨군다.' }),
   aw_wis5: A('wis', 5, { name: '무한의 마력', color: '#c8b0ff', type: 'nova', ap: 'wis', scale: 'mp', mpPct: 0.45, mp: 40, cd: 22, radius: 8, power: 9, perRank: 0.6, desc: '쌓아 둔 마력을 모두 터뜨린다.' }),
   aw_vit5: W('vit', 5, { name: '불멸의 대지', color: '#f0c070', type: 'spin', needs: 'melee', scale: 'hp', hpCost: 0.12, mp: 50, cd: 20, radius: 8, hits: 3, power: 6, perRank: 0.4, anim: 'spin', desc: '대지를 세 번 뒤흔든다.' }),
+  aw_str5b: W('str', 5, { name: '패왕의 질주', color: '#ff7a40', type: 'dash', needs: 'melee', mp: 54, cd: 14, power: 8.5, perRank: 0.55, anim: 'heavy', desc: '번개처럼 달려들어 베어 넘긴다.' }),
+  aw_str5c: W('str', 5, { name: '천지 붕괴', color: '#ff9050', type: 'spin', needs: 'melee', mp: 80, cd: 26, radius: 9, hits: 4, power: 4.2, perRank: 0.3, anim: 'spin', desc: '네 번 휘몰아쳐 둘레를 무너뜨린다.' }),
+  aw_dex5b: W('dex', 5, { name: '유성 화살비', color: '#a0ffc8', type: 'rain', needs: 'bow', mp: 70, cd: 22, radius: 7, waves: 8, range: 15, power: 2.4, perRank: 0.17, desc: '유성 같은 화살을 여덟 번 쏟는다.' }),
+  aw_dex5c: W('dex', 5, { name: '만 개의 화살', color: '#c0ffd8', type: 'arrow', needs: 'bow', mp: 64, cd: 18, count: 16, range: 15, power: 1.9, perRank: 0.13, desc: '열여섯 발을 한꺼번에 흩뿌린다.' }),
+  aw_int5b: A('int', 5, { name: '종말의 뇌우', color: '#a0c8ff', type: 'chain', ap: 'int', mp: 80, cd: 18, jumps: 10, range: 14, power: 380, perRank: 70, desc: '번개가 열 적을 잇는다.' }),
+  aw_int5c: A('int', 5, { name: '절대 영역', color: '#c0f0ff', type: 'nova', ap: 'int', mp: 96, cd: 26, radius: 9, power: 460, perRank: 80, desc: '둘레를 얼려 부순다.' }),
+  aw_wis5b: A('wis', 5, { name: '별의 창', color: '#b8a8ff', type: 'line', ap: 'wis', scale: 'mp', mpPct: 0.4, mp: 36, cd: 16, range: 18, width: 3, power: 8, perRank: 0.55, desc: '마력의 창으로 한 줄을 꿰뚫는다.' }),
+  aw_wis5c: A('wis', 5, { name: '신성 결계', color: '#e8d8ff', type: 'buff', ap: 'wis', buff: 'might', mp: 60, cd: 45, duration: 15, power: 70, perRank: 4, desc: '15초 동안 주는 피해가 크게 오른다.' }),
+  aw_vit5b: W('vit', 5, { name: '거신의 망치', color: '#f8c878', type: 'melee', needs: 'melee', scale: 'hp', hpCost: 0.12, mp: 50, cd: 16, power: 10, perRank: 0.65, anim: 'heavy', desc: '거신처럼 한 대상을 내리찍는다.' }),
+  aw_vit5c: A('vit', 5, { name: '불괴의 성채', color: '#ffe0a0', type: 'buff', ap: 'vit', buff: 'armorPct', mp: 50, cd: 45, duration: 16, power: 90, perRank: 5, desc: '16초 동안 방어력이 크게 오른다.' }),
+  // 두 스탯 5차 갈래 전용 (갈래에 두 스탯이 모두 있어야): 검객 · 마검사 · 성전사 · 투사 · 마궁사 · 순례자 · 정찰병 · 학자 · 전투 마법사 · 수도사 계열
+  aw_x_sd: W('str', 5, { lines: ['str', 'dex'], name: '검무 폭풍', color: '#ffc080', type: 'spin', needs: 'melee', mp: 70, cd: 20, radius: 8, hits: 3, power: 5, perRank: 0.35, anim: 'spin', desc: '검의 춤으로 세 번 휩쓴다.' }),
+  aw_x_si: W('str', 5, { lines: ['str', 'int'], mix: 'int', name: '마검 일섬', color: '#ff80c0', type: 'cleave', needs: 'melee', mp: 72, cd: 18, radius: 9, power: 10, perRank: 0.65, anim: 'heavy', desc: '마력을 실은 검으로 앞을 가른다.' }),
+  aw_x_sw: W('str', 5, { lines: ['str', 'wis'], mix: 'wis', name: '성검 심판', color: '#fff0a0', type: 'cleave', needs: 'melee', mp: 70, cd: 18, radius: 8, power: 9.5, perRank: 0.6, anim: 'heavy', desc: '빛의 검으로 앞을 심판한다.' }),
+  aw_x_sv: W('str', 5, { lines: ['str', 'vit'], name: '철혈 돌격', color: '#e0a070', type: 'dash', needs: 'melee', scale: 'armor', hpCost: 0.08, mp: 56, cd: 14, power: 9, perRank: 0.6, anim: 'heavy', desc: '강철 같은 몸으로 들이받는다.' }),
+  aw_x_di: W('dex', 5, { lines: ['dex', 'int'], mix: 'int', name: '성좌 화살', color: '#c8a0ff', type: 'line', needs: 'bow', mp: 66, cd: 18, range: 18, width: 3, power: 11, perRank: 0.7, desc: '별의 힘을 실은 한 발.' }),
+  aw_x_dw: W('dex', 5, { lines: ['dex', 'wis'], mix: 'wis', name: '영혼 사냥', color: '#d8c0ff', type: 'arrow', needs: 'bow', mp: 60, cd: 16, count: 10, range: 15, power: 2.4, perRank: 0.17, desc: '영혼을 좇는 화살 열 발.' }),
+  aw_x_dv: W('dex', 5, { lines: ['dex', 'vit'], name: '야생의 덫', color: '#a0d080', type: 'rain', needs: 'bow', mp: 62, cd: 20, radius: 7, waves: 6, range: 14, power: 2.8, perRank: 0.2, slow: 3, desc: '덫 화살을 여섯 번 쏟아 묶는다.' }),
+  aw_x_iw: A('int', 5, { lines: ['int', 'wis'], name: '진리의 폭발', color: '#b0b8ff', type: 'meteor', ap: 'int', mp: 90, cd: 22, radius: 8, power: 560, perRank: 95, desc: '진리의 별을 떨어뜨린다.' }),
+  aw_x_iv: A('int', 5, { lines: ['int', 'vit'], name: '마도 포격', color: '#ff9a60', type: 'rain', ap: 'int', mp: 86, cd: 20, radius: 7, waves: 6, power: 120, perRank: 22, desc: '마력 포탄을 여섯 번 퍼붓는다.' }),
+  aw_x_wv: W('vit', 5, { lines: ['wis', 'vit'], name: '금강 파동', color: '#ffe8b0', type: 'nova', needs: 'melee', scale: 'hp', hpCost: 0.1, mp: 60, cd: 18, radius: 9, power: 7, perRank: 0.5, desc: '단단한 몸에서 파동을 내뿜는다.' }),
   aw_vit4b: W('vit', 4, { name: '성벽 붕괴', color: '#d8a868', type: 'melee', needs: 'melee', scale: 'hp', hpCost: 0.1, mp: 40, cd: 18, power: 7.0, perRank: 0.5, anim: 'heavy', desc: '성벽을 무너뜨리듯 내리친다.' }),
 };
 // 스킬의 각성 등급 (v0.39.3: 모든 스킬): awaken이 정해진 스킬은 그 차수, 나머지는 책 단계로 —
@@ -56,6 +77,6 @@ export function awakenOk(st, sk) {
   if (!g) return { ok: true };
   const t = (st.titles || []).find((x) => x.tier === g - 1);
   if (!t) return { ok: false, why: `${g}차 각성 필요` };
-  if (sk.awaken >= 4 && !t.key.split('+').includes(sk.line)) return { ok: false, why: `${g}차 갈래에 맞지 않는 스킬` };
+  if (sk.awaken >= 4 && !(sk.lines || [sk.line]).every((l) => t.key.split('+').includes(l))) return { ok: false, why: `${g}차 갈래에 맞지 않는 스킬` };
   return { ok: true };
 }

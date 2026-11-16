@@ -12,6 +12,8 @@ export const SKILL_FX = {
   arrow_rain: 'c_arrowrain', hail_of_arrows: 'c_arrowrain', aw_dex3: 'c_arrowrain', trap_arrow: 'bear_trap', scatter_shot: 'caltrops', wind_volley: 'c_tornado', storm_volley: 'c_tornado',
   arcane_storm: 'c_torrentacle', aw_wis4b: 'c_torrentacle', overload: 'c_torrentacle', aw_wis3: 'c_torrentacle', mana_burst: 'c_waterpost', aw_wis2: 'c_waterpost',
   aw_str5: 'c_earthmultispike', aw_dex5: 'c_lightningclaw', aw_int5: 'c_firepost', aw_wis5: 'c_torrentacle', aw_vit5: 'c_earthspike',
+  aw_str5b: 'c_earthspike', aw_str5c: 'c_earthmultispike', aw_dex5b: 'c_arrowrain', aw_dex5c: 'c_tornado', aw_int5b: 'c_lightningclaw', aw_int5c: 'c_icemultispike', aw_wis5b: 'c_torrentacle', aw_vit5b: 'c_earthpost',
+  aw_x_sd: 'c_tornado', aw_x_si: 'c_lightningclaw', aw_x_sw: 'c_firepost', aw_x_sv: 'c_earthspike', aw_x_di: 'c_lightningclaw', aw_x_dw: 'dark_mist_alt', aw_x_dv: 'bear_trap', aw_x_iw: 'c_firepost', aw_x_iv: 'c_firepost', aw_x_wv: 'c_waterpost',
   mind_blast: 'dark_mist_alt', fan_of_knives: 'caltrops', aw_int3: 'c_icemultispike',
 };
 for (const [id, fx] of Object.entries(SKILL_FX)) if (SKILLS[id] && !SKILLS[id].fx) SKILLS[id].fx = fx;
