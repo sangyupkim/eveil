@@ -80,3 +80,48 @@ export function awakenOk(st, sk) {
   if (sk.awaken >= 4 && !(sk.lines || [sk.line]).every((l) => t.key.split('+').includes(l))) return { ok: false, why: `${g}차 갈래에 맞지 않는 스킬` };
   return { ok: true };
 }
+
+// ───── 등급별 스킬 채우기 (v0.42.5) ─────
+// 모든 스탯 × 각성 등급(1 ~ 5)에 스킬이 6개 이상, 등급마다 하품(약함) · 중품(보통) · 상품(강함)이 섞이게 만든다.
+// 품질 q: 1 하품 ×0.75 · 2 중품 ×1 · 3 상품 ×1.3 (기존 스킬은 중품). 상품일수록 책이 드물다 (game/loot.js)
+export const QUALITY = { 1: { name: '하품', k: 0.75, w: 5, color: '#9a917f' }, 2: { name: '중품', k: 1, w: 3, color: '#d8d2c4' }, 3: { name: '상품', k: 1.3, w: 1, color: '#ffb84a' } };
+const GW = { 0: 1.8, 1: 2.4, 2: 3.0, 3: 4.0, 4: 6.0, 5: 8.5 };   // 무기 · 자원 스킬 계수 (등급 기준)
+const GS = { 0: 40, 1: 70, 2: 120, 3: 200, 4: 300, 5: 460 };  // 주문 위력
+const GN = { 0: '수련의', 1: '투지의', 2: '분노의', 3: '천둥의', 4: '패왕의', 5: '종말의' };
+const NOUN = {
+  str: [['melee', '참격'], ['spin', '회전 베기'], ['cleave', '대지 가르기'], ['dash', '돌격 베기'], ['melee', '일격'], ['spin', '칼날 회오리']],
+  dex: [['arrow', '연사'], ['line', '관통 사격'], ['rain', '화살비'], ['arrow', '산탄'], ['line', '저격'], ['rain', '화살 폭우']],
+  int: [['bolt', '화염탄'], ['nova', '원소 폭발'], ['meteor', '낙성'], ['chain', '연쇄 번개'], ['rain', '원소 비'], ['bolt', '얼음 창']],
+  wis: [['bolt', '비전 화살'], ['nova', '마력 파동'], ['line', '마력 광선'], ['rain', '별빛 비'], ['bolt', '영혼 창'], ['nova', '정신 폭발']],
+  vit: [['melee', '방패 강타'], ['cleave', '돌진 방벽'], ['spin', '대지 진동'], ['melee', '거인 내려찍기'], ['spin', '대지 회오리'], ['cleave', '철벽 충격']],
+};
+const FXS = { str: 'c_earthspike', dex: 'c_arrowrain', int: 'c_firepost', wis: 'c_torrentacle', vit: 'c_earthmultispike' };
+const COLORS = { str: ['#d0704a', '#e08a5a', '#ffaa6a'], dex: ['#7ab890', '#8fd0a0', '#b0f0c0'], int: ['#e07040', '#ff8a4a', '#ffb070'], wis: ['#8a90e0', '#a8a0ff', '#d0c0ff'], vit: ['#b09860', '#c8b080', '#f0d090'] };
+function makeGraded(stat, g, q, i) {
+  const [type, noun] = NOUN[stat][i % NOUN[stat].length], k = QUALITY[q].k;
+  const o = { awaken: g, line: stat, school: SCH[stat], tier: g ? Math.min(5, g + 1) : q === 3 ? 2 : 1, req: { [stat]: Math.round((R[g] || 14) * (q === 3 ? 1.15 : q === 1 ? 0.85 : 1)) }, q,
+    name: `${GN[g]} ${noun}`, color: COLORS[stat][q - 1], type, mp: 10 + g * 9 + q * 3, cd: [4, 6, 9, 12, 16, 20][i % 6] + g, fx: FXS[stat], desc: g ? `${QUALITY[q].name} ${g}차 각성 스킬.` : `${QUALITY[q].name} 기본 스킬.` };
+  const melee = type === 'melee' || type === 'spin' || type === 'cleave' || type === 'dash';
+  if (stat === 'int') Object.assign(o, { ap: 'int', power: Math.round(GS[g] * k * (type === 'rain' ? 0.35 : type === 'chain' ? 0.9 : 1)), perRank: Math.round(GS[g] * k * 0.18) });
+  else if (stat === 'wis') Object.assign(o, { ap: 'wis', scale: 'mp', mpPct: 0.08 + g * 0.05, power: +(GW[g] * k * (type === 'rain' ? 0.4 : 1)).toFixed(2), perRank: +(GW[g] * k * 0.07).toFixed(2) });
+  else Object.assign(o, { ap: 'weapon', needs: stat === 'dex' ? 'bow' : 'melee', power: +(GW[g] * k * (type === 'rain' ? 0.4 : type === 'arrow' ? 0.4 : type === 'spin' ? 0.8 : 1)).toFixed(2), perRank: +(GW[g] * k * 0.07).toFixed(2), anim: type === 'spin' ? 'spin' : 'heavy' });
+  if (stat === 'vit') Object.assign(o, { scale: i % 2 ? 'armor' : 'hp', hpCost: 0.03 + g * 0.015 });
+  if (type === 'spin' || type === 'cleave' || type === 'nova') o.radius = 4 + g * 0.8;
+  if (type === 'rain') Object.assign(o, { radius: 4 + g * 0.6, waves: 3 + g, range: 13 });
+  if (type === 'meteor') o.radius = 3.5 + g * 0.6;
+  if (type === 'arrow') Object.assign(o, { count: 3 + g * 2, range: 13 });
+  if (type === 'line') Object.assign(o, { range: 13 + g, width: 1.6 + g * 0.3 });
+  if (type === 'bolt') o.range = 11 + g;
+  if (type === 'chain') Object.assign(o, { jumps: 3 + g, range: 11 });
+  if (type === 'spin' && g >= 4) o.hits = 2;
+  return o;
+}
+{
+  const cnt = {};
+  for (const sk of Object.values(AWAKEN_SKILLS)) { const k = `${sk.line}|${sk.awaken}`; cnt[k] = (cnt[k] || 0) + 1; }
+  for (const stat of Object.keys(SCH)) for (let g = 0; g <= 5; g++) {
+    const have = g ? cnt[`${stat}|${g}`] || 0 : 6, n = Math.max(2, 6 - have); // 적어도 하품 · 상품 하나씩 (각성 전은 둘만)
+    const qs = [1, 3, 2, 1, 3, 2];
+    for (let i = 0; i < n; i++) AWAKEN_SKILLS[`g_${stat}${g}_${i}`] = makeGraded(stat, g, qs[i], i + g);
+  }
+}

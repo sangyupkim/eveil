@@ -33,7 +33,7 @@ import { uiSettings, applyUi, editUi } from './layout.js';
 import { TITLE_AT, titleKey, titleName, UNIQUES, perkChoices } from '../data/titles.js';
 import { variantsOf, VARIANT_RANKS, modsOf, skillEff } from '../game/skills.js';
 import { SCHOOL_NAMES } from '../data/skills.js';
-import { awakenOk, skillGrade, gradeName } from '../data/awaken_skills.js';
+import { awakenOk, skillGrade, QUALITY, gradeName } from '../data/awaken_skills.js';
 import { GEMS, GEM_GRADES, gemId } from '../data/legends.js';
 import { applyShard, canApply, lockMax, shardCost } from '../game/shards.js';
 import { HERBS, HERB_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
@@ -184,7 +184,7 @@ export class Windows {
     let h = `<img class="bigico" src="${isBook(it) ? skillIcon(it.book) : itemIcon(it)}" alt="" /><div class="nm" style="color:${itemColor(it)}">${esc(itemName(it))}</div>`;
     if (isBook(it)) {
       const sk = SKILLS[it.book];
-      const gr = skillGrade(sk), awk = `${BOOK_TIERS[sk.tier].name} 스킬북 · ${gradeName(gr)}`;
+      const gr = skillGrade(sk), qn = QUALITY[sk.q || 2], awk = `${BOOK_TIERS[sk.tier].name} 스킬북 · ${gradeName(gr)} · <span style="color:${qn.color}">${qn.name}</span>`;
       h += `<div class="sub">${awk} · MP ${sk.mp} · 재사용 ${sk.cd}초</div><div>${sk.desc}</div>`;
       if (gr) { const SN = { str: '힘', dex: '민첩', int: '지능', wis: '정신', vit: '체력' }; const a = awakenOk(st, sk); h += `<div class="aff" style="color:${a.ok ? '#7fe07a' : '#ff8a7a'}">${sk.awaken === 4 ? `4차 각성 · 갈래에 ${SN[sk.line]}` : `${gr}차 각성 필요`}${a.ok ? '' : ` — ${a.why}`}</div>`; }
       h += reqLine(sk.req, totalStats(st));
@@ -404,7 +404,7 @@ export class Windows {
       const max = false;
       const slot = st.quick.indexOf(id);
       list += `<div class="row pick${this.skillSel === id ? ' on' : ''}" data-skill="${id}">${sicon(id)}
-        <div class="grow"><b>${sk.name}</b> <span style="color:${BOOK_TIERS[sk.tier].color};font-size:.8em">${BOOK_TIERS[sk.tier].name} · ${gradeName(skillGrade(sk))}</span>
+        <div class="grow"><b>${sk.name}</b> <span style="color:${BOOK_TIERS[sk.tier].color};font-size:.8em">${BOOK_TIERS[sk.tier].name} · ${gradeName(skillGrade(sk))} · <span style="color:${QUALITY[sk.q || 2].color}">${QUALITY[sk.q || 2].name}</span></span>
           <div class="mini"><i style="width:${max ? 100 : (s.exp / skillExpNeeded(s.rank)) * 100}%;background:${sk.color}"></i></div></div>
         <div class="note">랭크 ${s.rank}${slot >= 0 ? ` · ${slot + 1}번` : ''}</div></div>`;
     }

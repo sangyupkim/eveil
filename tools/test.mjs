@@ -469,7 +469,7 @@ test('각성 스킬: 1~3차는 차수만, 4차는 갈래에 그 스탯이 있어
   st.titles.push({ tier: 3, key: 'str+int+wis' });
   assert.ok(awakenOk(st, AWAKEN_SKILLS.aw_str4b).ok && awakenOk(st, AWAKEN_SKILLS.aw_wis4a).ok);
   assert.equal(awakenOk(st, AWAKEN_SKILLS.aw_dex4a).ok, false);       // 갈래에 민첩이 없다
-  for (let t = 1; t <= 5; t++) for (const id of skillsOfTier(t)) assert.ok(!AWAKEN_SKILLS[id], id + ' 일반 책 풀에 섞이면 안 됨');
+  for (let t = 1; t <= 5; t++) for (const id of skillsOfTier(t)) assert.ok(!AWAKEN_SKILLS[id] || AWAKEN_SKILLS[id].awaken === 0, id + ' 일반 책 풀에 섞이면 안 됨'); // 각성 전(0) 등급 채우기 스킬은 일반 책
   // 각성 스킬북: 레벨 100 보스는 가끔 각성 스킬북을 떨어뜨리고, 각성 전이면 배울 수 없다
   const { rollLoot } = await import('../src/game/loot.js');
   const { canLearn } = await import('../src/game/skills.js');

@@ -1,5 +1,6 @@
 // 몬스터 드랍과 사망 시 아이템 드랍
 import { CONFIG, LOOT } from '../data/config.js';
+import { QUALITY } from '../data/awaken_skills.js';
 import { skillsOfTier, SKILLS } from '../data/skills.js';
 import { ZONE_SCHOOLS } from '../data/skills_more.js';
 import { SLOTS } from '../data/items.js';
@@ -47,7 +48,8 @@ export function rollLoot(mon, opt = {}, st = null, rng = R) {
     const awMax = AWAKEN_LV.filter((lv) => mon.level >= lv).length;
     if (awMax && chance(big ? 0.35 : 0.12, rng)) {
       const n = Number(weighted(Object.fromEntries(Array.from({ length: awMax }, (_, i) => [i + 1, i + 1])), rng));
-      const ap = Object.keys(SKILLS).filter((id) => SKILLS[id].awaken === n);
+      // 품질: 하품 5 · 중품 3 · 상품 1 비율 (v0.42.5)
+      const ap = Object.keys(SKILLS).filter((id) => SKILLS[id].awaken === n).flatMap((id) => Array((QUALITY[SKILLS[id].q || 2] || QUALITY[2]).w).fill(id));
       if (ap.length) out.push({ kind: 'item', item: makeBook(pick(ap, rng), st) });
     }
     // (v0.39.6: 위에서 바로 return 해서 이름 있는 전설 · 보석 굴림을 건너뛰던 오류)
