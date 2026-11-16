@@ -112,6 +112,7 @@ export function drawPowerFrame(ctx, st, name, x, z, { scale = 1, tint = null, t 
   ctx.globalAlpha = 1;
 }
 
+const FX_BIG = { v_fireburst: 2, h_necrotic: 1.9, b_star_explosion: 2, v_dust: 1.6, v_splash: 1.6 };
 export class FX {
   constructor(stage, layer) {
     this.stage = stage;
@@ -134,6 +135,7 @@ export class FX {
     if (!def) return null;
     const anim = def.anims.power || Object.values(def.anims)[0];
     if (name.startsWith('c_')) scale *= 1.6; // Valley of Concordia 효과는 그림이 작다
+    scale *= FX_BIG[name] || 1; // v0.44.2 작게 보이던 새 효과
     const it = { kind: 'power', def, anim, x, z, y, scale, dir, alpha, tint, fade, t: 0, dur: dur ?? anim.dur / 1000, loop };
     image(animImage(def, 'power'));
     it.drawable = { z, draw: (ctx, st) => this.drawPower(ctx, st, it) };
