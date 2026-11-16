@@ -14,23 +14,23 @@ const SPECS = [
   { name: 'x_orc_brute', k: 0.56, frames: { dir: 'noarm/256x256', cell: 256 },
     anims: { stance: ['Idle_Armed', 1000, 'looped'], run: ['Run_Armed', 600, 'looped'], swing: ['Attack_01', 700, 'play_once'], cast: ['Roar', 1000, 'play_once'], hit: ['Hit_Armed', 300, 'play_once'], die: ['Death_Armed', 1000, 'play_once'] } },
   // v0.44 — 비룡 돌려쓰던 보스 교체용
-  { name: 'x_snake', k: 0.8, frames: { dir: 'snake/Frames_180x180', cell: 180 },
+  { name: 'x_snake', k: 0.9, px: 0.5, frames: { dir: 'snake/Frames_320x320', cell: 320 },
     anims: { stance: ['Idle_Standing', 1000, 'looped'], run: ['Move_High', 600, 'looped'], swing: ['Attack', 650, 'play_once'], cast: ['Attack', 800, 'play_once'], hit: ['Hit', 300, 'play_once'], die: ['Death', 900, 'play_once'] } },
-  { name: 'x_fishman', k: 0.45, sheet: { dir: 'fish/x320p_Spritesheets', cell: 320 },
+  { name: 'x_fishman', k: 0.9, px: 0.5, sheet: { dir: 'fish/x320p_Spritesheets', cell: 320 },
     anims: { stance: ['Idle_BattlePose', 1000, 'looped'], run: ['Run_Forward', 600, 'looped'], swing: ['Attack_01', 650, 'play_once'], cast: ['Attack_03', 800, 'play_once'], hit: ['Hit_Stomach', 300, 'play_once'], die: ['Death_FallBack', 900, 'play_once'] } },
-  { name: 'x_ice_mummy', k: 0.8, frames: { dir: 'ice/Frames_180x180', cell: 180 },
+  { name: 'x_ice_mummy', k: 0.9, px: 0.5, frames: { dir: 'ice/Frames_320x320', cell: 320 },
     anims: { stance: ['Idle', 1000, 'looped'], run: ['Run', 600, 'looped'], swing: ['Attack_Punch', 650, 'play_once'], cast: ['Attack_Bite', 800, 'play_once'], hit: ['Attack_Bite', 300, 'play_once'], die: ['Death_Back', 900, 'play_once'] } },
-  { name: 'x_tusk_beast', k: 0.6, sheet: { dir: 'lizard/x256_Spritesheets', cell: 256 },
+  { name: 'x_tusk_beast', k: 1, px: 0.6, sheet: { dir: 'lizard/x256_Spritesheets', cell: 256 },
     anims: { stance: ['Idle', 1000, 'looped'], run: ['Run', 600, 'looped'], swing: ['Attack1', 650, 'play_once'], cast: ['Shout', 1000, 'play_once'], hit: ['Hit', 300, 'play_once'], die: ['Death', 900, 'play_once'] } },
-  { name: 'x_centipede', k: 0.6, sheet: { dir: 'brown/x256p_Spritesheets', cell: 256 },
+  { name: 'x_centipede', k: 0.96, px: 0.5, sheet: { dir: 'brown/x320p_Spritesheets', cell: 320 },
     anims: { stance: ['Idle', 1000, 'looped'], run: ['Walk', 600, 'looped'], swing: ['Attack', 650, 'play_once'], cast: ['Alert', 900, 'play_once'], hit: ['Hit', 300, 'play_once'], die: ['Death', 900, 'play_once'] } },
-  { name: 'x_spider_horror', k: 0.6, frames: { dir: 'spider/256x256', cell: 256 },
+  { name: 'x_spider_horror', k: 1, px: 0.6, frames: { dir: 'spider/256x256', cell: 256 },
     anims: { stance: ['Idle_Nervous', 1000, 'looped'], run: ['Run', 500, 'looped'], swing: ['Attack1', 600, 'play_once'], cast: ['Attack_Capture', 900, 'play_once'], hit: ['Hit', 300, 'play_once'], die: ['Die1', 900, 'play_once'], block: ['Defense', 600, 'looped'] } },
-  { name: 'x_fishman_mace', k: 0.45, sheet: { dir: 'fishaxe2/x320p_Spritesheets', cell: 320 },
+  { name: 'x_fishman_mace', k: 0.9, px: 0.5, sheet: { dir: 'fishaxe2/x320p_Spritesheets', cell: 320 },
     anims: { stance: ['Idle_BattlePose', 1000, 'looped'], run: ['Run_Forward', 600, 'looped'], swing: ['Attack_01', 650, 'play_once'], cast: ['Attack_03', 800, 'play_once'], hit: ['Hit_Stomach', 300, 'play_once'], die: ['Death_FallBack', 900, 'play_once'] } },
-  { name: 'x_fishman_blade', k: 0.45, sheet: { dir: 'fishsw1/x320p_Spritesheets', cell: 320 },
+  { name: 'x_fishman_blade', k: 0.9, px: 0.5, sheet: { dir: 'fishsw1/x320p_Spritesheets', cell: 320 },
     anims: { stance: ['Idle_BattlePose', 1000, 'looped'], run: ['Run_Forward', 600, 'looped'], swing: ['Attack_01', 650, 'play_once'], cast: ['Attack_03', 800, 'play_once'], hit: ['Hit_Stomach', 300, 'play_once'], die: ['Death_FallBack', 900, 'play_once'] } },
-  { name: 'x_spearman', k: 0.6, sheet: { dir: 'unk1/x256p_Spritesheets', cell: 256 },
+  { name: 'x_spearman', k: 1, px: 0.6, sheet: { dir: 'unk1/x256p_Spritesheets', cell: 256 },
     anims: { stance: ['Idle', 1000, 'looped'], run: ['Run', 600, 'looped'], swing: ['Attack1', 650, 'play_once'], cast: ['Attack3', 800, 'play_once'], hit: ['Hit', 300, 'play_once'], die: ['Death', 900, 'play_once'] } },
   // 2D HD Character Knight: 동작마다 한 장, 줄 = Flare 방향 그대로 (0 서 · 2 북 · 4 동 · 6 남), 칸 128
   { name: 'x_knight', k: 1, rows: { dir: 'knight/2D HD Character Knight/Spritesheets/With shadows', cell: 128 },
@@ -59,7 +59,7 @@ for (const S of SPECS) {
     if (S.rows) { const file = path.join(ROOT, S.rows.dir, src + '.png'); fr = (await sheetFrames(file, cell)).filter((f) => f.top === d * cell); }
     else if (S.sheet) fr = await sheetFrames(findAng(path.join(ROOT, S.sheet.dir, src), d, /Body/), cell);
     else { const dir = findAng(path.join(ROOT, S.frames.dir, src, 'Body'), d, /^\d+$/); fr = fs.readdirSync(dir).filter((f) => f.endsWith('.png')).sort().map((f) => ({ file: path.join(dir, f) })); }
-    pickN(fr).forEach((f, i) => pieces.push({ an, d, i, ...f }));
+    pickN(fr, S.px ? 8 : 10).forEach((f, i) => pieces.push({ an, d, i, ...f }));
   }
   // 자르기 · 줄이기
   for (const p of pieces) {
@@ -77,7 +77,7 @@ for (const S of SPECS) {
   const H = y + rowH;
   const dst = `enemies/${S.name}.webp`;
   await sharp({ create: { width: W, height: H, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).composite(pieces.filter((p) => !p.skip).map((p) => ({ input: p.buf, left: p.x, top: p.y }))).webp({ quality: 80, alphaQuality: 85, effort: 5 }).toFile(path.join(OUT, dst));
-  const a = { images: { default: dst }, anims: {}, px: 1 };
+  const a = { images: { default: dst }, anims: {}, px: S.px || 1 }; // px: 원본을 크게 담고 그만큼 줄여 그린다 (선명하게, v0.44.3)
   for (const [an, [, dur, type]] of Object.entries(S.anims)) {
     const f = {}; let n = 0;
     for (let d = 0; d < 8; d++) { f[d] = pieces.filter((p) => p.an === an && p.d === d && !p.skip).map((p) => [p.x, p.y, p.w, p.h, Math.round(ax - p.tx), Math.round(ay - p.ty)]); n = Math.max(n, f[d].length); }
