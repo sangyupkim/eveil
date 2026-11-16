@@ -135,7 +135,8 @@ export const BASES = {
   sapphire_ring: { name: '청옥 반지', slot: 'ring', minLvl: 22 },
   ruby_ring: { name: '홍옥 반지', slot: 'ring', minLvl: 30 },
   ...Object.fromEntries(Object.entries(GEMS).flatMap(([g, x]) => GEM_GRADES.map((gr, k) => [gemId(g, k), { name: `${gr.pre ? gr.pre + ' ' : ''}${x.name}`, type: 'gem', gem: g, grade: k, stack: true, price: 250 * (k + 1) ** 2, shop: false }]))),
-  dungeon_key: { name: '던전 열쇠', type: 'key', price: 1500, stack: true }, // 상점에서 팔지 않는다: 오늘의 의뢰 · 보스에게서만
+  dungeon_key: { name: '던전 열쇠', type: 'key', price: 1500, stack: true },
+  dungeon_key2: { name: '강화 던전 열쇠', type: 'key', price: 6000, stack: true }, dungeon_key3: { name: '극한 던전 열쇠', type: 'key', price: 20000, stack: true }, // v0.42 제작소에서 // 상점에서 팔지 않는다: 오늘의 의뢰 · 보스에게서만
   pet_egg: { name: '강아지', type: 'pet', pet: 'pet_dog', price: 3000, stack: true, shop: true },
   pet_cat: { name: '고양이', type: 'pet', pet: 'pet_cat', price: 3000, stack: true, shop: true },
   hp_potion: { name: '체력 물약', type: 'potion', restore: { hp: 70 }, price: 15, shop: true, stack: true, icon: 'i_potion_hp', itint: 0xff3040 },
@@ -185,12 +186,15 @@ export const RARITY = {
   rare: { name: '희귀', color: '#ffd84a', affix: [3, 4], mult: 1.1, value: 6 },
   hero: { name: '영웅', color: '#ff9a3c', affix: [4, 5], mult: 1.2, value: 12 },
   legend: { name: '전설', color: '#41e07a', affix: [5, 6], mult: 1.4, value: 25 },
+  myth: { name: '신화', color: '#ff4a8a', affix: [6, 7], mult: 1.7, value: 60 }, // v0.42 강화 던전 보스 전용 (신화 옵션 2개)
 };
-export const RARITY_ORDER = ['common', 'magic', 'rare', 'hero', 'legend'];
+export const RARITY_ORDER = ['common', 'magic', 'rare', 'hero', 'legend', 'myth'];
 
 const ARMORS = ['helm', 'armor', 'gloves', 'boots', 'belt', 'offhand'];
 const JEWEL = ['amulet', 'ring'];
 // slots: 붙을 수 있는 부위 (없으면 전부). max(l): 아이템 레벨 l에서의 최대값
+// v0.42 % 옵션은 레벨 120 넘으면 천천히 (예전엔 레벨에 비례해 300레벨 무기가 피해 +1000%를 넘었다) · 치명타 · 공격 속도 · 흡혈은 상한
+const lk = (l) => (l <= 120 ? l : 120 + (l - 120) * 0.35);
 export const AFFIXES = {
   str: { text: '힘 +{v}', min: 1, max: (l) => 2 + l * 0.5 },
   dex: { text: '민첩 +{v}', min: 1, max: (l) => 2 + l * 0.5 },
@@ -199,19 +203,24 @@ export const AFFIXES = {
   vit: { text: '체력 +{v}', min: 1, max: (l) => 2 + l * 0.5 },
   maxHp: { text: '최대 HP +{v}', min: 5, max: (l) => 12 + l * 5 },
   maxMp: { text: '최대 MP +{v}', min: 4, max: (l) => 8 + l * 3 },
-  armorPct: { text: '방어력 +{v}%', min: 5, max: (l) => 15 + l, slots: ARMORS },
-  dmgPct: { text: '피해 +{v}%', min: 5, max: (l) => 15 + l * 2, slots: ['weapon'] },
-  spellPct: { text: '주문 피해 +{v}%', min: 5, max: (l) => 12 + l * 1.5, slots: ['weapon', 'helm', ...JEWEL] },
-  atkSpd: { text: '공격 속도 +{v}%', min: 3, max: (l) => 8 + l * 0.5, slots: ['weapon', 'gloves', ...JEWEL] },
-  crit: { text: '치명타 확률 +{v}%', min: 1, max: (l) => 3 + l * 0.25, slots: ['weapon', 'gloves', 'helm', ...JEWEL] },
+  armorPct: { text: '방어력 +{v}%', min: 5, max: (l) => 15 + lk(l), slots: ARMORS },
+  dmgPct: { text: '피해 +{v}%', min: 5, max: (l) => 15 + lk(l) * 2, slots: ['weapon'] },
+  spellPct: { text: '주문 피해 +{v}%', min: 5, max: (l) => 12 + lk(l) * 1.5, slots: ['weapon', 'helm', ...JEWEL] },
+  atkSpd: { text: '공격 속도 +{v}%', min: 3, max: (l) => Math.min(30, 8 + l * 0.5), slots: ['weapon', 'gloves', ...JEWEL] },
+  crit: { text: '치명타 확률 +{v}%', min: 1, max: (l) => Math.min(20, 3 + l * 0.25), slots: ['weapon', 'gloves', 'helm', ...JEWEL] },
   hpRegen: { text: '초당 HP 회복 +{v}', min: 1, max: (l) => 2 + l * 0.4, slots: ['armor', 'belt', 'helm', ...JEWEL] },
   mpRegen: { text: '초당 MP 회복 +{v}', min: 1, max: (l) => 1 + l * 0.25, slots: ['helm', 'weapon', ...JEWEL] },
   moveSpd: { text: '이동 속도 +{v}%', min: 3, max: () => 12, slots: ['boots'] },
-  lifeSteal: { text: '생명력 흡수 {v}%', min: 1, max: (l) => 2 + l * 0.15, slots: ['weapon', ...JEWEL] },
-  skillExp: { text: '스킬 숙련 획득 +{v}%', min: 5, max: (l) => 15 + l, slots: ['helm', ...JEWEL] },
-  goldFind: { text: '골드 획득 +{v}%', min: 5, max: (l) => 20 + l * 2, slots: ['gloves', 'boots', 'belt', ...JEWEL] },
-  magicFind: { text: '좋은 아이템 발견 +{v}%', min: 3, max: (l) => 10 + l, slots: ['helm', ...JEWEL] },
+  lifeSteal: { text: '생명력 흡수 {v}%', min: 1, max: (l) => Math.min(10, 2 + l * 0.15), slots: ['weapon', ...JEWEL] },
+  skillExp: { text: '스킬 숙련 획득 +{v}%', min: 5, max: (l) => 15 + lk(l), slots: ['helm', ...JEWEL] },
+  goldFind: { text: '골드 획득 +{v}%', min: 5, max: (l) => 20 + lk(l) * 2, slots: ['gloves', 'boots', 'belt', ...JEWEL] },
+  magicFind: { text: '좋은 아이템 발견 +{v}%', min: 3, max: (l) => 10 + lk(l), slots: ['helm', ...JEWEL] },
   allStats: { text: '모든 스탯 +{v}', min: 1, max: (l) => 1 + l * 0.25, slots: JEWEL, legendOnly: true },
+  // v0.42 신화 전용 옵션 (강화 던전 보스에서만 나오는 신화 장비)
+  finalDmg: { text: '최종 피해 +{v}%', min: 4, max: (l) => 6 + l * 0.035, mythOnly: true },
+  bossDmg: { text: '보스 · 네임드에게 주는 피해 +{v}%', min: 6, max: (l) => 10 + l * 0.06, mythOnly: true },
+  cdr: { text: '재사용 대기 -{v}%', min: 3, max: (l) => 5 + l * 0.02, slots: ['helm', 'gloves', ...JEWEL], mythOnly: true },
+  dmgReduce: { text: '받는 피해 -{v}%', min: 3, max: (l) => 5 + l * 0.02, slots: ['armor', 'offhand', 'belt', 'helm'], mythOnly: true },
 };
 
 // 이름 앞에 붙는 수식어 (가장 큰 옵션 기준)
@@ -219,8 +228,9 @@ export const AFFIX_PREFIX = {
   str: '거인의', dex: '날렵한', int: '현자의', wis: '고요한', vit: '강건한', maxHp: '생명의', maxMp: '마력의',
   armorPct: '단단한', dmgPct: '잔혹한', spellPct: '불타는', atkSpd: '재빠른', crit: '예리한', hpRegen: '재생의',
   mpRegen: '샘솟는', moveSpd: '바람의', lifeSteal: '흡혈의', skillExp: '수련자의', goldFind: '탐욕의',
-  magicFind: '행운의', allStats: '고대의',
+  magicFind: '행운의', allStats: '고대의', finalDmg: '종언의', bossDmg: '왕살해자의', cdr: '시간을 잊은', dmgReduce: '불괴의',
 };
+export const MYTH_NAMES = ['종언을 고하는', '태초의 신이 남긴', '별을 삼킨', '세계수의 심장', '심연을 걷는 자의', '혼돈을 길들인', '신을 벤', '영겁의 왕관'];
 export const LEGEND_NAMES = ['잠든 왕의', '망자의', '서리 군주의', '타락한 성기사의', '피의 서약', '그림자 군단의', '잊힌 신의'];
 
 // 처음 고르는 무기 — 무기 + 주 스탯 +2 + 첫 스킬북(안내 보상)

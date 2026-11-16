@@ -566,3 +566,18 @@ export function dropEss(st, level, tier, mult = 1, rng = Math.random) {
   resAdd(st, 'ess' + g, n);
   return { id: 'ess' + g, n };
 }
+
+// 강화 · 극한 던전 열쇠 (제작소 3 · 6단계): 아래 단계 열쇠 + 강화석 + 정수 + 지역 재료
+export const KEY_RECIPES = [
+  { id: 'dungeon_key2', lv: 3, gold: 8000, need: { dungeon_key: 1, ore: 30, ess2: 3 }, zoneMats: 15 },
+  { id: 'dungeon_key3', lv: 6, gold: 40000, need: { dungeon_key2: 1, ore2: 3, ess3: 3, ess4: 1 }, zoneMats: 30 },
+];
+export function craftKey(st, id, times = 1) {
+  const r = KEY_RECIPES.find((x) => x.id === id), ok = r && oreRecipeOk(st, r, times);
+  if (!ok?.ok) return ok || { ok: false };
+  st.gold -= r.gold * times;
+  for (const [k, q] of Object.entries(r.need)) resTake(st, k, q * times);
+  takeZoneMats(st, r.zoneMats * times);
+  resAdd(st, r.id, times);
+  return { ok: true, n: times };
+}

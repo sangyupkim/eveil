@@ -107,11 +107,21 @@ export class HUD {
     el.querySelectorAll('[data-a]').forEach((b) => b.addEventListener('pointerup', () => { if (performance.now() - t0 < 300) return; el.hidden = true; done(b.dataset.a === '1'); }));
   }
 
+  // 여러 개 중 하나 고르기 (던전 난이도 등): opts = [{ label, sub, off }], done(i) · 닫으면 -1
+  choose(title, text, opts, done) {
+    let el = $('#askBox');
+    if (!el) { el = document.createElement('div'); el.id = 'askBox'; document.body.appendChild(el); }
+    el.innerHTML = `<div class="tpBox"><h1 style="font-size:1.6em">${title}</h1><div style="margin:.4em 0 1em">${text}</div><div class="tpList" style="justify-content:center;flex-wrap:wrap">${opts.map((o, i) => `<button class="plate${o.off ? '' : ' gold'}" data-a="${i}" ${o.off ? 'disabled' : ''}><b>${o.label}</b>${o.sub ? `<br><small>${o.sub}</small>` : ''}</button>`).join('')}<button class="plate" data-a="-1">닫기</button></div></div>`;
+    el.hidden = false;
+    const t0 = performance.now();
+    el.querySelectorAll('[data-a]').forEach((b) => b.addEventListener('pointerup', () => { if (performance.now() - t0 < 300 || b.disabled) return; el.hidden = true; done(Number(b.dataset.a)); }));
+  }
+
   // 칭호 고르기: 이름 + 특성 셋 중 하나
   titlePick(o, done) {
     let el = $('#titlePick');
     if (!el) { el = document.createElement('div'); el.id = 'titlePick'; document.body.appendChild(el); }
-    const tier = ['1단계', '2단계', '3단계'][o.tier];
+    const tier = `${o.tier + 1}단계`;
     el.innerHTML = `<div class="tpBox"><div class="note">칭호 ${tier}</div><h1>${o.name}</h1>
       <div class="tpList">${o.choices.map((c, i) => `<button class="plate tpPick" data-i="${i}">${c.text}</button>`).join('')}</div></div>`;
     el.hidden = false;

@@ -18,7 +18,7 @@ import { CAMPS, inCamp } from '../engine2d/stage.js';
 import { TIER_NAMES } from '../world/world.js';
 import { entranceOf } from '../data/dungeons.js';
 import { MATERIALS, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
-import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, mercUngear, mercById, recruits, assignMerc, SKILL_OF, SKILLS_ALL, BONUS, bonusOf, awakenMerc, awakenCost, dismiss, staMax, SKILL_NAMES, GRADES, MERC, EXP_STA, deathChance, salvage, salvageValue, reforge, reforgeCost, resCount, resTake, ORE_RECIPES, oreRecipeOk, craftOre } from '../game/town.js';
+import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, mercUngear, mercById, recruits, assignMerc, SKILL_OF, SKILLS_ALL, BONUS, bonusOf, awakenMerc, awakenCost, dismiss, staMax, SKILL_NAMES, GRADES, MERC, EXP_STA, deathChance, salvage, salvageValue, reforge, reforgeCost, resCount, resTake, ORE_RECIPES, oreRecipeOk, craftOre, KEY_RECIPES, craftKey } from '../game/town.js';
 import { RESEARCH, researchCost } from '../data/buildings.js';
 import { AFFIXES } from '../data/items.js';
 import { PLOTS, BUILDINGS, EXPEDITIONS, townOf, buildingAt, build, upgrade, collect, enhance, enhanceCap, enhanceCost, hire, mercSlots, dispatch, claim, tick } from '../game/town.js';
@@ -89,7 +89,9 @@ const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '
 // 장비 찾기 (v0.41.3): 'e:부위' 착용 · 'b:uid' 가방 · 'v:uid' 창고 — 대장간 · 보석상은 세 곳 모두에서 고른다
 const gearAt = (st, key) => { const [k, v] = String(key || '').split(':'); return k === 'e' ? st.equip[v] : k === 'v' ? vault().items.find((x) => x.uid === Number(v)) : st.inv.find((x) => x.uid === Number(v)); };
 const gearList = (st, ok) => [...SLOTS.filter((sl) => st.equip[sl] && ok(st.equip[sl])).map((sl) => ['e:' + sl, st.equip[sl], '착용']), ...st.inv.filter((x) => BASES[x.base]?.slot && ok(x)).map((x) => ['b:' + x.uid, x, '가방']), ...vault().items.filter((x) => x && BASES[x.base]?.slot && ok(x)).map((x) => ['v:' + x.uid, x, '창고'])];
-let KEY_PANEL = () => ''; // 강화 열쇠 (v0.42, 아래에서 채운다)
+// 강화 · 극한 던전 열쇠 제작 (제작소 3 · 6단계, v0.42)
+const KEY_PANEL = (st, b) => `<h3>던전 열쇠 제작</h3>` + KEY_RECIPES.map((r) => { const ok = oreRecipeOk(st, r); const need = Object.entries(r.need).map(([id, q]) => `${BASES[id].name} ${q} (${resCount(st, id)})`).join(' · ');
+  return `<div class="row"><div class="cell shopIco">${ico({ base: r.id })}</div><div class="grow"><b>${BASES[r.id].name}</b><div class="note">${b.lv < r.lv ? `제작소 ${r.lv}단계` : `${need} · 지역 재료 ${r.zoneMats} · ${r.gold.toLocaleString()} G`}</div></div><button class="btn" data-keycraft="${r.id}" ${ok.ok ? '' : 'disabled'}>만들기</button></div>`; }).join('');
 const ico = (it) => `<img src="${itemIcon(it)}" alt="" draggable="false" />`;
 const sicon = (id) => `<div class="sicon" style="background:radial-gradient(circle at 35% 30%, ${SKILLS[id].color}, #17111f 90%)"><img src="${skillIcon(id)}" alt="" /></div>`;
 
@@ -983,6 +985,7 @@ export class Windows {
       else { audio.play('error'); w.ui.toast(`강화 실패 · 장인의 기운 ${+((r.jang || 0) * 100).toFixed(1)}%`); }
       w.ui.dirty(); this.render();
     });
+    on('[data-keycraft]', (el) => { const r = craftKey(st, el.dataset.keycraft); if (r.ok) audio.play('rankup'); townDone(r, `${BASES[el.dataset.keycraft].name}을(를) 만들었습니다`); });
     on('[data-orecraft]', (el) => { const [id, n] = el.dataset.orecraft.split('|'); const r = craftOre(st, id, Number(n)); if (r.ok) audio.play('rankup'); townDone(r, `${BASES[id].name} ${n}개를 만들었습니다`); });
     on('[data-hirem]', (el) => townDone(hire(st, el.dataset.hirem), '용병을 고용했습니다'));
     on('[data-mwork]', (el) => { const [id, pl] = el.dataset.mwork.split('|'); townDone(assignMerc(st, id, pl || null)); });

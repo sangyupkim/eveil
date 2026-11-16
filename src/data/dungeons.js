@@ -79,3 +79,11 @@ export const entranceOf = (zn) => ({ x: zn.x + (zn.x >= 0 ? -1 : 1) * zn.r * 0.4
 export const stageMods = (stage) => ({ level: 2 * (stage - 1), hp: 1 + 0.08 * stage, dmg: 1 + 0.04 * stage });
 // 던전 몬스터 레벨 (세계 단계 보정 전): 지역 중간 레벨 + 단계
 export const dungeonLevel = (zn, stage) => Math.round((zn.levels[0] + zn.levels[1]) / 2) + stageMods(stage).level;
+
+// v0.42 던전 난이도 (들어갈 때 고른다): 단계 1 ~ 10 각각에 보통 · 강화 · 극한. 강화 · 극한 열쇠는 제작소에서 만든다
+// 신화 장비는 강화 · 극한 던전 우두머리에서만 (필드 보스 · 보통 던전에서는 나오지 않는다)
+export const DUNGEON_DIFFS = [
+  { name: '보통', key: 'dungeon_key', hp: 1, dmg: 1, loot: 1, items: 2, myth: () => 0 },
+  { name: '강화', key: 'dungeon_key2', hp: 2.6, dmg: 1.7, loot: 1.8, items: 3, myth: (stage) => 0.02 + 0.008 * stage },
+  { name: '극한', key: 'dungeon_key3', hp: 6, dmg: 2.8, loot: 3, items: 4, myth: (stage) => 0.1 + 0.03 * stage },
+];

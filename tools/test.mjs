@@ -7,7 +7,7 @@ import { learn, addSkillExp, canLearn, skillValues } from '../src/game/skills.js
 import { rollLoot, rollDeathDrop } from '../src/game/loot.js';
 import { makeItem, itemName, rollBase } from '../src/game/items.js';
 import * as await_fs from 'node:fs';
-import { craftOre, enhanceCost, resAdd, resCount, essGrade } from '../src/game/town.js';
+import { craftOre, enhanceCost, resAdd, resCount, essGrade, craftKey } from '../src/game/town.js';
 import { finishBuilds, brew, brewCollect, dispatchParty, shelterUp, deathChance, rollMerc, researchStart } from '../src/game/town.js';
 import { HERBS } from '../src/data/potions.js';
 import { countOf } from '../src/game/inventory.js';
@@ -499,6 +499,17 @@ test('드랍: 각성 등급 책이 나와도 이름 있는 전설 · 보석 굴�
   assert.ok(named / 6000 > 0.045, '이름 있는 전설 ' + named); // NAMED_CHANCE.boss 6%
   let g = 0, n = 0; for (let i = 0; i < 400; i++) { const it = makeItem('short_sword', { rarity: 'legend', ilvl: 50 }); for (const a of it.affixes) { n++; if (a.great) g++; } }
   assert.ok(g / n > 0.05 && g / n < 0.11, '탁월 ' + g / n);
+});
+
+test('v0.42: 신화 장비 · 강화 열쇠 · 필드에서는 신화 없음', () => {
+  const p = newPlayer('t', { face: 'm01' }, 'sword'); p.gold = 1e8;
+  const it = makeItem('short_sword', { rarity: 'myth', ilvl: 400 }, p);
+  assert.equal(it.affixes.filter((a) => a.myth).length, 2); assert.equal(it.sockets, 3); assert.ok(it.title);
+  for (let i = 0; i < 300; i++) for (const d of rollLoot({ tier: 'boss', level: 480 }, {}, p)) assert.notEqual(d.item?.rarity, 'myth');
+  townOf(p).plots.p1 = { type: 'workshop', lv: 6, stock: 0, since: Date.now() };
+  assert.equal(craftKey(p, 'dungeon_key2').ok, false);
+  resAdd(p, 'dungeon_key', 1); resAdd(p, 'ore', 30); resAdd(p, 'ess2', 3); resAdd(p, 'mat_field', 15);
+  assert.ok(craftKey(p, 'dungeon_key2').ok); assert.equal(resCount(p, 'dungeon_key2'), 1); assert.equal(resCount(p, 'dungeon_key'), 0);
 });
 
 test('v0.42: 강화 +20 · 높은 강화석 제작 · 정수 단계', () => {

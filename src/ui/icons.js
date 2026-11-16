@@ -36,6 +36,8 @@ export function itemIcon(it) {
   if (it.shard) return iconUrl(46, '#c58cff'); // 능력치 파편: 모두 같은 그림 + 칸 아래 옵션 글 (cellTag)
   if (BASES[it.base]?.type === 'pet') return petIcon(BASES[it.base].pet);
   if (ELIXIRS[it.base]) return iconUrl(ITEM_LOOK[it.base]?.icon ?? 84, ELIXIRS[it.base].color);
+  if (it.base === 'dungeon_key2') return iconUrl(226, '#5aa8ff'); // 강화 열쇠: 푸른 테두리
+  if (it.base === 'dungeon_key3') return iconUrl(226, '#ff4a6a'); // 극한 열쇠: 붉은 테두리
   if (it.base === 'ore') return oreIcon();
   if (it.base === 'ore2') return iconUrl(71, '#5aa8ff', 'grayscale(1) sepia(1) hue-rotate(170deg) saturate(2.4) brightness(0.8)'); // 상급: 푸른 돌
   if (it.base === 'ore3') return iconUrl(71, '#c070ff', 'grayscale(1) sepia(1) hue-rotate(230deg) saturate(2.6) brightness(0.8)'); // 최상급: 보랏빛 돌

@@ -32,5 +32,5 @@ export const GEM_GRADES = [{ pre: '조각난', v: 2, lvl: 1 }, { pre: '흐린', 
 export const gemGradeFor = (lv, rng = Math.random) => { let k = 0; GEM_GRADES.forEach((g, i) => { if (lv >= g.lvl) k = i; }); return Math.min(GEM_GRADES.length - 1, k + (rng() < 0.1 ? 1 : 0)); };
 export const gemId = (g, k) => `gem_${g}_${k}`;
 // 등급(구멍 수): 희귀 0~1 · 영웅 1~2 · 전설 2
-export const socketRoll = (rarity, rng) => (rarity === 'rare' ? (rng() < 0.35 ? 1 : 0) : rarity === 'hero' ? 1 + (rng() < 0.4 ? 1 : 0) : rarity === 'legend' ? 2 : 0);
+export const socketRoll = (rarity, rng) => (rarity === 'rare' ? (rng() < 0.35 ? 1 : 0) : rarity === 'hero' ? 1 + (rng() < 0.4 ? 1 : 0) : rarity === 'legend' ? 2 : rarity === 'myth' ? 3 : 0);
 export const GEM_DROP = { normal: 0.004, elite: 0.12, named: 0.4, boss: 1 };

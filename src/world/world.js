@@ -3,7 +3,7 @@ import { bagSize } from '../game/inventory.js';
 import { ZONES as ALL_ZONES } from '../data/world.js';
 import { chapterK } from '../data/chapters.js';
 import { awakenOk } from '../data/awaken_skills.js';
-import { DUNGEON_X, entranceOf, MAX_STAGE, stageMods, dungeonLevel, layout as dungeonLayout, cellPos, N } from '../data/dungeons.js';
+import { DUNGEON_X, entranceOf, MAX_STAGE, stageMods, dungeonLevel, layout as dungeonLayout, cellPos, N, DUNGEON_DIFFS } from '../data/dungeons.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { gemGradeFor } from '../data/legends.js';
 export const TIER_NAMES = ['평온', '악몽', '지옥', '혼돈']; // v0.42 혼돈 = 각성 380 ~ 500
@@ -527,16 +527,18 @@ export class World {
   askDungeon(zi) {
     if (this.asking || zi < 0) return;
     if (!this.bossCleared(ALL_ZONES[zi])) { this.ui.toast(`${ALL_ZONES[zi].boss.name}을(를) 쓰러뜨려야 던전이 열립니다`); sfx('error'); return; }
-    const zn = ALL_ZONES[zi], stage = Math.min(MAX_STAGE, (this.st.dungeons?.[zn.id] || 0) + 1), keys = countOf(this.st, 'dungeon_key');
+    const zn = ALL_ZONES[zi], stage = Math.min(MAX_STAGE, (this.st.dungeons?.[zn.id] || 0) + 1);
     this.asking = true; this.moveTo = null; this.target = null; this.toggleAuto(false);
-      this.ui.ask(`${zn.name} 던전 ${stage}단계`, keys ? `던전 열쇠 1개를 써서 들어갈까요? · 열쇠 ${keys}` : '던전 열쇠가 필요합니다', keys ? '들어가기' : null, (yes) => { this.asking = false; if (yes) this.enterDungeon(zi); });
+    // v0.42 난이도 셋 중 하나 (열쇠가 있는 것만)
+    const opts = DUNGEON_DIFFS.map((d) => { const n = countOf(this.st, d.key); return { label: d.name, sub: `${BASES[d.key].name} ${n}`, off: !n }; });
+    this.ui.choose(`${zn.name} 던전 ${stage}단계`, '난이도', opts, (i) => { this.asking = false; if (i >= 0) this.enterDungeon(zi, i + 1); });
   }
-  enterDungeon(zi) {
-    const st = this.st, zn = ALL_ZONES[zi];
-    if (!takeOne(st, 'dungeon_key')) return;
+  enterDungeon(zi, diff = 1) {
+    const st = this.st, zn = ALL_ZONES[zi], D = DUNGEON_DIFFS[diff - 1] || DUNGEON_DIFFS[0];
+    if (!takeOne(st, D.key)) return;
     const stage = Math.min(MAX_STAGE, ((st.dungeons ||= {})[zn.id] || 0) + 1);
     this.leaveDungeon(true);
-    this.dungeon = { zi, stage, zone: zn };
+    this.dungeon = { zi, stage, zone: zn, diff };
     this.toggleAuto(false);
     const Ld = dungeonLayout(zi), sp0 = cellPos(zi, Ld.start[0], Ld.start[1]);
     this.player.pos.set(sp0.x, 0, sp0.z); this.moveTo = null; this.target = null;
@@ -551,7 +553,7 @@ export class World {
     const put = (k, tier, fixed) => {
       const p = cellPos(zi, k % N, Math.floor(k / N));
       const m = this.spawn({ zone: zn, x: p.x, z: p.z, level: L, tier, timer: 0, mon: null, fixed });
-      m.maxHp = m.hp = Math.round(m.maxHp * mod.hp); m.dmg = m.dmg.map((v) => v * mod.dmg); m.dungeon = true; m.exp *= 1.5;
+      m.maxHp = m.hp = Math.round(m.maxHp * mod.hp * D.hp); m.dmg = m.dmg.map((v) => v * mod.dmg * D.dmg); m.dungeon = true; m.exp *= 1.5 * D.loot;
       m.home = { x: p.x, z: p.z };
     };
     for (let n = 0; n < 14 + Math.min(8, stage) && cells.length; n++) put(pick(), 'normal'); // 낮은 단계는 몬스터가 적다
@@ -559,7 +561,7 @@ export class World {
     for (let n = 0; n < 4 && cells.length; n++) put(cells.splice(Math.floor(Math.random() * Math.min(12, cells.length)), 1)[0], 'elite');
     put(Ld.boss[1] * N + Ld.boss[0], 'boss', { type: zn.boss.type, name: `${zn.name} 던전 우두머리` });
     { const bm = this.monsters[this.monsters.length - 1]; if (bm?.tier === 'boss') { const k = 0.55 + 0.09 * stage; bm.maxHp = bm.hp = Math.round(bm.maxHp * k); } } // 우두머리: 1단계 0.64배 → 10단계 1.45배
-    this.ui.toast(`${zn.name} 던전 ${stage}단계 — 가장 깊은 곳의 우두머리를 찾으세요`, '#ffd84a');
+    this.ui.toast(`${zn.name} 던전 ${stage}단계 · ${D.name} — 가장 깊은 곳의 우두머리를 찾으세요`, diff > 1 ? '#ff7a9a' : '#ffd84a');
     this.ui.dirty();
   }
   leaveDungeon(silent = false) {
@@ -600,8 +602,11 @@ export class World {
     this.dailyDone(dailyProgress(st, { kind: 'dungeon', zone: zn.id }));
     // 보상: 영웅 이상 2개 (단계가 높을수록 전설), 상급 스킬북 하나, 금화
     const lv = dungeonLevel(zn, dg.stage) + this.tierOffset;
-    for (let i = 0; i < 2; i++) {
-      const rarity = Math.random() < 0.08 + dg.stage * 0.035 ? 'legend' : 'hero';
+    const D = DUNGEON_DIFFS[(dg.diff || 1) - 1];
+    let myth = 0;
+    for (let i = 0; i < D.items; i++) {
+      // 신화: 강화 · 극한 던전 우두머리에서만 (단계가 높을수록 자주)
+      const rarity = Math.random() < D.myth(dg.stage) ? (myth++, 'myth') : Math.random() < (0.08 + dg.stage * 0.035) * D.loot ? 'legend' : 'hero';
       // 절반은 내 무기 종류(무기 · 보조 칸)로 — 장비 줄이 많아져 지팡이 등이 묻히지 않게 (v0.39.6)
       let base = rollBase(lv);
       if (i === 0) { const cls = this.d.cls && BASES[st.equip.weapon?.base]?.cls, mine = Array.from({ length: 30 }, () => rollBase(lv)).find((id) => BASES[id].cls === cls || (BASES[id].slot === 'offhand' && BASES[st.equip.offhand?.base])); if (mine) base = mine; }
@@ -609,8 +614,10 @@ export class World {
     }
     const tier = dg.stage >= 7 ? 5 : dg.stage >= 4 ? 4 : 3, pool = Object.keys(SKILLS).filter((id) => SKILLS[id].tier === tier && !SKILLS[id].awaken); // 각성 등급이 정해진 스킬은 몬스터 레벨로만
     this.dropGround({ kind: 'item', item: makeBook(pool[Math.floor(Math.random() * pool.length)], st) }, m.pos.x - 1.2, m.pos.z + 1);
-    this.dropGround({ kind: 'gold', amount: Math.round(lv * 60 * (1 + dg.stage * 0.2)) }, m.pos.x, m.pos.z - 1);
-    this.ui.toast(`던전 ${dg.stage}단계 돌파!`, '#ffd84a');
+    this.dropGround({ kind: 'gold', amount: Math.round(lv * 60 * (1 + dg.stage * 0.2) * D.loot) }, m.pos.x, m.pos.z - 1);
+    if (dg.diff > 1) { const e = dropEss(st, lv, 'boss', D.loot); if (e) this.ui.log(`${BASES[e.id].name} +${e.n}`, '#c8b0ff'); }
+    if (myth) { this.fx.shake(0.6); this.fx.pillar(m.pos.x, m.pos.z, 0xff4a8a, 3, 8, 2.5); sfx('rare'); this.ui.toast('신화 장비!', '#ff4a8a'); (st.rec ||= {}).myths = (st.rec.myths || 0) + myth; }
+    this.ui.toast(`던전 ${dg.stage}단계 · ${D.name} 돌파!`, '#ffd84a');
     sfx('awaken');
     dg.cleared = true; // 공격 버튼이 「나가기」로 바뀐다 (input.js). 전리품을 다 줍고 나간다
   }
@@ -1042,6 +1049,7 @@ export class World {
   hurtPlayer(raw, m) {
     if (this.dead) return;
     const st = this.st, d = this.d;
+    if (d.dmgReduce) raw *= 1 - d.dmgReduce / 100;
     const rf = rewardFactor(st, m.level);
     const apMult = rf.ap * this.autoMult;
     const head = this.player.pos.clone().setY(2.4);
@@ -1121,6 +1129,7 @@ export class World {
     const rf = rewardFactor(st, m.level);
     const apMult = rf.ap * this.autoMult;
     if (m.tier === 'boss' && m.fightStart == null) m.fightStart = this.time;
+    if ((m.tier === 'boss' || m.tier === 'named') && d.bossDmg) raw *= 1 + d.bossDmg / 100;
     const dexN = st.dex?.[m.type] || 0; raw *= 1 + (dexN >= 500 ? 0.06 : dexN >= 200 ? 0.04 : dexN >= 50 ? 0.02 : 0);
     let red = m.armor / (m.armor + 60) * (1 - pierce);
     if (m.def.behave === 'shield' && !ctx?.spell) {
@@ -1538,7 +1547,7 @@ export class World {
     let g = 0, n = 0;
     st.inv = st.inv.filter((it) => {
       // 땅에서 막 주운 장비만 판다 — 한 번이라도 입었던 것 · 벗은 것 · 창고에서 꺼낸 것은 절대 팔지 않는다
-      if (!it.loot || it.worn || it.book || !BASES[it.base]?.slot || it.set || it.named || it.rarity === 'hero' || it.rarity === 'legend') return true;
+      if (!it.loot || it.worn || it.book || !BASES[it.base]?.slot || it.set || it.named || it.rarity === 'hero' || it.rarity === 'legend' || it.rarity === 'myth') return true;
       g += itemValue(it); n++; return false;
     });
     if (n) { st.gold += g; this.ui.log(`자동 판매: 장비 ${n}개 +${g.toLocaleString()}G`, '#ffd84a'); sfx('coin'); this.ui.dirty(); }
@@ -1604,7 +1613,7 @@ export class World {
     this.actCd = RECOVER.skill;
     st.mp -= v.mp;
     this.perk(sk.type === 'buff' ? 'buff' : sk.ap === 'int' ? 'spell' : 'skill', this.target?.pos);
-    this.cds[id] = v.cd;
+    this.cds[id] = v.cd * (1 - (this.d.cdr || 0) / 100);
     // 쓴 횟수도 성장에: 스킬의 필요 스탯에 필요량 비율대로 (각성 때 그 스탯으로 나뉜다)
     if (!v.echoed && sk.req) { const tot = Object.values(sk.req).reduce((a, b) => a + b, 0) || 1; for (const [k, n] of Object.entries(sk.req)) addAP(st, k, AP_TABLE.skillUse * (1 + 0.5 * ((sk.tier || 1) - 1)) * (n / tot), this.autoMult); }
     if (!v.echoed) this.skillExp(id, 1);

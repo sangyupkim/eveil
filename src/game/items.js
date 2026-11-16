@@ -1,5 +1,5 @@
 // 아이템 생성: 등급 · 랜덤 옵션 · 이름 · 가격
-import { BASES, AFFIXES, RARITY, RARITY_ORDER, AFFIX_PREFIX, LEGEND_NAMES, WEAPON_CLASSES } from '../data/items.js';
+import { BASES, AFFIXES, RARITY, RARITY_ORDER, AFFIX_PREFIX, LEGEND_NAMES, MYTH_NAMES, WEAPON_CLASSES } from '../data/items.js';
 import { SKILLS, BOOK_TIERS } from '../data/skills.js';
 import { R, randInt, pick, weighted } from './rng.js';
 import { UNIQUES } from '../data/titles.js';
@@ -30,20 +30,23 @@ export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1 } = {}, 
   const slot = base.slot;
   const pool = Object.keys(AFFIXES).filter((id) => {
     const a = AFFIXES[id];
-    if (a.legendOnly && rarity !== 'legend') return false;
+    if (a.legendOnly && rarity !== 'legend' && rarity !== 'myth') return false;
+    if (a.mythOnly) return false; // 신화 옵션은 아래에서 따로 두 개
     return !a.slots || a.slots.includes(slot);
   });
-  for (let i = 0; i < n && pool.length; i++) {
+  // 신화: 신화 전용 옵션 두 개를 먼저 (부위에 맞는 것 중)
+  if (rarity === 'myth') { const mp = Object.keys(AFFIXES).filter((id) => AFFIXES[id].mythOnly && (!AFFIXES[id].slots || AFFIXES[id].slots.includes(slot))); for (let i = 0; i < 2 && mp.length; i++) { const id = mp.splice(Math.floor(rng() * mp.length), 1)[0], a = AFFIXES[id], mx = a.max(ilvl); it.affixes.push({ id, v: Math.max(a.min, Math.round(mx * (0.7 + rng() * 0.3))), myth: true }); } }
+  for (let i = 0; i < n - (rarity === 'myth' ? 2 : 0) && pool.length; i++) {
     const id = pool.splice(Math.floor(rng() * pool.length), 1)[0];
     const a = AFFIXES[id];
     const max = Math.max(a.min, a.max(ilvl) * r.mult);
     let v = Math.max(a.min, Math.round(a.min + rng() * (max - a.min)));
     // 탁월한 옵션 (영웅 · 전설, 옵션마다 8%): 최대치의 110 ~ 130% — 같은 전설이라도 눈에 띄는 장비가 나오게 (v0.39.6)
-    const great = (rarity === 'hero' || rarity === 'legend') && rng() < 0.08;
+    const great = (rarity === 'hero' || rarity === 'legend' || rarity === 'myth') && rng() < (rarity === 'myth' ? 0.2 : 0.08);
     if (great) v = Math.max(v + 1, Math.round(max * (1.1 + rng() * 0.2)));
     it.affixes.push(great ? { id, v, great: true } : { id, v });
   }
-  if (rarity === 'legend') { it.title = pick(LEGEND_NAMES, rng); it.unique = Math.floor(rng() * UNIQUES.length); }
+  if (rarity === 'legend' || rarity === 'myth') { it.title = pick(rarity === 'myth' ? MYTH_NAMES : LEGEND_NAMES, rng); it.unique = Math.floor(rng() * UNIQUES.length); }
   const sk = socketRoll(rarity, rng);
   if (sk) { it.sockets = sk; it.gems = []; }
   return it;
@@ -67,7 +70,7 @@ function baseName(it) {
   const base = BASES[it.base];
   if (base.type === 'potion' || base.stack) return base.name;
   if (it.named) return it.title;
-  if (it.rarity === 'legend') return `${it.title} ${base.name}`;
+  if (it.rarity === 'legend' || it.rarity === 'myth') return `${it.title} ${base.name}`;
   if (it.rarity === 'common' || !it.affixes.length) return base.name;
   const top = [...it.affixes].sort((a, b) => b.v / AFFIXES[b.id].max(it.ilvl) - a.v / AFFIXES[a.id].max(it.ilvl))[0];
   return `${AFFIX_PREFIX[top.id]} ${base.name}`;
