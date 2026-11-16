@@ -566,3 +566,6 @@ html.force-land #rotate { display: none !important; }
 #winAlert .ntcRow.on { border-color: #c9a050; }
 #winAlert .ntcInfo .bigico { width: 3em; height: 3em; }
 @media (max-width: 640px) { #winAlert .ntc { flex-direction: column; } #winAlert .ntcInfo { border-left: 0; padding-left: 0; } }
+
+#loadFix { margin: 1em auto 0; display: block; }
+#loadFix[hidden] { display: none; }

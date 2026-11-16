@@ -340,6 +340,7 @@ function startGame(stage, st) {
 boot().catch((e) => {
   console.error(e);
   $('.sub').textContent = '불러오기에 실패했습니다: ' + e.message;
+  window.__loadFix?.(); // 다시 불러오기 단추
 });
 
 // 메인 화면: 오른쪽 아래에 버전, 늘 새 버전을 확인해 있으면 바로 새로 연다

@@ -110,6 +110,19 @@
       <h1>에베이</h1>
       <p class="sub">레벨은 없다. 네가 싸운 방식이 너를 만든다.</p>
       <div id="loadBar"><i></i></div>
+      <button id="loadFix" class="plate gold" hidden>다시 불러오기</button>
+      <script>
+        // v0.44.19 로딩이 20초 넘게 멈추면: 예전 설치본(서비스 워커 · 그림 저장소)만 지우고 다시 연다. 캐릭터 저장(localStorage)은 그대로
+        (function () {
+          var fix = async function () {
+            try { var rs = await navigator.serviceWorker?.getRegistrations?.(); for (var r of rs || []) await r.unregister(); } catch (e) {}
+            try { for (var k of await caches.keys()) await caches.delete(k); } catch (e) {}
+            location.reload();
+          };
+          var b = document.getElementById('loadFix'); b.onclick = fix; window.__loadFix = function () { b.hidden = false; };
+          setTimeout(function () { var l = document.getElementById('loadBar'); if (l && !l.hidden) b.hidden = false; }, 20000);
+        })();
+      </script>
       <div id="titleMenu" hidden>
         <div id="charList" class="charList"></div>
         <div class="charBtns"><button id="btnPlay" class="plate gold">게임 시작</button><button id="btnNewChar" class="plate">새 캐릭터</button><button id="btnDelChar" class="plate">삭제</button><button id="btnInstall" class="plate">앱으로 설치</button></div>
