@@ -169,6 +169,8 @@ globalThis.__stage = stage;
     // (다른 기기에서 방금까지 하던 진행). 새 캐릭터는 서버 저장을 덮어쓴다
     if (cloud.id) {
       $('#btnPlay').disabled = true;
+      // 다른 기기에서 하던 중이면 그 기기의 마지막 진행을 받을 때까지 잠깐 기다린다
+      cloud.onWait = (on) => { const b = $('#btnPlay'); if (b) { b.dataset.t ??= b.textContent; b.textContent = on ? '다른 기기 진행 받는 중…' : b.dataset.t; } };
       const c = await cloud.claim(st?.cid || sel);
       $('#btnPlay').disabled = false;
       const remote = c.ok && !fresh ? fixSave(c.data) : null;
@@ -298,6 +300,7 @@ function startGame(stage, st) {
   };
   loop();
   // 다른 기기에서 같은 계정으로 들어오면 여기는 멈춘다 (저장도 더 하지 않는다 — 두 기기가 서로 덮어쓰지 않게)
+  cloud.finalState = () => (window.__noSave ? null : st); // 넘겨줄 때 올릴 마지막 진행
   cloud.onMoved = () => {
     window.__noSave = true; window.__stop = true;
     // 이 기기의 저장은 낡은 것으로 표시: 다음에 켜면 서버(새 기기) 저장을 받는다

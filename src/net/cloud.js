@@ -140,20 +140,37 @@ export const cloud = {
     if (!r.ok) return { ok: false, error: r.error };
     this.moved = false;
     clearInterval(this.pingT);
-    // 다른 기기가 가져갔는지 15초마다 확인 (저장이 없을 때도 빨리 알아채게)
+    // 다른 기기가 가져갔는지 5초마다 확인 (가져가면 이 기기의 마지막 진행을 올리고 멈춘다)
     this.pingT = setInterval(async () => {
       if (!account || this.moved || document.hidden) return;
       const p = await post({ type: 'ash_ping', token: account.token });
       if (p.ok && p.moved) this.kick();
-    }, 15000);
+    }, 5000);
     let data = null;
+    // 예전 기기가 방금까지 하고 있었으면: 그 기기가 마지막 저장을 올릴 때까지 기다렸다가(최대 12초) 최신 저장을 받는다
+    if (r.handoff) {
+      this.onWait?.(true);
+      for (let i = 0; i < 12; i++) {
+        await new Promise((ok) => setTimeout(ok, 1000));
+        const h = await post({ type: 'ash_handoff', token: account.token });
+        if (!h.ok || h.done) break;
+      }
+      const l = await post({ type: 'ash_load', token: account.token, cid });
+      if (l.ok && l.data) r.data = l.data;
+      this.onWait?.(false);
+    }
     try { data = r.data ? JSON.parse(r.data) : null; } catch { /* 깨진 저장 */ }
     return { ok: true, data };
   },
-  kick() {
+  // 다른 기기가 가져갔다: 이 기기의 지금 진행을 마지막으로 한 번 올리고(final) 멈춘다
+  async kick() {
     if (this.moved) return;
     this.moved = true;
     clearInterval(this.pingT);
+    const st = this.finalState?.();
+    if (st && account) {
+      try { st.savedAt = Date.now(); await post({ type: 'ash_save', token: account.token, cid: st.cid, data: JSON.stringify(st), at: st.savedAt, final: 1 }); } catch { /* 못 올려도 멈춘다 */ }
+    }
     this.onMoved?.();
   },
 

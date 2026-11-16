@@ -11,6 +11,7 @@
  *  - POST /api { type: 'ash_claim', token }                    → 이 기기를 지금 하는 기기로 (다른 기기는 저장이 막힌다), 최신 저장을 돌려준다
  *  관리(v0.36): ash_cfg(밸런스 받기) · ash_notices · ash_mail / ash_mail_claim {ids?} · ash_admin_*(d.admin = ADMIN_KEY): cfg · notice_add/del · mail · mails · mail_del
  *  - POST /api { type: 'ash_ping', token }                     → { moved } 다른 기기가 가져갔는가
+ *  - POST /api { type: 'ash_handoff', token }                  → { done } 예전 기기의 마지막 저장이 끝났는가 (claim이 handoff를 돌려준 뒤)
  *  캐릭터 여럿 (v0.20): 저장 · 순위 열쇠는 '아이디/cid'. cid가 없으면 예전처럼 아이디 하나
  *  - POST /api { type: 'ash_chars', token }                    → { list: [{ cid, at, name, aw }] }
  *  - POST /api { type: 'ash_nick', token, cid, nick }          닉네임 차지 (중복이면 nick_taken)
@@ -60,6 +61,8 @@ function setup(db: DB): Promise<unknown> {
       db.prepare('CREATE TABLE IF NOT EXISTS ash_errors (t INTEGER, ip TEXT, ver TEXT, msg TEXT, stack TEXT, ua TEXT)'),
       // 계정마다 지금 하는 기기 하나 (토큰 해시). 다른 토큰의 저장은 'moved'로 거절한다
       db.prepare('CREATE TABLE IF NOT EXISTS ash_active (id TEXT PRIMARY KEY, token_hash TEXT NOT NULL, at INTEGER NOT NULL)'),
+      // 기기 넘기기 (v0.44.7): 새 기기가 가져갈 때 예전 기기가 마지막 저장을 한 번 더 올릴 수 있게
+      db.prepare('CREATE TABLE IF NOT EXISTS ash_handoff (id TEXT PRIMARY KEY, prev_hash TEXT NOT NULL, at INTEGER NOT NULL, done INTEGER NOT NULL)'),
       // 닉네임: 소문자로 맞춘 이름 하나에 캐릭터 하나
       db.prepare('CREATE TABLE IF NOT EXISTS ash_names (lname TEXT PRIMARY KEY, name TEXT NOT NULL, k TEXT NOT NULL, at INTEGER NOT NULL)'),
       // 관리 페이지: 밸런스 덮어쓰기(kv) · 공지 · 우편 (계정마다, '*' = 모두)
@@ -263,11 +266,23 @@ export async function ashen(db: DB, d: Record<string, unknown>, ip: string, admi
     return { ok: true };
   }
   if (type === 'ash_claim') {
+    // 예전 기기가 30초 안에 살아 있었으면 넘기기: 그 기기가 마지막 저장을 올릴 때까지 새 기기가 잠깐 기다린다
+    const old = await db.prepare('SELECT token_hash, at FROM ash_active WHERE id = ?').bind(id).first<{ token_hash: string; at: number }>();
+    const handoff = !!old && old.token_hash !== th && Date.now() - old.at < 30000;
+    if (handoff) await db.prepare('INSERT INTO ash_handoff (id, prev_hash, at, done) VALUES (?, ?, ?, 0) ON CONFLICT(id) DO UPDATE SET prev_hash = excluded.prev_hash, at = excluded.at, done = 0').bind(id, old!.token_hash, Date.now()).run();
     await db.prepare('INSERT INTO ash_active (id, token_hash, at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET token_hash = excluded.token_hash, at = excluded.at').bind(id, th, Date.now()).run();
     const s = await db.prepare('SELECT data, at FROM ash_saves WHERE id = ?').bind(key).first<{ data: string; at: number }>();
-    return { ok: true, id, data: s?.data ?? null, at: s?.at ?? 0 };
+    return { ok: true, id, data: s?.data ?? null, at: s?.at ?? 0, handoff };
   }
-  if (type === 'ash_ping') return { ok: true, moved: await movedAway() };
+  if (type === 'ash_handoff') {
+    const h = await db.prepare('SELECT at, done FROM ash_handoff WHERE id = ?').bind(id).first<{ at: number; done: number }>();
+    return { ok: true, done: !h || !!h.done || Date.now() - h.at > 15000 };
+  }
+  if (type === 'ash_ping') {
+    const moved = await movedAway();
+    if (!moved) await db.prepare('UPDATE ash_active SET at = ? WHERE id = ? AND token_hash = ?').bind(Date.now(), id, th).run(); // 살아 있음
+    return { ok: true, moved };
+  }
   // 계정 공용 창고: 읽기 · 쓰기 (더 새 것만 덮는다, 다른 기기가 가져갔으면 거절)
   if (type === 'ash_vault') {
     const r = await db.prepare('SELECT data, at FROM ash_vault WHERE id = ?').bind(id).first<{ data: string; at: number }>();
@@ -281,7 +296,12 @@ export async function ashen(db: DB, d: Record<string, unknown>, ip: string, admi
     return { ok: true };
   }
   if (type === 'ash_save') {
-    if (await movedAway()) return { ok: false, error: 'moved' };
+    let last = false; // 넘겨준 기기의 마지막 저장 (15초 안 한 번)
+    if (await movedAway()) {
+      const h = d.final ? await db.prepare('SELECT at, done FROM ash_handoff WHERE id = ? AND prev_hash = ?').bind(id, th).first<{ at: number; done: number }>() : null;
+      if (!h || h.done || Date.now() - h.at > 15000) return { ok: false, error: 'moved' };
+      last = true;
+    }
     const data = String(d.data ?? '');
     if (data.length < 2 || data.length > SAVE_MAX || data[0] !== '{') return { ok: false, error: 'bad_save' };
     const at = Math.floor(Number(d.at)) || 0;
@@ -306,6 +326,7 @@ export async function ashen(db: DB, d: Record<string, unknown>, ip: string, admi
       if (nm) await db.prepare('INSERT INTO ash_rank (id, name, aw, dg, title, at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name = excluded.name, aw = excluded.aw, dg = excluded.dg, title = excluded.title, at = excluded.at')
         .bind(key, nm.name, aw, dg, t, Date.now()).run();
     } catch { /* 순위는 실패해도 저장은 된다 */ }
+    if (last) await db.prepare('UPDATE ash_handoff SET done = 1 WHERE id = ?').bind(id).run();
     return { ok: true, at };
   }
   if (type === 'ash_load') {
