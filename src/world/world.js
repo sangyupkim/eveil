@@ -1514,9 +1514,9 @@ export class World {
     this.target = null; this.moveTo = null; this.pendingSkill = null;
     this.recallT = 1.6;
     this.player.play('channel', { force: true });
-    // 옆에 귀환 포탈이 열린다
-    const P = this.player.pos, a = this.player.facing + Math.PI / 2;
-    this.recallPortal = this.fx.portal(P.x + Math.sin(a) * 1.6, P.z + Math.cos(a) * 1.6, 1.9);
+    // 귀환 빛이 캐릭터 발밑에서 감싼다 (v0.44.6: 옆으로 비껴 열려 어긋나 보였다)
+    const P = this.player.pos;
+    this.recallPortal = this.fx.portal(P.x, P.z, 1.9);
     this.ui.toast('마을로 귀환합니다…');
     sfx('recall');
   }
