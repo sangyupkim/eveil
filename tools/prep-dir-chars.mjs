@@ -38,7 +38,9 @@ const SPECS = [
 ].filter((S) => !process.argv[3] || process.argv[3].split(',').includes(S.name));
 // 각도 이름이 0 · 000 · 'Body 0' 등 묶음마다 달라 숫자로 맞춘다
 const angNum = (d) => ((6 - d + 8) % 8) * 45;
-const findAng = (dir, d, re) => { const n = fs.readdirSync(dir).find((f) => re.test(f) && +(f.match(/(\d+)(\.png)?$/) || [])[1] === angNum(d)); if (!n) throw new Error(`없음 ${dir} ${angNum(d)}`); return path.join(dir, n); };
+// v0.44.22 flip: 각도 0이 위(뒷모습)인 묶음 — 위 · 아래가 뒤바뀌어 걷던 것
+let FLIPV = false, MIRROR = false; // MIRROR: 각도가 반대로 도는 묶음 (90 = 왼쪽)
+const findAng = (dir, d, re) => { const want = FLIPV ? (540 - angNum(d)) % 360 : MIRROR ? (360 - angNum(d)) % 360 : angNum(d); const n = fs.readdirSync(dir).find((f) => re.test(f) && +(f.match(/(\d+)(\.png)?$/) || [])[1] === want); if (!n) throw new Error(`없음 ${dir} ${angNum(d)}`); return path.join(dir, n); };
 const ang = (d) => String(((6 - d + 8) % 8) * 45).padStart(3, '0');
 const pickN = (arr, n = 10) => (arr.length <= n ? arr : Array.from({ length: n }, (_, i) => arr[Math.round((i * (arr.length - 1)) / (n - 1))]));
 async function sheetFrames(file, cell) {
@@ -52,7 +54,9 @@ async function sheetFrames(file, cell) {
   return out;
 }
 const enemies = JSON.parse(fs.readFileSync(J, 'utf8'));
+const FLIP_SET = new Set(['x_snake', 'x_fishman', 'x_fishman_mace', 'x_fishman_blade', 'x_ice_mummy', 'x_tusk_beast', 'x_centipede', 'x_spider_horror']), MIRROR_SET = new Set(['x_spearman']);
 for (const S of SPECS) {
+  FLIPV = FLIP_SET.has(S.name); MIRROR = MIRROR_SET.has(S.name);
   const cell = (S.sheet || S.frames || S.rows).cell, cs = Math.round(cell * S.k), pieces = [];
   for (const [an, [src]] of Object.entries(S.anims)) for (let d = 0; d < 8; d++) {
     let fr;
