@@ -210,8 +210,8 @@ export class Windows {
       if (b.dmg) { const d = scaledDmg(it); h += `<div>${WEAPON_CLASSES[b.cls].name} · 피해 ${d[0]}~${d[1]} · 속도 ${b.speed}</div><div class="sub">주 스탯 ${STAT_NAMES[WEAPON_CLASSES[b.cls].ap]}</div>`; }
       if (b.armor) h += `<div>방어력 ${scaledArmor(it)}</div>`;
       if (b.block) h += `<div>막기 확률 ${Math.round(b.block * 100)}%</div>`;
-      if (b.mods) for (const k in b.mods) h += `<div>${k === 'maxMp' ? '최대 MP' : k} +${b.mods[k]}</div>`;
-      if (it.q) h += `<div class="sub">품질 <b style="color:${it.q >= 1.1 ? '#ffd84a' : it.q <= 0.9 ? '#a09a8a' : '#e8e2d4'}">${Math.round(it.q * 100)}%</b> · 85~115%</div>`;
+      if (b.mods) for (const k in b.mods) h += `<div>${modText(k, b.mods[k])}</div>`; // v0.44.18 영어 키가 그대로 보이던 것 (dex +40 등)
+      if (it.q) h += `<div class="sub">품질 <b style="color:${it.q >= 1.1 ? '#ffd84a' : it.q <= 0.9 ? '#a09a8a' : '#e8e2d4'}">${Math.round(it.q * 100)}%</b> · ${it.rarity === 'myth' ? '115~130' : '85~115'}%</div>`;
       // 옵션마다 이 아이템 레벨 · 등급에서 나올 수 있는 범위
       for (const a of it.affixes) { const A = AFFIXES[a.id], mx = A ? Math.round(Math.max(A.min, A.max(it.ilvl) * (RARITY[it.rarity]?.mult || 1))) : null; h += `<div class="aff"${a.great ? ' style="color:#ffb84a"' : ''}>${affixText(a)}${a.great ? ' <b style="color:#ffb84a">탁월</b>' : ''}${A ? ` <small class="note">${A.min}~${mx}</small>` : ''}</div>`; }
       if (it.unique != null) h += `<div class="aff" style="color:#41e07a">◆ ${UNIQUES[it.unique].text}</div>`;
@@ -1157,6 +1157,11 @@ export class Windows {
   }
 }
 
+// 장비 기본 능력(b.mods) 한 줄: 옵션 글이 있으면 그것, 아니면 능력치 이름
+function modText(k, v) {
+  if (AFFIXES[k]?.text) return AFFIXES[k].text.replace('{v}', v);
+  return `${STAT_NAMES[k] || ({ armor: '방어력', dmg: '피해', hp: 'HP', mp: 'MP' })[k] || k} +${v}`;
+}
 function reqLine(req, stats) {
   if (!req) return '';
   const parts = Object.entries(req).map(([k, v]) => `<span class="${(stats[k] || 0) < v ? 'bad' : ''}">${STAT_NAMES[k]} ${v}</span>`);

@@ -10,7 +10,7 @@ export const TIER_NAMES = ['평온', '악몽', '지옥', '혼돈']; // v0.42 혼
 import { TITLE_AT, titleKey, titleName, perkChoices, UNIQUES } from '../data/titles.js';
 // 게임 월드: 플레이어 조작 · 몬스터 AI · 전투 · 스킬 · 드랍 · 사망 · 자동 사냥
 import * as THREE from 'three';
-import { CONFIG, TIERS, AP_TABLE } from '../data/config.js';
+import { CONFIG, TIERS, AP_TABLE, STAT_NAMES } from '../data/config.js';
 import { SKILLS } from '../data/skills.js';
 import { BASES, WEAPON_CLASSES, RARITY_ORDER } from '../data/items.js';
 import { MONSTERS, ZONES, TOWN, TIER_STEP, FINAL_ZONE } from '../data/world.js';
@@ -2393,7 +2393,7 @@ export class World {
         this.skillExp(it.book, bookAbsorbExp(it.book) / this.d.skillExp / this.autoMult);
         this.ui.toast(`${SKILLS[it.book].name} 숙련도를 흡수했습니다`);
       } else {
-        const req = Object.entries(SKILLS[it.book].req).map(([k, v]) => `${k.toUpperCase()} ${v}`).join(', ');
+        const req = Object.entries(SKILLS[it.book].req).map(([k, v]) => `${STAT_NAMES[k] || k} ${v}`).join(', ');
         this.ui.toast(`스탯이 부족합니다 (${req})`);
       }
     } else if (BASES[it.base].type === 'elixir') {
