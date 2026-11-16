@@ -264,6 +264,9 @@ export const STAT_LINES = [
   ['l_wis_ring', 'ring', 'wis', 'silver_ring', '반지'], ['l_vit_ring', 'ring', 'vit', 'silver_ring', '반지'], ['l_str_ring', 'ring', 'str', 'silver_ring', '반지'],
   ['l_dex_off', 'offhand', 'dex', 'glass_orb', '화살통'], ['l_int_off', 'offhand', 'int', 'glass_orb', '마도서'], ['l_vit_off', 'offhand', 'vit', 'round_shield', '방패'],
   ['l_int_wand', 'weapon', 'int', 'bone_staff', '완드'], ['l_str_hammer', 'weapon', 'str', 'war_axe', '전투 망치'],
+  // v0.42.4 빈칸 채우기: 힘 갑옷 · 장갑 · 신발, 민첩 · 지능 반지, 지능 허리띠, 정신 보조 장비
+  ['l_str_armor', 'armor', 'str', 'chain_mail', '흉갑'], ['l_str_gloves', 'gloves', 'str', 'gauntlets', '손갑'], ['l_str_boots', 'boots', 'str', 'war_boots', '전투화'],
+  ['l_dex_ring', 'ring', 'dex', 'silver_ring', '반지'], ['l_int_ring', 'ring', 'int', 'silver_ring', '반지'], ['l_int_belt', 'belt', 'int', 'rune_sash', '허리끈'], ['l_wis_off', 'offhand', 'wis', 'moon_orb', '보주'],
 ];
 for (const [id, slot, stat, tpl, noun] of STAT_LINES) LINE_LV.forEach((lv, i) => {
   const b = BASES[tpl], g = Math.max(0.6, 1 + (lv - (b.minLvl || 1)) / 30);
