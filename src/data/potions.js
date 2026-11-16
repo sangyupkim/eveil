@@ -16,17 +16,17 @@ export const herbsAt = (lv) => HERB_IDS.filter((id) => HERBS[id].lv <= lv);
 // 영약 효과 (마시면 5분). buff: 세계(world)의 버프 열쇠, v: 값 (stat은 그 스탯의 10%, 최소 5)
 export const ELIXIR_TIME = 300;
 export const ELIXIRS = {
-  el_str: { name: '힘의 영약', buff: 'str', stat: true, text: '힘 +10%', color: '#e0644a' },
-  el_dex: { name: '민첩의 영약', buff: 'dex', stat: true, text: '민첩 +10%', color: '#5fd08a' },
-  el_int: { name: '지능의 영약', buff: 'int', stat: true, text: '지능 +10%', color: '#5f9bff' },
-  el_wis: { name: '정신의 영약', buff: 'wis', stat: true, text: '정신 +10%', color: '#c58cff' },
-  el_vit: { name: '체력의 영약', buff: 'vit', stat: true, text: '체력 +10%', color: '#f0b552' },
-  el_armor: { name: '강철 피부 물약', buff: 'armorPct', v: 25, text: '방어력 +25%', color: '#b0b8c8' },
-  el_might: { name: '분노의 물약', buff: 'might', v: 20, text: '피해 +20%', color: '#d02030' },
-  el_haste: { name: '신속의 물약', buff: 'haste', v: 15, text: '공격 속도 +15%', color: '#7fe0b0' },
-  el_swift: { name: '바람걸음 물약', buff: 'swift', v: 20, text: '이동 속도 +20%', color: '#9fe8ff' },
-  el_focus: { name: '매의 눈 물약', buff: 'focus', v: 8, text: '치명타 확률 +8%', color: '#ffe680' },
-  el_luck: { name: '행운의 물약', buff: 'luck', v: 40, text: '좋은 아이템 발견 +40%', color: '#ffd860' },
+  el_str: { name: '힘의 주문서', buff: 'str', stat: true, text: '힘 +10%', color: '#e0644a' },
+  el_dex: { name: '민첩의 주문서', buff: 'dex', stat: true, text: '민첩 +10%', color: '#5fd08a' },
+  el_int: { name: '지능의 주문서', buff: 'int', stat: true, text: '지능 +10%', color: '#5f9bff' },
+  el_wis: { name: '정신의 주문서', buff: 'wis', stat: true, text: '정신 +10%', color: '#c58cff' },
+  el_vit: { name: '체력의 주문서', buff: 'vit', stat: true, text: '체력 +10%', color: '#f0b552' },
+  el_armor: { name: '강철 피부 주문서', buff: 'armorPct', v: 25, text: '방어력 +25%', color: '#b0b8c8' },
+  el_might: { name: '분노의 주문서', buff: 'might', v: 20, text: '피해 +20%', color: '#d02030' },
+  el_haste: { name: '신속의 주문서', buff: 'haste', v: 15, text: '공격 속도 +15%', color: '#7fe0b0' },
+  el_swift: { name: '바람걸음 주문서', buff: 'swift', v: 20, text: '이동 속도 +20%', color: '#9fe8ff' },
+  el_focus: { name: '매의 눈 주문서', buff: 'focus', v: 8, text: '치명타 확률 +8%', color: '#ffe680' },
+  el_luck: { name: '행운의 주문서', buff: 'luck', v: 40, text: '좋은 아이템 발견 +40%', color: '#ffd860' },
 };
 
 // 제작소 조합법: 제작소 단계(lv)부터. herbs = 필요한 약초, gold = 금화, n = 한 번에 나오는 수

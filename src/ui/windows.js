@@ -200,7 +200,7 @@ export class Windows {
     } else if (b.type === 'key') {
       h += `<div class="sub">×${it.qty}</div><div>지역의 던전 입구에서 하나 써서 들어갑니다</div>`;
     } else if (b.type === 'elixir') {
-      h += `<div class="sub">영약 ×${it.qty} · 5분</div><div class="aff">${ELIXIRS[it.base].text}</div>`;
+      h += `<div class="sub">주문서 ×${it.qty} · 5분</div><div class="aff">${ELIXIRS[it.base].text}</div>`;
     } else if (b.type === 'potion') {
       h += `<div class="sub">소모품 ×${it.qty}</div><div>${b.restore.hp ? `HP ${b.restore.hp} 회복` : `MP ${b.restore.mp} 회복`}</div>`;
     } else if (!b?.slot) { // 그 밖의 물건 (모르는 종류도 창이 비지 않게)
@@ -229,7 +229,7 @@ export class Windows {
     h += `<div class="sub">판매가 ${itemValue(it)} G</div>`;
     h += '<div class="btns">';
     if (where === 'inv') {
-      if (!it.shard && b?.type !== 'mat') h += `<button class="btn gold" data-act="use">${isBook(it) ? '배우기' : b.type === 'potion' ? '사용' : b.type === 'elixir' ? '마시기' : b.type === 'pet' ? '부르기' : '장착'}</button>`;
+      if (!it.shard && b?.type !== 'mat') h += `<button class="btn gold" data-act="use">${isBook(it) ? '배우기' : b.type === 'potion' ? '사용' : b.type === 'elixir' ? '읽기' : b.type === 'pet' ? '부르기' : '장착'}</button>`;
       // 물약 퀵슬롯: 이 물약을 체력 · 마나 칸에 두거나 뺀다
       if (b?.type === 'potion') for (const [k, nm] of [['hp', '체력 칸'], ['mp', '마나 칸']]) {
         const on = st.potSlot?.[k] === it.base;

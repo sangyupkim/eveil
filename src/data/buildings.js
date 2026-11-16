@@ -38,7 +38,7 @@ export const BUILDINGS = {
     look: [['grassland', 120, -1, 0], ['grassland', 121, 0.4, 0.6], ['grassland', 122, 1.4, -0.2], ['grassland', 123, -0.2, -0.9]],
   },
   workshop: {
-    name: '제작소', up: [...[15, 28, 42, 58], ...UP_MORE], need: 10, desc: '약초로 물약 · 영약 제조', max: 10, cost: (lv) => ext([2400, 9000, 30000, 84000, 210000])[lv] ?? null,
+    name: '제작소', up: [...[15, 28, 42, 58], ...UP_MORE], need: 10, desc: '약초로 물약 · 주문서 제조', max: 10, cost: (lv) => ext([2400, 9000, 30000, 84000, 210000])[lv] ?? null,
     zones: (lv) => [0, 2, 4, 6, 8, 12, 14, 16, 18, 20, 20][lv], // 만들 수 있는 지역 수
     look: [['grassland', 100, 0, 0], ['grassland', 120, 1.4, 0.6]],
   },
