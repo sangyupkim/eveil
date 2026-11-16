@@ -75,3 +75,7 @@
 - `x_slime` — "Slime Flare sprite sheets", CC-BY-SA 3.0 / CC-BY 3.0
 - `x_golem` — "Golem" (OpenGameArt), CC-BY 3.0
 - `x_zombie` — "Zombie Sprites" (OpenGameArt), CC-BY 3.0
+
+## v0.43 사용자가 받은 16방향 렌더 캐릭터 (itch.io)
+- `x_beast_warrior` (Optimized_Spritesheets) · `x_heavy_orc` (2D Directional Heavy Orc) · `x_orc_brute` (NoArmor 256x256 / 2D Directional Base Orc) — 사용자가 itch.io에서 받은 묶음. 묶음 안에 라이선스 파일이 없어 원 페이지의 사용 조건을 사용자가 확인함 (출처 페이지 주소를 받으면 여기에 적는다)
+- 변환: `node tools/prep-dir-chars.mjs <푼 폴더>` (16방향 중 8방향 · 동작당 10프레임 · 잘라 한 장으로)

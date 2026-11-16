@@ -70,7 +70,7 @@ export const QUESTS = [
   { id: 'o1', zone: 'orcfort', name: '요새의 문지기', goal: { kill: 'orc_grunt2', n: 18 }, text: '남쪽 끝, 오크들이 요새를 쌓았다.', reward: { gold: 9000, gear: ['gloves', 'hero', 44] } },
   { id: 'o2', zone: 'orcfort', name: '중갑병 무너뜨리기', goal: { kill: 'orc_brute', n: 12 }, text: '방패를 든 중갑병은 뒤를 노려라.', reward: { gold: 10000, gear: ['boots', 'hero', 46] } },
   { id: 'o3', zone: 'orcfort', name: '오크 군주 그롬마쉬', goal: { named: 'orcfort' }, text: '요새를 이끄는 군주.', reward: { gold: 12000, gear: ['ring', 'legend', 47] } },
-  { id: 'o4', zone: 'orcfort', name: '바위 트롤 왕 구르크', goal: { boss: 'orcfort' }, text: '요새 깊은 곳의 거대한 트롤.', reward: { gold: 25000, book: 5, gear: ['armor', 'legend', 48] } },
+  { id: 'o4', zone: 'orcfort', name: '오크 대족장 구르크', goal: { boss: 'orcfort' }, text: '요새 깊은 곳, 중갑을 두른 오크 대족장.', reward: { gold: 25000, book: 5, gear: ['armor', 'legend', 48] } },
   { id: 'ww1', zone: 'webwood', name: '거미줄 걷어 내기', goal: { kill: 'web_spider', n: 20 }, text: '서쪽 숲이 거미줄로 덮였다.', reward: { gold: 13000, gear: ['helm', 'hero', 50] } },
   { id: 'ww2', zone: 'webwood', name: '숲의 그림자', goal: { kill: 'shade', n: 12 }, text: '거미줄 사이를 떠도는 그림자.', reward: { gold: 14000, gear: ['belt', 'hero', 52] } },
   { id: 'ww3', zone: 'webwood', name: '거미 여왕의 딸 실크', goal: { named: 'webwood' }, text: '여왕의 딸이 둥지를 지킨다.', reward: { gold: 16000, gear: ['amulet', 'legend', 53] } },

@@ -81,7 +81,7 @@ export const MONSTERS = {
   orc_brute: { behave: 'shield', name: '오크 중갑병', model: 'm_orc', h: 2.2, attack: 'melee', hp: 380, dmg: [32, 40], speed: 2.6, interval: 1.9, range: 2.3, aggro: 10, exp: 86 },
   orc_raider: { behave: 'charge', name: '오크 돌격병', model: 'm_orc', h: 2.0, attack: 'melee', hp: 240, dmg: [33, 40], speed: 4.2, interval: 1.5, range: 2.2, aggro: 12, exp: 84 },
   orc_warlord: { name: '오크 군주', model: 'm_orc', h: 2.6, attack: 'melee', hp: 560, dmg: [48, 58], speed: 3.2, interval: 1.7, range: 2.6, aggro: 13, exp: 96, patterns: ['charge', 'slam'] },
-  troll_king: { name: '바위 트롤 왕', model: 'm_troll', h: 3.2, attack: 'melee', hp: 620, dmg: [52, 64], speed: 2.8, interval: 2.0, range: 3.2, aggro: 14, exp: 110, patterns: ['slam', 'charge', 'summon', 'slam'], minion: 'orc_grunt2' },
+  troll_king: { name: '오크 대족장', model: 'm_troll', h: 3.2, attack: 'melee', hp: 620, dmg: [52, 64], speed: 2.8, interval: 2.0, range: 3.2, aggro: 14, exp: 110, patterns: ['slam', 'charge', 'summon', 'slam'], minion: 'orc_grunt2' },
   // ── 10 거미 숲 ──
   web_spider: { name: '그물 거미', model: 'm_spider', h: 1.2, attack: 'melee', hp: 230, dmg: [34, 41], speed: 4.4, interval: 1.2, range: 1.8, aggro: 12, exp: 86 },
   poison_spider: { name: '독거미', model: 'm_spider', h: 1.4, attack: 'spell', hp: 250, dmg: [33, 40], speed: 3.6, interval: 1.9, range: 8, aggro: 12, exp: 88 },
@@ -169,7 +169,7 @@ export const ZONES = [
     id: 'orcfort', name: '오크 요새', x: 0, z: 172, r: 40, levels: [43, 48], count: 20, ground: [0.30, 0.24, 0.16], music: 'battle',
     spawns: { orc_grunt2: 30, orc_archer2: 22, orc_brute: 20, orc_raider: 20 },
     named: { type: 'orc_warlord', name: '오크 군주 그롬마쉬' },
-    boss: { type: 'troll_king', name: '바위 트롤 왕 구르크' },
+    boss: { type: 'troll_king', name: '오크 대족장 구르크' },
     props: {},
   },
   {

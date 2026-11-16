@@ -57,13 +57,14 @@ export const FLAT = new Set(['grassland|264', 'grassland|265', 'cave|264', 'cave
 export const MONSTER_LOOK = {
   // 새 그림 (OpenGameArt Flare 몬스터, CC-BY-SA)
   orc_grunt2: { sprite: 'x_orc_regular', size: 2.85 }, orc_archer2: { sprite: 'x_orc_archer', size: 2.75 }, orc_brute: { sprite: 'x_orc_heavy', size: 3.1 }, orc_raider: { sprite: 'x_orc_elite', size: 2.9 },
-  orc_warlord: { sprite: 'x_orc_elite', tint: 0xffb080, size: 3.8 }, troll_king: { sprite: 'x_troll', size: 2.8 },
+  // v0.43 사용자가 받은 16방향 렌더 캐릭터 (오크 · 중갑 오크 · 야수 전사)
+  orc_warlord: { sprite: 'x_orc_brute', size: 3.6 }, troll_king: { sprite: 'x_heavy_orc', size: 3.6 },
   web_spider: { sprite: 'x_spider', size: 2.2 }, poison_spider: { sprite: 'x_spider_large', tint: 0xa0e080, size: 2.6 }, cave_spider: { sprite: 'x_spider_large', size: 2.8 }, shade: { sprite: 'x_shadow', size: 1.9 },
   brood_mother: { sprite: 'x_spider_giant', size: 3.0 }, spider_queen: { sprite: 'x_spider_giant', tint: 0xd0a0ff, size: 4.2 },
   ghost_crew: { sprite: 'x_pirate_ghost_crewman', size: 3.2 }, bone_knight: { sprite: 'x_skeleton_knight', size: 3.1 }, occultist: { sprite: 'x_skeleton_occultist', size: 3.0 }, dock_assassin: { sprite: 'x_assassin', size: 3.4 },
   high_mage: { sprite: 'x_necromancer', size: 4.0 }, ghost_captain: { sprite: 'x_pirate_ghost_captain', size: 4.8 },
   hell_hound: { sprite: 'x_werewolf', tint: 0xff9070, size: 3.3 }, dread_bear: { sprite: 'x_werebear', tint: 0xc08080, size: 2.8 }, void_shade: { sprite: 'x_shadow', tint: 0xd090ff, size: 2.0 }, gargoyle: { sprite: 'x_demon_statue', size: 1.5 },
-  pit_lord: { sprite: 'x_demon', size: 1.9 }, arch_demon: { sprite: 'x_demon', tint: 0xff8060, size: 2.5 },
+  pit_lord: { sprite: 'x_beast_warrior', size: 3.4 }, arch_demon: { sprite: 'x_demon', tint: 0xff8060, size: 2.5 },
   slime: { sprite: 'antlion_small', size: 0.9 },
   rat: { sprite: 'x_goblin_charger', size: 2.5 }, // v0.41.3 Short-Ribs 고블린 (CC-BY)
   mushnub: { sprite: 'skeleton_weak' },
@@ -231,7 +232,7 @@ Object.assign(ZONE_PROPS, { ashland: ZONE_PROPS.valley, crypt: [...ZONE_PROPS.fr
 for (const [id, base, , tint] of _VAR) if (MONSTER_LOOK[base]) MONSTER_LOOK[id] = { ...MONSTER_LOOK[base], tint, size: (MONSTER_LOOK[base].size || 1) * (id === 'doom_king' ? 1.25 : 1) };
 // v0.40 새 그림 (skeleton_quest 사람 적 · Flare 원본 고유 적, CC-BY-SA): 변종 일부는 바탕과 다른 몸
 const VAR_SPRITE = { crypt_mage: ['x_chainmail_mage', 2.9], temple_priest: ['x_plate_mage', 2.9], blood_witch: ['x_leather_mage', 2.9], storm_wraith: ['x_shadow_wyvern', 3.0],
-  crystal_bat: ['x_shadow_wyvern', 3.0], crystal_golem: ['x_golem', 3.0], storm_brute: ['x_chainmail_brute', 3.0], ash_shade: ['x_thug_slinger', 2.9], temple_lord: ['x_grisbon', 4.4], doom_knight: ['x_plate_brute', 3.1],
+  crystal_bat: ['x_shadow_wyvern', 3.0], crystal_golem: ['x_golem', 3.0], temple_king: ['x_troll', 3.5], storm_brute: ['x_chainmail_brute', 3.0], ash_shade: ['x_thug_slinger', 2.9], temple_lord: ['x_grisbon', 4.4], doom_knight: ['x_plate_brute', 3.1],
   crypt_ghoul: ['x_cloth_brute', 2.9], blood_snake: ['x_leather_archer', 2.9], temple_shade: ['x_plate_archer', 2.9], abyss_eye: ['x_chainmail_archer', 2.9], doom_shade: ['x_cloth_archer', 2.9] };
 for (const [id, [sprite, size]] of Object.entries(VAR_SPRITE)) if (MONSTER_LOOK[id]) MONSTER_LOOK[id] = { ...MONSTER_LOOK[id], sprite, size };
 
