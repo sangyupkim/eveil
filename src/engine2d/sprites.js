@@ -1,5 +1,8 @@
 // Flare 그림 불러오기 · 동작 프레임 고르기 · 그리기 (그림은 필요할 때만 받는다)
+import { GAME_VERSION } from '../data/patchnotes.js';
 const ROOT = 'assets/flare/';
+// v0.44.14 버전마다 새 주소: 설치본(sw.js)이 예전 그림을 먼저 내주면 새로 더한 아이콘 · 몬스터가 빈칸으로 보였다
+const VQ = '?v=' + GAME_VERSION;
 const imgs = new Map();
 const jsons = new Map();
 
@@ -16,7 +19,7 @@ export function image(path) {
         rec.ok = true;
         return rec.im;
       });
-    im.src = ROOT + path;
+    im.src = ROOT + path + VQ;
     imgs.set(path, rec);
   }
   return imgs.get(path);
@@ -25,7 +28,7 @@ export const ready = (path) => image(path).ok;
 export const waitImage = (path) => image(path).p;
 
 export async function loadJson(name) {
-  if (!jsons.has(name)) jsons.set(name, fetch(ROOT + name + '.json').then((r) => r.json()));
+  if (!jsons.has(name)) jsons.set(name, fetch(ROOT + name + '.json' + VQ).then((r) => r.json()));
   return jsons.get(name);
 }
 // 미리 받아 둔 정의 (main에서 한 번 채운다)

@@ -839,6 +839,8 @@ export class World {
         m.patT = (m.patT ?? 5) - dt * (m.hp < m.maxHp * 0.3 ? 1.6 : 1);
         if (m.patT <= 0 && a.lock <= 0) { m.patT = (m.tier === 'boss' ? (m.def.final ? 3.2 : 5.5) : 8.5) / TIER_K[this.wt].pat; this.bossPattern(m, all[(m.patI = (m.patI || 0) + 1) % all.length]); }
       }
+      // v0.44.14 낙인: 보스가 오래(60초, 마지막 보스 45초) 한 대도 노리지 못하면 피할 수 없는 일격 — 원거리로 끝없이 맴돌며 잡는 것을 막는다
+      if (m.tier === 'boss' && valid && m.fightStart != null && !m.doom && a.lock <= 0 && this.time - (m.lastHit ?? m.fightStart) > (m.def.final ? 45 : 60)) this.bossPattern(m, 'doom');
       // 멀리서 맴돌며 치면 원거리 응징 패턴
       if (m.tier === 'boss' && valid && d > 7.5 && d < 24 && !m.dash) {
         m.farT = (m.farT ?? 2.5) - dt;
@@ -984,6 +986,17 @@ export class World {
     const at = (t, fn) => this.later(t, () => { if (!m.dead && !this.dead) fn(); });
     const cast = (anim = 'attack2', lock = 1) => { a.act(anim, 0.8); a.lock = lock; a.face(P().x, P().z); };
     switch (name) {
+      case 'doom': { // 낙인: 4초 동안 힘을 모은 뒤 어디에 있든 맞는다 (회피 불가 · 방어력 · 막기 · 보호막은 적용). 그 전에 잡으면 넘어간다
+        m.doom = true; cast('attack2', 1.2); sfx('cast');
+        this.ui.toast(`${m.name}이(가) 낙인을 새깁니다!`, '#ff5a4a');
+        for (let i = 0; i < 4; i++) at(i, () => { const q = P(); this.fx.telegraph(q.x, q.z, 1.6 + i * 0.3, 1, 0xb01020); this.fx.pillar(M.x, M.z, 0xff3030, 0.5, 5, 1.4); });
+        at(4, () => {
+          const q = P(); this.fx.ring(q.x, q.z, 3, 0xff2020, 0.6); this.fx.pillar(q.x, q.z, 0xff2020, 0.6, 6, 1.6); this.fx.shake(0.6); sfx('boom');
+          this.hurtPlayer(this.d.maxHp * 0.6, m, { sure: true }); // 방어력에 따라 대략 HP 30 ~ 50%
+          m.doom = false; m.lastHit = this.time - (m.def.final ? 20 : 25); // 그래도 계속 못 맞히면 다음 낙인은 더 빨리 (20 ~ 35초 뒤)
+        });
+        return true;
+      }
       // ── 원거리 응징 (멀리 있을 때) ──
       case 'leap': { // 플레이어 자리로 뛰어올라 내려찍기
         cast('attack2', 1.3); const x = P().x, z = P().z;
@@ -1049,14 +1062,15 @@ export class World {
     m.actor.update(0);
   }
 
-  hurtPlayer(raw, m) {
+  hurtPlayer(raw, m, opt = {}) {
     if (this.dead) return;
     const st = this.st, d = this.d;
     if (d.dmgReduce) raw *= 1 - d.dmgReduce / 100;
     const rf = rewardFactor(st, m.level);
     const apMult = rf.ap * this.autoMult;
     const head = this.player.pos.clone().setY(2.4);
-    if (Math.random() < d.dodge) {
+    if (m) m.lastHit = this.time; // v0.44.14 보스가 마지막으로 노린 때 (낙인 패턴)
+    if (!opt.sure && Math.random() < d.dodge) {
       this.fx.text(head, '회피', 'miss');
       sfx('dodge');
       addAP(st, 'dex', AP_TABLE.dodge, apMult);
