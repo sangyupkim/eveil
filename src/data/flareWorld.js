@@ -84,7 +84,7 @@ export const MONSTER_LOOK = {
   ghost: { sprite: 'zombie', tint: 0x9fb0ff },
   ghost_skull: { sprite: 'zombie_dark' },
   raider: { sprite: 'x_leather_brute', size: 2.9 },
-  fallen_knight: { sprite: 'x_knight', size: 2.8 },
+  fallen_knight: { sprite: 'x_plate_brute', size: 3.0 },
   imp: { sprite: 'fire_ant' },
   blue_demon: { sprite: 'zombie_dark', tint: 0x8090ff, size: 1.2 },
   goleling: { sprite: 'cursed_grave', size: 0.9 },
@@ -231,11 +231,13 @@ Object.assign(ZONE_PROPS, { ashland: ZONE_PROPS.valley, crypt: [...ZONE_PROPS.fr
   throne: [...ZONE_PROPS.demongate, ['props', ARCH, 8, 1.2], ['props', DARK, 8, 0.8], ['props', PILLAR, 12, 0.7], ['props', STATUE, 6, 0.6], ['props', GATE, 3, 1.4]] });
 for (const [id, base, , tint] of _VAR) if (MONSTER_LOOK[base]) MONSTER_LOOK[id] = { ...MONSTER_LOOK[base], tint, size: (MONSTER_LOOK[base].size || 1) * (id === 'doom_king' ? 1.25 : 1) };
 // v0.40 새 그림 (skeleton_quest 사람 적 · Flare 원본 고유 적, CC-BY-SA): 변종 일부는 바탕과 다른 몸
-const VAR_SPRITE = { crystal_lord: ['x_spider_horror', 3.4], ash_king: ['x_spearman', 3.0], crypt_mage: ['x_chainmail_mage', 2.9], temple_priest: ['x_plate_mage', 2.9], blood_witch: ['x_leather_mage', 2.9], storm_wraith: ['x_ice_mummy', 2.9],
-  crystal_bat: ['x_spider_horror', 2.8], crystal_golem: ['x_golem', 3.0], temple_king: ['x_troll', 3.5], storm_brute: ['x_chainmail_brute', 3.0], ash_shade: ['x_thug_slinger', 2.9], temple_lord: ['x_grisbon', 4.4], doom_knight: ['x_plate_brute', 3.1],
+const VAR_SPRITE = { crystal_lord: ['x_spider_horror', 3.4], ash_king: ['x_spearman', 3.0], crypt_mage: ['x_chainmail_mage', 2.9], temple_priest: ['x_plate_mage', 2.9], blood_witch: ['x_leather_mage', 2.9], storm_wraith: ['x_shadow_wyvern', 3.0],
+  crystal_bat: ['x_shadow_wyvern', 3.0], crystal_golem: ['x_golem', 3.0], temple_king: ['x_troll', 3.5], storm_brute: ['x_chainmail_brute', 3.0], ash_shade: ['x_thug_slinger', 2.9], temple_lord: ['x_grisbon', 4.4], doom_knight: ['x_plate_brute', 3.1],
   crypt_ghoul: ['x_cloth_brute', 2.9], blood_snake: ['x_leather_archer', 2.9], temple_shade: ['x_plate_archer', 2.9], abyss_eye: ['x_chainmail_archer', 2.9], doom_shade: ['x_cloth_archer', 2.9] };
 for (const [id, [sprite, size]] of Object.entries(VAR_SPRITE)) if (MONSTER_LOOK[id]) MONSTER_LOOK[id] = { ...MONSTER_LOOK[id], sprite, size };
 // v0.44.3 작은 원본을 너무 크게 늘려 흐리던 보스 · 네임드: 확대를 줄인다 (휴대폰에서 원본 1픽셀이 5~5.5픽셀 이하로)
+// v0.44.5 원래 모습이 나았던 것은 되돌림
+MONSTER_LOOK.blood_frog = {sprite: 'antlion', tint: 13647936, size: 1};
 const SHARP_SIZE = { mushking: 1.6, wolf: 1.9 };
 for (const [id, size] of Object.entries(SHARP_SIZE)) if (MONSTER_LOOK[id]) MONSTER_LOOK[id] = { ...MONSTER_LOOK[id], size };
 // v0.44.4 그래도 흐리던 보스 · 네임드는 큰 원본으로 만든 몬스터로 바꾼다 [그림, 크기, 색]
@@ -244,7 +246,7 @@ const SHARP_SWAP = {
   ghost_captain: ['x_fishman_blade', 3.0, 0xb0f0e0], bog_witch: ['x_fishman_blade', 2.9, 0x90e090], blood_lord: ['x_fishman_blade', 2.9, 0xff7070],
   crypt_king: ['x_ice_mummy', 1.8, 0xc8e8ff], high_mage: ['x_ice_mummy', 1.75, 0xd0d0e0], crypt_lord: ['x_ice_mummy', 1.75, 0x80b0ff],
   flame_lord: ['x_spearman', 3.3, 0xff9060], abyss_king: ['x_spearman', 3.3, 0xa070e0], temple_lord: ['x_knight', 2.5, 0xf0d080],
-  temple_king: ['x_tusk_beast', 3.2, 0xd8d0b0], doom_king: ['x_tusk_beast', 3.2, 0x904050], arch_demon: ['x_beast_warrior', 3.3, 0xff7060],
+  temple_king: ['x_tusk_beast', 3.2, 0xd8d0b0], doom_king: ['x_tusk_beast', 3.2, 0x904050],
 };
 for (const [id, [sprite, size, tint]] of Object.entries(SHARP_SWAP)) if (MONSTER_LOOK[id]) MONSTER_LOOK[id] = { ...MONSTER_LOOK[id], sprite, size, tint };
 
