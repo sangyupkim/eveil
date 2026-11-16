@@ -1129,6 +1129,7 @@ export class World {
     m.showHp = 6;
     this.lastHit = m;
     if (m.state !== 'return') m.state = 'chase';
+    else if (!this.inTown && !inCamp(this.player.pos.x, this.player.pos.z) && dist2(m.pos, m.home) < 26) m.state = 'chase'; // 돌아가던 몬스터도 맞으면 다시 쫓아온다 (v0.41.6: 멀리서 쏘면 피만 차던 문제)
     m.actor.hitFlash(crit ? 0xffd040 : 0xffffff);
     const head = m.pos.clone().setY(2.3 * m.actor.scale);
     this.fx.text(head, crit ? `${dmg}!` : String(dmg), crit ? 'crit' : '');
@@ -1422,6 +1423,11 @@ export class World {
   // 공격 단추: 타겟 고정이 켜져 있으면 이동해도 공격하던 대상을 다시 잡는다
   attackButton() {
     const lock = this.st.settings.targetLock !== false;
+    // 이동 중(조이스틱)에 누르면: 사거리 안 적에게 평타 한 번을 예약해 걸으면서 섞어 쓴다 (v0.41.6)
+    if (this.joy.lengthSq() > 0.01) {
+      const R0 = this.d.range + 0.8, cand = [this.target, this.locked].find((m) => m && !m.dead && dist2(m.pos, this.player.pos) < R0) || this.nearestMonster(R0);
+      if (cand) { this.atkQueue = { m: cand, until: this.time + 0.6 }; if (lock) this.locked = cand; return; }
+    }
     const t = this.target && !this.target.dead ? this.target
       : lock && this.locked && !this.locked.dead && dist2(this.locked.pos, this.player.pos) < 20 ? this.locked : null;
     if (t) this.cmdAttack(t); else this.cmdAttackNearest();
@@ -2157,7 +2163,12 @@ export class World {
     let moving = false;
     const speed = d.moveSpeed * ((this.chainSpdT || 0) > 0 ? 1.15 : 1);
     if (this.chainSpdT > 0) this.chainSpdT -= dt;
-    if (this.joy.lengthSq() > 0.01) {
+    const aq = this.atkQueue;
+    if (aq && (aq.m.dead || this.time > aq.until)) this.atkQueue = null;
+    if (this.joy.lengthSq() > 0.01 && this.atkQueue && this.atkCd <= 0 && this.actCd <= 0 && dist2(this.atkQueue.m.pos, P.pos) < d.range + 0.8) {
+      // 이동 중 평타: 예약한 한 번을 바로 친다 (스킬처럼 걸음 사이에 섞인다)
+      const m = this.atkQueue.m; this.atkQueue = null; this.basicAttack(m);
+    } else if (this.joy.lengthSq() > 0.01) {
       // 조이스틱은 공격 동작도 끊는다
       if (P.lock > 0 && this.swing <= 0) P.lock = 0;
       if (P.lock <= 0) {
@@ -2170,6 +2181,8 @@ export class World {
       }
     } else if (this.target && !this.target.dead) {
       const t = this.target;
+      // 자동 사냥: 집으로 돌아가며 피를 채우는 몬스터(쫓아오지 않는 상태)는 버리고 다른 몬스터로 (헛손질 방지)
+      if (this.auto && t.state === 'return' && (dist2(t.pos, t.home) >= 26 || inCamp(P.pos.x, P.pos.z) || this.inTown)) { t.ignoreUntil = this.time + 8; this.target = null; this.atkQueue = null; }
       const range = this.pendingSkill ? this.skillRange(this.pendingSkill) : d.range;
       const dd = dist2(t.pos, P.pos);
       if (dd > range) {
