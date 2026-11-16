@@ -11,6 +11,7 @@ export const SKILL_FX = {
   fire_pillar: 'c_firepost', inferno_field: 'c_firepost', flame_burst: 'c_firepost', aw_int1: 'c_firepost', aw_int4b: 'c_firepost', aw_int2: 'c_firepost',
   arrow_rain: 'c_arrowrain', hail_of_arrows: 'c_arrowrain', aw_dex3: 'c_arrowrain', trap_arrow: 'bear_trap', scatter_shot: 'caltrops', wind_volley: 'c_tornado', storm_volley: 'c_tornado',
   arcane_storm: 'c_torrentacle', aw_wis4b: 'c_torrentacle', overload: 'c_torrentacle', aw_wis3: 'c_torrentacle', mana_burst: 'c_waterpost', aw_wis2: 'c_waterpost',
+  aw_str5: 'c_earthmultispike', aw_dex5: 'c_lightningclaw', aw_int5: 'c_firepost', aw_wis5: 'c_torrentacle', aw_vit5: 'c_earthspike',
   mind_blast: 'dark_mist_alt', fan_of_knives: 'caltrops', aw_int3: 'c_icemultispike',
 };
 for (const [id, fx] of Object.entries(SKILL_FX)) if (SKILLS[id] && !SKILLS[id].fx) SKILLS[id].fx = fx;

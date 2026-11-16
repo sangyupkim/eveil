@@ -9,11 +9,11 @@ import { makeItem, makeBook, rollBase, rollRarity, isStack, makeNamed, namedOf }
 import { NAMED_CHANCE, GEM_DROP, GEMS, GEM_GRADES, gemId, gemGradeFor } from '../data/legends.js';
 
 // 각성 등급 1 · 2 · 3 · 4가 정해진 스킬북이 나오기 시작하는 몬스터 레벨
-const AWAKEN_LV = [20, 40, 60, 100];
+const AWAKEN_LV = [20, 60, 150, 300, 500]; // v0.42 전직 단계와 같게
 // mon: { tier, level }, opt: { auto, magicFind, goldFind }
 export function rollLoot(mon, opt = {}, st = null, rng = R) {
   const t = LOOT[mon.tier];
-  const dropMult = opt.auto ? CONFIG.autoPenalty : 1;
+  const dropMult = opt.auto ? CONFIG.autoDrop ?? 0.3 : 1;
   const out = [];
   // 골드
   if (chance(t.gold[0] * dropMult, rng)) {

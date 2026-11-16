@@ -127,6 +127,8 @@ test('장착 · 양손 무기는 방패를 벗긴다', () => {
   p.stats.str = 30;
   const sh = makeItem('round_shield', {}, p); addItem(p, sh); assert.ok(equip(p, sh.uid).ok);
   const gs = makeItem('greatsword', { rarity: 'rare', ilvl: 5 }, p); addItem(p, gs);
+  assert.equal(equip(p, gs.uid).ok, false); // 각성 5 필요 (v0.42)
+  p.awakenings = 5;
   assert.ok(equip(p, gs.uid).ok);
   assert.equal(p.equip.offhand, null);
   assert.ok(itemName(gs).includes('대검'));
@@ -309,7 +311,7 @@ test('능력치 파편: 갈아 끼울 때 · 보스 드랍 · 대장간에서 �
   // 갈아 끼우면 가끔(항상 X) 파편
   let got = 0;
   for (let n = 0; n < 400; n++) {
-    const s2 = newPlayer();
+    const s2 = newPlayer(); s2.awakenings = 10;
     const a = makeItem(it.base, { rarity: 'rare', ilvl: 10 }, s2), b = makeItem(it.base, { rarity: 'rare', ilvl: 10 }, s2);
     addItem(s2, a); equip(s2, a.uid); addItem(s2, b);
     if (equip(s2, b.uid).shards.length) got++;
@@ -447,7 +449,7 @@ test('주문 피해: 평타 기준 × 계수 (0.34.2에 1/3로 낮춤)', () => {
 test('자동 판매는 땅에서 주운 장비만: 입었다 벗은 장비는 남는다', () => {
   // 화면 없이 autoSell 규칙만 확인 (world.js와 같은 조건)
   const keep = (it) => !it.loot || it.worn || it.rarity === 'hero' || it.rarity === 'legend';
-  const p = newPlayer('t', { face: 'm01' }, 'sword');
+  const p = newPlayer('t', { face: 'm01' }, 'sword'); p.awakenings = 5;
   const it = makeItem('short_sword', { rarity: 'rare', ilvl: 5 }, p);
   p.inv.push(it); it.loot = true;
   assert.equal(keep(it), false);                 // 막 주운 희귀 장비는 팔 수 있다

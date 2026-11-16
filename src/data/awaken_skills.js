@@ -1,9 +1,9 @@
 // 높은 각성 등급 스킬 (v0.39): 다른 스킬과 같은 스킬북. 각성 등급 1 ~ 4가 붙어 있고(awaken), 몬스터 레벨 20 · 40 · 60 · 100부터 떨어진다 (game/loot.js).
 // '각성 스킬'이라는 따로 된 종류는 없다 — 모든 스킬에 각성 등급이 있다 (skillGrade). 갈래(school)는 스탯마다 검술 · 궁술 · 화염 · 비전 · 철벽.
 // awaken 1 · 2 · 3 = 1차 · 2차 · 3차 각성(20 · 40 · 60)에 닿고 필요 능력치를 넘으면 누구나 쓴다 (윗 차수가 되어도 아래 차수 스킬은 그대로).
-// awaken 4 = 4차 각성(100) 전용: 내 4차 갈래에 그 스탯(line)이 들어 있어야 쓴다 (직업 스킬).
+// awaken 4 · 5 = 4차(300) · 5차(500) 각성 전용: 내 4차 갈래에 그 스탯(line)이 들어 있어야 쓴다 (직업 스킬).
 // 세기: 같은 계수 체계(평타 × 계수) — 같은 레벨의 책 스킬보다 한 단계 위. 회복 효과 없음.
-const R = { 1: 40, 2: 80, 3: 120, 4: 180 }; // 차수별 필요 능력치
+const R = { 1: 40, 2: 100, 3: 220, 4: 400, 5: 650 }; // 차수별 필요 능력치 (v0.42: 전직 20 · 60 · 150 · 300 · 500)
 const SCH = { str: 'sword', dex: 'bow', int: 'fire', wis: 'arcane', vit: 'bulwark' };
 const A = (stat, awaken, o) => ({ awaken, line: stat, school: SCH[stat], tier: Math.min(5, awaken + 1), req: { [stat]: R[awaken] }, ...o });
 const W = (stat, awaken, o) => A(stat, awaken, { ap: 'weapon', ...o });
@@ -38,6 +38,12 @@ export const AWAKEN_SKILLS = {
   aw_vit2: W('vit', 2, { name: '대지의 방패', color: '#b0a070', type: 'cleave', needs: 'melee', scale: 'hp', hpCost: 0.06, mp: 20, cd: 10, radius: 5, power: 3.0, perRank: 0.22, anim: 'heavy', desc: '방패로 앞을 쓸어 밀어낸다.' }),
   aw_vit3: W('vit', 3, { name: '불굴의 진동', color: '#a09060', type: 'spin', needs: 'melee', scale: 'armor', hpCost: 0.08, mp: 30, cd: 14, radius: 6, power: 4.0, perRank: 0.3, anim: 'spin', desc: '땅을 울려 둘레를 흔든다.' }),
   aw_vit4a: A('vit', 4, { name: '불멸의 의지', color: '#e0c080', type: 'buff', ap: 'vit', buff: 'armorPct', mp: 36, cd: 40, duration: 14, power: 60, perRank: 4, desc: '14초 동안 방어력이 크게 오른다.' }),
+  // ── 5차 각성(500) 전용: 내 5차 갈래에 그 스탯이 있어야 쓴다 (v0.42) ──
+  aw_str5: W('str', 5, { name: '종말의 일격', color: '#ff5030', type: 'cleave', needs: 'melee', mp: 70, cd: 20, radius: 8, power: 11, perRank: 0.7, anim: 'heavy', desc: '세상을 가르는 일격.' }),
+  aw_dex5: W('dex', 5, { name: '별을 꿰는 화살', color: '#e0ffe8', type: 'line', needs: 'bow', mp: 66, cd: 20, range: 20, width: 3, power: 12, perRank: 0.75, desc: '하늘 끝까지 한 줄을 꿰뚫는다.' }),
+  aw_int5: A('int', 5, { name: '창세의 불꽃', color: '#ff6020', type: 'meteor', ap: 'int', mp: 90, cd: 22, radius: 7, power: 520, perRank: 90, desc: '하늘에서 창세의 불을 떨군다.' }),
+  aw_wis5: A('wis', 5, { name: '무한의 마력', color: '#c8b0ff', type: 'nova', ap: 'wis', scale: 'mp', mpPct: 0.45, mp: 40, cd: 22, radius: 8, power: 9, perRank: 0.6, desc: '쌓아 둔 마력을 모두 터뜨린다.' }),
+  aw_vit5: W('vit', 5, { name: '불멸의 대지', color: '#f0c070', type: 'spin', needs: 'melee', scale: 'hp', hpCost: 0.12, mp: 50, cd: 20, radius: 8, hits: 3, power: 6, perRank: 0.4, anim: 'spin', desc: '대지를 세 번 뒤흔든다.' }),
   aw_vit4b: W('vit', 4, { name: '성벽 붕괴', color: '#d8a868', type: 'melee', needs: 'melee', scale: 'hp', hpCost: 0.1, mp: 40, cd: 18, power: 7.0, perRank: 0.5, anim: 'heavy', desc: '성벽을 무너뜨리듯 내리친다.' }),
 };
 // 스킬의 각성 등급 (v0.39.3: 모든 스킬): awaken이 정해진 스킬은 그 차수, 나머지는 책 단계로 —
@@ -50,6 +56,6 @@ export function awakenOk(st, sk) {
   if (!g) return { ok: true };
   const t = (st.titles || []).find((x) => x.tier === g - 1);
   if (!t) return { ok: false, why: `${g}차 각성 필요` };
-  if (sk.awaken === 4 && !t.key.split('+').includes(sk.line)) return { ok: false, why: '4차 갈래에 맞지 않는 스킬' };
+  if (sk.awaken >= 4 && !t.key.split('+').includes(sk.line)) return { ok: false, why: `${g}차 갈래에 맞지 않는 스킬` };
   return { ok: true };
 }

@@ -56,7 +56,7 @@ export function rewardItems(st, q) {
     });
     const score = (id) => { const b = BASES[id], ok = meetsReq(st, b.req, S); return (ok ? 1e6 : 0) + (slot === 'weapon' && b.cls === cls ? 500 : 0) + fit(b) * 1e3 + (b.minLvl ?? 1); };
     pool.sort((a, b) => score(b) - score(a));
-    if (pool.length) out.push(makeItem(pool[0], { rarity, ilvl }, st));
+    if (pool.length) out.push(makeItem(pool[0], { rarity, ilvl: Math.min(ilvl, Math.max(1, st.awakenings || 0)) }, st)); // 지금 낄 수 있는 레벨로 (v0.42 각성 제한)
   }
   if (r.book) out.push(makeBook((QUEST_BOOKS[st.start] || QUEST_BOOKS.sword)[r.book], st));
   return out;

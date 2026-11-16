@@ -6,7 +6,7 @@ import { awakenOk } from '../data/awaken_skills.js';
 import { DUNGEON_X, entranceOf, MAX_STAGE, stageMods, dungeonLevel, layout as dungeonLayout, cellPos, N } from '../data/dungeons.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { gemGradeFor } from '../data/legends.js';
-export const TIER_NAMES = ['평온', '악몽', '지옥'];
+export const TIER_NAMES = ['평온', '악몽', '지옥', '혼돈']; // v0.42 혼돈 = 각성 380 ~ 500
 import { TITLE_AT, titleKey, titleName, perkChoices, UNIQUES } from '../data/titles.js';
 // 게임 월드: 플레이어 조작 · 몬스터 AI · 전투 · 스킬 · 드랍 · 사망 · 자동 사냥
 import * as THREE from 'three';
@@ -60,13 +60,15 @@ const FAR = ['leap', 'snipe', 'fan', 'hail', 'pull'];
 const farOf = (id) => { let h = 0; for (const c of id || '') h = (h * 31 + c.charCodeAt(0)) >>> 0; const i = h % FAR.length; return [FAR[i], FAR[(i + 1 + (h >> 4) % (FAR.length - 1)) % FAR.length]]; };
 
 // 세계 단계 배율 (레벨 보정 위에 더): 악몽 · 지옥은 몬스터가 확실히 더 세다
-const TIER_K = { 1: { hp: 1, dmg: 1, pat: 1 }, 2: { hp: 1.8, dmg: 1.45, pat: 1.25 }, 3: { hp: 3, dmg: 2, pat: 1.5 } };
+const TIER_K = { 1: { hp: 1, dmg: 1, pat: 1 }, 2: { hp: 1.8, dmg: 1.45, pat: 1.25 }, 3: { hp: 3, dmg: 2, pat: 1.5 }, 4: { hp: 7, dmg: 3.6, pat: 1.8 } };
 
 export class World {
   constructor(stage, st, ui) {
     this.stage = stage;
     this.scene = stage;
     this.st = st;
+    // v0.42 전직 단계가 20 · 60 · 150 · 300 · 500으로 바뀜: 각성이 모자란 칭호는 내린다 (닿으면 다시 고른다)
+    if (st.titles) st.titles = st.titles.filter((t) => (st.awakenings || 0) >= (TITLE_AT[t.tier] ?? 1e9));
     this.ui = ui;
     this.fx = new FX(stage, ui.fxLayer);
     // 고정한 타겟 발밑 표시
@@ -584,7 +586,8 @@ export class World {
   // 세계 단계 열기: 지금 단계에서 종말의 왕좌 보스를 잡았고(순서 상관없음) + 그 던전을 3 · 6단계까지 돌파
   checkTierUnlock() {
     const st = this.st, t = st.worldTier || 1;
-    if (t >= 3 || (st.maxTier || 1) > t) return;
+    if (t >= TIER_NAMES.length || (st.maxTier || 1) > t) return;
+    if (t === 3 && (st.awakenings || 0) < 300) return; // 혼돈은 4차 전직(300) 뒤에
     const boss = (st.finalBoss || 0) >= t || (t === 1 && (st.bossDone?.[FINAL_ZONE] || 0)); // 예전 저장: 1단계 보스 기록
     if (!boss || (st.dungeons?.[FINAL_ZONE] || 0) < 3 * t) return;
     st.maxTier = t + 1; this.ui.toast(`세계 ${TIER_NAMES[st.maxTier - 1]} 단계가 열렸습니다`, '#ff9a6a'); sfx('awaken');
@@ -650,8 +653,8 @@ export class World {
 
   get canShop() { const P = this.player.pos, c = inCamp(P.x, P.z); return this.inTown || !!(c && this.st.camps?.[c.zone]?.merchant) || !!(this.eventNpc && dist2(this.eventNpc.pos, P) < 6); }
   // 세계 단계: 마지막 보스를 잡으면 다음 단계가 열린다. 단계마다 모든 몬스터 레벨 +66 (드랍 장비 · 보석 등급도 따라 오른다)
-  get wt() { return Math.min(3, Math.max(1, this.st.worldTier || 1)); }
-  get tierOffset() { return ((this.st.worldTier || 1) - 1) * TIER_STEP; } // 세계 단계 한 칸 = 평온 마지막 지역 레벨 (120)
+  get wt() { return Math.min(4, Math.max(1, this.st.worldTier || 1)); }
+  get tierOffset() { return [0, TIER_STEP, TIER_STEP * 2, 380][this.wt - 1]; } // 세계 단계 한 칸 = 평온 마지막 지역 레벨 (120)
   setTier(t) {
     const st = this.st;
     if (t < 1 || t > (st.maxTier || 1) || t === (st.worldTier || 1) || this.dungeon) return;
@@ -1238,7 +1241,7 @@ export class World {
     if (m.tier !== 'normal') this.ui.log(`${m.name} 처치!`, TIERS[m.tier].color);
     if (!m.dungeon && m.tier === 'boss') { (st.rec ||= {}).bosses = (st.rec.bosses || 0) + 1; if (m.sp?.zone?.id) (st.bossDone ||= {})[m.sp.zone.id] = 1; } // 지역 보스를 잡으면 그 지역 던전이 열린다
     if (!m.dungeon && m.tier === 'boss' && m.sp?.zone?.id === FINAL_ZONE) { st.finalBoss = Math.max(st.finalBoss || 0, st.worldTier || 1); this.checkTierUnlock(); }
-    if (!m.dungeon && !m.noLoot && m.tier === 'boss' && Math.random() < 0.3) { // 보스가 가끔 열쇠
+    if (!m.dungeon && !m.noLoot && m.tier === 'boss' && Math.random() < 0.3 * (this.auto ? CONFIG.autoDrop ?? 0.3 : 1)) { // 보스가 가끔 열쇠
       if (addItem(st, makeItem('dungeon_key', { qty: 1 }, st))) { this.ui.toast('던전 열쇠를 얻었습니다', '#ffd84a'); sfx('rare', 0.7); }
     }
     if (m.dungeon && m.tier === 'boss' && this.dungeon) this.dungeonCleared(m);
@@ -1246,12 +1249,12 @@ export class World {
     // 강화석: 강한 몬스터는 가끔, 일반 몬스터는 아주 가끔
     if (!m.noLoot) {
       const oc = { normal: 0.015, elite: 0.12, named: 0.3, boss: 0.6 }[m.tier] || 0;
-      if (Math.random() < oc * this.autoMult) {
+      if (Math.random() < oc * (this.auto ? CONFIG.autoDrop ?? 0.3 : 1)) {
         const n = (m.tier === 'boss' ? 3 : m.tier === 'named' ? 2 : 1) + Math.floor(Math.random() * (1 + m.level / 15));
         townOf(st).ore += n; this.fx.text(m.pos.clone().setY(2.6), `+${n} 강화석`, 'gold'); this.ui.log(`강화석 +${n}`, '#d8e8ff'); this.ui.dirty();
       }
     }
-    const zid = m.sp?.zone?.id, got = zid && !m.noLoot ? dropMats(st, zid, m.tier) : 0;
+    const zid = m.sp?.zone?.id, got = zid && !m.noLoot && (!this.auto || Math.random() < (CONFIG.autoDrop ?? 0.3)) ? dropMats(st, zid, m.tier) : 0;
     if (zid && !m.dungeon && !m.noLoot && liberateAdd(st, zid, m.tier)) {
       const zn = ALL_ZONES.find((z) => z.id === zid);
       this.ui.toast(`${zn.name} 해방! 여관에서 용병을 보낼 수 있습니다`, '#7fe07a'); sfx('awaken');

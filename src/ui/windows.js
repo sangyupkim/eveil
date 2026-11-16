@@ -27,7 +27,7 @@ import { ZONES, MONSTERS } from '../data/world.js';
 import { nextQuest, questDone, questNeed, goalText, questTurnIn } from '../game/quests.js';
 import { audio } from '../engine/audio.js';
 import { cloud } from '../net/cloud.js';
-import { takeOne, countOf } from '../game/inventory.js';
+import { takeOne, countOf, needAwaken } from '../game/inventory.js';
 import { uiSettings, applyUi, editUi } from './layout.js';
 
 import { TITLE_AT, titleKey, titleName, UNIQUES, perkChoices } from '../data/titles.js';
@@ -221,6 +221,7 @@ export class Windows {
         h += `<div class="aff" style="color:#7fe07a">${s.name} 세트 (${n}/4)</div><div class="note" style="color:${n >= 2 ? '#7fe07a' : '#888'}">2: ${fx(s.b2)}</div><div class="note" style="color:${n >= 4 ? '#7fe07a' : '#888'}">4: ${fx(s.b4)}</div>`;
       }
       h += reqLine(b.req, totalStats(st));
+      if (b.slot && needAwaken(it) > 0) h += `<div class="sub"><span class="${(st.awakenings || 0) < needAwaken(it) ? 'bad' : ''}">필요 각성 ${needAwaken(it)}</span></div>`;
     }
     h += `<div class="sub">판매가 ${itemValue(it)} G</div>`;
     h += '<div class="btns">';
@@ -865,7 +866,7 @@ export class Windows {
           ${card('quest', `<img src="${scrollIcon()}" alt="" />`, '퀘스트')}
         </div>
         <div class="kv" style="margin-top:14px"><span>플레이 시간</span><b>${Math.floor(t / 60)}시간 ${t % 60}분</b><span>각성</span><b>${st.awakenings}회</b>
-          <span>배운 스킬</span><b>${Object.keys(st.skills).length}개</b><span>자동 사냥 효율</span><b>${Math.round(CONFIG.autoPenalty * 100)}%</b>
+          <span>배운 스킬</span><b>${Object.keys(st.skills).length}개</b><span>자동 사냥 효율</span><b>드랍 ${Math.round((CONFIG.autoDrop ?? 0.3) * 100)}% · 경험치 ${Math.round((CONFIG.autoExpPenalty ?? 0.45) * 100)}%</b>
           <span>자동 저장</span><b>${CONFIG.autosaveInterval}초</b>
           <span>그림</span><b>Flare (CC-BY-SA 3.0)</b>
           <span>서버 저장</span><b>${cloud.id ? `${esc(cloud.id)}${cloud.state === 'error' ? ' · 실패' : cloud.savedAt ? ' · 저장됨' : ''}` : '로그인 안 함'}</b></div>

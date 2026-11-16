@@ -29,6 +29,7 @@ export const LIST = [
     counter_slash: P2(176), shield_bash: P1(70), execute: P1(17), leap_slam: P1(154), flurry: P2(175), snipe: P2(130), scatter_shot: P2(64), trap_arrow: P1(170), hail_of_arrows: P2(73),
     ricochet: P2(65), ice_armor: P1(59), holy_ward: P1(113), sanctuary: P2(116), focus_mind: P1(27), taunt_roar: P1(236), stand_fast: P1(75), thorn_mail: P1(176), earth_stomp: P1(165),
     smoke_step: P2(94), poison_edge: P1(2), arcane_shield: P1(67), battle_mage: P1(14), iron_monk: P1(62), swift_fury: P2(189), hunters_mark: P2(27), mana_shield: P1(57),
+    aw_str5: P1(19), aw_dex5: P2(14), aw_int5: P1(191), aw_wis5: P2(111), aw_vit5: P1(77), // 5차 (v0.42)
     aw_str1: P2(177), aw_str2: P2(147), aw_str3: P2(180), aw_str4a: P2(183), aw_str4b: P2(179), aw_dex1: P2(137), aw_dex2: P2(144), aw_dex3: P2(74), aw_dex4a: P2(141), aw_dex4b: P2(131),
   }).map(([k, f]) => ['sk:' + k, f]),
 ];

@@ -33,10 +33,14 @@ export function takeOne(st, baseId) {
   return true;
 }
 
+// v0.42 장비 각성 제한: 필요 각성 = 아이템 레벨 (아이템 레벨 1 · 시작 장비는 제한 없음)
+export const needAwaken = (it) => (it.noDrop || (it.ilvl || 1) <= 1 ? 0 : it.ilvl || 0);
 export function canEquip(st, it) {
   const base = BASES[it.base];
   if (!base?.slot) return { ok: false, why: '장착할 수 없는 아이템' };
   if (!meetsReq(st, base.req, totalStats(st))) return { ok: false, why: '스탯 조건이 부족합니다' };
+  const need = needAwaken(it);
+  if ((st.awakenings || 0) < need) return { ok: false, why: `각성 ${need} 필요` };
   return { ok: true };
 }
 
