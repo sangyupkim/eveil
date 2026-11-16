@@ -136,6 +136,7 @@ export const BASES = {
   ruby_ring: { name: '홍옥 반지', slot: 'ring', minLvl: 30 },
   ...Object.fromEntries(Object.entries(GEMS).flatMap(([g, x]) => GEM_GRADES.map((gr, k) => [gemId(g, k), { name: `${gr.pre ? gr.pre + ' ' : ''}${x.name}`, type: 'gem', gem: g, grade: k, stack: true, price: 250 * (k + 1) ** 2, shop: false }]))),
   dungeon_key: { name: '던전 열쇠', type: 'key', price: 1500, stack: true },
+  myth_mark: { name: '신화의 흔적', type: 'mat', price: 0, stack: true, icon: 42 }, // v0.42.10 강화 · 극한 돌파마다 1개, 100개로 신화 장비
   dungeon_key2: { name: '강화 던전 열쇠', type: 'key', price: 6000, stack: true }, dungeon_key3: { name: '극한 던전 열쇠', type: 'key', price: 20000, stack: true }, // v0.42 제작소에서 // 상점에서 팔지 않는다: 오늘의 의뢰 · 보스에게서만
   pet_egg: { name: '강아지', type: 'pet', pet: 'pet_dog', price: 3000, stack: true, shop: true },
   pet_cat: { name: '고양이', type: 'pet', pet: 'pet_cat', price: 3000, stack: true, shop: true },

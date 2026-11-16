@@ -496,7 +496,7 @@ test('각성 스킬: 1~3차는 차수만, 4차는 갈래에 그 스탯이 있어
 test('드랍: 각성 등급 책이 나와도 이름 있는 전설 · 보석 굴림을 건너뛰지 않는다, 탁월한 옵션', async () => {
   const { rollLoot } = await import('../src/game/loot.js');
   let named = 0; for (let i = 0; i < 6000; i++) for (const d of rollLoot({ tier: 'boss', level: 110, sp: { zone: { id: 'field' } } })) if (d.item?.named) named++;
-  assert.ok(named / 6000 > 0.045, '이름 있는 전설 ' + named); // NAMED_CHANCE.boss 6%
+  assert.ok(named / 6000 > 0.013 && named / 6000 < 0.03, '이름 있는 전설 ' + named); // NAMED_CHANCE.boss 2% (v0.42.10)
   let g = 0, n = 0; for (let i = 0; i < 400; i++) { const it = makeItem('short_sword', { rarity: 'legend', ilvl: 50 }); for (const a of it.affixes) { n++; if (a.great) g++; } }
   assert.ok(g / n > 0.05 && g / n < 0.11, '탁월 ' + g / n);
 });

@@ -4,7 +4,7 @@ import { HERBS, herbsAt, RECIPES } from '../data/potions.js';
 import { ZONES } from '../data/world.js';
 import { rollLoot } from './loot.js';
 import { addItem } from './inventory.js';
-import { makeItem } from './items.js';
+import { makeItem, rollBase } from './items.js';
 import { MATERIALS, MAT_DROP, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
 import { BASES } from '../data/items.js';
 import { vault, vaultAdd, vaultSave } from './vault.js';
@@ -580,4 +580,15 @@ export function craftKey(st, id, times = 1) {
   takeZoneMats(st, r.zoneMats * times);
   resAdd(st, r.id, times);
   return { ok: true, n: times };
+}
+
+// 신화 교환 (v0.42.10): 신화의 흔적 100개 → 지금 각성에 맞는 레벨의 신화 장비 하나 (불운 보정)
+export const MYTH_MARKS = 100;
+export function craftMyth(st, rng = Math.random) {
+  if (resCount(st, 'myth_mark') < MYTH_MARKS) return { ok: false, why: `신화의 흔적 ${MYTH_MARKS}개가 필요합니다` };
+  const lv = Math.max(10, Math.min(500, st.awakenings || 1));
+  const it = makeItem(rollBase(lv, rng), { rarity: 'myth', ilvl: lv }, st, rng);
+  if (!addItem(st, it)) return { ok: false, why: '가방이 가득 찼습니다' };
+  resTake(st, 'myth_mark', MYTH_MARKS);
+  return { ok: true, item: it };
 }

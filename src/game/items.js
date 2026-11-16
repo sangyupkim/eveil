@@ -109,7 +109,7 @@ export function rollBase(ilvl, rng = R) {
 
 export function rollRarity(table, magicFind = 0, rng = R) {
   const t = {};
-  for (const k of RARITY_ORDER) t[k] = (table[k] || 0) * (k === 'common' ? 1 : 1 + magicFind / 100);
+  for (const k of RARITY_ORDER) t[k] = (table[k] || 0) * (k === 'common' ? 1 : k === 'legend' ? 1 + magicFind / 300 : 1 + magicFind / 100); // 좋은 아이템 발견은 전설에 1/3만 (v0.42.10)
   return weighted(t, rng);
 }
 

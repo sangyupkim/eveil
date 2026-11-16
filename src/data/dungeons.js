@@ -83,7 +83,8 @@ export const dungeonLevel = (zn, stage) => Math.round((zn.levels[0] + zn.levels[
 // v0.42 던전 난이도 (들어갈 때 고른다): 단계 1 ~ 10 각각에 보통 · 강화 · 극한. 강화 · 극한 열쇠는 제작소에서 만든다
 // 신화 장비는 강화 · 극한 던전 우두머리에서만 (필드 보스 · 보통 던전에서는 나오지 않는다)
 export const DUNGEON_DIFFS = [
-  { name: '보통', key: 'dungeon_key', hp: 1, dmg: 1, loot: 1, items: 2, myth: () => 0 },
-  { name: '강화', key: 'dungeon_key2', hp: 2.6, dmg: 1.7, loot: 1.8, items: 3, myth: (stage) => 0.02 + 0.008 * stage },
-  { name: '극한', key: 'dungeon_key3', hp: 6, dmg: 2.8, loot: 3, items: 4, myth: (stage) => 0.1 + 0.03 * stage },
+  { name: '보통', key: 'dungeon_key', hp: 1, dmg: 1, loot: 1, items: 2, legend: 1, myth: () => 0 },
+  // myth: 한 번 돌파에 신화가 나올 확률 (v0.42.10: 강화 0.2 → 1%, 극한 0.5 → 3%) · legend: 보상 장비 하나가 전설일 확률 배율
+  { name: '강화', key: 'dungeon_key2', hp: 2.6, dmg: 1.7, loot: 1.8, items: 3, legend: 1.25, myth: (stage) => 0.002 + ((stage - 1) * 0.008) / 9 },
+  { name: '극한', key: 'dungeon_key3', hp: 6, dmg: 2.8, loot: 3, items: 4, legend: 1.5, myth: (stage) => 0.005 + ((stage - 1) * 0.025) / 9 },
 ];

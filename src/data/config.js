@@ -82,10 +82,10 @@ export const LOOT = {
   normal: { itemChance: 0.004, items: [1, 1], gold: [0.5, 1], potion: 0.03, book: 0.004, bookTiers: { 1: 1 },
     rarity: { common: 78, magic: 20.5, rare: 1.45, hero: 0.05, legend: 0 } },
   elite: { itemChance: 0.035, items: [1, 1], gold: [1, 3], potion: 0.25, book: 0.03, bookTiers: { 1: 70, 2: 30 },
-    rarity: { common: 25, magic: 60, rare: 13.8, hero: 1.1, legend: 0.1 } },
+    rarity: { common: 25, magic: 60, rare: 13.85, hero: 1.1, legend: 0.05 } },
   // v0.42.8 네임드 · 보스는 장비 확정, 대신 낮은 · 중간 등급이 대부분 (좋은 장비는 드물게)
   named: { itemChance: 1, items: [1, 1], gold: [1, 8], potion: 0.5, book: 0.15, bookTiers: { 2: 60, 3: 40 }, shard: 0.08,
-    rarity: { common: 30, magic: 42, rare: 23, hero: 4.5, legend: 0.5 } },
+    rarity: { common: 30, magic: 42, rare: 23.8, hero: 4, legend: 0.2 } },
   boss: { itemChance: 1, items: [1, 2], gold: [1, 20], potion: 1, book: 0.6, bookTiers: { 3: 60, 4: 35, 5: 5 }, shard: 0.15,
-    rarity: { common: 15, magic: 40, rare: 34, hero: 9.5, legend: 1.5 } },
+    rarity: { common: 15, magic: 40, rare: 36, hero: 8.4, legend: 0.6 } },
 };

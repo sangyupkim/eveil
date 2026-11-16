@@ -19,7 +19,7 @@ import { ELIXIRS, ELIXIR_TIME } from '../data/potions.js';
 import { addAP, gainExp, rewardFactor, recAwaken } from '../game/growth.js';
 import { addSkillExp, skillValues, skillEff, modsOf, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
 import { rollLoot, rollDeathDrop } from '../game/loot.js';
-import { dropMats, liberateAdd, dropEss } from '../game/town.js';
+import { dropMats, liberateAdd, dropEss, resAdd, resCount } from '../game/town.js';
 import { dailyProgress, dailyReward, dailyText, dayKey, dailyOf } from '../game/daily.js';
 import { MATERIALS } from '../data/crafting.js';
 import { addItem, takeOne, countOf, equip as equipItem, unequip as unequipItem } from '../game/inventory.js';
@@ -603,10 +603,12 @@ export class World {
     // 보상: 영웅 이상 2개 (단계가 높을수록 전설), 상급 스킬북 하나, 금화
     const lv = dungeonLevel(zn, dg.stage) + this.tierOffset;
     const D = DUNGEON_DIFFS[(dg.diff || 1) - 1];
-    let myth = 0;
+    // 신화: 강화 · 극한 던전 우두머리에서만, 한 번 돌파에 한 번 굴린다 (극한 10단계도 3%) · 못 나오면 신화의 흔적이 쌓인다
+    let myth = dg.diff > 1 && Math.random() < D.myth(dg.stage) ? 1 : 0;
+    if (dg.diff > 1) { resAdd(st, 'myth_mark', 1); this.ui.log(`신화의 흔적 +1 (${resCount(st, 'myth_mark')})`, '#ff7aa8'); }
     for (let i = 0; i < D.items; i++) {
-      // 신화: 강화 · 극한 던전 우두머리에서만 (단계가 높을수록 자주)
-      const rarity = Math.random() < D.myth(dg.stage) ? (myth++, 'myth') : Math.random() < (0.08 + dg.stage * 0.035) * D.loot ? 'legend' : 'hero';
+      // 전설: 단계마다 조금씩 (예전 8 + 3.5% × 단계 × 보상 배율 → 극한 높은 단계는 전부 전설이었다)
+      const rarity = i === 0 && myth ? 'myth' : Math.random() < (0.03 + dg.stage * 0.006) * D.legend ? 'legend' : 'hero';
       // 절반은 내 무기 종류(무기 · 보조 칸)로 — 장비 줄이 많아져 지팡이 등이 묻히지 않게 (v0.39.6)
       let base = rollBase(lv);
       if (i === 0) { const cls = this.d.cls && BASES[st.equip.weapon?.base]?.cls, mine = Array.from({ length: 30 }, () => rollBase(lv)).find((id) => BASES[id].cls === cls || (BASES[id].slot === 'offhand' && BASES[st.equip.offhand?.base])); if (mine) base = mine; }

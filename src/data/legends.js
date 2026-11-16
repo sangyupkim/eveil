@@ -16,7 +16,7 @@ Object.assign(NAMED_LEGENDS, {
   harbor: [{ id: 'nl_captain', name: '모르간의 나침반', base: 'star_amulet', ilvl: 60, affixes: [['allStats', 8], ['magicFind', 30]], unique: 7 }],
   demongate: [{ id: 'nl_demon', name: '벨가로스의 심장', base: 'archmage_staff', ilvl: 66, affixes: [['int', 26], ['spellPct', 45]], unique: 5 }],
 });
-export const NAMED_CHANCE = { boss: 0.06, named: 0.015, dungeon: 0.08 };
+export const NAMED_CHANCE = { boss: 0.02, named: 0.005, dungeon: 0.03 }; // v0.42.10 이름 있는 전설도 귀하게 (예전 6% · 1.5% · 8%)
 
 export const GEMS = {
   ruby: { name: '홍옥', stat: 'str', icon: 70 },
