@@ -534,8 +534,8 @@ export { PLOTS, BUILDINGS, EXPEDITIONS };
 // ── v0.42 높은 강화석 · 강화 열쇠 제작 (제작소) ──
 // 상급 강화석(+11 ~ 15) · 최상급 강화석(+16 ~ 20): 강화석 · 지역 재료(가장 많은 것부터) · 정수를 섞는다
 export const ORE_RECIPES = [
-  { id: 'ore2', lv: 6, gold: 20000, need: { ore: 25, ess2: 2, ess3: 1 }, zoneMats: 10 },
-  { id: 'ore3', lv: 8, gold: 80000, need: { ore2: 4, ess4: 2, ess5: 1 }, zoneMats: 20 },
+  { id: 'ore2', lv: 6, gold: 20000, need: { ore: 25, ess3: 2 }, zoneMats: 10 }, // v0.44.12 단계마다 그 단계 정수: 상급 = 응축된
+  { id: 'ore3', lv: 8, gold: 80000, need: { ore2: 4, ess5: 2 }, zoneMats: 20 }, // 최상급 = 혼돈의
 ];
 const zoneMatTotal = (st) => Object.keys(MATERIALS).reduce((a, k) => a + resCount(st, 'mat_' + k), 0);
 function takeZoneMats(st, n) { for (const k of Object.keys(MATERIALS).sort((a, b) => resCount(st, 'mat_' + b) - resCount(st, 'mat_' + a))) { if (n <= 0) break; const c = Math.min(n, resCount(st, 'mat_' + k)); resTake(st, 'mat_' + k, c); n -= c; } }
@@ -586,7 +586,7 @@ export function craftEss(st, rid, times = 1) {
 // 강화 · 극한 던전 열쇠 (제작소 3 · 6단계): 아래 단계 열쇠 + 강화석 + 정수 + 지역 재료
 export const KEY_RECIPES = [
   { id: 'dungeon_key2', lv: 3, gold: 8000, need: { dungeon_key: 1, ore: 30, ess2: 3 }, zoneMats: 15 },
-  { id: 'dungeon_key3', lv: 6, gold: 40000, need: { dungeon_key2: 1, ore2: 3, ess3: 3, ess4: 1 }, zoneMats: 30 },
+  { id: 'dungeon_key3', lv: 6, gold: 40000, need: { dungeon_key2: 1, ore2: 3, ess4: 2 }, zoneMats: 30 }, // 극한 = 심연의
 ];
 export function craftKey(st, id, times = 1) {
   const r = KEY_RECIPES.find((x) => x.id === id), ok = r && oreRecipeOk(st, r, times);

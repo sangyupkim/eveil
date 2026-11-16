@@ -28,7 +28,7 @@ export const craftCost = (zi) => ({ mats: 12 + zi * 4, gold: 300 * (zi + 1) ** 2
 // 건물 단계 올리기에 드는 재료: 단계 n → n+1 은 n번째 지역 재료 (n*8개)
 // 1 → 2단계는 금화만 (방치만 해도 첫 단계는 올라간다)
 // v0.42: 5 → 10단계는 정수 (2 ~ 5단계 재료). base = 아이템 id
-export const UP_ESS = { 5: ['ess2', 10], 6: ['ess3', 12], 7: ['ess3', 20], 8: ['ess4', 15], 9: ['ess5', 15] }; // v0.44.11 6단계는 응축된 정수 (빛바랜 정수 쏠림 완화)
+export const UP_ESS = { 5: ['ess2', 12], 6: ['ess3', 12], 7: ['ess4', 12], 8: ['ess4', 18], 9: ['ess5', 15] }; // v0.44.12 단계마다 한 단계씩 높은 정수 (빛바랜 정수 쏠림 없앰)
 export const upgradeMats = (lv) => {
   if (lv < 2) return null;
   if (UP_ESS[lv]) return { base: UP_ESS[lv][0], n: UP_ESS[lv][1] };
