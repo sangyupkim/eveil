@@ -452,7 +452,8 @@ export function brewCollect(st, now = Date.now(), put = null) {
   return { ok: n > 0, n };
 }
 // 예전 세트 제작 (지금은 쓰지 않는다 — 이미 만든 세트 장비 효과는 그대로)
-export const craftZones = (st) => { const w = findBuilding(st, 'workshop'); return w ? ZONES.slice(0, BUILDINGS.workshop.zones(w.lv)) : []; };
+// 세트 · 재료가 있는 지역만 (v0.42.12: 제작소 6단계부터 지역 수가 재료 있는 지역(8)을 넘어 창이 깨지던 문제)
+export const craftZones = (st) => { const w = findBuilding(st, 'workshop'); return w ? ZONES.filter((z) => SETS[z.id] && MATERIALS[z.id]).slice(0, BUILDINGS.workshop.zones(w.lv)) : []; };
 // 그 지역 레벨에 맞는 가장 좋은 부위 기본 아이템
 export function setBase(zi, slot) {
   const lvl = ZONES[zi].levels[1];
