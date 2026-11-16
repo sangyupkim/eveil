@@ -236,8 +236,17 @@ const VAR_SPRITE = { crystal_lord: ['x_spider_horror', 3.4], ash_king: ['x_spear
   crypt_ghoul: ['x_cloth_brute', 2.9], blood_snake: ['x_leather_archer', 2.9], temple_shade: ['x_plate_archer', 2.9], abyss_eye: ['x_chainmail_archer', 2.9], doom_shade: ['x_cloth_archer', 2.9] };
 for (const [id, [sprite, size]] of Object.entries(VAR_SPRITE)) if (MONSTER_LOOK[id]) MONSTER_LOOK[id] = { ...MONSTER_LOOK[id], sprite, size };
 // v0.44.3 작은 원본을 너무 크게 늘려 흐리던 보스 · 네임드: 확대를 줄인다 (휴대폰에서 원본 1픽셀이 5~5.5픽셀 이하로)
-const SHARP_SIZE = { mushking: 1.6, ghost_captain: 2.4, crypt_king: 2.4, flame_lord: 2.4, abyss_king: 2.4, spider_queen: 2.4, crystal_king: 2.4, temple_lord: 2.9, temple_king: 1.9, high_mage: 2.9, crypt_lord: 2.9, bog_witch: 2.9, blood_lord: 2.9, doom_king: 1.9, arch_demon: 2.4, brood_mother: 2.4, wolf: 1.9 };
+const SHARP_SIZE = { mushking: 1.6, wolf: 1.9 };
 for (const [id, size] of Object.entries(SHARP_SIZE)) if (MONSTER_LOOK[id]) MONSTER_LOOK[id] = { ...MONSTER_LOOK[id], size };
+// v0.44.4 그래도 흐리던 보스 · 네임드는 큰 원본으로 만든 몬스터로 바꾼다 [그림, 크기, 색]
+const SHARP_SWAP = {
+  spider_queen: ['x_spider_horror', 3.9, 0xd0a0ff], crystal_king: ['x_spider_horror', 3.9, 0xe8b8ff], brood_mother: ['x_spider_horror', 3.7, 0xa0ffa0],
+  ghost_captain: ['x_fishman_blade', 3.0, 0xb0f0e0], bog_witch: ['x_fishman_blade', 2.9, 0x90e090], blood_lord: ['x_fishman_blade', 2.9, 0xff7070],
+  crypt_king: ['x_ice_mummy', 1.8, 0xc8e8ff], high_mage: ['x_ice_mummy', 1.75, 0xd0d0e0], crypt_lord: ['x_ice_mummy', 1.75, 0x80b0ff],
+  flame_lord: ['x_spearman', 3.3, 0xff9060], abyss_king: ['x_spearman', 3.3, 0xa070e0], temple_lord: ['x_knight', 2.5, 0xf0d080],
+  temple_king: ['x_tusk_beast', 3.2, 0xd8d0b0], doom_king: ['x_tusk_beast', 3.2, 0x904050], arch_demon: ['x_beast_warrior', 3.3, 0xff7060],
+};
+for (const [id, [sprite, size, tint]] of Object.entries(SHARP_SWAP)) if (MONSTER_LOOK[id]) MONSTER_LOOK[id] = { ...MONSTER_LOOK[id], sprite, size, tint };
 
 // v0.41 둘째 아이콘 묶음: 둔기 · 보주는 Flare 무기 아이콘 · 보주 그림, 스킬은 Painterly 주문 아이콘 (스킬마다 하나씩)
 Object.assign(ITEM_LOOK.rusty_club, { icon: ICONS2.club }); Object.assign(ITEM_LOOK.oak_club, { icon: ICONS2.club }); Object.assign(ITEM_LOOK.iron_mace, { icon: ICONS2.mace });

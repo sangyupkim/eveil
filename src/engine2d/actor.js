@@ -20,6 +20,8 @@ export function makeHero(look = {}) {
 let nextId = 1;
 
 let SHADOW = null;
+// 그림자 너비 (v0.44.4): 몸집(size) 대신 서 있는 그림의 실제 너비로. 그림에 그림자가 그려져 있으면(noShadow) 그리지 않는다
+const shadowWidth = (def) => (def.noShadow ? 0 : def.sw || 52); // sw: tools/prep-shadows.mjs
 const shadowImg = () => {
   if (SHADOW) return SHADOW;
   SHADOW = document.createElement('canvas'); SHADOW.width = 104; SHADOW.height = 44;
@@ -127,7 +129,8 @@ export class Actor {
     if (alpha <= 0.01) return;
     // 그림자: 미리 만든 타원 그림 (경로 채우기는 몬스터가 많으면 무거웠다)
     ctx.globalAlpha = 0.35 * alpha;
-    ctx.drawImage(shadowImg(), p.x - 26 * s, p.y - 11 * s, 52 * s, 22 * s);
+    const sw = this.shadowW ??= shadowWidth(this.def);
+    if (sw) ctx.drawImage(shadowImg(), p.x - sw / 2 * s, p.y - sw * 0.21 * s, sw * s, sw * 0.42 * s);
 
     ctx.globalAlpha = alpha;
     this.lastDraw = null;
