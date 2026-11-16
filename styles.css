@@ -163,8 +163,8 @@ body:not(.touch) #btnAuto { right: calc(var(--u) * 8.2); bottom: calc(var(--u) *
 body:not(.touch) #btnRecall { right: calc(var(--u) * 11.8); bottom: calc(var(--u) * 0.2); }
 
 #expBar { position: absolute; left: 0; right: 0; bottom: env(safe-area-inset-bottom); height: calc(var(--u) * 1.15); background: rgba(8, 6, 14, 0.85); border-top: 1px solid var(--brass-dk); }
-#expBar i { position: absolute; inset: 0; background: linear-gradient(#ffe7a0, #b98c3e); transform-origin: left; }
-#expBar span { position: relative; display: block; text-align: center; font-size: calc(var(--u) * 0.75); line-height: calc(var(--u) * 1.15); text-shadow: 0 1px 2px #000; }
+#expBar i { position: absolute; inset: 0; background: linear-gradient(#c99a3a, #7a5418); transform-origin: left; } /* v0.44.18 흰 글씨가 보이게 짙은 금빛 */
+#expBar span { position: relative; display: block; text-align: center; font-size: calc(var(--u) * 0.75); line-height: calc(var(--u) * 1.15); color: #fff; font-weight: 700; text-shadow: 0 0 3px #000, 0 0 3px #000, 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; } /* v0.44.18 노란 막대 위에서도 보이게 */
 
 /* ───────── 전체 화면 창 ───────── */
 .screen { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; padding: 8px calc(12px + env(safe-area-inset-right)) 10px calc(12px + env(safe-area-inset-left)); background: var(--sv-grid), radial-gradient(ellipse at 15% 0%, rgba(160, 110, 50, 0.22), transparent 55%), radial-gradient(ellipse at 90% 100%, rgba(60, 150, 190, 0.14), transparent 55%), radial-gradient(ellipse at 50% 35%, #1d1730, #0b0912 85%); overflow: hidden; }
