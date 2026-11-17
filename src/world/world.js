@@ -403,6 +403,7 @@ export class World {
   travel(zone) {
     const q = zone === 'town' ? { x: 0, z: -2 } : CAMPS.find((c) => c.zone === zone);
     if (!q || (zone !== 'town' && !this.st.camps?.[zone])) return;
+    if (this.st.flood?.list?.some((f) => f.zone === zone)) { this.ui.toast('범람지는 포탈로 갈 수 없습니다', '#ff6a5a'); sfx('error'); return; } // v0.44.45 걸어서
     this.portalAway = zone; this.cancelRecall?.();
     this.player.pos.set(q.x, 0, q.z + 2); this.stage.cam.x = q.x; this.stage.cam.z = q.z + 2;
     this.fx.arrive(q.x, q.z + 2); sfx('cast'); this.moveTo = null; this.target = null;
@@ -795,8 +796,10 @@ export class World {
 
   updateSpawners(dt) {
     const p = this.player.pos;
+    const fl = this.st.flood?.list;
     for (const sp of this.spawners) {
       if (sp.mon) continue;
+      if (fl?.length && sp.zone && fl.some((f) => f.zone === sp.zone.id)) continue; // v0.44.45 범람지는 범람 몬스터만 (다시 나지 않는다)
       sp.timer -= dt;
       // 플레이어 바로 앞에서 튀어나오지 않게 · 먼 곳은 가까워질 때 만든다 (몬스터 수 · 메모리 절약)
       const d = Math.hypot(sp.x - p.x, sp.z - p.z);
@@ -1609,16 +1612,18 @@ export class World {
     if (!f) { this.floodHere = null; return; }
     if (this.floodHere !== zn.id) { this.floodHere = zn.id; this.ui.banner?.(`범람지 · ${zn.name}`, '#ff6a5a') ?? this.ui.toast(`범람지 · ${zn.name}`, '#ff6a5a'); sfx('error'); }
     this.floodOn ||= {};
-    if (this.floodOn[zn.id] && this.monsters.some((m) => !m.dead && m.flood === zn.id)) return;
-    if (this.floodOn[zn.id] && this.time - this.floodOn[zn.id] < 30) return;
+    const left = this.monsters.filter((m) => !m.dead && m.flood === zn.id).length;
+    { const el = document.querySelector('.zoneName'); if (el && this.floodOn[zn.id]) el.textContent = `범람지 · ${zn.name} · 남은 몬스터 ${left}`; }
+    if (this.floodOn[zn.id]) return; // 한 번만 (다시 나지 않는다 · 나갔다 들어와도 남은 몬스터 그대로)
     this.floodOn[zn.id] = this.time;
+    for (const m of this.monsters) if (!m.dead && !m.flood && m.sp?.zone?.id === zn.id) { m.dead = true; m.deadT = 0; if (m.sp) m.sp.mon = null; } // 원래 몬스터는 걷어낸다
     const top = Math.max(zn.levels[1], ...this.floodZones().map((z) => z.levels[1])), L = Math.round(top * FLOOD.levelK);
     const pick = () => FLOOD_AFFIX_IDS[Math.floor(Math.random() * FLOOD_AFFIX_IDS.length)];
     const mk = (tier, fixed, k) => {
-      const a = Math.random() * 6.28, r = 6 + Math.random() * 6;
-      const m = this.spawn({ zone: zn, x: P.x + Math.cos(a) * r, z: P.z + Math.sin(a) * r, level: L - this.tierOffset, tier, timer: 0, mon: null, fixed });
+      const a = Math.random() * 6.28, r = (0.15 + Math.random() * 0.75) * zn.r;
+      const m = this.spawn({ zone: zn, x: zn.x + Math.cos(a) * r, z: zn.z + Math.sin(a) * r, level: L - this.tierOffset, tier, timer: 0, mon: null, fixed });
       if (!m) return null;
-      m.flood = zn.id; m.home = { x: m.pos.x, z: m.pos.z }; m.state = 'chase';
+      m.flood = zn.id; m.home = { x: m.pos.x, z: m.pos.z };
       m.affix = tier === 'boss' ? [pick(), pick()] : tier === 'elite' ? [pick(), pick()] : [pick()];
       if (m.affix.includes('frenzy')) { m.speed *= 1.3; m.def = { ...m.def, interval: m.def.interval / 1.3 }; }
       m.name = `${tier === 'boss' ? '범람한 ' : ''}${m.name} [${m.affix.map((x) => FLOOD_AFFIX[x].name).join('·')}]`;
@@ -1626,8 +1631,10 @@ export class World {
       m.actor.setGlow(0x400010);
       return m;
     };
-    for (let i = 0; i < FLOOD.mobs; i++) mk(i % 4 === 3 ? 'elite' : 'normal');
-    if (!f.bossUp) { const b = mk('boss', zn.boss, FLOOD.bossHp); if (b) { b.floodBoss = true; f.bossUp = true; } }
+    const n = Math.round((zn.count || 18) * FLOOD.mobK);
+    for (let i = 0; i < n; i++) mk(i % 5 === 4 ? 'elite' : 'normal');
+    mk('named', zn.named);
+    { const b = mk('boss', zn.boss, FLOOD.bossHp); if (b) b.floodBoss = true; }
     this.ui.toast(`범람한 ${zn.name}`, '#ff6a5a');
   }
   floodDeath(m) {
@@ -2397,7 +2404,7 @@ export class World {
         continue;
       }
       if (!near && m.state === 'idle') {
-        if (!m.owner && dist2(m.pos, P) > DESPAWN_FAR) { m.actor.dispose(); this.monsters.splice(i, 1); m.sp.mon = null; m.sp.timer = 0; if (this.target === m) this.target = null; }
+        if (!m.owner && !m.flood && dist2(m.pos, P) > DESPAWN_FAR) { m.actor.dispose(); this.monsters.splice(i, 1); m.sp.mon = null; m.sp.timer = 0; if (this.target === m) this.target = null; }
         continue;
       }
       this.monsterAI(m, dt);
