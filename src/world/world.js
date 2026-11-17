@@ -1534,6 +1534,7 @@ export class World {
     const v = E.stat ? Math.max(5, Math.round(base[E.buff] * 0.1)) : E.v;
     takeOne(st, id);
     st.elix ||= {};
+    for (const k of Object.keys(st.elix)) if (st.elix[k].buff === E.buff) delete st.elix[k]; // 같은 효과는 겹치지 않고 바뀐다
     st.elix[id] = { buff: E.buff, v, t: ELIXIR_TIME };
     this.d = derive(st, this.buffValues());
     this.ui.toast(`${E.name}${quiet ? ' (자동)' : ''}: ${E.stat ? `${E.text.split(' ')[0]} +${v}` : E.text} · 5분`, E.color);
@@ -1546,10 +1547,14 @@ export class World {
   autoScrolls() {
     const st = this.st, on = st.settings?.autoScroll;
     if (!on || this.inTown || this.dead) return;
+    // 효과마다 하나: 켜 둔 것 중 가진 가장 센 주문서 (다른 효과는 모두 함께)
+    const best = {};
     for (const id of Object.keys(on)) {
-      if (!on[id] || !ELIXIRS[id] || countOf(st, id) <= 0) continue;
-      if (!(st.elix?.[id]?.t > 3)) this.readScroll(id, true); // 켜 둔 주문서는 모두 (같은 효과도 함께)
+      const E = ELIXIRS[id];
+      if (!on[id] || !E || countOf(st, id) <= 0) continue;
+      if (!best[E.buff] || (E.v || 0) > (ELIXIRS[best[E.buff]].v || 0)) best[E.buff] = id;
     }
+    for (const [buff, id] of Object.entries(best)) if (!Object.values(st.elix || {}).some((e) => e.buff === buff && e.t > 3)) this.readScroll(id, true);
   }
   usePotion(kind, quiet = false) {
     if (this.dead || this.potionCd > 0) return false;
