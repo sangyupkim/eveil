@@ -14,6 +14,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 
 import { itemIcon, skillIcon, portrait, chestIcon, bookIcon, coinIcon, scrollIcon, townIcon, oreIcon, monPortrait } from './icons.js';
 import { monsterRes, mixFxOf } from '../data/resist.js';
+import { ARTS, ART, ART_LINE_NAMES, artSlots, artUsable } from '../data/arts.js';
 import { terrain, fogCan, MAP_R, MAP_W, FOG_C, seen as seenAt } from './mapimg.js';
 import { CAMPS, inCamp } from '../engine2d/stage.js';
 import { TIER_NAMES } from '../world/world.js';
@@ -72,7 +73,7 @@ export function showNotes() {
 }
 const repickCost = (t) => 2000 * (t.tier + 1) ** 2;
 const nextTitle = (st) => { const i = TITLE_AT.findIndex((n) => st.awakenings < n); return i < 0 ? '' : ` · ${i + 1}차 각성 ${titleName(titleKey(st.stats, 10, i), i)}까지 ${TITLE_AT[i] - st.awakenings}`; };
-const TITLES = { gems: '보석상', map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', news: '공지 · 패치', menu: '메뉴' };
+const TITLES = { arts: '수련 비전', gems: '보석상', map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', news: '공지 · 패치', menu: '메뉴' };
 // 진행 게이지 (시작 ~ 끝 시각). 예전 저장은 시작 시각이 없어 dur로 어림
 const gauge = (from, until, dur = 3600000, color = '#7ad0ff') => { const f = from || until - dur, k = Math.max(0, Math.min(1, (Date.now() - f) / Math.max(1, until - f))); return `<div class="mini" style="margin-top:3px"><i style="width:${(k * 100).toFixed(1)}%;background:linear-gradient(#bfe8ff,${color})"></i></div>`; };
 // 보석 합치기 · 빼기 값
@@ -85,7 +86,7 @@ const COL = '<!--COL-->';
 // 칸 위 작은 글: 능력치 파편은 옵션을 보여 준다
 const cellTag = (it) => (it?.shard ? `<span class="ctag">${affixText(it.shard).replace(/\s+/g, '')}</span>` : '');
 const NPC_ONLY = ['shop', 'town', 'vault', 'gems'];
-const TAB_ORDER = ['gems', 'map', 'inv', 'vault', 'skills', 'char', 'quest', 'dex', 'town', 'shop', 'guide', 'news', 'menu'];
+const TAB_ORDER = ['gems', 'map', 'inv', 'vault', 'skills', 'char', 'arts', 'quest', 'dex', 'town', 'shop', 'guide', 'news', 'menu'];
 const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '');
 // 장비 찾기 (v0.41.3): 'e:부위' 착용 · 'b:uid' 가방 · 'v:uid' 창고 — 대장간 · 보석상은 세 곳 모두에서 고른다
 const gearAt = (st, key) => { const [k, v] = String(key || '').split(':'); return k === 'e' ? st.equip[v] : k === 'v' ? vault().items.find((x) => x.uid === Number(v)) : st.inv.find((x) => x.uid === Number(v)); };
@@ -157,10 +158,10 @@ export class Windows {
 
   render() {
     $('h2', this.el).textContent = TITLES[this.kind];
-    const icons = { inv: chestIcon(), skills: bookIcon(), char: portrait(this.w.st.look), shop: coinIcon(), quest: scrollIcon(), town: townIcon(), dex: bookIcon(), map: scrollIcon(), guide: bookIcon(), vault: homeIcon() };
+    const icons = { arts: bookIcon(), inv: chestIcon(), skills: bookIcon(), char: portrait(this.w.st.look), shop: coinIcon(), quest: scrollIcon(), town: townIcon(), dex: bookIcon(), map: scrollIcon(), guide: bookIcon(), vault: homeIcon() };
     const tabs = $('.tabs', this.el);
     // 탭은 그림 없이 같은 모양의 글자 단추로
-    const TAB_TXT = { gems: '보석', map: '지도', inv: '가방', skills: '스킬', char: '능력', quest: '퀘스트', dex: '도감', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '설정', news: '공지' };
+    const TAB_TXT = { arts: '비전', gems: '보석', map: '지도', inv: '가방', skills: '스킬', char: '능력', quest: '퀘스트', dex: '도감', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '설정', news: '공지' };
     tabs.innerHTML = TAB_ORDER.filter((k) => !NPC_ONLY.includes(k) || this.talk?.includes(k)).map((k) => `<button class="tab txt${k === this.kind ? ' on' : ''}" data-tab="${k}"><span>${TAB_TXT[k]}</span></button>`).join('');
     tabs.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => this.show(b.dataset.tab); });
     const body = $('.body', this.el);
@@ -699,6 +700,23 @@ export class Windows {
   }
 
   // 몬스터 도감 (잡은 수 50 · 200 · 500마다 그 몬스터에게 피해 +2 · 4 · 6%) · 보스 기록
+  // v0.44.42 수련 비전: 왼쪽 갈래 · 혼합 목록 | 가운데 비전 카드 | 오른쪽 장착 칸
+  arts() {
+    const st = this.w.st, A = st.arts || { prog: {}, open: {}, equip: [] }, slots = artSlots(st), eq = (A.equip || []).slice(0, slots);
+    const lines = [...new Set(ARTS.map((a) => a.line))], cur = lines.includes(this.artLine) ? this.artLine : lines[0];
+    const lname = (l) => l.split('+').map((x) => ART_LINE_NAMES[x]).join(' + ');
+    const left = lines.map((l) => { const n = ARTS.filter((a) => a.line === l && A.open[a.id]).length, all = ARTS.filter((a) => a.line === l).length;
+      return `<div class="row pick${l === cur ? ' on' : ''}" data-artl="${l}"><div class="grow"><b>${lname(l)}</b></div><span class="note">${n} / ${all}</span></div>`; }).join('');
+    const mid = ARTS.filter((a) => a.line === cur).map((a) => {
+      const p = Math.min(a.n, A.prog?.[a.ev] || 0), open = !!A.open[a.id], on = eq.includes(a.id), use = artUsable(st, a);
+      const btn = !open ? '' : !use ? '<span class="note">그 혼합 칭호 필요</span>' : on ? `<button class="btn on" data-arteq="${a.id}">빼기</button>` : `<button class="btn gold" data-arteq="${a.id}" ${eq.length >= slots ? 'disabled' : ''}>장착</button>`;
+      return `<div class="row" style="${open ? '' : 'opacity:.75'}"><div class="grow"><b style="color:${open ? '#e0b0ff' : ''}">${a.name}</b><div class="note">${a.text}</div>
+        ${open ? '' : `<div class="note">${a.cond} ${p.toLocaleString()} / ${a.n.toLocaleString()}</div><div class="mini" style="height:5px"><i style="width:${(p / a.n) * 100}%;background:#b080ff"></i></div>`}</div>${btn}</div>`; }).join('');
+    const right = `<h3>장착 <span class="cnt">${eq.length} / ${slots}</span></h3>` + (slots ? Array.from({ length: slots }, (_, i) => { const a = ART[eq[i]];
+      return `<div class="row"><div class="grow">${a ? `<b style="color:#e0b0ff">${a.name}</b><div class="note">${a.text}</div>` : '<span class="note">빈 칸</span>'}</div>${a ? `<button class="btn" data-arteq="${a.id}">빼기</button>` : ''}</div>`; }).join('') : '<div class="note">1차 각성부터</div>');
+    return `<div class="cols"><div class="frame" style="flex:0 0 24%"><h3>갈래</h3>${left}</div><div class="frame" style="flex:1"><h3>${lname(cur)} 비전</h3>${mid}</div><div class="frame" style="flex:0 0 30%">${right}</div></div>`;
+  }
+
   // v0.44.41 몬스터 도감: 책처럼. 왼쪽 = 지역 · 몬스터 목록, 오른쪽 = 펼친 책 (초상 | 정보). 많이 잡을수록 정보가 열린다
   dex() {
     const st = this.w.st, dx = st.dex || {};
@@ -1158,6 +1176,8 @@ export class Windows {
     });
     on('[data-autobrew]', (el) => { const t2 = townOf(st); t2.autoBrew = t2.autoBrew === el.dataset.autobrew ? null : el.dataset.autobrew; audio.play('click'); this.render(); });
     this.el.querySelector('[data-dexzs]')?.addEventListener('change', (e) => { this.dexZone = e.target.value; this.dexMon = null; audio.play('click'); this.render(); });
+    on('[data-artl]', (el) => { this.artLine = el.dataset.artl; audio.play('click'); this.render(); });
+    on('[data-arteq]', (el) => { const A = (st.arts ||= { prog: {}, open: {}, equip: [] }), id = el.dataset.arteq; A.equip ||= []; if (A.equip.includes(id)) A.equip = A.equip.filter((x) => x !== id); else if (A.equip.length < artSlots(st) && A.open[id] && artUsable(st, ART[id])) A.equip.push(id); audio.play('click'); w.ui.dirty(); this.render(); });
     on('[data-dexm]', (el) => { this.dexMon = el.dataset.dexm; audio.play('click'); this.render(); });
     on('[data-hswap]', (el) => { const [h, k] = el.dataset.hswap.split('|'), r = herbSwap(st, h, Number(k)); if (r.ok) audio.play('click'); townDone(r); });
     on('[data-brew]', (el) => { const [id, k] = el.dataset.brew.split('|'), r = brew(st, id, Number(k)); if (r.ok) audio.play('click'); townDone(r); });

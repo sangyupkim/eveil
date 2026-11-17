@@ -16,6 +16,7 @@ import { BASES, WEAPON_CLASSES, RARITY_ORDER } from '../data/items.js';
 import { MONSTERS, ZONES, TOWN, TIER_STEP, FINAL_ZONE } from '../data/world.js';
 import { derive, damageReduction, totalStats, skillScale } from '../game/player.js';
 import { monsterRes, mixFxOf } from '../data/resist.js';
+import { ARTS } from '../data/arts.js';
 import { ELIXIRS, ELIXIR_TIME, HERBS, HP_POTIONS, MP_POTIONS } from '../data/potions.js';
 import { addAP, gainExp, rewardFactor, recAwaken } from '../game/growth.js';
 import { addSkillExp, skillValues, skillEff, modsOf, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
@@ -1122,12 +1123,17 @@ export class World {
     if (this.pbuffs?.ward?.t > 0) dmg *= 1 - this.pbuffs.ward.v / 100;
     if (this.buffs.taunt?.t > 0) dmg *= 1 - Math.min(40, this.buffs.taunt.v) / 100; // 도발의 포효
     if (this.buffs.guard?.t > 0) dmg *= 1 - Math.min(40, this.buffs.guard.v) / 100; // 투지
+    if (this.art('toughbody')) dmg *= 0.95;
+    if (this.art('provoker') && this.buffs.taunt?.t > 0) dmg *= 0.9;
+    if (this.art('spellwall') && this.time - (this.lastSpellT || -9) < 1) dmg *= 0.9;
+    this.artEv('dmgTaken', dmg); if (this.time - (this.lastSpellT || -9) < 1) this.artEv('spellHurt', dmg);
+    this.lastHurtT = this.time; if (this.art('wild')) { this.pbuffs ||= {}; this.pbuffs.haste = { v: 20, t: 2 }; }
     const pre = dmg; // 가시 갑옷 · 인내의 폭발은 보호막 전 피해로
     const sh = this.buffs.shield;
     if (sh && sh.t > 0 && sh.v > 0) {
       const ab = Math.min(sh.v, dmg);
-      sh.v -= ab; dmg -= ab;
-      if (sh.v <= 0) sh.t = 0;
+      sh.v -= ab; dmg -= ab; this.artEv('shieldAbsorb', ab);
+      if (sh.v <= 0) { sh.t = 0; if (this.art('diamond')) { const P = this.player.pos, w = ((d.patk[0] + d.patk[1]) / 2) * d.atkMult; this.fx.ring(P.x, P.z, 4, 0xffe8b0, 0.5); for (const mm of this.monstersNear(P, 4)) this.hitMonster(mm, w, { src: 'skill' }); } }
     }
     // 마나 방패: 남은 피해를 MP로 막는다 (MP 1당 피해 1/비율). 막은 만큼 정신
     const ms = this.buffs.manaShield;
@@ -1141,7 +1147,7 @@ export class World {
     st.hp -= dmg;
     // v0.44.35 가시 갑옷: 때린 적에게 되돌려 준다 (무기 한 방의 3배까지) · 인내의 폭발: 모아 둔다
     const th = this.buffs.thorns;
-    if (th?.t > 0 && m && !m.dead && m.pos && Math.hypot(m.pos.x - this.player.pos.x, m.pos.z - this.player.pos.z) < 8) this.hitMonster(m, Math.min(pre * th.v / 100, ((this.d.patk[0] + this.d.patk[1]) / 2) * this.d.atkMult * (1 + (this.d.stats.vit || 0) * 0.015) * 3), { src: 'skill' });
+    if (th?.t > 0 && m && !m.dead && m.pos && Math.hypot(m.pos.x - this.player.pos.x, m.pos.z - this.player.pos.z) < 8) { this.artEv('vengeHit'); } if (th?.t > 0 && m && !m.dead && m.pos && Math.hypot(m.pos.x - this.player.pos.x, m.pos.z - this.player.pos.z) < 8) this.hitMonster(m, Math.min(pre * (th.v + (this.art('retribution') ? 10 : 0)) / 100, ((this.d.patk[0] + this.d.patk[1]) / 2) * this.d.atkMult * (1 + (this.d.stats.vit || 0) * 0.015) * 3), { src: 'skill' });
     if (this.buffs.venge?.t > 0) this.buffs.venge.store = (this.buffs.venge.store || 0) + pre;
     // 체력 (v0.44.26): 실제로 받은 피해로, HP가 넉넉하면 적게(70%↑ ×0.3) · 위기일수록 많이(30%↓ ×1.5).
     //  최근 10초에 준 피해가 받은 피해의 3배를 넘으면 체력은 절반, 나머지 절반은 주 스탯으로 (멀리서 맞으며 녹이는 마법사 등)
@@ -1183,8 +1189,9 @@ export class World {
   // src: melee · ranged · magic(완드 기본공격) · skill
   hitMonster(m, raw, { crit = false, src = 'melee', ctx = null, pierce = 0 } = {}) {
     if (!m || m.dead) return;
-    if (ctx?.slow) m.slowT = Math.max(m.slowT || 0, ctx.slow);
-    if (ctx?.root && m.tier !== 'boss') m.rootT = Math.max(m.rootT || 0, ctx.root);
+    const ccK = this.art('iceheart') ? 1.5 : 1;
+    if (ctx?.slow) m.slowT = Math.max(m.slowT || 0, ctx.slow * ccK);
+    if (ctx?.root && m.tier !== 'boss') m.rootT = Math.max(m.rootT || 0, ctx.root * ccK);
     const kind = this.d.cls.kind;
     if (src === 'melee' && !ctx && kind === 'melee') this.perk('meleeHit');
     if ((src === 'ranged' || (src === 'melee' && kind === 'ranged')) && !ctx) this.perk('rangedHit');
@@ -1197,7 +1204,11 @@ export class World {
     const dexN = st.dex?.[m.type] || 0; raw *= 1 + (dexN >= 500 ? 0.06 : dexN >= 200 ? 0.04 : dexN >= 50 ? 0.02 : 0);
     // v0.44.41 저항 (물리 · 마법 비율대로) · 약화(표식 · 원소 상처) · 상태 이상 조합(느려지거나 묶인 적에게 혼합 스킬 +20%)
     { const R = monsterRes(m.type), mag = ctx?.mag ?? (src === 'magic' ? 1 : 0); raw *= 1 - (R.phys * (1 - mag) + R.mag * mag); }
-    if (m.vulnT > 0) raw *= 1.15;
+    if (m.vulnT > 0) raw *= this.art('soulmark') ? 1.25 : 1.15;
+    if (this.art('sniper') && (src === 'ranged' || ctx) && Math.hypot(m.pos.x - this.player.pos.x, m.pos.z - this.player.pos.z) > 8) raw *= 1.15;
+    if (this.art('huntertrap') && m.rootT > 0) raw *= 1.1;
+    if (this.art('frostarrow') && m.slowT > 0 && !crit && Math.random() < 0.2) { crit = true; raw *= d.critMult; }
+    if (this.art('eleblade') && src === 'melee') raw += ((d.matk[0] + d.matk[1]) / 2) * d.atkMult * 0.3;
     if (ctx?.mixed && (m.slowT > 0 || m.rootT > 0)) raw *= 1.2;
     let red = m.armor / (m.armor + 60) * (1 - pierce);
     if (m.def.behave === 'shield' && !ctx?.spell) {
@@ -1207,11 +1218,12 @@ export class World {
     const dmg = Math.max(1, Math.round(raw * (1 - red)));
     m.hp -= dmg;
     if (ctx?.mixFx) for (const f of ctx.mixFx) {
-      if (f.id === 'bleed') { m.dotV = Math.max(m.dotV || 0, dmg * 0.1); m.dotT = 3; }
+      this.artEv('fx:' + f.name);
+      if (f.id === 'bleed') { const bk = (this.art('gale') && f.name === '출혈') || (this.art('burn') && f.name === '화상') ? 1.5 : 1; m.dotV = Math.max(m.dotV || 0, dmg * 0.1 * bk); m.dotT = 3; if (this.art('truth') && f.name === '마력 연소') { const o = this.monstersNear(m.pos, 4).find((x) => x !== m && !x.dotT); if (o) { o.dotV = m.dotV; o.dotT = 3; } } }
       else if (f.id === 'vuln') m.vulnT = 4;
-      else if (f.id === 'root' && m.tier !== 'boss') m.rootT = Math.max(m.rootT || 0, f.name === '덫' ? 1 : 0.8);
+      else if (f.id === 'root' && m.tier !== 'boss') m.rootT = Math.max(m.rootT || 0, f.name === '덫' ? 1 + (this.art('huntertrap') ? 0.5 : 0) : 0.8 + (this.art('ironblood') ? 0.4 : 0));
       else if (f.id === 'slow') m.slowT = Math.max(m.slowT || 0, 2);
-      else if (f.id === 'shield') { const sh = this.buffs.shield; const add = dmg * 0.06, cap = this.d.maxHp * 0.3; if (sh && sh.t > 0) sh.v = Math.min(cap, sh.v + add); else this.buffs.shield = { v: Math.min(cap, add), t: 6, max: 6 }; }
+      else if (f.id === 'shield') { const sh = this.buffs.shield; const add = dmg * 0.06 * (this.art('brand') ? 1.5 : 1) * (this.art('shieldsmith') ? 1.25 : 1), cap = this.d.maxHp * 0.3, dur = 6 + (this.art('unbreak') ? 3 : 0); this.artEv('shieldGain', add); if (sh && sh.t > 0) sh.v = Math.min(cap, sh.v + add); else this.buffs.shield = { v: Math.min(cap, add), t: dur, max: dur }; }
     }
     (this.dealtLog ||= []).push([this.time, dmg]); // v0.44.26 최근 준 피해 (체력 · 주 스탯 나누기)
     m.showHp = 6;
@@ -1245,7 +1257,24 @@ export class World {
       if (sk.ap === 'int' && !ctx.apGiven) { addAP(st, sk.apStat || 'int', ctx.mp * AP_TABLE.spellPerMp, apMult); ctx.apGiven = true; }
       if (ctx.hits++ < 3) this.skillExp(ctx.id, 1, rf);
     }
-    if (m.hp <= 0) this.killMonster(m, src, ctx, rf);
+    // 비전 행동 기록 (수동만)
+    if (crit) { if (src === 'melee' || (ctx && ['melee', 'spin', 'cleave', 'dash'].includes(ctx.type))) { this.artEv('meleeCrit'); if (this.art('crush') && ctx && m.tier !== 'boss') m.rootT = Math.max(m.rootT || 0, 0.5); } if (src === 'ranged' || ctx?.type === 'arrow' || ctx?.type === 'line') this.artEv('rangedCrit'); if (d.cls?.name === '단검') this.artEv('daggerCrit'); }
+    if (ctx && (ctx.artHits = (ctx.artHits || 0) + 1) === 3) this.artEv('multiHit');
+    if (m.hp <= 0) {
+      const ev = this.artEv.bind(this), P = this.player.pos;
+      if (this.st.hp < this.d.maxHp * 0.3) ev('lowHpKill');
+      if (this.time < (this.evadeT || 0)) ev('evadeKill');
+      if (ctx?.type === 'arrow') ev('arrowKill');
+      if (m.slowT > 0 || m.rootT > 0) ev('ccKill');
+      if (m.rootT > 0) ev('stunKill');
+      if (m.vulnT > 0) ev('vulnKill');
+      if (this.buffs.shield?.t > 0) ev('shieldKill');
+      if (this.buffs.taunt?.t > 0) ev('tauntKill');
+      if (this.time - (this.lastHurtT || -9) < 2) ev('hurtKill');
+      if (src === 'ranged' || ctx?.type === 'arrow' || ctx?.type === 'line') { ev('rangedKill'); if (this.art('soulhunt') && this.time - (this.soulT || -9) >= 1) { this.soulT = this.time; this.st.mp = Math.min(this.d.maxMp, this.st.mp + this.d.maxMp * 0.02); } }
+      if (ctx && (ctx.mag || 0) >= 0.5) { ev('spellKill'); if (this.art('chainblast') && !ctx.chain) for (const o of this.monstersNear(m.pos, 3)) if (o !== m) this.hitMonster(o, dmg * 0.3, { src: 'skill', ctx: { ...ctx, chain: true, mixFx: null } }); }
+      this.killMonster(m, src, ctx, rf);
+    }
     else if (m.actor.lock <= 0 && !m.dash && m.tier !== 'boss' && Math.random() < 0.35) m.actor.act('hit', 1.4, 0.6);
   }
 
@@ -1551,6 +1580,14 @@ export class World {
     return this.monsters.filter((m) => !m.dead && dist2(m.pos, pos) <= r);
   }
 
+  // v0.44.42 수련 비전: 수동 사냥 중 행동만 센다 · 장착한 비전인지
+  art(id) { return !!this.st.arts?.equip?.includes(id); }
+  artEv(ev, n = 1) {
+    if (this.auto || this.inTown || !(n > 0)) return;
+    const A = (this.st.arts ||= { prog: {}, open: {}, equip: [] });
+    A.prog[ev] = (A.prog[ev] || 0) + n;
+    for (const a of ARTS) if (a.ev === ev && !A.open[a.id] && A.prog[ev] >= a.n) { A.open[a.id] = true; this.ui.toast(`수련 비전 「${a.name}」을(를) 깨우쳤습니다`, '#e0b0ff'); sfx('rankup'); }
+  }
   // v0.44.41 도감용: 그 지역 · 지금 세계 단계에서 이 몬스터의 체력 · 공격력 (spawn과 같은 식)
   monStats(type, tier, zn) {
     const def = MONSTERS[type], T = TIERS[tier], L = zn.levels[1] + this.tierOffset, CK = chapterK(ALL_ZONES.indexOf(zn), tier);
@@ -1559,9 +1596,9 @@ export class World {
   // v0.44.35 인내의 폭발: 모은 피해 × 계수(%)를 둘레로. 탱커가 딜러가 되지 않게 무기 한 방의 1.5 ~ 8배 사이로
   vengeRelease(b) {
     if (!b || b.done) return; b.done = true; b.t = 0;
-    const P = this.player.pos, w = ((this.d.patk[0] + this.d.patk[1]) / 2) * this.d.atkMult * (1 + (this.d.stats.vit || 0) * 0.015), v = Math.max(w * 1.5, Math.min((b.store || 0) * b.v / 100, w * 8)), r = b.radius || 6;
+    const P = this.player.pos, w = ((this.d.patk[0] + this.d.patk[1]) / 2) * this.d.atkMult * (1 + (this.d.stats.vit || 0) * 0.015), v = Math.max(w * 1.5, Math.min((b.store || 0) * b.v / 100, w * (this.art('retribution') ? 12 : 8))), r = b.radius || 6;
     this.fx.ring(P.x, P.z, r, 0xe0a050, 0.6); this.fx.play('v_dust', P.x, P.z, { scale: 1.6 }); this.fx.shake?.(0.3); sfx('boom', 0.8);
-    for (const m of this.monstersNear(P, r)) this.hitMonster(m, v, { src: 'skill' });
+    for (const m of this.monstersNear(P, r)) { this.hitMonster(m, v, { src: 'skill' }); this.artEv('vengeHit'); }
     this.d = derive(this.st, this.buffValues());
   }
   // 주문서 읽기: 같은 효과의 주문서가 이미 있으면 그것을 바꾼다 (겹치지 않는다)
@@ -1727,14 +1764,23 @@ export class World {
   }
 
   castSkill(id, v) {
-    const st = this.st, d = this.d, sk = skillEff(id, modsOf(st.skills[id]));
+    const st = this.st, d = this.d, sk = { ...skillEff(id, modsOf(st.skills[id])) };
+    // v0.44.42 비전: 범위 · 발 수
+    if (this.art('quake') && (sk.type === 'spin' || sk.type === 'cleave') && sk.radius) sk.radius *= 1.2;
+    if (sk.type === 'arrow' && sk.count) sk.count += (this.art('volley') ? 2 : 0) + (this.art('constellation') && this.time < (this.constT || 0) ? 1 : 0);
     const P = this.player;
     this.pendingSkill = null;
     this.skillUsed = true;
     this.actCd = RECOVER.skill;
     st.mp -= v.mp;
     this.perk(sk.type === 'buff' ? 'buff' : sk.ap === 'int' ? 'spell' : 'skill', this.target?.pos);
-    this.cds[id] = v.cd * (1 - (this.d.cdr || 0) / 100);
+    this.cds[id] = v.cd * (1 - (this.d.cdr || 0) / 100) * (this.art('vanguard') && sk.type === 'dash' ? 0.7 : 1);
+    if (!v.echoed) {
+      if (v.mp > 0) { this.artEv('mpSpent', v.mp); if (this.art('manaflow')) st.mp = Math.min(this.d.maxMp, st.mp + v.mp * 0.05); }
+      if (st.mp < this.d.maxMp * 0.2) this.artEv('lowMpSkill');
+      if (sk.type === 'dash') this.artEv('dashUse');
+      if (sk.ap === 'int' || sk.ap === 'wis') this.lastSpellT = this.time;
+    }
     // 쓴 횟수도 성장에: 스킬의 필요 스탯에 필요량 비율대로 (각성 때 그 스탯으로 나뉜다)
     if (!v.echoed && sk.req) { const tot = Object.values(sk.req).reduce((a, b) => a + b, 0) || 1; for (const [k, n] of Object.entries(sk.req)) addAP(st, k, AP_TABLE.skillUse * (1 + 0.5 * ((sk.tier || 1) - 1)) * (n / tot), this.autoMult); }
     if (!v.echoed) this.skillExp(id, 1);
@@ -1744,10 +1790,10 @@ export class World {
     let comboK = 1;
     if (sk.type !== 'buff' && !v.echoed) {
       if (lines.length === 1) {
-        if (this.comboLine && this.comboLine !== lines[0] && this.time - (this.comboT || 0) < 5) { this.comboN = Math.min(3, (this.comboN || 0) + 1); this.fx.text(P.pos.clone().setY(2.8), `연계 ${this.comboN}`, 'crit'); }
+        if (this.comboLine && this.comboLine !== lines[0] && this.time - (this.comboT || 0) < 5) { this.comboN = Math.min(this.art('bladedance') ? 4 : 3, (this.comboN || 0) + 1); this.fx.text(P.pos.clone().setY(2.8), `연계 ${this.comboN}`, 'crit'); }
         this.comboLine = lines[0]; this.comboT = this.time;
       } else if (lines.length >= 2) {
-        if (this.comboN && this.time - (this.comboT || 0) < 5) { comboK = 1 + 0.15 * this.comboN; this.fx.text(P.pos.clone().setY(2.8), `연계 폭발 +${Math.round((comboK - 1) * 100)}%`, 'crit'); }
+        if (this.comboN && this.time - (this.comboT || 0) < 5) { this.artEv('comboBurst'); if (this.art('spellsword')) this.matkUpT = this.time + 2; if (this.art('constellation')) this.constT = this.time + 3; if (this.art('sage')) st.mp = Math.min(this.d.maxMp, st.mp + this.d.maxMp * 0.1); comboK = 1 + 0.15 * this.comboN; this.fx.text(P.pos.clone().setY(2.8), `연계 폭발 +${Math.round((comboK - 1) * 100)}%`, 'crit'); }
         this.comboN = 0; this.comboLine = null;
         ctx.mixFx = mixFxOf(lines); ctx.mixed = true;
       }
@@ -1759,16 +1805,22 @@ export class World {
     // 쓸 때 그 스탯 행동 기록 (보조 스탯)
     if (sk.mix) addAP(st, sk.mix, v.mp * AP_TABLE.supportPerMp, this.autoMult);
     if (sk.apStat && sk.ap === 'weapon') addAP(st, sk.apStat, v.mp * AP_TABLE.supportPerMp, this.autoMult);
-    const pw = v.power * comboK;
+    let artK = 1;
+    if (sk.ap === 'int' && sk.elem) { if (this.lastElem && this.lastElem !== sk.elem) { this.artEv('elemSwitch'); if (this.art('resonance')) artK *= 1.2; } this.lastElem = sk.elem; }
+    if (this.art('brink') && lines.includes('str') && st.hp < this.d.maxHp * 0.3) artK *= 1.25;
+    if (this.art('manarush') && lines.includes('wis') && st.mp < this.d.maxMp * 0.2) artK *= 1.3;
+    if (this.art('judge') && lines.includes('str') && this.buffs.shield?.t > 0) artK *= 1.15;
+    const sureCrit = this.art('shadowfoot') && this.time < (this.tumbleT || 0); if (sureCrit) this.tumbleT = 0;
+    const pw = v.power * comboK * artK;
     // v0.44.37 스킬 피해 = 공격력(물리 · 마법, 필요 스탯 비율대로) × 계수 × 스킬 스탯 배율(무기 무관) × 장비 보정 × 자원 보너스
     //  치명타는 평타와 같은 확률 · 배율. spell()과 weaponHit()은 같은 값 (spell 다음에 spellCrit()으로 치명 여부)
     const sc = skillScale(sk, d.stats), rk = sk.scale ? d.resK?.[sk.scale] || 1 : 1;
-    ctx.mag = sc.mag; // 저항 계산용 (마법 비율)
+    ctx.mag = sc.mag; ctx.type = sk.type; // 저항 계산용 (마법 비율) · 비전
     let lastCrit = false;
     const roll = () => {
-      lastCrit = Math.random() < d.crit;
-      const base = (sc.phys > 0 ? randRange(d.patk[0], d.patk[1]) * sc.phys : 0) + (sc.mag > 0 ? randRange(d.matk[0], d.matk[1]) * sc.mag : 0);
-      return base * d.atkMult * sc.statF * rk * pw * (lastCrit ? d.critMult : 1);
+      lastCrit = sureCrit || Math.random() < d.crit;
+      const base = (sc.phys > 0 ? randRange(d.patk[0], d.patk[1]) * sc.phys : 0) + (sc.mag > 0 ? randRange(d.matk[0], d.matk[1]) * sc.mag * (this.time < (this.matkUpT || 0) ? 1.2 : 1) : 0);
+      return base * d.atkMult * sc.statF * rk * pw * (lastCrit ? d.critMult + (this.art('vital') && d.cls?.name === '단검' ? 0.3 : 0) : 1);
     };
     const spell = roll, spellCrit = () => lastCrit;
     const weaponHit = () => { const v0 = roll(); return { v: v0, crit: lastCrit }; };
@@ -1918,7 +1970,7 @@ export class World {
         const dist = sk.range || 5, from = { x: P.pos.x, z: P.pos.z }, to0 = { x: from.x + Math.sin(ang) * dist, z: from.z + Math.cos(ang) * dist }, to = this.freeSpot(to0.x, to0.z);
         for (let i = 1; i <= 6; i++) this.later(i * 0.035, () => { P.pos.x = from.x + (to.x - from.x) * i / 6; P.pos.z = from.z + (to.z - from.z) * i / 6; this.fx.burst(P.pos.x, 0.3, P.pos.z, color, 2, 1, 0.3); });
         P.act('run', 0.3); this.moveTo = null; sfx('dodge');
-        this.buffs.dodgeUp = { v: pw, t: sk.duration || 2, max: sk.duration || 2, id };
+        this.buffs.dodgeUp = { v: pw, t: sk.duration || 2, max: sk.duration || 2, id }; this.tumbleT = this.time + 3; this.evadeT = this.time + 2;
         this.d = derive(st, this.buffValues());
         break;
       }
