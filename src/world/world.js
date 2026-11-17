@@ -23,7 +23,7 @@ import { ELIXIRS, ELIXIR_TIME, HERBS, HP_POTIONS, MP_POTIONS } from '../data/pot
 import { addAP, gainExp, rewardFactor, recAwaken } from '../game/growth.js';
 import { addSkillExp, skillValues, skillEff, modsOf, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
 import { rollLoot, rollDeathDrop } from '../game/loot.js';
-import { dropMats, liberateAdd, dropEss, resAdd, resCount, claim as claimMerc, brewCollect, collect as collectPlot, repeatTick, autoBrewTick } from '../game/town.js';
+import { dropMats, liberateAdd, dropEss, resAdd, resCount, claim as claimMerc, lootRoomFull, brewCollect, collect as collectPlot, repeatTick, autoBrewTick } from '../game/town.js';
 import { vaultAdd } from '../game/vault.js';
 import { itemIcon, iconUrl, coinIcon, oreIcon, herbIcon, townIcon, bookIcon } from '../ui/icons.js';
 import { dailyProgress, dailyReward, dailyText, dayKey, dailyOf, weeklyOf, weekKey } from '../game/daily.js';
@@ -2567,7 +2567,9 @@ export class World {
   townAuto() {
     const st = this.st, t = townOf(st), now = Date.now(), secs = [];
     const put = (s2, it) => addItem(s2, it) || vaultAdd(s2, it); // 가방이 차면 창고로
-    const back = t.mercs.filter((m) => m.job && now >= m.job.until);
+    const full = lootRoomFull(st);
+    if (full && t.mercs.some((m) => m.job && now >= m.job.until) && !(this.lootWaitT > now)) { this.lootWaitT = now + 60e3; this.ui.toast('가방 · 창고가 꽉 차 용병이 전리품을 들고 기다립니다', '#ff9a5a'); }
+    const back = full ? [] : t.mercs.filter((m) => m.job && now >= m.job.until); // v0.44.66 꽉 차 있으면 받지 않고 기다린다
     if (back.length) {
       const rows = [], tot = { gold: 0, ore: 0, mats: 0 };
       for (const m of back) {
@@ -2577,7 +2579,6 @@ export class World {
         tot.gold += r.gold; tot.ore += r.ore; tot.mats += r.mats;
         for (const it of r.items) rows.push({ img: itemIcon(it), name: itemName(it), color: itemColor(it), item: it });
         if (r.mapPiece) rows.push({ name: `지도 조각 ${r.mapPiece}`, color: '#ffd060' });
-        if (r.lost) rows.push({ name: `가방 · 창고가 가득 차 ${r.lost}개를 두고 옴`, color: '#ff9a5a' });
       }
       rows.unshift({ img: coinIcon(), name: '금화', qty: tot.gold }, { img: oreIcon(), name: '강화석', qty: tot.ore }, { img: iconUrl(1012), name: '지역 재료', qty: tot.mats });
       secs.push({ title: `파견 귀환 · ${back.map((m) => m.name).join(' · ')}`, rows });
