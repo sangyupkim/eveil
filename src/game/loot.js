@@ -32,7 +32,7 @@ export function rollLoot(mon, opt = {}, st = null, rng = R) {
     for (let i = 0; i < n; i++) {
       // 보스는 가끔 장비 대신 능력치 파편
       const rr = { ...t.rarity, hero: (t.rarity.hero || 0) * rareK, legend: (t.rarity.legend || 0) * rareK * rareK }; // 높은 곳의 영웅 · 전설은 더 드물다
-      const rarity = rollRarity(rr, opt.magicFind || 0, rng);
+      const rarity = rollRarity(rr, opt.magicFind || 0, rng, mon.tier === 'elite' ? 0.02 : 0.05); // v0.44.25 정예는 전설 보너스 +2%p까지
       out.push({ kind: 'item', item: makeItem(rollBase(mon.level, rng), { rarity, ilvl: mon.level }, st, rng) });
     }
   }

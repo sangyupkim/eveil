@@ -107,11 +107,11 @@ export function rollBase(ilvl, rng = R) {
   return pick(ids, rng);
 }
 
-export function rollRarity(table, magicFind = 0, rng = R) {
+export function rollRarity(table, magicFind = 0, rng = R, legendCap = 0.05) {
   const t = {};
   for (const k of RARITY_ORDER) t[k] = (table[k] || 0) * (k === 'common' || k === 'legend' ? 1 : 1 + magicFind / 100);
   // v0.44.18 전설: 나올 수 있는 몬스터라면 좋은 아이템 발견 100%마다 전설 비율 +0.3%p (최대 +5%p). 예전엔 1/3만 반영돼 높일수록 전설 비율이 줄었다
-  if (t.legend > 0 && magicFind > 0) { const T = Object.values(t).reduce((a, v) => a + v, 0), rest = T - t.legend, T0 = RARITY_ORDER.reduce((a, k) => a + (table[k] || 0), 0), p = Math.min(0.95, (table.legend || 0) / T0 + Math.min(0.05, magicFind * 0.00003)); t.legend = (p * rest) / (1 - p); }
+  if (t.legend > 0 && magicFind > 0) { const T = Object.values(t).reduce((a, v) => a + v, 0), rest = T - t.legend, T0 = RARITY_ORDER.reduce((a, k) => a + (table[k] || 0), 0), p = Math.min(0.95, (table.legend || 0) / T0 + Math.min(legendCap, magicFind * 0.00003)); t.legend = (p * rest) / (1 - p); }
   return weighted(t, rng);
 }
 
