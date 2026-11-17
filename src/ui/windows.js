@@ -18,7 +18,7 @@ import { CAMPS, inCamp } from '../engine2d/stage.js';
 import { TIER_NAMES } from '../world/world.js';
 import { entranceOf } from '../data/dungeons.js';
 import { MATERIALS, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
-import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, mercUngear, mercById, recruits, assignMerc, SKILL_OF, SKILLS_ALL, BONUS, bonusOf, awakenMerc, awakenCost, dismiss, staMax, SKILL_NAMES, GRADES, MERC, EXP_STA, deathChance, salvage, salvageValue, reforge, reforgeCost, resCount, resTake, ORE_RECIPES, oreRecipeOk, craftOre, KEY_RECIPES, craftKey, ESS_RECIPES, craftEss, INN_BEDS, innRestK, stopRepeat, MYTH_MARKS, mythMarks, mythLvMax, craftMyth, FRESH, freshK } from '../game/town.js';
+import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, mercUngear, mercById, recruits, assignMerc, SKILL_OF, SKILLS_ALL, BONUS, bonusOf, awakenMerc, awakenCost, dismiss, staMax, SKILL_NAMES, GRADES, MERC, EXP_STA, deathChance, salvage, salvageValue, reforge, reforgeCost, resCount, resTake, ORE_RECIPES, oreRecipeOk, craftOre, KEY_RECIPES, craftKey, ESS_RECIPES, craftEss, INN_BEDS, innRestK, stopRepeat, MYTH_MARKS, mythMarks, mythLvMax, craftMyth, FRESH, freshK, isVet, herbSwap, herbSwapGold } from '../game/town.js';
 import { RESEARCH, researchCost } from '../data/buildings.js';
 import { AFFIXES } from '../data/items.js';
 import { PLOTS, BUILDINGS, EXPEDITIONS, townOf, buildingAt, build, upgrade, collect, enhance, enhanceCap, enhanceCost, hire, mercSlots, dispatch, claim, tick } from '../game/town.js';
@@ -573,7 +573,7 @@ export class Windows {
   mercLine(m, hi) {
     const g = GRADES[m.grade || 0], sm = staMax(m);
     const sk = SKILLS_ALL.map((k) => `<span style="${k === hi ? 'color:#ffd84a;font-weight:700' : ''}">${SKILL_NAMES[k]} ${(m[k] || 0).toFixed(1)}</span>`).join(' · ');
-    return `<div class="grow"><b style="color:${g.color}">${esc(m.name)}</b> <small>${g.name} · Lv ${m.lv}${m.aw ? ` · 각성 ${m.aw}` : ''}${m.gear ? ` · 장비 ${m.gear.ilvl}` : ''}</small>
+    return `<div class="grow"><b style="color:${g.color}">${esc(m.name)}</b> <small>${g.name} · Lv ${m.lv}${m.aw ? ` · 각성 ${m.aw}` : ''}${m.gear ? ` · 장비 ${m.gear.ilvl}` : ''}${isVet(m) ? ' · <b style="color:#ffd84a">베테랑</b>' : ''}</small>
       <div class="note">${sk}</div><div class="mini" style="height:5px;max-width:12em"><i style="width:${Math.round((m.sta / sm) * 100)}%;background:#6ad07a"></i></div></div>`;
   }
 
@@ -734,6 +734,7 @@ export class Windows {
       if (!bmode && !(b.bld?.to === 1)) {
       if (b.type === 'workshop') {
         right += `<h3>약초</h3><div class="herbList">${HERB_IDS.map((h) => `<span class="hb"><img src="${herbIcon(h)}" alt="" />${HERBS[h].name} <b>${t.herbs[h] || 0}</b></span>`).join('')}</div>`;
+        right += `<h3>약초 교환 <small>남는 약초 3 → 1</small></h3>` + HERB_IDS.map((h) => `<div class="row"><div class="grow"><img src="${herbIcon(h)}" alt="" style="width:20px;vertical-align:middle" /> <b>${HERBS[h].name}</b> <small>${herbSwapGold(h)} G</small></div><button class="btn" data-hswap="${h}|1">1</button><button class="btn" data-hswap="${h}|10">×10</button></div>`).join('');
         // v0.42 높은 강화석 (제작소 6 · 8단계)
         right += `<h3>강화석 제작</h3>` + ORE_RECIPES.map((r) => { const ok = oreRecipeOk(st, r); const need = Object.entries(r.need).map(([id, q]) => `${BASES[id].name} ${q} (${resCount(st, id)})`).join(' · ');
           return `<div class="row"><div class="cell shopIco">${ico({ base: r.id })}</div><div class="grow"><b>${BASES[r.id].name}</b><div class="note">${b.lv < r.lv ? `제작소 ${r.lv}단계` : `${need} · 지역 재료 ${r.zoneMats} · ${r.gold.toLocaleString()} G`}</div></div><button class="btn" data-orecraft="${r.id}|1" ${ok.ok ? '' : 'disabled'}>1개</button><button class="btn" data-orecraft="${r.id}|5" ${oreRecipeOk(st, r, 5).ok ? '' : 'disabled'}>5개</button></div>`; }).join('') + KEY_PANEL(st, b)
@@ -1116,6 +1117,7 @@ export class Windows {
       townDone(r);
     });
     on('[data-autobrew]', (el) => { const t2 = townOf(st); t2.autoBrew = t2.autoBrew === el.dataset.autobrew ? null : el.dataset.autobrew; audio.play('click'); this.render(); });
+    on('[data-hswap]', (el) => { const [h, k] = el.dataset.hswap.split('|'), r = herbSwap(st, h, Number(k)); if (r.ok) audio.play('click'); townDone(r); });
     on('[data-brew]', (el) => { const [id, k] = el.dataset.brew.split('|'), r = brew(st, id, Number(k)); if (r.ok) audio.play('click'); townDone(r); });
     on('[data-brewget]', (el) => { const v = el.dataset.brewget === 'vault', r = brewCollect(st, Date.now(), v ? vaultAdd : null); if (r.n) { audio.play('potion'); w.ui.toast(`${r.n}개를 ${v ? '창고' : '가방'}에 넣었습니다`, '#7fe07a'); } townDone(r); });
     on('[data-pm]', (el) => { const id = el.dataset.pm, P = (this.party ||= { ids: [], pack: {} }); const i = P.ids.indexOf(id); if (i >= 0) P.ids.splice(i, 1); else if (P.ids.length < partyMax(st)) P.ids.push(id); audio.play('click'); this.render(); });

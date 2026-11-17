@@ -217,7 +217,7 @@ export function reforge(st, it, rng = Math.random) {
 // 시킨 일의 솜씨가 오르고, 레벨 20에서 각성(최대 10). 파견을 나가면 죽을 수도 있다.
 export const MERC = { workSta: 8, restSta: 12, workExp: 3, lvMax: 20, awMax: 10 };
 // 건물마다 쓰는 솜씨. 광산 · 약초밭은 생산, 나머지는 건물 효과(BONUS)를 올린다
-export const SKILL_OF = { mine: 'mine', herb: 'herb', smithy: 'craft', workshop: 'craft', lab: 'lore', inn: 'hunt', house: 'care', guild: 'hunt' };
+export const SKILL_OF = { mine: 'mine', herb: 'herb', smithy: 'craft', workshop: 'craft', lab: 'lore', inn: 'care', house: 'care', guild: 'hunt' };
 export const SKILL_NAMES = { mine: '채광', herb: '재배', craft: '손재주', lore: '학식', hunt: '탐험', care: '살림' };
 export const SKILLS_ALL = ['mine', 'herb', 'craft', 'lore', 'hunt', 'care'];
 // 일하는 용병 솜씨 합(10 = 한 사람 몫)마다 효과, 최대치
@@ -254,7 +254,10 @@ export function restAssign(st) {
   for (const m of t.mercs) m.rest = inBed.has(m);
 }
 export const staMax = (m) => 50 + m.lv * 2 + (m.aw || 0) * 8 + (m.vit || 0);
-export const workEff = (m, type) => (m[SKILL_OF[type]] || 0) / 10;  // 솜씨 10 = 한 자리 몫
+// v0.44.29 베테랑: 최고 레벨(20)까지 키운 용병은 일 · 파견 보상 +5% (죽지 않게 아껴 키울 이유)
+export const VETERAN = 0.05;
+export const isVet = (m) => (m.lv || 1) >= MERC.lvMax;
+export const workEff = (m, type) => (m[SKILL_OF[type]] || 0) / 10 * (isVet(m) ? 1 + VETERAN : 1);  // 솜씨 10 = 한 자리 몫
 const growSkill = (m, k, h) => { m[k] ??= 1; const cap = 30 + (m.aw || 0) * 6; m[k] = Math.min(cap, m[k] + 0.12 * h * (1 - m[k] / (cap + 5))); };
 function gainExp(m, n) {
   if (m.lv >= MERC.lvMax) { m.exp = 0; return; }
@@ -422,7 +425,7 @@ export function claim(st, id, now = Date.now(), rng = Math.random, put = null) {
   const ex = EXPEDITIONS.find((e) => e.id === m.job.exp), zn = ZONES.find((z) => z.id === m.job.zone);
   const boost = m.job.boost || {}, sh = shelterLv(st, zn.id);
   const lvl = zoneLvl(zn), eff = partyPower(st, m, zn, boost) * (1 + SHELTER.stay * sh);
-  const gl = guildLv(st), safeK = 1, lootK = gl >= 10 ? 1.1 : 1;
+  const gl = guildLv(st), safeK = 1, lootK = (gl >= 10 ? 1.1 : 1) * (isVet(m) ? 1 + VETERAN : 1);
   if (rng() < Math.min(0.75, deathChance(m, zn, ex.id, st, boost) * (1 + 2 * (m.job.weak || 0)) * safeK)) { /* 지친 채로 가면 더 위험 */
     t.mercs.splice(t.mercs.indexOf(m), 1);
     let back = 0; if (gl >= 8) for (const p of m.job.pack || []) { resAdd(st, p.base, p.qty); back += p.qty; }
@@ -676,4 +679,19 @@ export function autoBrewTick(st, now = Date.now()) {
   let n = 0;
   while ((t.brew?.length || 0) < BREW_QUEUE && brew(st, t.autoBrew, 1, now).ok) n++;
   return n;
+}
+
+// v0.44.29 약초 교환 (제작소): 다른 약초 3개 → 원하는 약초 1개 + 금화. 가장 많이 남은 약초부터 쓴다
+export const herbSwapGold = (to) => 20 * HERBS[to].lv ** 2;
+export function herbSwap(st, to, n = 1) {
+  const t = townOf(st);
+  if (!findBuilding(st, 'workshop')) return { ok: false };
+  let done = 0;
+  for (; done < n; done++) {
+    const from = Object.keys(HERBS).filter((h) => h !== to).sort((a, b) => (t.herbs[b] || 0) - (t.herbs[a] || 0))[0];
+    if ((t.herbs[from] || 0) < 3) break;
+    if (st.gold < herbSwapGold(to)) break;
+    t.herbs[from] -= 3; st.gold -= herbSwapGold(to); t.herbs[to] = (t.herbs[to] || 0) + 1;
+  }
+  return done ? { ok: true, n: done } : { ok: false, why: st.gold < herbSwapGold(to) ? '금화가 모자랍니다' : '바꿀 약초가 모자랍니다' };
 }
