@@ -8,6 +8,7 @@ import { rollLoot, rollDeathDrop } from '../src/game/loot.js';
 import { makeItem, itemName, rollBase } from '../src/game/items.js';
 import * as await_fs from 'node:fs';
 import { craftOre, enhanceCost, resAdd, resCount, essGrade, craftKey } from '../src/game/town.js';
+import { MATERIALS } from '../src/data/crafting.js';
 import { finishBuilds, brew, brewCollect, dispatchParty, shelterUp, deathChance, rollMerc, researchStart } from '../src/game/town.js';
 import { HERBS } from '../src/data/potions.js';
 import { countOf } from '../src/game/inventory.js';
@@ -381,7 +382,10 @@ test('약초밭 · 제작소(물약 · 영약) · 파견소 · 쉼터 · 여관 
   // 연구: 연구소 단계에 따라 열린다
   assert.equal(researchStart(p, 'exp').ok, false);
   buildingAt(p, 'p6').lv = 5;
-  assert.ok(researchStart(p, 'exp').ok);
+  assert.equal(researchStart(p, 'exp').ok, false); // 재료 없음
+  resAdd(p, 'mat_' + Object.keys(MATERIALS)[0], 99);
+  resAdd(p, 'ess2', 9);
+  { const rr = researchStart(p, 'exp'); assert.ok(rr.ok, rr.why); }
 });
 
 test('창고: 100칸, 캐릭터끼리 나눠 쓰고 연구로 늘어난다', async () => {

@@ -44,7 +44,7 @@ import { vault, vaultSize, vaultPut, vaultTake, vaultAdd, vaultSave, oldVault, r
 import { GAME_VERSION, PATCH_NOTES } from '../data/patchnotes.js';
 import { KEY_ACTIONS, keyMap, keyName } from '../data/keys.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
-import { dailyOf, dailyText, dailyReward } from '../game/daily.js';
+import { dailyOf, weeklyOf, dailyText, dailyReward } from '../game/daily.js';
 // 스탯 오각형: 내가 어느 쪽으로 컸나
 const pentagon = (stats) => {
   const mx = Math.max(...STATS.map((k) => stats[k])) || 1, pt = (i, r) => { const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5; return `${(50 + Math.cos(a) * r).toFixed(1)},${(50 + Math.sin(a) * r).toFixed(1)}`; };
@@ -515,10 +515,10 @@ export class Windows {
         <h3 style="margin-top:12px">보상</h3><div class="rws">${rewards(q.reward)}</div>
         <div class="btns"><button class="plate gold" data-turnin="1" ${done && this.w.inTown ? '' : 'disabled'}>${done ? (this.w.inTown ? '보상 받기' : '경비대장 하겐에게 보고') : '진행 중'}</button></div>`;
     }
-    const dl = dailyOf(st);
-    const atGuard = this.townMode === 'build', claimable = dl.list.some((x) => x.done && !x.got);
-    let list = `<h3>오늘의 의뢰${claimable ? `<button class="btn gold" data-daily="1" style="margin-left:auto" ${atGuard ? '' : 'disabled'}>${atGuard ? '보상 받기' : '경비대장에게 보고'}</button>` : ''}</h3>` + dl.list.map((x) => { const r = dailyReward(x, st);
-      return `<div class="row qrow${x.done ? ' fin' : ''}"><div class="grow">${dailyText(x)}<div class="note">${r.gold}G${r.ore ? ` · 강화석 ${r.ore}` : ''}${r.key ? ' · 던전 열쇠' : ''}</div></div><span class="note">${x.got ? '받음' : x.done ? '완료' : `${x.have} / ${x.need}`}</span></div>`; }).join('');
+    const dl = dailyOf(st), wl = weeklyOf(st);
+    const atGuard = this.townMode === 'build', claimable = [...dl.list, ...wl.list].some((x) => x.done && !x.got);
+    const qline = (x) => { const r = dailyReward(x, st); return `<div class="row qrow${x.done ? ' fin' : ''}"><div class="grow">${dailyText(x)}<div class="note">${r.gold.toLocaleString()}G${r.ore ? ` · 강화석 ${r.ore}` : ''}${r.key ? ` · 던전 열쇠${r.key > 1 ? ' ' + r.key : ''}` : ''}${r.ess ? ` · ${BASES[r.ess.id].name} ${r.ess.n}` : ''}</div></div><span class="note">${x.got ? '받음' : x.done ? '완료' : `${x.have} / ${x.need}`}</span></div>`; };
+    let list = `<h3>오늘의 의뢰${claimable ? `<button class="btn gold" data-daily="1" style="margin-left:auto" ${atGuard ? '' : 'disabled'}>${atGuard ? '보상 받기' : '경비대장에게 보고'}</button>` : ''}</h3>` + dl.list.map(qline).join('') + '<h3>이번 주 의뢰</h3>' + wl.list.map(qline).join('');
     for (const z of ZONES) {
       list += `<h3>${z.name}</h3>`;
       for (const x of QUESTS.filter((y) => y.zone === z.id)) {
@@ -779,7 +779,7 @@ export class Windows {
         for (const [id, r] of Object.entries(RESEARCH)) {
           const lv = researchLv(st, id), c = researchCost(lv, id), max = lv >= RESEARCH_MAX, open = b.lv >= r.lab;
           right += `<div class="row" style="${open ? '' : 'opacity:.45'}"><div class="grow"><b>${r.name}</b> <small>${lv} / ${RESEARCH_MAX}</small><div class="note">${open ? `${lv ? r.text(lv) : '없음'}${max ? '' : ` → ${r.text(lv + 1)}`}` : `연구소 ${r.lab}단계 · ${r.text(1)}`}</div></div>
-            ${open ? `<button class="btn" data-research="${id}" ${max || t.lab || st.gold < c.gold ? 'disabled' : ''}>${max ? '완료' : `${c.gold.toLocaleString()}G · ${c.min}분`}</button>` : ''}</div>`;
+            ${open ? `<button class="btn" data-research="${id}" ${max || t.lab || st.gold < c.gold ? 'disabled' : ''}>${max ? '완료' : `${c.gold.toLocaleString()}G · 재료 ${c.mats}${c.ess ? ` · ${BASES[c.ess.id].name} ${c.ess.n}` : ''} · ${c.min}분`}</button>` : ''}</div>`;
         }
       }
       if (b.type === 'house') right += `<div class="kv"><span>고용 한도</span><b>${mercSlots(st)}명</b><span>지금</span><b>${t.mercs.length}명</b></div>`;
@@ -1005,7 +1005,7 @@ export class Windows {
     const townDone = (r, okMsg) => { if (!r?.ok) { if (r?.why) w.ui.toast(r.why); audio.play('error'); } else { if (okMsg) w.ui.toast(okMsg, '#ffd84a'); w.refreshTown(); w.ui.dirty(); } this.render(); };
     on('[data-build]', (el) => { const r = build(st, this.townSel || PLOTS[0].id, el.dataset.build); if (r.ok) audio.play('rankup'); townDone(r, `${BUILDINGS[el.dataset.build].name}을(를) 지었습니다`); });
     on('[data-upgrade]', () => { const r = upgrade(st, this.townSel); if (r.ok) audio.play('rankup'); townDone(r, '단계를 올렸습니다'); });
-    on('[data-collect]', () => { const r = collect(st, this.townSel); if (r?.n) { audio.play('coin'); w.ui.toast(r.got ? `약초: ${Object.entries(r.got).map(([h, q]) => `${HERBS[h].name} ${q}`).join(' · ')}` : `${r.what} ${r.n}개를 거뒀습니다`, '#7fe07a'); } w.ui.dirty(); this.render(); });
+    on('[data-collect]', () => { const r = collect(st, this.townSel); if (r?.n) { audio.play('coin'); w.ui.toast(r.got ? `약초: ${Object.entries(r.got).map(([h, q]) => `${HERBS[h].name} ${q}`).join(' · ')}` : `${r.what} ${r.n}개를 거뒀습니다${r.o2 ? ` · 상급 ${r.o2}` : ''}${r.o3 ? ` · 최상급 ${r.o3}` : ''}`, '#7fe07a'); } w.ui.dirty(); this.render(); });
     on('[data-enh]', (el) => {
       const it = gearAt(st, el.dataset.enh), r = enhance(st, it); if (el.dataset.enh.startsWith('v:')) vaultSave();
       if (!r.ok) { w.ui.toast(r.why); audio.play('error'); }

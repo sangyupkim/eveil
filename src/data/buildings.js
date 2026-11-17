@@ -28,7 +28,7 @@ export const BUILDINGS = {
   mine: {
     name: '광산', up: [...[10, 22, 38, 55], ...UP_MORE], need: 6, desc: '강화석 생산', max: 10, cost: (lv) => ext([1200, 5400, 18000, 54000, 144000])[lv] ?? null,
     rate: (lv) => [0, 2, 4, 7, 11, 16, 22, 30, 40, 52, 66][lv],      // 시간당 강화석
-    store: (lv) => [0, 12, 24, 45, 75, 120, 170, 230, 300, 380, 480][lv], // 쌓아 둘 수 있는 양
+    store: (lv) => [0, 24, 48, 84, 132, 192, 264, 360, 480, 624, 792][lv], // 쌓아 둘 수 있는 양 (v0.44.27 시간당 생산 × 12시간)
     look: [['cave', 130, 0, 0], ['cave', 131, 1.5, 0.4], ['cave', 151, -1.4, 0.6]],
   },
   herb: {
@@ -112,9 +112,19 @@ export const RESEARCH = {
   enh: { lab: 4, name: '장인의 손', text: (lv) => `강화 확률 +${lv * 2}%p`, k: 0.02 },
   exp: { lab: 5, name: '전장의 지혜', text: (lv) => `경험치 +${lv * 6}%`, k: 0.06 },
   shard: { lab: 5, name: '파편 감정', text: (lv) => `능력치 파편 나올 확률 +${lv * 20}%`, k: 0.2 },
+  // v0.44.27 더한 연구
+  mine: { lab: 2, name: '갱도 확장', text: (lv) => `광산 생산 +${lv * 10}%`, k: 0.1 },
+  brew: { lab: 3, name: '숙련 공정', text: (lv) => `제작 시간 -${lv * 8}%`, k: 0.08 },
+  ess: { lab: 6, name: '정수 응축', text: (lv) => `정수 얻을 확률 +${lv * 10}%`, k: 0.1 },
+  oreUp: { lab: 7, name: '광맥 감별', text: (lv) => `광산 상위 강화석 확률 +${(lv * 0.3).toFixed(1)}%p`, k: 0.003 },
 };
 // 비싼 연구(늦게 열리는 것)일수록 금화 · 시간이 더 든다
-export const researchCost = (lv, id) => { const k = 1 + ((RESEARCH[id]?.lab || 1) - 1) * 0.6; return { gold: Math.round(500 * (lv + 1) ** 2 * k), min: Math.round(20 * (lv + 1) ** 2 * k) }; };
+// v0.44.27 재료도 든다: 지역 재료(가장 많은 것부터) + 연구소 4단계 연구부터 정수 (늦게 열리는 연구일수록 높은 정수)
+export const researchCost = (lv, id) => {
+  const L = RESEARCH[id]?.lab || 1, k = 1 + (L - 1) * 0.6;
+  const ess = L >= 4 ? { id: L >= 8 ? 'ess4' : L >= 6 ? 'ess3' : 'ess2', n: 2 * (lv + 1) } : null;
+  return { gold: Math.round(500 * (lv + 1) ** 2 * k), min: Math.round(20 * (lv + 1) ** 2 * k), mats: Math.round(8 * (lv + 1) * k), ess };
+};
 // 건물 단계마다 늘어나는 꾸밈 (상자 · 통 · 횃불 · 석상)
 export const LEVEL_DECOR = [[], [], [['grassland', 96, 1.8, -1.2], ['ruins', 287, -1.8, -1.0]], [['dungeon', 167, 2.2, 1.6], ['dungeon', 167, -2.2, 1.6]], [['ruins', 241, -2.4, 0.4]], [['grassland', 98, 2.4, -0.4], ['ruins', 289, -2.6, -0.2]]];
 // 일꾼: 광산 · 약초밭은 일꾼이 있어야 생산 (단계만큼 자리, 자리를 다 채우면 온전히)

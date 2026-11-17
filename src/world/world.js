@@ -22,7 +22,7 @@ import { rollLoot, rollDeathDrop } from '../game/loot.js';
 import { dropMats, liberateAdd, dropEss, resAdd, resCount, claim as claimMerc, brewCollect, collect as collectPlot, repeatTick, autoBrewTick } from '../game/town.js';
 import { vaultAdd } from '../game/vault.js';
 import { itemIcon, iconUrl, coinIcon, oreIcon, herbIcon, townIcon, bookIcon } from '../ui/icons.js';
-import { dailyProgress, dailyReward, dailyText, dayKey, dailyOf } from '../game/daily.js';
+import { dailyProgress, dailyReward, dailyText, dayKey, dailyOf, weeklyOf } from '../game/daily.js';
 import { MATERIALS } from '../data/crafting.js';
 import { addItem, takeOne, countOf, equip as equipItem, unequip as unequipItem } from '../game/inventory.js';
 import { itemName, itemColor, isBook, makeItem, makeBook, rollBase, itemValue } from '../game/items.js';
@@ -355,15 +355,15 @@ export class World {
 
   // 오늘의 의뢰 끝: 보상은 경비대장 하겐에게 보고해서 받는다 (claimDaily)
   dailyDone(list) {
-    for (const q of list) { this.ui.toast(`오늘의 의뢰 완료: ${dailyText(q)}`, '#ffd84a'); sfx('coin'); }
+    for (const q of list) { this.ui.toast(`${q.weekly ? '이번 주' : '오늘의'} 의뢰 완료: ${dailyText(q)}`, '#ffd84a'); sfx('coin'); }
   }
   claimDaily() {
     const st = this.st; let n = 0, g = 0;
-    for (const q of dailyOf(st).list) {
+    for (const q of [...dailyOf(st).list, ...weeklyOf(st).list]) {
       if (!q.done || q.got) continue;
       const r = dailyReward(q, st);
       if (r.key && !addItem(st, makeItem('dungeon_key', { qty: r.key }, st))) { this.ui.toast('가방이 가득 찼습니다'); break; }
-      st.gold += r.gold; g += r.gold; if (r.ore) townOf(st).ore += r.ore;
+      st.gold += r.gold; g += r.gold; if (r.ore) townOf(st).ore += r.ore; if (r.ess) resAdd(st, r.ess.id, r.ess.n);
       q.got = true; n++; (st.rec ||= {}).daily = (st.rec.daily || 0) + 1;
     }
     if (n) { this.ui.toast(`의뢰 보상 ${n}개 — ${g.toLocaleString()}G`, '#ffd84a'); sfx('coin'); this.ui.dirty(); }
@@ -2210,6 +2210,7 @@ export class World {
       const done = researchTick(st);
       if (done) secs.push({ title: '연구 완료', rows: [{ img: bookIcon(), name: `${RESEARCH[done].name} ${researchLv(st, done)}단계` }] });
       secs.push(...this.townAuto());
+      if (st.dailyNew?.length) { this.dailyDone(st.dailyNew); st.dailyNew = []; }
       if (secs.length) { sfx('coin'); if (globalThis.__game?.windows) globalThis.__game.windows.notice(secs); else for (const x of secs) this.ui.toast(x.title, '#7fe07a'); }
       this.checkAchievements();
       this.checkTierUnlock(); // 예전 저장도 조건을 채웠으면 열린다

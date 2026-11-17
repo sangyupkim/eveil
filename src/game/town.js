@@ -8,6 +8,7 @@ import { makeItem, rollBase } from './items.js';
 import { MATERIALS, MAT_DROP, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
 import { BASES } from '../data/items.js';
 import { vault, vaultAdd, vaultSave } from './vault.js';
+import { lifeProgress } from './daily.js';
 import { shardFrom } from './shards.js';
 
 export function townOf(st, now = Date.now()) {
@@ -113,7 +114,7 @@ export function tick(st, now = Date.now()) {
       const crew = t.mercs.filter((m) => m.work === pid && !m.tired && !m.job);
       if (def.rate) {
         const eff = crew.reduce((a, m) => a + workEff(m, b.type), 0) / b.lv;
-        const rk = b.type === 'herb' ? 1 + researchK(st, 'herb') : 1;
+        const rk = b.type === 'herb' ? 1 + researchK(st, 'herb') : b.type === 'mine' ? 1 + researchK(st, 'mine') : 1;
         b.stock = Math.min(def.store(b.lv), (b.stock || 0) + def.rate(b.lv) * rk * Math.min(2, eff) * h);
       }
       for (const m of crew) { m.sta -= MERC.workSta * save * h; growSkill(m, SKILL_OF[b.type], h); gainExp(m, MERC.workExp * h); if (m.sta <= 0) { m.sta = 0; m.tired = true; } }
@@ -131,7 +132,14 @@ export function collect(st, plot) {
   if (!b) return null;
   const n = Math.floor(b.stock || 0);
   if (n <= 0) return { n: 0 };
-  if (b.type === 'mine') { townOf(st).ore += n; b.stock -= n; return { n, what: '강화석' }; }
+  lifeProgress(st, 'harvest');
+  if (b.type === 'mine') {
+    // v0.44.27 높은 광산은 가끔 상위 강화석: 6단계부터 상급 (단계마다 0.4%p, 10단계 2%) · 9단계부터 최상급 (0.15%p, 10단계 0.3%) + 연구 「광맥 감별」
+    const p2 = b.lv >= 6 ? (b.lv - 5) * 0.004 + researchK(st, 'oreUp') : 0, p3 = b.lv >= 9 ? (b.lv - 8) * 0.0015 + researchK(st, 'oreUp') / 6 : 0;
+    let o2 = 0, o3 = 0; for (let i = 0; i < n; i++) { const r = Math.random(); if (r < p3) o3++; else if (r < p3 + p2) o2++; }
+    townOf(st).ore += n - o2 - o3; if (o2) resAdd(st, 'ore2', o2); if (o3) resAdd(st, 'ore3', o3); b.stock -= n;
+    return { n, what: '강화석', o2, o3 };
+  }
   if (b.type === 'herb') {
     const ids = herbsAt(b.lv), tw = ids.reduce((a, id) => a + HERBS[id].w, 0), hs = townOf(st).herbs, got = {};
     let left = n;
@@ -160,7 +168,7 @@ export function enhance(st, it, rng = Math.random) {
   const c = enhanceCost(it, st), t = townOf(st);
   if (st.gold < c.gold) return { ok: false, why: '금화가 모자랍니다' };
   if (resCount(st, c.oreId) < c.ore) return { ok: false, why: `${c.oreName}이 모자랍니다` };
-  st.gold -= c.gold; resTake(st, c.oreId, c.ore);
+  st.gold -= c.gold; resTake(st, c.oreId, c.ore); lifeProgress(st, 'enhance');
   if (rng() < c.chance) { it.plus = n + 1; it.jang = 0; it.fails = 0; return { ok: true, success: true, plus: it.plus }; }
   it.fails = (it.fails || 0) + 1;
   it.jang = Math.min(1, jangOf(it) + c.chance * 0.465);
@@ -416,7 +424,7 @@ export function claim(st, id, now = Date.now(), rng = Math.random, put = null) {
   t.mats[zn.id] = (t.mats[zn.id] || 0) + out.mats;
   st.gold += out.gold; t.ore += out.ore;
   const n0 = out.items.length; out.items = out.items.filter((it) => (put ? put(st, it) : addItem(st, it))); out.lost = n0 - out.items.length;
-  gainExp(m, ex.mult * 10);
+  gainExp(m, ex.mult * 10); lifeProgress(st, 'expedition');
   growSkill(m, 'hunt', ex.mult * 1.5);
   m.job = null;
   return out;
@@ -448,7 +456,7 @@ export function brew(st, id, times = 1, now = Date.now()) {
   for (const [h, q] of Object.entries(r.herbs)) t.herbs[h] -= q * times;
   st.gold -= g;
   const from = Math.max(now, t.brew.length ? t.brew[t.brew.length - 1].until : now);
-  t.brew.push({ id, n: r.n * times, from, until: from + brewTime(r) * times });
+  t.brew.push({ id, n: r.n * times, from, until: from + brewTime(r) * times * (1 - researchK(st, 'brew')) });
   return { ok: true, n: r.n * times, queued: true };
 }
 // 다 된 것을 가방으로
@@ -458,7 +466,7 @@ export function brewCollect(st, now = Date.now(), put = null) {
   while (t.brew?.length && t.brew[0].until <= now) {
     const b = t.brew[0], it = makeItem(b.id, { qty: b.n }, st);
     if (!(put ? put(st, it) : addItem(st, it))) return { ok: n > 0, n, why: put ? '창고가 가득 찼습니다' : '가방이 가득 찼습니다' };
-    n += b.n; t.brew.shift();
+    n += b.n; t.brew.shift(); lifeProgress(st, 'brew');
   }
   return { ok: n > 0, n };
 }
@@ -508,6 +516,9 @@ export function researchStart(st, id, now = Date.now()) {
   if (lv >= RESEARCH_MAX) return { ok: false, why: '최고 단계입니다' };
   const c = researchCost(lv, id);
   if (st.gold < c.gold) return { ok: false, why: '금화가 모자랍니다' };
+  if (zoneMatTotal(st) < c.mats) return { ok: false, why: '지역 재료가 모자랍니다' };
+  if (c.ess && resCount(st, c.ess.id) < c.ess.n) return { ok: false, why: `${BASES[c.ess.id].name}가 모자랍니다` };
+  takeZoneMats(st, c.mats); if (c.ess) resTake(st, c.ess.id, c.ess.n);
   st.gold -= c.gold; t.lab = { id, from: now, until: now + c.min * 60000 * (1 - bonusOf(st, 'lab')) };
   return { ok: true };
 }
@@ -565,6 +576,7 @@ export function craftOre(st, id, times = 1) {
   for (const [k, q] of Object.entries(r.need)) resTake(st, k, q * times);
   takeZoneMats(st, r.zoneMats * times);
   resAdd(st, r.id, times);
+  lifeProgress(st, 'make', times);
   return { ok: true, n: times };
 }
 // 정수: 몬스터 레벨 100 · 200 · 300 · 400부터 2 · 3 · 4 · 5단계
@@ -572,7 +584,7 @@ export const essGrade = (level) => Math.min(5, 1 + Math.floor(level / 100));
 export function dropEss(st, level, tier, mult = 1, rng = Math.random) {
   let g = essGrade(level);
   if (g < 2) return null;
-  const p = ({ normal: 0.04, elite: 0.25, named: 0.6, boss: 1 }[tier] || 0) * mult;
+  const p = ({ normal: 0.04, elite: 0.25, named: 0.6, boss: 1 }[tier] || 0) * mult * (1 + researchK(st, 'ess'));
   if (rng() >= p) return null;
   let n = tier === 'boss' ? 2 + Math.floor(rng() * 3) : tier === 'named' ? 1 + Math.floor(rng() * 2) : 1;
   // v0.44.11 높은 곳에서도 아래 단계 정수가 나온다 (35%는 한 단계 아래 · 2배): 빛바랜 정수가 100 ~ 199레벨에서만 나오던 것
@@ -591,6 +603,7 @@ export function craftEss(st, rid, times = 1) {
   st.gold -= r.gold * times;
   for (const [k, q] of Object.entries(r.need)) resTake(st, k, q * times);
   resAdd(st, r.id, r.out * times);
+  lifeProgress(st, 'make', times);
   return { ok: true, n: r.out * times, id: r.id };
 }
 
@@ -606,6 +619,7 @@ export function craftKey(st, id, times = 1) {
   for (const [k, q] of Object.entries(r.need)) resTake(st, k, q * times);
   takeZoneMats(st, r.zoneMats * times);
   resAdd(st, r.id, times);
+  lifeProgress(st, 'make', times);
   return { ok: true, n: times };
 }
 
