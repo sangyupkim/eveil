@@ -49,9 +49,12 @@ export const MORE_SKILLS = {
   focus_mind: { name: '정신 집중', color: '#d0b0ff', tier: 2, type: 'buff', ap: 'wis', school: 'holy', buff: 'focus', req: { wis: req(2) }, mp: 12, cd: 26, duration: 14, power: 12, perRank: 2, desc: '마음을 가다듬어 치명타 확률을 높인다.' },
 
   // ── 수호 (체력) ──
-  taunt_roar: W({ name: '도발의 포효', color: '#c09060', tier: 1, type: 'buff', ap: 'vit', school: 'guard', buff: 'armorPct', req: { vit: req(1) }, mp: 8, cd: 20, duration: 10, power: 20, perRank: 3, desc: '포효하며 몸을 굳힌다.' }),
+  taunt_roar: W({ name: '도발의 포효', color: '#c09060', tier: 1, type: 'buff', ap: 'vit', school: 'guard', buff: 'taunt', taunt: 8, req: { vit: req(1) }, mp: 8, cd: 18, duration: 8, power: 15, perRank: 1, desc: '포효해 둘레 적을 끌어당기고, 잠시 받는 피해를 줄인다.' }),
   stand_fast: W({ name: '버티기', color: '#a0a8b8', tier: 3, type: 'buff', ap: 'vit', school: 'guard', buff: 'shield', req: { vit: req(3) }, mp: 18, cd: 30, duration: 12, power: 120, perRank: 22, desc: '이를 악물고 버틴다.' }),
-  thorn_mail: W({ name: '가시 갑옷', color: '#90a070', tier: 2, type: 'buff', ap: 'vit', school: 'guard', buff: 'armorPct', req: { vit: req(2) }, mp: 12, cd: 26, duration: 16, power: 35, perRank: 4, desc: '가시 돋친 갑옷을 두른다.' }),
+  thorn_mail: W({ name: '가시 갑옷', color: '#90a070', tier: 2, type: 'buff', ap: 'vit', school: 'guard', buff: 'thorns', req: { vit: req(2) }, mp: 12, cd: 26, duration: 16, power: 30, perRank: 3, desc: '맞으면 받은 피해의 일부를 때린 적에게 되돌려 준다.' }),
+  // v0.44.35 체력 공격: 맞은 만큼 갚는다 · 방패로 돌진
+  vengeance: W({ name: '인내의 폭발', color: '#e0a050', tier: 2, type: 'buff', ap: 'vit', school: 'guard', buff: 'venge', venge: { radius: 6 }, req: { vit: req(2) + 4 }, mp: 14, cd: 16, duration: 5, power: 100, perRank: 6, desc: '5초 동안 받은 피해를 모았다가 둘레로 터뜨린다.' }),
+  shield_charge: W({ name: '방패 돌격', color: '#c0a070', tier: 2, type: 'dash', needs: 'melee', school: 'guard', scale: 'armor', req: { vit: req(2) }, mp: 10, cd: 7, range: 9, power: 1.5, perRank: 0.12, anim: 'heavy', desc: '방패를 앞세워 적에게 달려든다. 방어력이 높을수록 세다.' }),
   earth_stomp: W({ name: '대지 구르기', color: '#a08050', tier: 4, type: 'spin', apStat: 'vit', school: 'guard', slow: 2, req: { vit: req(4) }, mp: 30, cd: 12, radius: 5.5, power: 2.2, perRank: 0.18, anim: 'heavy', desc: '땅을 굴러 둘레를 흔든다.' }),
 
   // ── 기교 (민첩 · 아무 무기) ──

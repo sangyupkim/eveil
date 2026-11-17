@@ -1115,6 +1115,8 @@ export class World {
       this.perk('block');
     }
     if (this.pbuffs?.ward?.t > 0) dmg *= 1 - this.pbuffs.ward.v / 100;
+    if (this.buffs.taunt?.t > 0) dmg *= 1 - Math.min(40, this.buffs.taunt.v) / 100; // 도발의 포효
+    const pre = dmg; // 가시 갑옷 · 인내의 폭발은 보호막 전 피해로
     const sh = this.buffs.shield;
     if (sh && sh.t > 0 && sh.v > 0) {
       const ab = Math.min(sh.v, dmg);
@@ -1131,6 +1133,10 @@ export class World {
     }
     dmg = Math.max(1, Math.round(dmg));
     st.hp -= dmg;
+    // v0.44.35 가시 갑옷: 때린 적에게 되돌려 준다 (무기 한 방의 3배까지) · 인내의 폭발: 모아 둔다
+    const th = this.buffs.thorns;
+    if (th?.t > 0 && m && !m.dead && m.pos && Math.hypot(m.pos.x - this.player.pos.x, m.pos.z - this.player.pos.z) < 8) this.hitMonster(m, Math.min(pre * th.v / 100, this.rollWeapon().v * 3), { src: 'skill' });
+    if (this.buffs.venge?.t > 0) this.buffs.venge.store = (this.buffs.venge.store || 0) + pre;
     // 체력 (v0.44.26): 실제로 받은 피해로, HP가 넉넉하면 적게(70%↑ ×0.3) · 위기일수록 많이(30%↓ ×1.5).
     //  최근 10초에 준 피해가 받은 피해의 3배를 넘으면 체력은 절반, 나머지 절반은 주 스탯으로 (멀리서 맞으며 녹이는 마법사 등)
     const shieldK = BASES[st.equip.offhand?.base]?.block ? 1.5 : 1, hpF = st.hp / d.maxHp;
@@ -1527,6 +1533,14 @@ export class World {
     return this.monsters.filter((m) => !m.dead && dist2(m.pos, pos) <= r);
   }
 
+  // v0.44.35 인내의 폭발: 모은 피해 × 계수(%)를 둘레로. 탱커가 딜러가 되지 않게 무기 한 방의 1.5 ~ 8배 사이로
+  vengeRelease(b) {
+    if (!b || b.done) return; b.done = true; b.t = 0;
+    const P = this.player.pos, w = this.rollWeapon().v, v = Math.max(w * 1.5, Math.min((b.store || 0) * b.v / 100, w * 8)), r = b.radius || 6;
+    this.fx.ring(P.x, P.z, r, 0xe0a050, 0.6); this.fx.play('v_dust', P.x, P.z, { scale: 1.6 }); this.fx.shake?.(0.3); sfx('boom', 0.8);
+    for (const m of this.monstersNear(P, r)) this.hitMonster(m, v, { src: 'skill' });
+    this.d = derive(this.st, this.buffValues());
+  }
   // 주문서 읽기: 같은 효과의 주문서가 이미 있으면 그것을 바꾼다 (겹치지 않는다)
   readScroll(id, quiet = false) {
     const st = this.st, E = ELIXIRS[id], base = totalStats(st);
@@ -1951,7 +1965,15 @@ export class World {
         this.swing = 0.3;
         addAP(st, sk.ap === 'weapon' ? d.cls.ap : sk.ap, v.mp * AP_TABLE.supportPerMp, this.autoMult);
         const val = sk.buff === 'shield' ? pw * d.healMult : pw;
-        this.buffs[sk.buff] = { v: val, t: sk.duration, max: sk.duration, id };
+        if (this.buffs.venge?.t > 0 && sk.buff === 'venge') this.vengeRelease(this.buffs.venge); // 다시 쓰면 바로 터뜨린다
+        this.buffs[sk.buff] = { v: val, t: sk.duration, max: sk.duration, id, store: 0, radius: sk.venge?.radius };
+        // 도발: 둘레 적을 나에게 끌어오고 나를 노리게
+        if (sk.taunt) for (const m of this.monstersNear(P.pos, sk.taunt)) {
+          if (m.tier === 'boss') continue;
+          const dx = P.pos.x - m.pos.x, dz = P.pos.z - m.pos.z, l = Math.hypot(dx, dz) || 1, k = Math.min(l - 1.5, 3) / l;
+          if (k > 0) { m.pos.x += dx * k; m.pos.z += dz * k; }
+          m.state = 'chase';
+        }
         sfx('buff');
         // 쓸 때: 몸을 감싸는 빛 (폭발처럼 보이던 고리 대신). 지속 중에는 발밑 오라가 따라다닌다 (auraStep)
         { const q = this.fx.play('immunity', P.pos.x, P.pos.z, { y: 0.05, scale: 0.75, tint: color, alpha: 0.9, fade: true, dur: 0.9 }); if (q) q.follow = P.pos; }
@@ -2180,7 +2202,7 @@ export class World {
     }
     // 버프 · 쿨타임 · 회복
     let buffChanged = false;
-    for (const k in this.buffs) { const b = this.buffs[k]; if (b.t > 0) { b.t -= dt; if (b.t <= 0) buffChanged = true; } }
+    for (const k in this.buffs) { const b = this.buffs[k]; if (b.t > 0) { b.t -= dt; if (b.t <= 0) { buffChanged = true; if (k === 'venge') this.vengeRelease(b); } } }
     this.auraStep();
     globalThis.__game?.windows?.talkCheck?.();
     this.scrollT = (this.scrollT || 0) - dt; if (this.scrollT <= 0) { this.scrollT = 1; this.autoScrolls(); }

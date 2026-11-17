@@ -185,7 +185,7 @@ export const SKILL_ICON = {
   counter_slash: 32, shield_bash: 4, execute: 33, leap_slam: 13, flurry: 44, snipe: 16, scatter_shot: 8, trap_arrow: 41, hail_of_arrows: 35, ricochet: 23,
   fire_pillar: 37, flame_burst: 34, inferno_field: 18, ember_spray: 21, ice_lance: 38, frost_ring: 24, frozen_orb: 20, ice_armor: 15, cold_snap: 24,
   spark: 7, thunder_strike: 36, static_field: 10, thunderstorm: 39, storm_god: 45, holy_ward: 26, smite: 22, consecrate: 42, sanctuary: 15, focus_mind: 29,
-  taunt_roar: 31, stand_fast: 4, thorn_mail: 40, earth_stomp: 39, smoke_step: 12, poison_edge: 27, shadow_step: 14, fan_of_knives: 46,
+  taunt_roar: 31, stand_fast: 4, thorn_mail: 40, vengeance: 39, shield_charge: 4, earth_stomp: 39, smoke_step: 12, poison_edge: 27, shadow_step: 14, fan_of_knives: 46,
   flame_blade: 5, frost_blade: 38, thunder_cleave: 44, holy_strike: 22, judgement_wave: 45, iron_charge: 9, quake_blow: 39, blade_dance: 46,
   elemental_arrow: 34, frost_arrow_rain: 41, star_arrow: 13, spirit_arrow: 42, wind_volley: 35, ranger_shot: 16, arcane_shield: 26, mind_blast: 10,
   battle_mage: 31, iron_monk: 15, swift_fury: 19, hunters_mark: 6,
