@@ -7,11 +7,11 @@ import path from 'node:path';
 import sharp from 'sharp';
 const ROOT = process.argv[2], OUT = 'assets/flare', J = path.join(OUT, 'enemies.json');
 const SPECS = [
-  { name: 'x_beast_warrior', k: 0.8, sheet: { dir: 'opt/x180p_Spritesheets', cell: 180 },
+  { name: 'x_beast_warrior', k: 1, px: 0.45, frames: { dir: 'beastf/Frames_320x320', cell: 320 },
     anims: { stance: ['Idle_Simple', 1000, 'looped'], run: ['Run', 560, 'looped'], swing: ['Attack_01', 650, 'play_once'], cast: ['Attack_03', 800, 'play_once'], hit: ['Hit', 300, 'play_once'], die: ['Death_from_Idle', 900, 'play_once'], block: ['Block_Idle', 600, 'looped'] } },
-  { name: 'x_heavy_orc', k: 0.6, sheet: { dir: 'heavy/x240p_Spritesheets', cell: 240 },
+  { name: 'x_heavy_orc', k: 1, px: 0.43, frames: { dir: 'heavyf/Frames_448x336', cell: 448, h: 336, body: '' },
     anims: { stance: ['Idle_Armed', 1000, 'looped'], run: ['Run_Armed', 600, 'looped'], swing: ['Attack_01', 700, 'play_once'], cast: ['Roar', 1000, 'play_once'], hit: ['Hit_Armed', 300, 'play_once'], die: ['Death_Armed', 1000, 'play_once'], block: ['Idle_Block', 600, 'looped'] } },
-  { name: 'x_orc_brute', k: 0.56, frames: { dir: 'noarm/256x256', cell: 256 },
+  { name: 'x_orc_brute', k: 1, px: 0.448, sheet: { dir: 'noarm320/x320p_spritesheets', cell: 320 },
     anims: { stance: ['Idle_Armed', 1000, 'looped'], run: ['Run_Armed', 600, 'looped'], swing: ['Attack_01', 700, 'play_once'], cast: ['Roar', 1000, 'play_once'], hit: ['Hit_Armed', 300, 'play_once'], die: ['Death_Armed', 1000, 'play_once'] } },
   // v0.44 — 비룡 돌려쓰던 보스 교체용
   { name: 'x_snake', k: 0.9, px: 0.5, frames: { dir: 'snake/Frames_320x320', cell: 320 },
@@ -57,19 +57,19 @@ const enemies = JSON.parse(fs.readFileSync(J, 'utf8'));
 const FLIP_SET = new Set(['x_snake', 'x_fishman', 'x_fishman_mace', 'x_fishman_blade', 'x_ice_mummy', 'x_tusk_beast', 'x_centipede', 'x_spider_horror']), MIRROR_SET = new Set(['x_spearman']);
 for (const S of SPECS) {
   FLIPV = FLIP_SET.has(S.name); MIRROR = MIRROR_SET.has(S.name);
-  const cell = (S.sheet || S.frames || S.rows).cell, cs = Math.round(cell * S.k), pieces = [];
+  const cell = (S.sheet || S.frames || S.rows).cell, cellH = (S.sheet || S.frames || S.rows).h || cell, cs = Math.round(cell * S.k), csH = Math.round(cellH * S.k), pieces = [];
   for (const [an, [src]] of Object.entries(S.anims)) for (let d = 0; d < 8; d++) {
     let fr;
     if (S.rows) { const file = path.join(ROOT, S.rows.dir, src + '.png'); fr = (await sheetFrames(file, cell)).filter((f) => f.top === d * cell); }
     else if (S.sheet) fr = await sheetFrames(findAng(path.join(ROOT, S.sheet.dir, src), d, /Body/), cell);
-    else { const dir = findAng(path.join(ROOT, S.frames.dir, src, 'Body'), d, /^\d+$/); fr = fs.readdirSync(dir).filter((f) => f.endsWith('.png')).sort().map((f) => ({ file: path.join(dir, f) })); }
+    else { const dir = findAng(path.join(ROOT, S.frames.dir, src, S.frames.body ?? 'Body'), d, /^\d+$/); fr = fs.readdirSync(dir).filter((f) => f.endsWith('.png')).sort().map((f) => ({ file: path.join(dir, f) })); }
     pickN(fr, S.px ? 8 : 10).forEach((f, i) => pieces.push({ an, d, i, ...f }));
   }
   // 자르기 · 줄이기
   for (const p of pieces) {
     let img = sharp(p.file);
     if (p.left != null) img = img.extract({ left: p.left, top: p.top, width: cell, height: cell });
-    const buf = await img.resize(cs, cs).png().toBuffer();
+    const buf = await img.resize(cs, csH).png().toBuffer();
     const t = await sharp(buf).trim({ threshold: 1 }).toBuffer({ resolveWithObject: true }).catch(() => null);
     if (!t) { p.skip = true; continue; }
     p.buf = t.data; p.w = t.info.width; p.h = t.info.height; p.tx = -(t.info.trimOffsetLeft || 0); p.ty = -(t.info.trimOffsetTop || 0);

@@ -1131,9 +1131,15 @@ export class World {
     }
     dmg = Math.max(1, Math.round(dmg));
     st.hp -= dmg;
-    // 체력: 맞은 횟수 + 줄이기 전 피해(방어 · 막기로 줄인 만큼도), 방패를 들면 1.5배 — HP가 많이 닳지 않아도 쌓인다
-    const shieldK = BASES[st.equip.offhand?.base]?.block ? 1.5 : 1;
-    addAP(st, 'vit', (AP_TABLE.hurtHit + (raw / d.maxHp) * AP_TABLE.hurtScale) * shieldK, apMult);
+    // 체력 (v0.44.26): 실제로 받은 피해로, HP가 넉넉하면 적게(70%↑ ×0.3) · 위기일수록 많이(30%↓ ×1.5).
+    //  최근 10초에 준 피해가 받은 피해의 3배를 넘으면 체력은 절반, 나머지 절반은 주 스탯으로 (멀리서 맞으며 녹이는 마법사 등)
+    const shieldK = BASES[st.equip.offhand?.base]?.block ? 1.5 : 1, hpF = st.hp / d.maxHp;
+    let vk = hpF >= 0.7 ? 0.3 : hpF >= 0.3 ? 1 : 1.5;
+    const T = this.time - 10; this.takenLog = (this.takenLog || []).filter((x) => x[0] > T); this.takenLog.push([this.time, dmg]); this.dealtLog = (this.dealtLog || []).filter((x) => x[0] > T);
+    const tk = this.takenLog.reduce((a, x) => a + x[1], 0), dl = this.dealtLog.reduce((a, x) => a + x[1], 0);
+    const gain = (AP_TABLE.hurtHit + (dmg / d.maxHp) * AP_TABLE.hurtScale) * shieldK * vk;
+    if (dl > tk * 3) { addAP(st, 'vit', gain * 0.5, apMult); addAP(st, this.d.cls?.ap || 'str', gain * 0.5, apMult); }
+    else addAP(st, 'vit', gain, apMult);
     this.perk('hurt');
     this.player.hitFlash(0xff2000);
     this.fx.burst(this.player.pos.x, 1.2, this.player.pos.z, 0xff3020, 5, 2.5, 0.3);
@@ -1183,6 +1189,7 @@ export class World {
     }
     const dmg = Math.max(1, Math.round(raw * (1 - red)));
     m.hp -= dmg;
+    (this.dealtLog ||= []).push([this.time, dmg]); // v0.44.26 최근 준 피해 (체력 · 주 스탯 나누기)
     m.showHp = 6;
     this.lastHit = m;
     if (m.state !== 'return') m.state = 'chase';
