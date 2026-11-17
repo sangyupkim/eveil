@@ -1534,7 +1534,6 @@ export class World {
     const v = E.stat ? Math.max(5, Math.round(base[E.buff] * 0.1)) : E.v;
     takeOne(st, id);
     st.elix ||= {};
-    for (const k of Object.keys(st.elix)) if (st.elix[k].buff === E.buff) delete st.elix[k];
     st.elix[id] = { buff: E.buff, v, t: ELIXIR_TIME };
     this.d = derive(st, this.buffValues());
     this.ui.toast(`${E.name}${quiet ? ' (자동)' : ''}: ${E.stat ? `${E.text.split(' ')[0]} +${v}` : E.text} · 5분`, E.color);
@@ -1549,8 +1548,7 @@ export class World {
     if (!on || this.inTown || this.dead) return;
     for (const id of Object.keys(on)) {
       if (!on[id] || !ELIXIRS[id] || countOf(st, id) <= 0) continue;
-      const busy = Object.values(st.elix || {}).some((e) => e.buff === ELIXIRS[id].buff && e.t > 3);
-      if (!busy) { this.readScroll(id, true); return; }
+      if (!(st.elix?.[id]?.t > 3)) this.readScroll(id, true); // 켜 둔 주문서는 모두 (같은 효과도 함께)
     }
   }
   usePotion(kind, quiet = false) {
