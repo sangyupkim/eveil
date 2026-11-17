@@ -24,11 +24,13 @@ export function townOf(st, now = Date.now()) {
 // ── 강화석 · 재료는 가방 · 창고의 아이템 (v0.30) ──
 // t.ore · t.mats[지역]은 예전 코드 그대로 쓰도록 남긴 통로: 읽으면 가방 + 창고의 개수, 빼면 가방부터 꺼내 쓴다
 export const resCount = (st, base) => st.inv.filter((x) => x.base === base).reduce((a, x) => a + (x.qty || 1), 0) + vault().items.filter((x) => x.base === base).reduce((a, x) => a + (x.qty || 1), 0);
+let dropFull = false; // v0.44.64 파견 전리품: 가방 · 창고가 가득이면 넘쳐 담지 않고 버린다
 export function resAdd(st, base, n) {
   if (n <= 0) return;
   const it = makeItem(base, { qty: n }, st);
   if (addItem(st, it)) return;
   if (vaultAdd(st, it)) return;
+  if (dropFull) return;
   st.inv.push(it); // 둘 다 가득이면 가방에 넘쳐 담는다 (잃지 않게)
 }
 export function resTake(st, base, n) {
@@ -444,12 +446,13 @@ export function claim(st, id, now = Date.now(), rng = Math.random, put = null) {
   const rolls = Math.round(ex.mult * eff * 1.5 * (1 + SHELTER.loot * sh) * lootK);
   for (let k = 0; k < rolls; k++) for (const d of rollLoot({ tier: k % 6 === 5 ? 'elite' : 'normal', level: lvl }, {}, st, rng)) if (d.kind === 'item' && d.item.base && !d.item.book) out.items.push(d.item);
   out.mats = Math.round(ex.mult * 3 * eff * (1 + SHELTER.mats * sh));
-  t.mats[zn.id] = (t.mats[zn.id] || 0) + out.mats;
-  st.gold += out.gold; t.ore += out.ore;
+  dropFull = true; try { t.mats[zn.id] = (t.mats[zn.id] || 0) + out.mats; } finally { dropFull = false; }
+  st.gold += out.gold;
+  dropFull = true; try { t.ore += out.ore; } finally { dropFull = false; }
   const n0 = out.items.length; out.items = out.items.filter((it) => (put ? put(st, it) : addItem(st, it))); out.lost = n0 - out.items.length;
   gainExp(m, ex.mult * 10); lifeProgress(st, 'expedition');
   // v0.44.47 파견소 4단계부터 긴 파견은 지도 조각을 가져온다 (긴 원정 30% · 야영 토벌 1 · 깊은 원정 1~2)
-  if (gl >= 4) { const mp = ex.id === 'deep' ? 1 + (rng() < 0.5 ? 1 : 0) : ex.id === 'siege' ? 1 : ex.id === 'long' && rng() < 0.3 ? 1 : 0; if (mp) { resAdd(st, 'map_piece', mp); out.mapPiece = mp; } }
+  if (gl >= 4) { const mp = ex.id === 'deep' ? 1 + (rng() < 0.5 ? 1 : 0) : ex.id === 'siege' ? 1 : ex.id === 'long' && rng() < 0.3 ? 1 : 0; if (mp) { dropFull = true; try { resAdd(st, 'map_piece', mp); } finally { dropFull = false; } out.mapPiece = mp; } }
   growSkill(m, 'hunt', ex.mult * 1.5);
   m.job = null;
   return out;
