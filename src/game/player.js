@@ -100,7 +100,8 @@ export function derive(st, buffs = {}) {
   const fin = 1 + (g.finalDmg || 0) / 100; // 신화 옵션: 최종 피해
   const dmgMult = fin * statMult * (1 + ((g.dmgPct || 0) + (buffs.might || 0)) / 100) * (1 + berserk / 100);
   // 자원 보너스 1 ~ 2배: 능력치만으로 생기는 양보다 장비로 더 늘린 HP · MP, 레벨 대비 방어력 (철벽 · 비전 스킬, 둔기 · 홀 평타)
-  const hpK = 1 + 0.5 * Math.min(2, Math.max(0, (g.maxHp || 0) / (60 + s.vit * 6)));
+  // v0.44.36 HP 보너스는 전체 최대 HP로 (체력 스탯을 올리면 보너스가 줄던 것): 각성 단계마다 기준 HP가 오른다
+  const hpRef = 100 + 8 * (st.awakenings || 0), hpK = 1 + 0.5 * Math.min(2, Math.max(0, (60 + s.vit * 6 + (g.maxHp || 0)) / hpRef - 1));
   const mpK = 1 + 0.5 * Math.min(2, Math.max(0, (g.maxMp || 0) / (15 + s.wis * 4.5)));
   const armorK0 = (g.armor + s.vit * 0.4), armK = 1 + armorK0 / (armorK0 + 40 + 8 * (1 + (st.awakenings || 0)));
   const basicK = cls.ap === 'vit' ? 1 + 0.25 * (hpK - 1) : cls.ap === 'wis' ? 1 + 0.25 * (mpK - 1) : 1;
@@ -115,7 +116,7 @@ export function derive(st, buffs = {}) {
     maxMp: Math.round(15 + s.wis * 4.5 + (g.maxMp || 0)),
     // 둔기 평타는 HP 보너스, 홀 평타는 MP 보너스를 조금 받는다 (딜탱)
     dmg: [wd[0] * dmgMult * basicK, wd[1] * dmgMult * basicK],
-    resK: { hp: hpK, mp: mpK, armor: armK },
+    resK: { hp: hpK, mp: mpK, armor: armK }, statMult,
     atkRate: Math.min(2.2, speed * (1 + s.dex * 0.004 + (g.atkSpd || 0) / 100 + berserk / 100 + (buffs.haste || 0) / 100)),
     range: cls.range,
     crit: Math.min(0.75, 0.05 + s.dex * 0.0015 + ((g.crit || 0) + (buffs.focus || 0)) / 100),

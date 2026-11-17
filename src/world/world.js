@@ -1536,7 +1536,7 @@ export class World {
   // v0.44.35 인내의 폭발: 모은 피해 × 계수(%)를 둘레로. 탱커가 딜러가 되지 않게 무기 한 방의 1.5 ~ 8배 사이로
   vengeRelease(b) {
     if (!b || b.done) return; b.done = true; b.t = 0;
-    const P = this.player.pos, w = this.rollWeapon().v, v = Math.max(w * 1.5, Math.min((b.store || 0) * b.v / 100, w * 8)), r = b.radius || 6;
+    const P = this.player.pos, w = this.rollWeapon().v * Math.max(1, (1 + (this.d.stats.vit || 0) * 0.015) / (this.d.statMult || 1)), v = Math.max(w * 1.5, Math.min((b.store || 0) * b.v / 100, w * 8)), r = b.radius || 6;
     this.fx.ring(P.x, P.z, r, 0xe0a050, 0.6); this.fx.play('v_dust', P.x, P.z, { scale: 1.6 }); this.fx.shake?.(0.3); sfx('boom', 0.8);
     for (const m of this.monstersNear(P, r)) this.hitMonster(m, v, { src: 'skill' });
     this.d = derive(this.st, this.buffValues());
@@ -1733,7 +1733,9 @@ export class World {
     // 자원 스킬 (철벽 · 비전): 평타 × 계수 × 자원 보너스, 치명타는 평타와 같다
     if (sk.scale) {
       // 평타 × 계수 × 자원 보너스(1 ~ 2배: 장비로 늘린 HP · MP, 레벨 대비 방어력)
-      const rk = d.resK?.[sk.scale] || 1;
+      let rk = d.resK?.[sk.scale] || 1;
+      // v0.44.36 체력 스킬: 무기와 상관없이 체력 1당 +1.5% (둔기의 체력 2%가 더 크면 그대로)
+      if (sk.scale === 'hp' || sk.scale === 'armor') rk *= Math.max(1, (1 + (d.stats.vit || 0) * 0.015) / (d.statMult || 1));
       const roll = () => { const w = this.rollWeapon(); lastCrit = w.crit; return w.v * pw * rk; };
       spell = roll;
       weaponHit = () => { const v0 = roll(); return { v: v0, crit: lastCrit }; };
