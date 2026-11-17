@@ -539,7 +539,7 @@ export function researchStart(st, id, now = Date.now()) {
   if (zoneMatTotal(st) < c.mats) return { ok: false, why: '지역 재료가 모자랍니다' };
   if (c.ess && resCount(st, c.ess.id) < c.ess.n) return { ok: false, why: `${BASES[c.ess.id].name}가 모자랍니다` };
   takeZoneMats(st, c.mats); if (c.ess) resTake(st, c.ess.id, c.ess.n);
-  st.gold -= c.gold; t.lab = { id, from: now, until: now + c.min * 60000 * (1 - bonusOf(st, 'lab')) };
+  st.gold -= c.gold; t.lab = { id, from: now, until: now + c.min * 60000 * (1 - bonusOf(st, 'lab')) * (1 - relicBonus(st, 'lab') / 100) };
   return { ok: true };
 }
 export function researchTick(st, now = Date.now()) {
@@ -605,7 +605,7 @@ export const essGrade = (level) => Math.min(5, 1 + Math.floor(level / 100));
 export function dropEss(st, level, tier, mult = 1, rng = Math.random) {
   let g = essGrade(level);
   if (g < 2) return null;
-  const p = ({ normal: 0.04, elite: 0.25, named: 0.6, boss: 1 }[tier] || 0) * mult * (1 + researchK(st, 'ess'));
+  const p = ({ normal: 0.04, elite: 0.25, named: 0.6, boss: 1 }[tier] || 0) * mult * (1 + researchK(st, 'ess')) * (1 + relicBonus(st, 'ess') / 100);
   if (rng() >= p) return null;
   let n = tier === 'boss' ? 2 + Math.floor(rng() * 3) : tier === 'named' ? 1 + Math.floor(rng() * 2) : 1;
   // v0.44.11 높은 곳에서도 아래 단계 정수가 나온다 (35%는 한 단계 아래 · 2배): 빛바랜 정수가 100 ~ 199레벨에서만 나오던 것

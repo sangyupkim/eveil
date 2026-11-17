@@ -7,6 +7,9 @@ export const RELICS = [
   { id: 'r_dmg', name: '전쟁의 깃발', kind: '캐릭터', key: 'dmg', v: 5, text: (v) => `피해 +${v}%` },
   { id: 'r_dr', name: '거인의 방패 조각', kind: '캐릭터', key: 'dr', v: 5, text: (v) => `받는 피해 -${v}%` },
   { id: 'r_move', name: '바람의 깃털', kind: '캐릭터', key: 'move', v: 8, text: (v) => `이동 속도 +${v}%` },
+  { id: 'r_lab', name: '학자의 촛대', kind: '마을', key: 'lab', v: 15, text: (v) => `연구 시간 -${v}%` },
+  { id: 'r_calm', name: '정화의 성수', kind: '마을', key: 'calm', v: 30, text: (v) => `범람 불이익 -${v}%` },
+  { id: 'r_ess', name: '정수의 결정', kind: '둘 다', key: 'ess', v: 20, text: (v) => `정수 얻을 확률 +${v}%` },
   { id: 'r_gold', name: '황금 잔', kind: '둘 다', key: 'gold', v: 15, text: (v) => `금화 +${v}% (사냥 · 파견)` },
 ];
 export const RELIC = Object.fromEntries(RELICS.map((r) => [r.id, r]));

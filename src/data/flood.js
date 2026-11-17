@@ -1,4 +1,5 @@
 // v0.44.43 범람지: 보스를 잡은 지역 중 3일 넘게 사냥하지 않은 곳에 몬스터가 넘친다 (docs/콘텐츠기획_범람_탐사_비전.md 1장)
+import { relicBonus } from './relics.js';
 export const FLOOD = {
   idleMs: 3 * 86400e3,   // 이만큼 사냥하지 않은 지역이 대상
   everyMs: 3 * 86400e3,  // 이 간격으로 하나씩 늘어난다
@@ -21,9 +22,9 @@ export const FLOOD_AFFIX = {
 export const FLOOD_AFFIX_IDS = Object.keys(FLOOD_AFFIX);
 // 범람지 수 n에 따른 불이익
 export function floodPenalty(st) {
-  const n = st?.flood?.list?.length || 0;
+  const n0 = st?.flood?.list?.length || 0, n = n0 * (1 - relicBonus(st, 'calm') / 100); // v0.44.51 정화의 성수
   return {
-    n,
+    n: n0,
     prod: 1 - Math.min(0.4, 0.1 * n),          // 광산 · 약초밭 생산
     death: n >= 2 ? 1 + 0.15 * (n - 1) : 1,    // 파견 사망 확률
     loot: n >= 4 ? 0.8 : 1,                    // 파견 보상
