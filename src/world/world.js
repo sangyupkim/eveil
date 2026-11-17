@@ -2400,8 +2400,24 @@ export class World {
       if (this.trapT <= 0) {
         const P = this.player.pos, Ld = dungeonLayout(this.dungeon.zi), deep = Math.min(1, (this.monsters.filter((m) => m.dungeon && m.dead).length) / 30);
         this.trapT = 2.4 - deep * 1.2;
-        const line = Math.random() < 0.35, a = Math.random() * 6.28, spots = line ? [-2.4, 0, 2.4].map((o) => ({ x: P.x + Math.cos(a) * o, z: P.z + Math.sin(a) * o })) : [{ x: P.x + (Math.random() - 0.5) * 3, z: P.z + (Math.random() - 0.5) * 3 }];
-        for (const q of spots) { const r = line ? 1.4 : 2.2; this.fx.telegraph(q.x, q.z, r, 1, 0xff5020); this.later(1, () => { this.fx.play('quake', q.x, q.z, { scale: r / 2 }); if (Math.hypot(this.player.pos.x - q.x, this.player.pos.z - q.z) < r) this.hurtPlayer(this.d.maxHp * 0.1, { level: this.dungeon?.L || 1 }, { sure: true }); }); }
+        const pm = { level: this.dungeon?.L || 1 }, hit = (k) => this.hurtPlayer(this.d.maxHp * k, pm, { sure: true });
+        const kind = ['rock', 'rock', 'spike', 'arrow', 'fire', 'boulder', 'poison', 'ambush'][Math.floor(Math.random() * (deep > 0.3 ? 8 : 5))];
+        const circ = (spots, r, k, col = 0xff5020, fxn = 'quake') => { for (const q of spots) { this.fx.telegraph(q.x, q.z, r, 1, col); this.later(1, () => { this.fx.play(fxn, q.x, q.z, { scale: r / 2 }); if (Math.hypot(this.player.pos.x - q.x, this.player.pos.z - q.z) < r) hit(k); }); } };
+        const lane = (len, wdt, k, col, fxn) => { // 플레이어를 가로지르는 줄 (화살 덫 · 화염 분사구 · 굴러오는 바위)
+          const a = Math.random() * 6.28, ux = Math.cos(a), uz = Math.sin(a), x1 = P.x - ux * len / 2, z1 = P.z - uz * len / 2, x2 = P.x + ux * len / 2, z2 = P.z + uz * len / 2;
+          this.fx.lane(x1, z1, x2, z2, wdt, 1, col);
+          this.later(1, () => { const Q = this.player.pos, t = Math.max(0, Math.min(1, ((Q.x - x1) * (x2 - x1) + (Q.z - z1) * (z2 - z1)) / (len * len))); for (let i = 0; i <= 4; i++) this.fx.play(fxn, x1 + (x2 - x1) * i / 4, z1 + (z2 - z1) * i / 4, { scale: 0.8 }); if (Math.hypot(Q.x - (x1 + (x2 - x1) * t), Q.z - (z1 + (z2 - z1) * t)) < wdt / 2) hit(k); });
+        };
+        if (kind === 'rock') { const line = Math.random() < 0.35, a = Math.random() * 6.28; circ(line ? [-2.4, 0, 2.4].map((o) => ({ x: P.x + Math.cos(a) * o, z: P.z + Math.sin(a) * o })) : [{ x: P.x + (Math.random() - 0.5) * 3, z: P.z + (Math.random() - 0.5) * 3 }], line ? 1.4 : 2.2, 0.1); }
+        else if (kind === 'spike') circ([0, 1, 2, 3].map((i) => ({ x: P.x + Math.cos(i * 1.57 + 0.4) * 2.2, z: P.z + Math.sin(i * 1.57 + 0.4) * 2.2 })).concat([{ x: P.x, z: P.z }]), 1.2, 0.08, 0xff3030, 'c_earthspike'); // 가시 발판
+        else if (kind === 'arrow') lane(16, 1.2, 0.08, 0xffd040, 'v_dust'); // 화살 덫
+        else if (kind === 'fire') lane(12, 2.4, 0.12, 0xff6a20, 'p_burning'); // 화염 분사구
+        else if (kind === 'boulder') lane(22, 3, 0.15, 0xa08050, 'quake'); // 굴러오는 바위
+        else if (kind === 'poison') { const q = { x: P.x, z: P.z }; this.fx.telegraph(q.x, q.z, 3, 1, 0x60d040); for (let i = 1; i <= 4; i++) this.later(i, () => { this.fx.play('h_necrotic', q.x, q.z, { scale: 1 }); if (Math.hypot(this.player.pos.x - q.x, this.player.pos.z - q.z) < 3) hit(0.04); }); } // 독 늪
+        else if (kind === 'ambush' && (this.dungeon.amb = (this.dungeon.amb || 0) + 1) <= 5) { // 매복: 숨어 있던 무리
+          this.ui.toast('매복!', '#ff6a5a');
+          for (let i = 0; i < 3; i++) { const a = i * 2.1, m = this.spawn({ zone: this.dungeon.zone, x: P.x + Math.cos(a) * 4, z: P.z + Math.sin(a) * 4, level: this.dungeon.L - this.tierOffset, tier: i ? 'normal' : 'elite', timer: 0, mon: null }); if (m) { m.dungeon = true; m.noLoot = true; m.state = 'chase'; m.home = { x: m.pos.x, z: m.pos.z }; } }
+        }
       }
     }
     this.scrollT = (this.scrollT || 0) - dt; if (this.scrollT <= 0) { this.scrollT = 1; this.autoScrolls(); this.floodStep(); }
