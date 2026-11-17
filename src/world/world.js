@@ -26,7 +26,7 @@ import { rollLoot, rollDeathDrop } from '../game/loot.js';
 import { dropMats, liberateAdd, dropEss, resAdd, resCount, claim as claimMerc, brewCollect, collect as collectPlot, repeatTick, autoBrewTick } from '../game/town.js';
 import { vaultAdd } from '../game/vault.js';
 import { itemIcon, iconUrl, coinIcon, oreIcon, herbIcon, townIcon, bookIcon } from '../ui/icons.js';
-import { dailyProgress, dailyReward, dailyText, dayKey, dailyOf, weeklyOf } from '../game/daily.js';
+import { dailyProgress, dailyReward, dailyText, dayKey, dailyOf, weeklyOf, weekKey } from '../game/daily.js';
 import { MATERIALS } from '../data/crafting.js';
 import { addItem, takeOne, countOf, equip as equipItem, unequip as unequipItem } from '../game/inventory.js';
 import { itemName, itemColor, isBook, makeItem, makeBook, rollBase, itemValue } from '../game/items.js';
@@ -1321,6 +1321,7 @@ export class World {
     m.dead = true;
     if (m.sp?.zone) (this.st.zoneHunt ||= {})[m.sp.zone.id] = Date.now(); // v0.44.43 범람지: 지역별 마지막 사냥
     if (m.flood) this.floodDeath(m);
+    else if (m.tier === 'boss' && !m.dungeon && m.sp?.zone && Math.random() < 0.1) { resAdd(this.st, 'map_piece', 1); this.ui.toast('지도 조각', '#ffd060'); } // v0.44.49 필드 보스 10%
     if (src !== 'perk') this.perk('kill');
     m.hp = 0;
     const st = this.st, d = this.d;
@@ -1671,6 +1672,7 @@ export class World {
       this.dropGround({ kind: 'item', item: makeItem(rollBase(lv), { rarity: Math.random() < 0.15 ? 'legend' : 'hero', ilvl: lv }, this.st) }, P.x + 1, P.z);
       resAdd(this.st, 'ore2', 2 + Math.floor(lv / 40));
       resAdd(this.st, 'map_piece', 1); // v0.44.47 범람 해소 = 지도 조각 (유물은 주지 않는다)
+      { const wk = weekKey(), FW = (this.st.floodWeek ||= {}); if (FW[m.flood] !== wk) { FW[m.flood] = wk; const g = Math.min(5, 2 + Math.floor(lv / 120)); resAdd(this.st, 'ess' + g, 3); this.ui.toast('이번 주 첫 해소 보너스', '#ffd84a'); } } // v0.44.49
       this.ui.toast('범람이 걷혔습니다', '#7fe07a'); sfx('rankup');
     }
   }
