@@ -245,7 +245,7 @@ export class Windows {
     h += `<div class="sub">판매가 ${itemValue(it)} G</div>`;
     h += '<div class="btns">';
     if (where === 'inv') {
-      if (!it.shard && b?.type !== 'mat') h += `<button class="btn gold" data-act="use">${isBook(it) ? '배우기' : b.type === 'potion' ? '사용' : b.type === 'elixir' ? '읽기' : b.type === 'pet' ? '부르기' : '장착'}</button>`;
+      if (!it.shard && b?.type !== 'mat') h += `<button class="btn gold" data-act="use">${isBook(it) ? '배우기' : b.type === 'potion' ? '사용' : b.type === 'elixir' ? '읽기' : b.type === 'pet' ? '부르기' : b.type === 'map' ? '펼치기' : '장착'}</button>`;
       if (b?.type === 'elixir') { const on = !!st.settings?.autoScroll?.[it.base]; h += `<button class="btn${on ? ' on' : ''}" data-ascroll="${it.base}">${on ? '자동 사용 끄기' : '자동 사용'}</button>`; }
       // 물약 퀵슬롯: 이 물약을 체력 · 마나 칸에 두거나 뺀다
       if (b?.type === 'potion') for (const [k, nm] of [['hp', '체력 칸'], ['mp', '마나 칸']]) {

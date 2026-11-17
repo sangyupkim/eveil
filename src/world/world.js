@@ -17,7 +17,7 @@ import { MONSTERS, ZONES, TOWN, TIER_STEP, FINAL_ZONE } from '../data/world.js';
 import { derive, damageReduction, totalStats, skillScale } from '../game/player.js';
 import { monsterRes, mixFxOf } from '../data/resist.js';
 import { ARTS } from '../data/arts.js';
-import { relicBonus } from '../data/relics.js';
+import { relicBonus, rollRelic, RELIC, RELIC_GRADES } from '../data/relics.js';
 import { FLOOD, FLOOD_AFFIX, FLOOD_AFFIX_IDS } from '../data/flood.js';
 import { ELIXIRS, ELIXIR_TIME, HERBS, HP_POTIONS, MP_POTIONS } from '../data/potions.js';
 import { addAP, gainExp, rewardFactor, recAwaken } from '../game/growth.js';
@@ -563,18 +563,27 @@ export class World {
     const opts = DUNGEON_DIFFS.map((d) => { const n = countOf(this.st, d.key); return { label: d.name, sub: `${BASES[d.key].name} ${n}`, off: !n }; });
     this.ui.choose(`${zn.name} 던전 ${stage}단계`, '난이도', opts, (i) => { this.asking = false; if (i >= 0) this.enterDungeon(zi, i + 1); });
   }
-  enterDungeon(zi, diff = 1) {
+  // v0.44.47 미지의 땅: 미지의 지도를 쓰면 보스를 잡은 지역 중 하나의 던전 길을 함정 · 매복으로 채워 돌파 (끝의 유물 수호자 = 유물)
+  enterUnknown() {
+    const ok = ALL_ZONES.map((z, i) => [z, i]).filter(([z]) => this.bossCleared(z));
+    if (!ok.length) { this.ui.toast('보스를 잡은 지역이 있어야 합니다'); return; }
+    if (countOf(this.st, 'unknown_map') <= 0) return;
+    const [, zi] = ok[Math.floor(Math.random() * ok.length)];
+    this.enterDungeon(zi, 1, { unknown: true });
+  }
+  enterDungeon(zi, diff = 1, opt = {}) {
     const st = this.st, zn = ALL_ZONES[zi], D = DUNGEON_DIFFS[diff - 1] || DUNGEON_DIFFS[0];
-    if (!takeOne(st, D.key)) return;
-    const stage = Math.min(MAX_STAGE, ((st.dungeons ||= {})[zn.id] || 0) + 1);
+    if (!takeOne(st, opt.unknown ? 'unknown_map' : D.key)) return;
+    const stage = opt.unknown ? 5 : Math.min(MAX_STAGE, ((st.dungeons ||= {})[zn.id] || 0) + 1);
     this.leaveDungeon(true);
-    this.dungeon = { zi, stage, zone: zn, diff };
+    this.dungeon = { zi, stage, zone: zn, diff, unknown: !!opt.unknown };
     this.toggleAuto(false);
     const Ld = dungeonLayout(zi), sp0 = cellPos(zi, Ld.start[0], Ld.start[1]);
     this.player.pos.set(sp0.x, 0, sp0.z); this.moveTo = null; this.target = null;
     this.stage.cam.x = sp0.x; this.stage.cam.z = sp0.z;
     this.fx.arrive(sp0.x, sp0.z);
-    const mod = stageMods(stage), L = dungeonLevel(zn, stage); // 1단계는 지역 중간 레벨부터 (필드 → 던전 격차를 줄였다)
+    const mod = stageMods(stage), L = opt.unknown ? Math.round(Math.max(...ALL_ZONES.filter((z) => this.bossCleared(z)).map((z) => z.levels[1])) * 1.1) : dungeonLevel(zn, stage);
+    if (opt.unknown) this.dungeon.L = L; // 1단계는 지역 중간 레벨부터 (필드 → 던전 격차를 줄였다)
     // 세계 단계 보정은 spawn에서 더한다 (예전엔 두 번 더해 지옥 던전이 283레벨이 됐다)
     // 몬스터: 시작에서 먼 칸일수록 많이 · 정예는 깊은 곳, 우두머리는 가장 먼 방
     const cells = [];
@@ -586,12 +595,13 @@ export class World {
       m.maxHp = m.hp = Math.round(m.maxHp * mod.hp * D.hp); m.dmg = m.dmg.map((v) => v * mod.dmg * D.dmg); m.dungeon = true; m.exp *= 1.5 * D.loot;
       m.home = { x: p.x, z: p.z };
     };
-    for (let n = 0; n < 14 + Math.min(8, stage) && cells.length; n++) put(pick(), 'normal'); // 낮은 단계는 몬스터가 적다
+    for (let n = 0; n < (opt.unknown ? 30 : 14 + Math.min(8, stage)) && cells.length; n++) put(pick(), 'normal'); // 낮은 단계는 몬스터가 적다
     cells.sort((a, b) => Ld.dist[b] - Ld.dist[a]);
-    for (let n = 0; n < 4 && cells.length; n++) put(cells.splice(Math.floor(Math.random() * Math.min(12, cells.length)), 1)[0], 'elite');
-    put(Ld.boss[1] * N + Ld.boss[0], 'boss', { type: zn.boss.type, name: `${zn.name} 던전 우두머리` });
+    for (let n = 0; n < (opt.unknown ? 10 : 4) && cells.length; n++) put(cells.splice(Math.floor(Math.random() * Math.min(opt.unknown ? 30 : 12, cells.length)), 1)[0], 'elite');
+    put(Ld.boss[1] * N + Ld.boss[0], 'boss', { type: opt.unknown ? zn.named.type : zn.boss.type, name: opt.unknown ? '유물 수호자' : `${zn.name} 던전 우두머리` });
     { const bm = this.monsters[this.monsters.length - 1]; if (bm?.tier === 'boss') { const k = 0.55 + 0.09 * stage; bm.maxHp = bm.hp = Math.round(bm.maxHp * k); } } // 우두머리: 1단계 0.64배 → 10단계 1.45배
-    this.ui.toast(`${zn.name} 던전 ${stage}단계 · ${D.name} — 가장 깊은 곳의 우두머리를 찾으세요`, diff > 1 ? '#ff7a9a' : '#ffd84a');
+    if (opt.unknown) { for (const m of this.monsters) if (m.dungeon) m.noLoot = true; this.trapT = 3; this.ui.toast('미지의 땅 — 끝에 유물이 있습니다', '#ffd060'); }
+    else this.ui.toast(`${zn.name} 던전 ${stage}단계 · ${D.name} — 가장 깊은 곳의 우두머리를 찾으세요`, diff > 1 ? '#ff7a9a' : '#ffd84a');
     this.ui.dirty();
   }
   leaveDungeon(silent = false) {
@@ -627,6 +637,12 @@ export class World {
 
   dungeonCleared(m) {
     const st = this.st, dg = this.dungeon, zn = dg.zone;
+    if (dg.unknown) { // 미지의 땅: 유물 하나 (등급은 유물 제단 단계로) + 금화
+      const al = Object.values(st.town?.plots || {}).find((b) => b.type === 'altar'), r = rollRelic(al?.lv || 0);
+      ((st.relics ||= { bag: [], on: [] }).bag ||= []).push(r); st.gold += dg.L * 300;
+      this.ui.toast(`유물 「${RELIC[r.id].name}」 (${RELIC_GRADES[r.g].name})`, RELIC_GRADES[r.g].color); sfx('rankup');
+      this.fx.pillar(m.pos.x, m.pos.z, 0xffd060, 1.8, 6, 1.5); this.ui.dirty(); return;
+    }
     st.dungeons[zn.id] = Math.max(st.dungeons[zn.id] || 0, dg.stage);
     this.checkTierUnlock();
     this.dailyDone(dailyProgress(st, { kind: 'dungeon', zone: zn.id }));
@@ -2378,6 +2394,16 @@ export class World {
     for (const k in this.buffs) { const b = this.buffs[k]; if (b.t > 0) { b.t -= dt; if (b.t <= 0) { buffChanged = true; if (k === 'venge') this.vengeRelease(b); } } }
     this.auraStep();
     globalThis.__game?.windows?.talkCheck?.();
+    // v0.44.47 미지의 땅 함정: 낙석 (예고 원 1초 뒤 최대 HP 10%) · 깊이 갈수록 자주 · 가끔 줄지은 셋
+    if (this.dungeon?.unknown && !this.dead) {
+      this.trapT = (this.trapT ?? 3) - dt;
+      if (this.trapT <= 0) {
+        const P = this.player.pos, Ld = dungeonLayout(this.dungeon.zi), deep = Math.min(1, (this.monsters.filter((m) => m.dungeon && m.dead).length) / 30);
+        this.trapT = 2.4 - deep * 1.2;
+        const line = Math.random() < 0.35, a = Math.random() * 6.28, spots = line ? [-2.4, 0, 2.4].map((o) => ({ x: P.x + Math.cos(a) * o, z: P.z + Math.sin(a) * o })) : [{ x: P.x + (Math.random() - 0.5) * 3, z: P.z + (Math.random() - 0.5) * 3 }];
+        for (const q of spots) { const r = line ? 1.4 : 2.2; this.fx.telegraph(q.x, q.z, r, 1, 0xff5020); this.later(1, () => { this.fx.play('quake', q.x, q.z, { scale: r / 2 }); if (Math.hypot(this.player.pos.x - q.x, this.player.pos.z - q.z) < r) this.hurtPlayer(this.d.maxHp * 0.1, { level: this.dungeon?.L || 1 }, { sure: true }); }); }
+      }
+    }
     this.scrollT = (this.scrollT || 0) - dt; if (this.scrollT <= 0) { this.scrollT = 1; this.autoScrolls(); this.floodStep(); }
     for (const k in this.st.elix || {}) { const e = this.st.elix[k]; e.t -= dt; if (e.t <= 0) { delete this.st.elix[k]; buffChanged = true; this.ui.dirty(); } }
     for (const k in this.pbuffs || {}) { const b = this.pbuffs[k]; if (b.t > 0) { b.t -= dt; if (b.t <= 0) buffChanged = true; } }
@@ -2638,6 +2664,7 @@ export class World {
     const st = this.st;
     const it = st.inv.find((x) => x.uid === uid);
     if (!it) return;
+    if (it.base === 'unknown_map') { if (this.dungeon) { this.ui.toast('던전 밖에서 펼칠 수 있습니다'); return; } this.enterUnknown(); globalThis.__game?.windows?.close?.(); return; } // v0.44.47
     this.d = derive(st, this.buffValues());
     if (BASES[it.base]?.type === 'pet') { takeOne(st, it.base); const cat = BASES[it.base].pet === 'pet_cat'; st.pet = { kind: cat ? 'pet_cat' : 'pet_dog', name: cat ? '고양이' : '강아지' }; this.makePet(); this.ui.toast(`${st.pet.name}가 함께합니다! 물건을 주워 오고 함께 싸웁니다`, '#7fe07a'); sfx('learn'); this.ui.dirty(); return; }
     if (isBook(it)) {
