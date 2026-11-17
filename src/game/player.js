@@ -165,4 +165,6 @@ export function derive(st, buffs = {}) {
 }
 
 // 몬스터에게 받는 피해 감소율
-export const damageReduction = (armor, monLevel) => armor / (armor + 40 + 8 * monLevel);
+// v0.44.62 몬스터 레벨 계수: 120까지 8 → 400에서 40 (높은 레벨에서 방어가 거의 무적이 되던 것)
+export const armorK = (L) => 8 + 32 * Math.min(1, Math.max(0, (L - 120) / 280));
+export const damageReduction = (armor, monLevel) => armor / (armor + 40 + armorK(monLevel) * monLevel);

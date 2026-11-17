@@ -3,6 +3,7 @@
 // 대장간 단계가 오르면 옵션을 최대 3개까지 잠가 바뀌지 않게 할 수 있다.
 import { AFFIXES, BASES, RARITY } from '../data/items.js';
 import { R, pick } from './rng.js';
+import { capAffixes } from './items.js';
 import { vault, vaultSave } from './vault.js';
 
 export const SHARD = {
@@ -62,6 +63,7 @@ export function applyShard(st, it, shardUid, locks = [], smithLv = 0, rng = R) {
   const k = c.same >= 0 ? c.same : pick(free, rng);
   const old = it.affixes[k];
   it.affixes[k] = { id: sh.id, v: sh.v };
+  capAffixes(it); // v0.44.62 예전 파편도 지금 상한까지
   list.splice(i, 1); if (!inInv) vaultSave();
   return { ok: true, old, now: it.affixes[k] };
 }

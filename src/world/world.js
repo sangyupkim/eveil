@@ -583,7 +583,7 @@ export class World {
     this.player.pos.set(sp0.x, 0, sp0.z); this.moveTo = null; this.target = null;
     this.stage.cam.x = sp0.x; this.stage.cam.z = sp0.z;
     this.fx.arrive(sp0.x, sp0.z);
-    const mod = stageMods(stage), L = opt.unknown ? Math.round(Math.max(...ALL_ZONES.filter((z) => this.bossCleared(z)).map((z) => z.levels[1])) * 1.1) : dungeonLevel(zn, stage);
+    const mod = stageMods(stage), L = opt.unknown ? (st.bossTop ? Math.max(1, Math.round(st.bossTop * 1.05) - this.tierOffset) : Math.round(Math.max(...ALL_ZONES.filter((z) => this.bossCleared(z)).map((z) => z.levels[1])) * 1.1)) : dungeonLevel(zn, stage); // v0.44.62 잡은 보스 기준 (spawn이 세계 단계를 더한다)
     if (opt.unknown) this.dungeon.L = L; // 1단계는 지역 중간 레벨부터 (필드 → 던전 격차를 줄였다)
     // 세계 단계 보정은 spawn에서 더한다 (예전엔 두 번 더해 지옥 던전이 283레벨이 됐다)
     // 몬스터: 시작에서 먼 칸일수록 많이 · 정예는 깊은 곳, 우두머리는 가장 먼 방
@@ -1323,6 +1323,7 @@ export class World {
   killMonster(m, src, ctx, rf) {
     m.dead = true;
     if (m.sp?.zone) (this.st.zoneHunt ||= {})[m.sp.zone.id] = Date.now(); // v0.44.43 범람지: 지역별 마지막 사냥
+    if (m.tier === 'boss' && !m.flood && !this.dungeon?.unknown) this.st.bossTop = Math.max(this.st.bossTop || 0, m.level); // v0.44.62 이번 패치 뒤 잡은 가장 높은 보스 (범람 · 미지의 땅 기준)
     if (m.flood) this.floodDeath(m);
     else if (m.tier === 'boss' && !m.dungeon && m.sp?.zone && Math.random() < 0.1) { resAdd(this.st, 'map_piece', 1); this.ui.toast('지도 조각', '#ffd060'); } // v0.44.49 필드 보스 10%
     if (src !== 'perk') this.perk('kill');
@@ -1683,8 +1684,9 @@ export class World {
   }
   // 범람 몬스터 레벨: 보스를 잡은 지역 · 깬 던전 단계 중 가장 높은 곳(세계 단계 포함) × 1.1
   floodLevel(zn) {
-    const st = this.st, top = Math.max(zn.levels[1], ...this.floodZones().map((z) => Math.max(z.levels[1], (st.dungeons?.[z.id] || 0) > 0 ? dungeonLevel(z, st.dungeons[z.id]) : 0)));
-    return Math.round((top + this.tierOffset) * FLOOD.levelK);
+    // v0.44.62 이번 패치 뒤 잡은 가장 높은 보스 레벨 기준 (아직 없으면 그 지역 레벨)
+    const top = this.st.bossTop || (zn.levels[1] + this.tierOffset);
+    return Math.round(top * FLOOD.levelK);
   }
   // 정화: 붉은 화면이 걷히고 보상
   floodClear(zid, P, lv) {

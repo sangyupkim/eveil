@@ -63,6 +63,19 @@ export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1 } = {}, 
   return it;
 }
 
+// v0.44.62 예전(v0.42.2 전) 상한 없이 굴려진 옵션을 지금 상한(탁월 130%)으로 맞춘다. 고친 수를 돌려준다
+export function capAffixes(it) {
+  if (!it?.affixes?.length) return 0;
+  let n = 0;
+  for (const a of it.affixes) {
+    const A = AFFIXES[a.id]; if (!A || typeof a.v !== 'number') continue;
+    const cap = Math.round(Math.max(A.min, A.max(it.ilvl || 1) * (RARITY[it.rarity]?.mult || 1)) * 1.3);
+    if (a.v > cap) { a.v = cap; n++; }
+  }
+  return n;
+}
+export function capAll(list) { let n = 0; for (const it of list || []) if (it) n += capAffixes(it); return n; }
+
 export function makeBook(skillId, st = null) {
   return { uid: uid(st), book: skillId };
 }
