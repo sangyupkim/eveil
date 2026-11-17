@@ -1609,7 +1609,7 @@ export class World {
     if (this.floodOn[zn.id] && this.monsters.some((m) => !m.dead && m.flood === zn.id)) return;
     if (this.floodOn[zn.id] && this.time - this.floodOn[zn.id] < 30) return;
     this.floodOn[zn.id] = this.time;
-    const top = Math.max(...this.floodZones().map((z) => z.levels[1])), L = Math.round(top * FLOOD.levelK);
+    const top = Math.max(zn.levels[1], ...this.floodZones().map((z) => z.levels[1])), L = Math.round(top * FLOOD.levelK);
     const pick = () => FLOOD_AFFIX_IDS[Math.floor(Math.random() * FLOOD_AFFIX_IDS.length)];
     const mk = (tier, fixed, k) => {
       const a = Math.random() * 6.28, r = 6 + Math.random() * 6;

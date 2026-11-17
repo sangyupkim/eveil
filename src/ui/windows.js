@@ -15,6 +15,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 import { itemIcon, skillIcon, portrait, chestIcon, bookIcon, coinIcon, scrollIcon, townIcon, oreIcon, monPortrait } from './icons.js';
 import { monsterRes, mixFxOf } from '../data/resist.js';
 import { ARTS, ART, ART_LINE_NAMES, artSlots, artUsable } from '../data/arts.js';
+import { floodPenalty, floodText } from '../data/flood.js';
 import { terrain, fogCan, MAP_R, MAP_W, FOG_C, seen as seenAt } from './mapimg.js';
 import { CAMPS, inCamp } from '../engine2d/stage.js';
 import { TIER_NAMES } from '../world/world.js';
@@ -680,7 +681,7 @@ export class Windows {
     for (const c of CAMPS) {
       const zn = ZONES.find((z) => z.id === c.zone), got = st.camps?.[c.zone];
       if (!got && !seenAt(c.x, c.z)) continue;
-      pins.push(`<div class="pin camp${got ? '' : ' off'}${here && got && here !== c.zone ? ' go' : ''}" style="left:${X(c.x)}px;top:${Y(c.z)}px" ${here && got ? `data-travel="${c.zone}"` : ''}>${zn.name}</div>`);
+      pins.push(`<div class="pin camp${got ? '' : ' off'}${here && got && here !== c.zone ? ' go' : ''}${st.flood?.list?.some((f) => f.zone === c.zone) ? ' flood' : ''}" style="left:${X(c.x)}px;top:${Y(c.z)}px" ${here && got ? `data-travel="${c.zone}"` : ''}>${zn.name}</div>`);
     }
     for (const zn of ZONES) { const e = entranceOf(zn); if (seenAt(e.x, e.z)) pins.push(`<div class="pin gate" style="left:${X(e.x)}px;top:${Y(e.z)}px" title="던전"></div>`); }
     pins.push(`<div class="pin me" style="left:${X(P.x)}px;top:${Y(P.z)}px"></div>`);
@@ -767,7 +768,7 @@ export class Windows {
       const stock = def?.rate ? `<div class="mini"><i style="width:${(x.stock / def.store(x.lv)) * 100}%;background:linear-gradient(#ffe7a0,#c99a3a)"></i></div>` : '';
       return `<div class="row pick${pl.id === sel ? ' on' : ''}" data-plot="${pl.id}"><div class="grow"><b>${def ? `${def.name} <small>${x.lv}단계</small>` : '빈터'}</b><div class="note">${def ? def.desc : pl.name}</div>${stock}</div>
         ${def?.rate ? `<span class="note">${Math.floor(x.stock)} / ${def.store(x.lv)}</span>` : ''}</div>`;
-    }).join('');
+    }).join('') + (() => { const fp = floodPenalty(st); return fp.n ? `<div class="row" style="border-color:#a03a2a"><div class="grow"><b style="color:#ff7a5a">범람지 ${fp.n}곳</b><div class="note">${floodText(fp)}</div><div class="note">${st.flood.list.map((f) => ZONES.find((z) => z.id === f.zone)?.name).join(' · ')}</div></div></div>` : ''; })();
     let right = '';
     if (!b) {
       right = `<h3>무엇을 지을까</h3>` + Object.entries(BUILDINGS).sort((a, c) => (a[1].need || 0) - (c[1].need || 0)).map(([k, d]) => {

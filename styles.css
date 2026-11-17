@@ -604,3 +604,6 @@ html.force-land #rotate { display: none !important; }
 .bookName { text-align: center; font-size: 18px; font-weight: 700; color: #4a2a10; margin-top: 4px; }
 .lockTxt { color: #a08a6a; font-weight: 400; font-size: .9em; }
 .dexSel { width: 100%; margin: 2px 0 8px; padding: 6px 8px; background: #1a140e; color: #f0e2c0; border: 1px solid #6a5430; border-radius: 4px; font: inherit; }
+/* v0.44.43 범람지 표시 */
+.wmap .pin.flood { color: #ff7a5a; }
+.wmap .pin.flood::before { background: #ff4a2a !important; box-shadow: 0 0 6px #ff4a2a; }
