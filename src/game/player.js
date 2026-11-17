@@ -1,3 +1,4 @@
+import { relicBonus } from '../data/relics.js';
 import { spellToMatk } from '../data/items.js';
 import { GEMS, GEM_GRADES } from '../data/legends.js';
 import { setBonus } from './town.js';
@@ -20,6 +21,7 @@ export function newPlayer(name = '방랑자', look = { face: 'rogue_plain' }, st
     gold: 50,
     skills: {},              // id → { rank, exp }
     quick: Array(CONFIG.quickSlots).fill(null),
+    relics: { bag: [], on: [] }, // v0.44.47 유물
     inv: [],                 // 아이템 배열
     equip: Object.fromEntries(SLOTS.map((s) => [s, null])),
     nextUid: 1,
@@ -121,7 +123,7 @@ export function derive(st, buffs = {}) {
   // v0.44.37 MP 보너스도 전체 최대 MP로 (정신을 올리면 줄던 것)
   const mpRef = 40 + 5 * (st.awakenings || 0), mpK = 1 + 0.5 * Math.min(2, Math.max(0, (15 + s.wis * 4.5 + (g.maxMp || 0)) / mpRef - 1));
   // v0.44.37 물리 · 마법 공격력: 지팡이 · 홀은 마법(물리는 절반), 그 밖 무기는 물리. 옵션 · 보주 · 마도서가 더한다. 마법은 아주 작은 기본값
-  const magicW = cls.kind === 'magic', atkMult = fin * (1 + ((g.dmgPct || 0) + (buffs.might || 0)) / 100) * (1 + berserk / 100);
+  const magicW = cls.kind === 'magic', atkMult = fin * (1 + ((g.dmgPct || 0) + (buffs.might || 0)) / 100) * (1 + berserk / 100) * (1 + relicBonus(st, 'dmg') / 100);
   const patk = magicW ? [wd[0] * 0.5, wd[1] * 0.5] : [wd[0], wd[1]], mBase = 2 + (st.awakenings || 0) * 0.3;
   patk[0] += g.patk || 0; patk[1] += g.patk || 0;
   // v0.44.40 힘 = 물리 공격력 +0.06% · 지능 = 마법 공격력 +0.06% (막기는 힘에서 뺐다)
@@ -154,11 +156,11 @@ export function derive(st, buffs = {}) {
     healMult: 1 + s.wis * 0.035,
     hpRegen: 0.5 + s.vit * 0.04 + (g.hpRegen || 0),
     mpRegen: 0.6 + s.wis * 0.07 + (g.mpRegen || 0),
-    moveSpeed: 6.2 * (1 + ((g.moveSpd || 0) + (buffs.swift || 0)) / 100),
+    moveSpeed: 6.2 * (1 + ((g.moveSpd || 0) + (buffs.swift || 0) + relicBonus(st, 'move')) / 100),
     lifeSteal: (g.lifeSteal || 0) / 100,
     skillExp: 1 + (g.skillExp || 0) / 100,
-    goldFind: 1 + (g.goldFind || 0) / 100,
-    magicFind: (g.magicFind || 0) + (buffs.luck || 0),
+    goldFind: 1 + ((g.goldFind || 0) + relicBonus(st, 'gold')) / 100,
+    magicFind: (g.magicFind || 0) + (buffs.luck || 0) + relicBonus(st, 'mf'),
   };
 }
 

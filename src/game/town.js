@@ -1,3 +1,4 @@
+import { relicBonus } from '../data/relics.js';
 import { floodPenalty } from '../data/flood.js';
 // 마을 규칙 (화면과 무관): 짓기 · 단계 올리기 · 생산 쌓기 · 강화 · 용병 파견
 import { BUILDINGS, PLOTS, ENHANCE, EXPEDITIONS, RESEARCH, RESEARCH_MAX, SHELTER, researchCost } from '../data/buildings.js';
@@ -115,7 +116,7 @@ export function tick(st, now = Date.now()) {
       const crew = t.mercs.filter((m) => m.work === pid && !m.tired && !m.job);
       if (def.rate) {
         const eff = crew.reduce((a, m) => a + workEff(m, b.type), 0) / b.lv;
-        const rk = (b.type === 'herb' ? 1 + researchK(st, 'herb') : b.type === 'mine' ? 1 + researchK(st, 'mine') : 1) * floodPenalty(st).prod; // v0.44.43 범람 불이익
+        const rk = (b.type === 'herb' ? 1 + researchK(st, 'herb') : b.type === 'mine' ? 1 + researchK(st, 'mine') : 1) * floodPenalty(st).prod * (1 + relicBonus(st, 'prod') / 100); // v0.44.43 범람 불이익 · v0.44.47 유물
         b.stock = Math.min(def.store(b.lv), (b.stock || 0) + def.rate(b.lv) * rk * Math.min(2, eff) * h);
       }
       for (const m of crew) { m.sta -= MERC.workSta * save * h; growSkill(m, SKILL_OF[b.type], h); gainExp(m, MERC.workExp * h); if (m.sta <= 0) { m.sta = 0; m.tired = true; } }
@@ -381,7 +382,7 @@ export function mercPower(m, zn) {
 }
 // 파견 힘: 용병 힘 × 연구 × 쉼터 × 챙긴 영약
 export const partyPower = (st, m, zn, boost = {}) => mercPower(m, zn) * (1 + (st ? researchK(st, 'mercPow') : 0)) * (1 + SHELTER.power * (st ? shelterLv(st, zn.id) : 0)) * (1 + (boost.pow || 0));
-export const deathChance = (m, zn, expId, st = null, boost = {}) => Math.min(0.5, EXP_RISK[expId] * Math.max(0.2, 1 / partyPower(st, m, zn, boost)) ** 2 * (1 - Math.min(0.6, SHELTER.safe * (st ? shelterLv(st, zn.id) : 0))) * (1 - (boost.safe || 0)) * (st && guildLv(st) >= 10 ? 0.7 : 1) * (st ? floodPenalty(st).death : 1));
+export const deathChance = (m, zn, expId, st = null, boost = {}) => Math.min(0.5, EXP_RISK[expId] * Math.max(0.2, 1 / partyPower(st, m, zn, boost)) ** 2 * (1 - Math.min(0.6, SHELTER.safe * (st ? shelterLv(st, zn.id) : 0))) * (1 - (boost.safe || 0)) * (st && guildLv(st) >= 10 ? 0.7 : 1) * (st ? floodPenalty(st).death * (1 - relicBonus(st, 'safe') / 100) : 1));
 // 여러 명을 한 번에: 파견소 단계만큼 인원 · 챙길 물건. pack = [{ base, qty }] (물약 · 영약)
 export function dispatchParty(st, ids, zoneId, expId, pack = [], now = Date.now(), opt = {}) {
   const t = townOf(st), ex = EXPEDITIONS.find((e) => e.id === expId), zn = ZONES.find((z) => z.id === zoneId);

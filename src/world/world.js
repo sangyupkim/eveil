@@ -17,6 +17,7 @@ import { MONSTERS, ZONES, TOWN, TIER_STEP, FINAL_ZONE } from '../data/world.js';
 import { derive, damageReduction, totalStats, skillScale } from '../game/player.js';
 import { monsterRes, mixFxOf } from '../data/resist.js';
 import { ARTS } from '../data/arts.js';
+import { relicBonus } from '../data/relics.js';
 import { FLOOD, FLOOD_AFFIX, FLOOD_AFFIX_IDS } from '../data/flood.js';
 import { ELIXIRS, ELIXIR_TIME, HERBS, HP_POTIONS, MP_POTIONS } from '../data/potions.js';
 import { addAP, gainExp, rewardFactor, recAwaken } from '../game/growth.js';
@@ -1128,6 +1129,7 @@ export class World {
     if (this.buffs.taunt?.t > 0) dmg *= 1 - Math.min(40, this.buffs.taunt.v) / 100; // 도발의 포효
     if (this.buffs.guard?.t > 0) dmg *= 1 - Math.min(40, this.buffs.guard.v) / 100; // 투지
     if (this.art('toughbody')) dmg *= 0.95;
+    dmg *= 1 - relicBonus(st, 'dr') / 100; // v0.44.47 유물
     if (this.art('provoker') && this.buffs.taunt?.t > 0) dmg *= 0.9;
     if (this.art('spellwall') && this.time - (this.lastSpellT || -9) < 1) dmg *= 0.9;
     this.artEv('dmgTaken', dmg); if (this.time - (this.lastSpellT || -9) < 1) this.artEv('spellHurt', dmg);
@@ -1347,7 +1349,7 @@ export class World {
     if (this.chain >= 3) this.fx.text(this.player.pos.clone().setY(3.2), `연쇄 ${this.chain}`, this.chain >= 10 ? 'crit' : 'heal');
     if (this.chain % 10 === 0) { this.chainSpdT = 5; sfx('buff', 0.6); }
     const exp = m.exp * rf.exp * (this.autoKill ? CONFIG.autoExpPenalty ?? CONFIG.autoPenalty : 1) * (1 + Math.min(20, this.chain) * 0.02) * (this.night > 0.5 ? 1.2 : 1);
-    const results = gainExp(st, m.flood ? 0 : exp * (1 + researchK(st, 'exp'))); // 범람 몬스터는 경험치 없음
+    const results = gainExp(st, m.flood ? 0 : exp * (1 + researchK(st, 'exp')) * (1 + relicBonus(st, 'exp') / 100)); // 범람 몬스터는 경험치 없음
     for (const r of results) this.onAwaken(r);
 
     // 드랍
