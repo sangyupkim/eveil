@@ -66,7 +66,8 @@ export function titleKey(stats, start = 10, tier = 0) {
 export function perkChoices(key, tier) {
   const parts = key.split('+'), pool = [];
   const pairs = parts.length === 1 ? [[parts[0], parts[0]]] : parts.flatMap((a) => parts.filter((b) => b !== a).map((b) => [a, b]));
-  for (const [a, b] of pairs) for (const t of TRIGGERS[a]) for (const e of EFFECTS[b]) pool.push({ trig: t.id, p: t.p, eff: e.id, v: Math.round(e.v * TIER_K[tier]), text: `${t.text} ${e.text(Math.round(e.v * TIER_K[tier]))}` });
+  const mk = parts.length >= 3 ? 1.1 : parts.length === 2 ? 1.07 : 1; // v0.44.40 혼합 갈래 특성 +7% · 세 갈래 +10%
+  for (const [a, b] of pairs) for (const t of TRIGGERS[a]) for (const e of EFFECTS[b]) { const v = Math.round(e.v * TIER_K[tier] * mk); pool.push({ trig: t.id, p: t.p, eff: e.id, v, text: `${t.text} ${e.text(v)}` }); }
   // 갈래 · 단계로 정해지는 순서로 섞어 셋
   let h = [...key].reduce((x, c) => (x * 31 + c.charCodeAt(0)) >>> 0, 7 + tier * 101);
   const out = [];

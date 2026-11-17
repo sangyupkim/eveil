@@ -505,7 +505,7 @@ export class Windows {
       </div><div class="frame" style="flex:1">
         <h3>세부 능력치</h3><div class="kv">${kv}</div>
         <h3 style="margin-top:12px">성장</h3>
-        <div class="kv"><span>검 공격 · 막기</span><b style="color:${STAT_COLORS.str}">힘</b><span>활 공격 · 치명타 · 회피</span><b style="color:${STAT_COLORS.dex}">민첩</b>
+        <div class="kv"><span>검 공격 · 물리 공격력</span><b style="color:${STAT_COLORS.str}">힘</b><span>활 공격 · 치명타 · 공격 속도</span><b style="color:${STAT_COLORS.dex}">민첩</b>
           <span>지팡이 공격 · 주문</span><b style="color:${STAT_COLORS.int}">지능</b><span>MP 회복 (마을 밖 · 물약)</span><b style="color:${STAT_COLORS.wis}">정신</b>
           <span>피격 · 막기 · 위기 처치</span><b style="color:${STAT_COLORS.vit}">체력</b></div>
       </div></div>`;

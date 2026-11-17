@@ -4,9 +4,9 @@ export const STATS = ['str', 'dex', 'int', 'wis', 'vit'];
 export const STAT_NAMES = { str: '힘', dex: '민첩', int: '지능', wis: '정신', vit: '체력' };
 export const STAT_COLORS = { str: '#e0644a', dex: '#5fd08a', int: '#5f9bff', wis: '#c58cff', vit: '#f0b552' };
 export const STAT_DESC = {
-  str: '검 피해 · 무거운 장비 · 막기',
-  dex: '활 피해 · 공격 속도 · 치명타 · 회피',
-  int: '주문 피해',
+  str: '힘 스킬 피해 · 물리 공격력 · 무거운 장비',
+  dex: '민첩 스킬 피해 · 공격 속도 · 치명타',
+  int: '지능 스킬 피해 · 마법 공격력 · 재사용 대기 감소',
   wis: '최대 MP · MP 회복 · 보호막',
   vit: '최대 HP · HP 회복 · 방어',
 };

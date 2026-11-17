@@ -93,7 +93,8 @@ export function skillStats(sk) { const l = sk.lines || Object.keys(sk.req || {})
 export function skillScale(sk, stats) {
   const ls = skillStats(sk).slice().sort((a, b) => (stats[b] || 0) * STAT_RATE[b] - (stats[a] || 0) * STAT_RATE[a]);
   const f = (k) => (stats[k] || 0) * STAT_RATE[k];
-  const statF = ls.length === 1 ? 1 + f(ls[0]) : 1 + 0.7 * f(ls[0]) + 0.3 * f(ls[1]);
+  // v0.44.40 혼합: 높은 쪽 100% + 둘째 50% (+ 셋째 25%) — 두 스탯을 키운 만큼 혼합 스킬이 자기 단일 스킬보다 세다
+  const statF = 1 + f(ls[0]) + (ls[1] ? 0.5 * f(ls[1]) : 0) + (ls[2] ? 0.25 * f(ls[2]) : 0);
   // 공격력: 물리 스탯 스킬 = 물리, 마법 스탯 스킬 = 마법, 섞이면 필요 스탯 비율대로
   const req = sk.req || {}, tot = ls.reduce((a, k) => a + (req[k] || 1), 0);
   const mag = ls.reduce((a, k) => a + (MAGIC.has(k) ? (req[k] || 1) : 0), 0) / tot;
@@ -123,12 +124,14 @@ export function derive(st, buffs = {}) {
   const magicW = cls.kind === 'magic', atkMult = fin * (1 + ((g.dmgPct || 0) + (buffs.might || 0)) / 100) * (1 + berserk / 100);
   const patk = magicW ? [wd[0] * 0.5, wd[1] * 0.5] : [wd[0], wd[1]], mBase = 2 + (st.awakenings || 0) * 0.3;
   patk[0] += g.patk || 0; patk[1] += g.patk || 0;
-  const matk = magicW ? [wd[0] + mBase, wd[1] + mBase] : [mBase, mBase]; matk[0] += g.matk || 0; matk[1] += g.matk || 0;
+  // v0.44.40 힘 = 물리 공격력 +0.06% · 지능 = 마법 공격력 +0.06% (막기는 힘에서 뺐다)
+  const physK = 1 + s.str * 0.0006, magK = 1 + s.int * 0.0006; patk[0] *= physK; patk[1] *= physK;
+  const matk = magicW ? [wd[0] + mBase, wd[1] + mBase] : [mBase, mBase]; matk[0] += g.matk || 0; matk[1] += g.matk || 0; matk[0] *= magK; matk[1] *= magK;
   const armorK0 = (g.armor + s.vit * 0.4), armK = 1 + armorK0 / (armorK0 + 40 + 8 * (1 + (st.awakenings || 0)));
   const basicK = cls.ap === 'vit' ? 1 + 0.25 * (hpK - 1) : cls.ap === 'wis' ? 1 + 0.25 * (mpK - 1) : 1;
   const armor = (g.armor + s.vit * 0.4) * (1 + ((g.armorPct || 0) + (buffs.armorPct || 0)) / 100);
   return {
-    bossDmg: g.bossDmg || 0, cdr: Math.min(40, g.cdr || 0), dmgReduce: Math.min(40, g.dmgReduce || 0), // v0.42 신화 옵션
+    bossDmg: g.bossDmg || 0, cdr: Math.min(40, (g.cdr || 0) + s.int * 0.01), // v0.44.40 지능 = 재사용 대기 감소 0.01% dmgReduce: Math.min(40, g.dmgReduce || 0), // v0.42 신화 옵션
     stats: s,
     gear: g,
     cls,
@@ -136,14 +139,14 @@ export function derive(st, buffs = {}) {
     maxHp: Math.round(60 + s.vit * 6 + (g.maxHp || 0)),
     maxMp: Math.round(15 + s.wis * 4.5 + (g.maxMp || 0)),
     // 둔기 평타는 HP 보너스, 홀 평타는 MP 보너스를 조금 받는다 (딜탱)
-    dmg: [wd[0] * dmgMult * basicK, wd[1] * dmgMult * basicK],
+    dmg: [wd[0] * dmgMult * basicK * (magicW ? magK : physK), wd[1] * dmgMult * basicK * (magicW ? magK : physK)],
     resK: { hp: hpK, mp: mpK, armor: armK }, statMult, patk, matk, atkMult,
     atkRate: Math.min(2.2, speed * (1 + s.dex * 0.004 + (g.atkSpd || 0) / 100 + berserk / 100 + (buffs.haste || 0) / 100)),
     range: cls.range,
-    crit: Math.min(0.75, 0.05 + s.dex * 0.0015 + ((g.crit || 0) + (buffs.focus || 0)) / 100),
+    crit: Math.min(0.75, 0.05 + s.dex * 0.001 + ((g.crit || 0) + (buffs.focus || 0)) / 100), // v0.44.40 민첩 치명타 0.15% → 0.1%
     critMult: 1.6,
-    dodge: Math.min(0.5, Math.min(0.3, s.dex * 0.0012) + (buffs.dodgeUp || 0) / 100), // v0.44.38 연막 · 구르기
-    block: g.block ? Math.min(0.5, g.block + s.str * 0.0008) : 0,
+    dodge: Math.min(0.5, (g.dodge || 0) / 100 + (buffs.dodgeUp || 0) / 100), // v0.44.40 민첩에서 회피를 뺐다 (연막 · 구르기 · 장비만)
+    block: g.block ? Math.min(0.5, g.block) : 0, // v0.44.40 힘에서 막기를 뺐다
     armor,
     spellMult: 1 + s.int * 0.035,
     // 주문 기준 피해: 무기 평균 피해 × 지능 배율 × 피해% × 주문 피해% (주문 스킬 = 이 값 × 계수)
