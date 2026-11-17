@@ -161,3 +161,47 @@ function makeGraded(stat, g, q, i) {
     for (let i = 0; i < n; i++) AWAKEN_SKILLS[`g_${stat}${g}_${i}`] = makeGraded(stat, g, qs[i], i + g);
   }
 }
+
+// ───── v0.44.38 혼합 스킬: 두 스탯 조합마다 1 ~ 4차 각성에 하나씩, 세 스탯 갈래는 4 · 5차에 하나씩 ─────
+// 피해는 두(세) 스탯이 함께 (game/player.js skillScale), 공격력은 필요 스탯 비율대로 물리 · 마법.
+// p = 무기 · 모양을 정하는 주 스탯, ix = 차수별 모양 (NOUN 순서)
+const MIX2 = {
+  'str+dex': { p: 'str', ix: [0, 1, 3, 5], names: ['쌍검 난무', '질풍 연격', '천검 난무', '검무 섬멸'], color: '#ffc080' },
+  'str+int': { p: 'str', ix: [0, 2, 1, 2], names: ['마력 베기', '원소 검격', '마검 폭쇄', '마검 천붕'], color: '#ff80c0' },
+  'str+wis': { p: 'str', ix: [0, 2, 4, 2], names: ['성광 베기', '심판의 일격', '성검 낙인', '천상의 심판'], color: '#fff0a0' },
+  'str+vit': { p: 'str', ix: [4, 3, 1, 5], names: ['철혈 강타', '돌진 분쇄', '철혈 진동', '강철 폭풍'], color: '#e0a070' },
+  'dex+int': { p: 'dex', ix: [0, 1, 2, 4], names: ['마력 화살', '원소 관통', '성운 화살비', '별무리 저격'], color: '#c8a0ff' },
+  'dex+wis': { p: 'dex', ix: [0, 3, 2, 1], names: ['영혼 추적', '넋의 화살', '영혼 화살비', '영혼 관통'], color: '#d8c0ff' },
+  'dex+vit': { p: 'dex', ix: [4, 0, 2, 5], names: ['야수 사격', '덫 사격', '황야의 화살비', '야생의 폭우'], color: '#a0d080' },
+  'int+wis': { p: 'int', ix: [0, 1, 2, 3], names: ['진리의 구슬', '현자의 파동', '진리의 낙하', '현자의 사슬'], color: '#b0b8ff' },
+  'int+vit': { p: 'int', ix: [1, 0, 4, 2], names: ['마력 방벽 폭발', '마도 탄환', '마도 포화', '마도 낙성'], color: '#ff9a60' },
+  'wis+vit': { p: 'vit', ix: [0, 2, 1, 4], names: ['금강 장타', '금강 진동', '금강 파도', '금강 해일'], color: '#ffe8b0' },
+};
+const SN = { str: '힘', dex: '민첩', int: '지능', wis: '정신', vit: '체력' };
+for (const [key, M] of Object.entries(MIX2)) {
+  const [a, b] = key.split('+');
+  for (let g = 1; g <= 4; g++) {
+    const o = makeGraded(M.p, g, 2, M.ix[g - 1]);
+    const ra = Math.round(R[g] * 0.6), rb = Math.round(R[g] * 0.45);
+    Object.assign(o, { name: M.names[g - 1], lines: [a, b], line: M.p, school: 'mix', color: M.color, req: { [a]: ra, [b]: rb }, q: 2, desc: `${SN[a]} · ${SN[b]} 혼합 기술. ${o.desc}` });
+    if (M.p !== 'vit') { delete o.scale; delete o.hpCost; }
+    AWAKEN_SKILLS[`m_${a}${b}${g}`] = o;
+  }
+}
+// 세 스탯 갈래 (4 · 5차 칭호): 그 칭호 이름으로
+const MIX3 = {
+  'str+dex+int': ['마도 검무', '마도 검신의 춤'], 'str+dex+wis': ['성검 순례', '성검 신관의 심판'], 'str+dex+vit': ['전장의 패도', '전장신의 일격'],
+  'str+int+wis': ['신성 마검', '신성 마검신의 섬광'], 'str+int+vit': ['마갑 돌진', '마갑 전신의 포격'], 'str+wis+vit': ['성채 기사의 일격', '성채 수호신의 낙인'],
+  'dex+int+wis': ['별의 현자 사격', '별의 현신 강림'], 'dex+int+vit': ['원소 사냥', '원소 사냥신의 화살비'], 'dex+wis+vit': ['대지의 수호 사격', '대지의 화신 폭우'],
+  'int+wis+vit': ['대마법 수호', '대마법 수호신의 심판'],
+};
+for (const [key, names] of Object.entries(MIX3)) {
+  const ls = key.split('+'), p = ls[0] === 'wis' ? 'vit' : ls[0];
+  [4, 5].forEach((g, k) => {
+    const o = makeGraded(p, g, 3, p === 'int' ? [2, 1][k] : p === 'dex' ? [2, 1][k] : [1, 2][k]);
+    const req = Object.fromEntries(ls.map((s, i) => [s, Math.round(R[g] * [0.5, 0.4, 0.3][i])]));
+    Object.assign(o, { name: names[k], lines: ls, line: p, school: 'mix', color: MIX2[`${ls[0]}+${ls[1]}`]?.color || '#e0d0ff', req, q: 3, desc: `${ls.map((s) => SN[s]).join(' · ')} 세 갈래 기술. ${o.desc}` });
+    if (p !== 'vit') { delete o.scale; delete o.hpCost; }
+    AWAKEN_SKILLS[`m_${ls.join('')}${g}`] = o;
+  });
+}

@@ -10,7 +10,8 @@ import { HUD } from './ui/hud.js';
 import { Windows, toggleFullscreen, setupFullscreenUi, showNotes, closable } from './ui/windows.js';
 import { GAME_VERSION } from './data/patchnotes.js';
 import { checkUpdate } from './update.js';
-import { syncVault } from './game/vault.js';
+import { syncVault, vault, vaultSave } from './game/vault.js';
+import { moveRetiredSkills } from './game/skills.js';
 import { setupInput } from './input.js';
 import { newPlayer } from './game/player.js';
 import { CONFIG } from './data/config.js';
@@ -37,6 +38,7 @@ function fixSave(s) {
     const base = newPlayer(s.name, s.look);
     for (const k in base) if (s[k] === undefined) s[k] = base[k];
     s.settings = { ...base.settings, ...s.settings };
+    moveRetiredSkills(s); // v0.44.38 정리된 스킬 옮기기
     return s;
   } catch { return null; }
 }
@@ -218,7 +220,7 @@ export function showNotices(list) {
 }
 
 function startGame(stage, st) {
-  syncVault(); // 계정 공용 창고: 서버와 맞춘다
+  syncVault().then(() => { if (moveRetiredSkills({ skills: {}, inv: [] }, vault().items)) vaultSave(); }); // 계정 공용 창고: 서버와 맞춘다 (v0.44.38 빠진 스킬북 옮기기)
   // 접속할 때마다 새 세상: 씨앗으로 지역 자리 · 지형 · 던전을 새로 만든다.
   // 지도 안개 · 바닥 아이템은 지우고 마을에서 시작. 야영지 투자(상인 · 모닥불)는 지역별로 남긴다
   st.worldSeed = 1 + Math.floor(Math.random() * 1e9); st.fog = ''; st.ground = []; st.pos = { x: 0, z: 4 };

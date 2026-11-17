@@ -142,7 +142,7 @@ export function derive(st, buffs = {}) {
     range: cls.range,
     crit: Math.min(0.75, 0.05 + s.dex * 0.0015 + ((g.crit || 0) + (buffs.focus || 0)) / 100),
     critMult: 1.6,
-    dodge: Math.min(0.3, s.dex * 0.0012),
+    dodge: Math.min(0.5, Math.min(0.3, s.dex * 0.0012) + (buffs.dodgeUp || 0) / 100), // v0.44.38 연막 · 구르기
     block: g.block ? Math.min(0.5, g.block + s.str * 0.0008) : 0,
     armor,
     spellMult: 1 + s.int * 0.035,

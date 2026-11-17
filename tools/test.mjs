@@ -181,7 +181,7 @@ test('정신은 MP를 회복해야 오른다 · 최대 MP는 정신에서', () =
 
 test('지역 · 몬스터 · 스킬 · 장비 데이터가 서로 맞물린다', () => {
   const fs = await_fs;
-  const TYPES = new Set(['melee', 'spin', 'cleave', 'bolt', 'arrow', 'chain', 'meteor', 'nova', 'buff', 'dash', 'line', 'rain', 'cone']);
+  const TYPES = new Set(['melee', 'spin', 'cleave', 'bolt', 'arrow', 'chain', 'meteor', 'nova', 'buff', 'dash', 'line', 'rain', 'cone', 'evade']);
   for (const [id, sk] of Object.entries(SKILLS)) {
     assert.ok(TYPES.has(sk.type), id);
     assert.ok(sk.req && Object.keys(sk.req).every((k) => STATS.includes(k)), id);

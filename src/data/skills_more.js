@@ -57,8 +57,13 @@ export const MORE_SKILLS = {
   shield_charge: W({ name: '방패 돌격', color: '#c0a070', tier: 2, type: 'dash', needs: 'melee', school: 'guard', scale: 'armor', req: { vit: req(2) }, mp: 10, cd: 7, range: 9, power: 1.5, perRank: 0.12, anim: 'heavy', desc: '방패를 앞세워 적에게 달려든다. 방어력이 높을수록 세다.' }),
   earth_stomp: W({ name: '대지 구르기', color: '#a08050', tier: 4, type: 'spin', apStat: 'vit', school: 'guard', slow: 2, req: { vit: req(4) }, mp: 30, cd: 12, radius: 5.5, power: 2.2, perRank: 0.18, anim: 'heavy', desc: '땅을 굴러 둘레를 흔든다.' }),
 
+  // ── v0.44.38 갈래마다 빈 역할 ──
+  battle_spirit: W({ name: '투지', color: '#e08a5a', tier: 2, type: 'buff', ap: 'str', school: 'sword', buff: 'guard', req: { str: req(2) }, mp: 10, cd: 22, duration: 8, power: 20, perRank: 1, desc: '이를 악물어 잠시 받는 피해를 줄인다.' }),
+  tumble: W({ name: '구르기', color: '#9ae0a0', tier: 2, type: 'evade', ap: 'dex', school: 'trick', req: { dex: req(2) }, mp: 8, cd: 8, range: 5, duration: 2, power: 30, perRank: 1, desc: '뒤로 굴러 거리를 벌리고 잠시 회피가 오른다.' }),
+  ice_prison: { name: '얼음 감옥', color: '#9fe4ff', tier: 3, type: 'nova', ap: 'int', school: 'frost', root: 2.5, req: { int: req(3) }, mp: 22, cd: 14, radius: 5, power: 30, perRank: 6, desc: '둘레 적을 얼려 잠시 움직이지 못하게 한다.' },
+
   // ── 기교 (민첩 · 아무 무기) ──
-  smoke_step: W({ name: '연막', color: '#909090', tier: 2, type: 'buff', ap: 'dex', school: 'trick', buff: 'focus', req: { dex: req(2) }, mp: 10, cd: 22, duration: 10, power: 14, perRank: 2, desc: '연막 속에서 급소를 노린다.' }),
+  smoke_step: W({ name: '연막', color: '#909090', tier: 2, type: 'buff', ap: 'dex', school: 'trick', buff: 'dodgeUp', req: { dex: req(2) }, mp: 10, cd: 22, duration: 10, power: 15, perRank: 1, desc: '연막 속에 숨어 잠시 회피가 크게 오른다.' }),
   poison_edge: W({ name: '독 바르기', color: '#80c050', tier: 1, type: 'buff', ap: 'dex', school: 'trick', buff: 'might', req: { dex: req(1) }, mp: 8, cd: 22, duration: 14, power: 12, perRank: 2, desc: '무기에 독을 발라 피해를 높인다.' }),
   shadow_step: W({ name: '그림자 걸음', color: '#7060a0', tier: 3, type: 'dash', school: 'trick', req: { dex: req(3) }, mp: 14, cd: 6, range: 10, power: 2.2, perRank: 0.18, desc: '그림자처럼 적 곁으로 파고든다.' }),
   fan_of_knives: W({ name: '단검 부채', color: '#c0c0d0', tier: 4, type: 'spin', school: 'trick', req: { dex: req(4) }, mp: 28, cd: 10, radius: 5, power: 2.4, perRank: 0.2, anim: 'spin', desc: '단검을 둘레로 흩뿌린다.' }),

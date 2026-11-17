@@ -158,6 +158,31 @@ for (const [id, sk] of Object.entries(MORE_SKILLS)) SKILLS[id] = { glyph: sk.nam
 for (const [id, sk] of Object.entries(AWAKEN_SKILLS)) SKILLS[id] = { glyph: sk.name[0], ...sk };
 export const SCHOOL_NAMES = { sword: '검술', bow: '궁술', fire: '화염', frost: '냉기', storm: '번개', holy: '신성', guard: '수호', trick: '기교', mix: '혼합', bulwark: '철벽', arcane: '비전' };
 
+// v0.44.38 갈래마다 스킬 수를 비슷하게 (단일 스탯 약 32개): 남는 자동 생성 스킬(g_)을 등급이 붐비는 곳부터 뺀다.
+//  뺀 스킬을 배운 캐릭터는 SKILL_MOVED로 같은 스탯 · 같은 등급 스킬로 옮긴다 (main.js fixSave)
+export const SKILL_MOVED = {};
+{
+  const TARGET = 32, grade = (sk) => (sk.awaken != null ? sk.awaken : Math.max(0, (sk.tier || 1) - 2));
+  const single = (sk) => !sk.passive && Object.keys(sk.req || {}).length === 1 && !sk.lines;
+  for (const st of ['str', 'dex', 'int', 'wis', 'vit']) {
+    const mine = () => Object.entries(SKILLS).filter(([, sk]) => single(sk) && sk.req[st]);
+    while (mine().length > TARGET) {
+      const byG = {}; for (const [id, sk] of mine()) (byG[grade(sk)] ||= []).push(id);
+      const g = Object.keys(byG).filter((k) => byG[k].length > 2 && byG[k].some((id) => id.startsWith('g_'))).sort((x, y) => byG[y].length - byG[x].length)[0];
+      if (g == null) break;
+      const gen = byG[g].filter((id) => id.startsWith('g_')).sort().reverse()[0];
+      const keep = byG[g].find((id) => id !== gen && SKILLS[id].type === SKILLS[gen].type) || byG[g].find((id) => id !== gen);
+      delete SKILLS[gen]; SKILL_MOVED[gen] = keep;
+    }
+  }
+  for (const k in SKILL_MOVED) { let v = SKILL_MOVED[k]; while (SKILL_MOVED[v]) v = SKILL_MOVED[v]; SKILL_MOVED[k] = v; }
+}
+// v0.44.38 단검 계열: 남은 민첩 자동 생성 스킬 셋을 단검(근접) 기술로 (활 대신 단검 · 아무 근접 무기)
+for (const [id, name, type, desc, extra] of [
+  ['g_dex3_0', '급소 찌르기', 'melee', '단검으로 급소를 깊게 찌른다.', {}],
+  ['g_dex4_2', '그림자 연격', 'spin', '그림자처럼 휘돌며 둘레를 벤다.', { radius: 5 }],
+  ['g_dex5_1', '천 개의 칼날', 'spin', '칼날을 두 번 휘몰아 둘레를 찢는다.', { radius: 6, hits: 2 }],
+]) if (SKILLS[id]) { const sk = SKILLS[id]; delete sk.count; delete sk.range; Object.assign(sk, { name, glyph: name[0], type, needs: 'melee', anim: type === 'spin' ? 'spin' : 'heavy', school: 'trick', desc: `${desc} (근접 무기)`, power: +(sk.power * (type === 'spin' ? 2 : 2.5)).toFixed(2), ...extra }); }
 export const SKILL_IDS = Object.keys(SKILLS);
 export function skillsOfTier(t) {
   return SKILL_IDS.filter((id) => SKILLS[id].tier === t && !SKILLS[id].awaken); // 각성 등급이 정해진 스킬은 따로 (몬스터 레벨로, game/loot.js)

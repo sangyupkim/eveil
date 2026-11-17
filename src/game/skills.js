@@ -1,7 +1,7 @@
 import { awakenOk } from '../data/awaken_skills.js';
 // 스킬 습득(스킬북)과 숙련(쓸수록 강해짐).
 import { CONFIG } from '../data/config.js';
-import { SKILLS } from '../data/skills.js';
+import { SKILLS, SKILL_MOVED } from '../data/skills.js';
 
 // 랭크 제한 없음. 10까지는 빠르게, 그 뒤 완만히, 50을 넘으면 가파르게
 export const skillExpNeeded = (rank) => Math.floor(15 * Math.pow(1.55, Math.min(rank, 10) - 1) * (rank > 10 ? 1 + 0.15 * (rank - 10) : 1) * (rank > 50 ? Math.pow(1.07, rank - 50) : 1));
@@ -125,4 +125,16 @@ export function skillEff(id, vars = []) {
   if (vars.includes('long') && o.duration) o.duration *= 1.6;
   if (vars.includes('echo')) o.echo = 0.6;
   return o;
+}
+
+// v0.44.38 빠진 스킬을 배운 캐릭터: 같은 스탯 · 등급 스킬로 옮긴다 (랭크 · 숙련 · 변형 유지, 이미 배웠으면 높은 쪽)
+export function moveRetiredSkills(st, vaultItems = []) {
+  let n = 0;
+  for (const [old, to] of Object.entries(SKILL_MOVED)) {
+    const had = st.skills?.[old];
+    if (had) { const cur = st.skills[to]; if (!cur || (cur.rank || 0) < (had.rank || 0)) st.skills[to] = had; delete st.skills[old]; n++; }
+    if (st.quick) st.quick = st.quick.map((q) => (q === old ? to : q));
+  }
+  for (const it of [...(st.inv || []), ...vaultItems]) if (it?.book && SKILL_MOVED[it.book]) { it.book = SKILL_MOVED[it.book]; n++; }
+  return n;
 }

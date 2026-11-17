@@ -808,8 +808,9 @@ export class World {
     const d = dist2(m.pos, p);
     const valid = !this.dead && !this.inTown && !inCamp(p.x, p.z);
     const fromHome = dist2(m.pos, m.home);
-    const spd = m.speed * (m.slowT > 0 ? 0.5 : 1);
+    const spd = m.rootT > 0 ? 0 : m.speed * (m.slowT > 0 ? 0.5 : 1); // v0.44.38 얼음 감옥: 묶임
     if (m.slowT > 0) m.slowT -= dt;
+    if (m.rootT > 0) m.rootT -= dt;
     m.atkT -= dt;
     if (m.showHp > 0) m.showHp -= dt;
     let moving = 0;
@@ -1116,6 +1117,7 @@ export class World {
     }
     if (this.pbuffs?.ward?.t > 0) dmg *= 1 - this.pbuffs.ward.v / 100;
     if (this.buffs.taunt?.t > 0) dmg *= 1 - Math.min(40, this.buffs.taunt.v) / 100; // 도발의 포효
+    if (this.buffs.guard?.t > 0) dmg *= 1 - Math.min(40, this.buffs.guard.v) / 100; // 투지
     const pre = dmg; // 가시 갑옷 · 인내의 폭발은 보호막 전 피해로
     const sh = this.buffs.shield;
     if (sh && sh.t > 0 && sh.v > 0) {
@@ -1178,6 +1180,7 @@ export class World {
   hitMonster(m, raw, { crit = false, src = 'melee', ctx = null, pierce = 0 } = {}) {
     if (!m || m.dead) return;
     if (ctx?.slow) m.slowT = Math.max(m.slowT || 0, ctx.slow);
+    if (ctx?.root && m.tier !== 'boss') m.rootT = Math.max(m.rootT || 0, ctx.root);
     const kind = this.d.cls.kind;
     if (src === 'melee' && !ctx && kind === 'melee') this.perk('meleeHit');
     if ((src === 'ranged' || (src === 'melee' && kind === 'ranged')) && !ctx) this.perk('rangedHit');
@@ -1715,7 +1718,7 @@ export class World {
     // 쓴 횟수도 성장에: 스킬의 필요 스탯에 필요량 비율대로 (각성 때 그 스탯으로 나뉜다)
     if (!v.echoed && sk.req) { const tot = Object.values(sk.req).reduce((a, b) => a + b, 0) || 1; for (const [k, n] of Object.entries(sk.req)) addAP(st, k, AP_TABLE.skillUse * (1 + 0.5 * ((sk.tier || 1) - 1)) * (n / tot), this.autoMult); }
     if (!v.echoed) this.skillExp(id, 1);
-    const ctx = { id, mp: v.mp, hits: 0, apGiven: false, slow: sk.slow };
+    const ctx = { id, mp: v.mp, hits: 0, apGiven: false, slow: sk.slow, root: sk.root };
     // 변형 「메아리」: 잠시 뒤 약하게 한 번 더
     if (sk.echo && !v.echoed) this.later(0.6, () => { if (!this.dead) this.castSkill(id, { ...v, mp: 0, power: v.power * sk.echo, echoed: true, cd: this.cds[id] }); });
     const t = this.target;
@@ -1873,6 +1876,16 @@ export class World {
           this.fx.shake(0.35); FXarea(P.pos.x, P.pos.z, sk.radius, 8);
           for (const m of this.monstersNear(P.pos, sk.radius)) { m.slowT = 4; this.hitMonster(m, spell(), { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 }); }
         });
+        break;
+      }
+      case 'evade': {
+        // v0.44.38 구르기: 대상(없으면 바라보는 쪽) 반대로 굴러 거리를 벌리고 잠시 회피가 오른다
+        const ang = t ? Math.atan2(P.pos.x - t.pos.x, P.pos.z - t.pos.z) : P.facing + Math.PI;
+        const dist = sk.range || 5, from = { x: P.pos.x, z: P.pos.z }, to0 = { x: from.x + Math.sin(ang) * dist, z: from.z + Math.cos(ang) * dist }, to = this.freeSpot(to0.x, to0.z);
+        for (let i = 1; i <= 6; i++) this.later(i * 0.035, () => { P.pos.x = from.x + (to.x - from.x) * i / 6; P.pos.z = from.z + (to.z - from.z) * i / 6; this.fx.burst(P.pos.x, 0.3, P.pos.z, color, 2, 1, 0.3); });
+        P.act('run', 0.3); this.moveTo = null; sfx('dodge');
+        this.buffs.dodgeUp = { v: pw, t: sk.duration || 2, max: sk.duration || 2, id };
+        this.d = derive(st, this.buffValues());
         break;
       }
       case 'dash': {
