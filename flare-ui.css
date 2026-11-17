@@ -162,3 +162,10 @@ body.touch #quick .slot:nth-child(n) { right: auto; bottom: auto; }
 .tab.txt { min-width: calc(var(--u) * 5.2); justify-content: center; }
 .tab.txt span { display: inline !important; font-size: calc(var(--u) * 0.95); }
 @media (max-height: 500px) { .tab.txt { min-width: calc(var(--u) * 4.4); padding: 2px 4px; } }
+/* v0.44.34 스크롤바: 어두운 홈 + 금빛 손잡이 (기본 회색 스크롤바가 UI와 안 맞던 것) */
+* { scrollbar-width: thin; scrollbar-color: #8a6d3a #14110d; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #14110d; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: linear-gradient(#a8844a, #6a5230); border-radius: 4px; border: 1px solid #2a2016; }
+::-webkit-scrollbar-thumb:hover { background: linear-gradient(#c8a060, #8a6a3a); }
+::-webkit-scrollbar-corner, ::-webkit-scrollbar-button { display: none; background: transparent; }

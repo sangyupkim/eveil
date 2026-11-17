@@ -40,7 +40,7 @@ import { HERBS, HERB_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
 import { buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
 import { RESEARCH_MAX, SHELTER } from '../data/buildings.js';
 import { herbIcon, homeIcon } from './icons.js';
-import { vault, vaultSize, vaultPut, vaultTake, vaultAdd, vaultSave, oldVault, restoreOldVault } from '../game/vault.js';
+import { vault, vaultSize, vaultPut, vaultTake, vaultAdd, vaultSave, oldVault, restoreOldVault, vaultReady } from '../game/vault.js';
 import { GAME_VERSION, PATCH_NOTES } from '../data/patchnotes.js';
 import { KEY_ACTIONS, keyMap, keyName } from '../data/keys.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
@@ -130,10 +130,21 @@ export class Windows {
   }
 
   // NPC · 건물에서 열기: kinds = 이번에 쓸 수 있는 창, mode = 'build'(경비대장) | 'one'(건물 앞)
-  talkTo(kinds, first, mode = null) { this.talk = kinds; this.townMode = mode; this.show(first); }
+  // v0.44.34 NPC 창을 열면 자동 사냥을 끄고, 그 자리에서 멀어지면 창을 닫는다
+  talkTo(kinds, first, mode = null) {
+    this.talk = kinds; this.townMode = mode;
+    const P = this.w.player?.pos; this.talkAt = P ? { x: P.x, z: P.z } : null;
+    if (this.w.auto) this.w.toggleAuto(false);
+    this.show(first);
+  }
+  talkCheck() {
+    if (!this.talk || this.el.hidden || !this.talkAt) return;
+    const P = this.w.player.pos;
+    if (Math.hypot(P.x - this.talkAt.x, P.z - this.talkAt.z) > 4) this.close();
+  }
 
   close() {
-    this.talk = null; this.townMode = null; this.vsel = null; this.sellPick = null;
+    this.talk = null; this.talkAt = null; this.townMode = null; this.vsel = null; this.sellPick = null;
     this.waitKey = null;
     this.portalAt = null; this.mapZoom = null; this.mapCenter = true;
     this.el.hidden = true;
@@ -357,7 +368,7 @@ export class Windows {
     if (sel) { sel.keys = sel.keys.filter((k) => (sel.from === 'v' ? !!V.items[k] : st.inv.some((x) => x.uid === k))); if (!sel.keys.length) sel = this.vsel = null; }
     const on = (f, k) => (sel && sel.from === f && sel.keys.includes(k) ? ' sel' : '');
     const old = oldVault();
-    let left = `<h3>창고 <span class="cnt">${V.items.length}/${n}</span>${old ? `<button class="btn gold" data-voldrestore="1">예전 창고 되살리기 ${old.length}</button>` : ''}<button class="btn" data-vall="v" style="margin-left:auto">모두 고르기</button></h3><div class="grid">`;
+    let left = `<h3>창고 <span class="cnt">${V.items.length}/${n}</span>${old ? `<button class="btn gold" data-voldrestore="1">예전 창고 되살리기 ${old.length}</button>` : ''}<button class="btn" data-vsort="1" style="margin-left:auto">정렬</button><button class="btn" data-vall="v">모두 고르기</button></h3><div class="grid">`;
     for (let i = 0; i < n; i++) { const it = V.items[i]; left += it ? `<div class="cell${rar(it)}${on('v', i)}" data-vsel="v|${i}">${ico(it)}${cellTag(it)}${it.qty > 1 ? `<span class="q">${it.qty}</span>` : ''}</div>` : '<div class="cell"></div>'; }
     left += '</div>';
     let right = `<h3>가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span><button class="btn" data-vall="b" style="margin-left:auto">모두 고르기</button></h3><div class="grid">`;
@@ -1101,12 +1112,12 @@ export class Windows {
       audio.play('click'); this.render();
     });
     // 가방 정렬: 장비(등급 · 레벨 높은 순) → 물약 · 영약 → 보석 → 파편 → 스킬북 → 재료 → 그 밖
-    on('[data-bagsort]', () => {
-      const RK = { legend: 5, hero: 4, rare: 3, magic: 2, common: 1 };
-      const grp = (it) => { const b = BASES[it.base] || {}; return it.book ? 5 : it.shard ? 4 : b.slot ? 0 : b.type === 'potion' || b.type === 'elixir' ? 1 : b.type === 'gem' ? 3 : b.type === 'mat' ? 6 : 7; };
-      st.inv.sort((a, b) => grp(a) - grp(b) || (RK[b.rarity] || 0) - (RK[a.rarity] || 0) || (b.ilvl || 0) - (a.ilvl || 0) || String(a.base).localeCompare(String(b.base)));
-      audio.play('click'); w.ui.dirty(); this.render();
-    });
+    const RK = { myth: 6, legend: 5, hero: 4, rare: 3, magic: 2, common: 1 };
+    const grp = (it) => { const b = BASES[it.base] || {}; return it.book ? 5 : it.shard ? 4 : b.slot ? 0 : b.type === 'potion' || b.type === 'elixir' ? 1 : b.type === 'gem' ? 3 : b.type === 'mat' ? 6 : 7; };
+    const itemOrder = (a, b) => grp(a) - grp(b) || (RK[b.rarity] || 0) - (RK[a.rarity] || 0) || (b.ilvl || 0) - (a.ilvl || 0) || String(a.base).localeCompare(String(b.base));
+    on('[data-bagsort]', () => { st.inv.sort(itemOrder); audio.play('click'); w.ui.dirty(); this.render(); });
+    // v0.44.34 창고 정렬 (서버 창고와 맞춘 뒤에만)
+    on('[data-vsort]', () => { if (!vaultReady()) { w.ui.toast('창고를 불러오는 중입니다'); return; } vault().items.sort(itemOrder); vaultSave(); audio.play('click'); this.render(); });
     on('[data-selljunk]', () => {
       let g = 0, n = 0;
       st.inv = st.inv.filter((it) => { if (it.book || !BASES[it.base]?.slot || it.set || !['common', 'magic'].includes(it.rarity)) return true; g += itemValue(it); n++; return false; });

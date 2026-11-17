@@ -257,8 +257,9 @@ export class HUD {
     const W = window.innerWidth, H = window.innerHeight;
     const seen = new Set();
     const P = w.player.pos;
-    const place = (key, pos, y, make, update) => {
+    const place = (key, pos, y, make, update, head = null) => {
       const sc = w.stage.toScreen(pos.x, pos.z, y);
+      if (head?.headPx) { const foot = w.stage.toScreen(pos.x, pos.z, 0).y; sc.y = foot - head.headPx - 4; }
       if (sc.x < -60 || sc.y < -60 || sc.x > W + 60 || sc.y > H + 60) return;
       let el = this.labels.get(key);
       if (!el) { el = make(); this.labelLayer.appendChild(el); this.labels.set(key, el); }
@@ -294,7 +295,7 @@ export class HUD {
         el.querySelector('.n').textContent = m.name;
         el.querySelector('.n').style.color = TIERS[m.tier].color;
         return el;
-      }, (el) => { el.querySelector('i').style.width = `${(m.hp / m.maxHp) * 100}%`; });
+      }, (el) => { el.querySelector('i').style.width = `${(m.hp / m.maxHp) * 100}%`; }, m.actor);
     }
     for (const g of w.ground) {
       if (Math.hypot(g.x - P.x, g.z - P.z) > 20) continue;

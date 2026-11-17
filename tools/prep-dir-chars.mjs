@@ -54,7 +54,7 @@ async function sheetFrames(file, cell) {
   return out;
 }
 const enemies = JSON.parse(fs.readFileSync(J, 'utf8'));
-const FLIP_SET = new Set(['x_snake', 'x_fishman', 'x_fishman_mace', 'x_fishman_blade', 'x_ice_mummy', 'x_tusk_beast', 'x_centipede', 'x_spider_horror']), MIRROR_SET = new Set(['x_spearman']);
+const FLIP_SET = new Set(['x_snake', 'x_fishman', 'x_fishman_mace', 'x_fishman_blade', 'x_ice_mummy', 'x_tusk_beast', 'x_centipede', 'x_spider_horror', 'x_orc_brute']), MIRROR_SET = new Set(['x_spearman']);
 for (const S of SPECS) {
   FLIPV = FLIP_SET.has(S.name); MIRROR = MIRROR_SET.has(S.name);
   const cell = (S.sheet || S.frames || S.rows).cell, cellH = (S.sheet || S.frames || S.rows).h || cell, cs = Math.round(cell * S.k), csH = Math.round(cellH * S.k), pieces = [];

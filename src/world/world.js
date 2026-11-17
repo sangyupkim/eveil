@@ -2182,6 +2182,7 @@ export class World {
     let buffChanged = false;
     for (const k in this.buffs) { const b = this.buffs[k]; if (b.t > 0) { b.t -= dt; if (b.t <= 0) buffChanged = true; } }
     this.auraStep();
+    globalThis.__game?.windows?.talkCheck?.();
     this.scrollT = (this.scrollT || 0) - dt; if (this.scrollT <= 0) { this.scrollT = 1; this.autoScrolls(); }
     for (const k in this.st.elix || {}) { const e = this.st.elix[k]; e.t -= dt; if (e.t <= 0) { delete this.st.elix[k]; buffChanged = true; this.ui.dirty(); } }
     for (const k in this.pbuffs || {}) { const b = this.pbuffs[k]; if (b.t > 0) { b.t -= dt; if (b.t <= 0) buffChanged = true; } }

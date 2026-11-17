@@ -160,6 +160,8 @@ export class Actor {
       let src = null, rect = a && a.f[this.dir]?.[frameIndex(a, this.t, this.once)];
       const tr = tintedRect(path, this.tint ?? null, rect); if (tr) [src, rect] = tr;
       if (src && a) drawRect(ctx, src, rect, p.x, y, s * (this.def.px || 1));
+      // v0.44.34 이름표 높이: 서 있는 그림의 실제 머리 위 (몸집 값으로 정하면 그림이 작은 몬스터는 이름이 한참 위에 떴다)
+      { const sa = anims.stance, sr = sa && sa.f[this.dir]?.[0]; if (sr) { this.headPx = sr[5] * s * (this.def.px || 1); this.footY = y; this.headS = s; } }
       if (src && a && this.flash > 0) (this.lastDraw ||= []).push([src, rect, s * (this.def.px || 1)]);
     }
     // 맞았을 때 번쩍: 같은 그림을 밝게 한 번 더 (lighter)
