@@ -1538,6 +1538,7 @@ export class World {
   }
 
   revive() {
+    this.floodLock = null; // 죽으면 결계에서 풀려 마을로 (범람은 남은 몬스터 그대로 남는다)
     this.leaveDungeon(true);
     this.dead = false;
     this.player.lock = 0;
@@ -1636,6 +1637,7 @@ export class World {
     const P = this.player.pos, zn = zoneAt(P.x, P.z);
     const f = zn && F.list.find((x) => x.zone === zn.id);
     if (!f) { this.floodHere = null; return; }
+    if (this.floodHere !== zn.id && !this.dead) this.floodLock = { zone: zn.id, x: P.x, z: P.z }; // 결계: 모두 잡거나 귀환할 때까지 지역 밖으로 못 나간다
     if (this.floodHere !== zn.id) { this.floodHere = zn.id; this.ui.banner?.(`범람지 · ${zn.name}`, '#ff6a5a') ?? this.ui.toast(`범람지 · ${zn.name}`, '#ff6a5a'); sfx('error'); }
     this.floodOn ||= {};
     const left = this.monsters.filter((m) => !m.dead && m.flood === zn.id).length;
@@ -1680,6 +1682,7 @@ export class World {
       resAdd(this.st, 'map_piece', 1); // v0.44.47 범람 해소 = 지도 조각 (유물은 주지 않는다)
       { const wk = weekKey(), FW = (this.st.floodWeek ||= {}); if (FW[m.flood] !== wk) { FW[m.flood] = wk; const g = Math.min(5, 2 + Math.floor(lv / 120)); resAdd(this.st, 'ess' + g, 3); this.ui.toast('이번 주 첫 해소 보너스', '#ffd84a'); } } // v0.44.49
       this.ui.toast('범람이 걷혔습니다', '#7fe07a'); sfx('rankup');
+      if (this.floodLock?.zone === m.flood) this.floodLock = null;
     }
   }
   // v0.44.42 수련 비전: 수동 사냥 중 행동만 센다 · 장착한 비전인지
@@ -2674,6 +2677,13 @@ export class World {
 
     // 줍기
     // 자동 사냥 중에는 설정한 것만 밟아서 줍는다 (지나가며 줍기 · 펫도 같은 규칙)
+    // 범람 결계: 지역 밖으로 나가려 하면 안으로 되돌린다 (귀환 · 사망 · 범람 보스 처치로만 풀림)
+    if (this.floodLock && !this.dead) {
+      const L = this.floodLock, zn = zoneAt(P.pos.x, P.pos.z);
+      if (this.inTown || this.dungeon || !this.st.flood?.list?.some((x) => x.zone === L.zone)) this.floodLock = null;
+      else if (zn?.id === L.zone) { L.x = P.pos.x; L.z = P.pos.z; }
+      else { P.pos.x = L.x; P.pos.z = L.z; this.moveTo = null; if (!(this.sealMsgT > this.time)) { this.sealMsgT = this.time + 2; this.ui.toast('범람의 결계에 막혔습니다', '#ff6a5a'); this.fx.play('shield_orange', P.pos.x, P.pos.z, { scale: 0.8, fade: true, dur: 0.6, tint: 0xff4040 }); } }
+    }
     if (!this.dead) for (const g of [...this.ground]) if (dist2(g, P.pos) < 1.4 && (!this.auto || this.autoWants(g))) this.pickup(g);
 
     // 지역
