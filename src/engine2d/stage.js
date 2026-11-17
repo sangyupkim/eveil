@@ -670,6 +670,8 @@ function render(stage, dt) {
   const zn = zoneAt(stage.cam.x, stage.cam.z);
   const grade = ZONE_LOOK[zn ? zn.id : Math.hypot(stage.cam.x, stage.cam.z) < TOWN.r ? 'town' : 'wild']?.grade;
   if (grade) { ctx.fillStyle = grade; ctx.fillRect(0, 0, W, H); }
+  // v0.44.44 범람지: 어둡고 붉게 (stage.flooded = 범람한 지역 id 목록, world가 채운다)
+  if (zn && stage.flooded?.includes(zn.id)) { ctx.fillStyle = 'rgba(40,0,6,0.38)'; ctx.fillRect(0, 0, W, H); }
   // 밤: 푸르스름하게 어둡게
   if (stage.night > 0.02) { ctx.fillStyle = `rgba(4,8,30,${0.42 * stage.night})`; ctx.fillRect(0, 0, W, H); }
   // 비: 빗줄기 (화면 좌표, 가볍게)

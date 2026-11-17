@@ -70,6 +70,7 @@ export class HUD {
 
   zone(z) {
     $('.zoneName').textContent = z ? z.name + (z.levels ? `  ·  위험도 ${z.levels[0]}~${z.levels[1]}` : '') : '황야';
+    { const fl = z?.id && this.world.st.flood?.list?.some((f) => f.zone === z.id); if (fl) $('.zoneName').textContent = '범람지 · ' + $('.zoneName').textContent; $('.zoneName').style.color = fl ? '#ff6a5a' : ''; } // v0.44.44
     let info = '안전 지역 · 상점 이용 가능';
     const off = z?.id ? this.world.tierOffset : 0;
     if (z && z.levels) info = `위험도 ${z.levels[0] + off}~${z.levels[1] + off} · 권장 각성 ${recAwaken(z.levels[0] + off)}+${z.id ? ` · 해방 ${Math.floor(((this.world.st.liberate?.[z.id] || 0) / 400) * 100)}%` : ''}`;

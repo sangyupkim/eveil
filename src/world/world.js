@@ -1602,9 +1602,12 @@ export class World {
   }
   // 범람 지역에 들어가면 범람 몬스터 · 범람 보스가 나타난다 (그 지역 몬스터, 보스 잡은 지역 중 가장 높은 위험도 × 1.2)
   floodStep() {
-    const F = this.st.flood; if (!F?.list?.length || this.dungeon || this.inTown) return;
-    const P = this.player.pos, zn = zoneAt(P.x, P.z); if (!zn) return;
-    const f = F.list.find((x) => x.zone === zn.id); if (!f) return;
+    const F = this.st.flood; this.stage.flooded = F?.list?.map((x) => x.zone) || [];
+    if (!F?.list?.length || this.dungeon || this.inTown) { this.floodHere = null; return; }
+    const P = this.player.pos, zn = zoneAt(P.x, P.z);
+    const f = zn && F.list.find((x) => x.zone === zn.id);
+    if (!f) { this.floodHere = null; return; }
+    if (this.floodHere !== zn.id) { this.floodHere = zn.id; this.ui.banner?.(`범람지 · ${zn.name}`, '#ff6a5a') ?? this.ui.toast(`범람지 · ${zn.name}`, '#ff6a5a'); sfx('error'); }
     this.floodOn ||= {};
     if (this.floodOn[zn.id] && this.monsters.some((m) => !m.dead && m.flood === zn.id)) return;
     if (this.floodOn[zn.id] && this.time - this.floodOn[zn.id] < 30) return;
