@@ -25,7 +25,9 @@ export function rollLoot(mon, opt = {}, st = null, rng = R) {
   const rareK = Math.max(0.35, 1 - (mon.level - 1) / 600); // 레벨 100 ×0.84 · 200 ×0.67 · 360 ×0.4
   // 보스 · 네임드는 높은 레벨에서도 장비 확률을 깎지 않는다 (v0.42.7: 300레벨 필드 보스가 85% 빈손이던 문제)
   // v0.42.9: 장비가 나올 확률은 몬스터 레벨과 상관없이 같다 (높은 곳은 영웅 · 전설 비율만 줄어든다, 아래 rr)
-  if (chance(t.itemChance * dropMult, rng)) {
+  // v0.44.24 정예: 장비가 더 자주 (초반 레벨 50까지 30% → 높은 곳 15%) — 강화 몹을 잡아도 빈손이던 것
+  const ic = mon.tier === 'elite' ? Math.max(0.15, 0.3 - Math.max(0, mon.level - 50) * 0.0005) : t.itemChance;
+  if (chance(ic * dropMult, rng)) {
     const n = randInt(t.items[0], t.items[1], rng);
     for (let i = 0; i < n; i++) {
       // 보스는 가끔 장비 대신 능력치 파편

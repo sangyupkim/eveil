@@ -577,3 +577,9 @@ html.force-land #rotate { display: none !important; }
 .packrow .grow { min-width: 9em; }
 /* v0.44.21 세로가 긴 화면(폴드 등)에서는 탭을 두 줄로 — 오른쪽 탭이 잘려 보이던 것 */
 @media (max-aspect-ratio: 4/3) { .tabs { flex-wrap: wrap; overflow-x: visible; row-gap: 4px; } }
+
+/* v0.44.24 지역 그림 불러오기 */
+#zoneLoad { position: fixed; inset: 0; z-index: 140; display: flex; align-items: center; justify-content: center; background: rgba(6,4,10,.72); color: #e8dcc0; pointer-events: all; }
+#zoneLoad[hidden] { display: none; }
+#zoneLoad > div { text-align: center; }
+#zoneLoad b { display: block; font-size: 1.4em; color: #ffd84a; margin-bottom: .3em; }

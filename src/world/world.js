@@ -32,7 +32,7 @@ import { FX, drawPowerFrame } from '../engine2d/fx.js';
 import { resolveCollision, zoneAt, clearLine, findPath, blockedAt, LAKES, MESAS, CAMPS, inCamp, bossSpot } from '../engine2d/stage.js';
 import { reveal, saveFog, loadFog } from '../ui/mapimg.js';
 import { DATA, image, animImage, drawRect, frameIndex } from '../engine2d/sprites.js';
-import { MONSTER_LOOK, ITEM_LOOK, LOOT_LOOK } from '../data/flareWorld.js';
+import { MONSTER_LOOK, ITEM_LOOK, LOOT_LOOK, ZONE_LOOK as ZONE_LOOK_W } from '../data/flareWorld.js';
 import { PLOTS, BUILDINGS, VAULT_SPOT } from '../data/buildings.js';
 import { townOf, tick as townTick, researchK, researchTick, researchLv } from '../game/town.js';
 import { RESEARCH, LEVEL_DECOR } from '../data/buildings.js';
@@ -2029,11 +2029,12 @@ export class World {
     }
     if (this.target && !this.target.dead && !this.inAutoArea(this.target.pos)) this.target = null; // 구역 밖 몬스터는 쫓지 않는다
     if (!this.target || this.target.dead) {
-      this.target = this.nearestMonster(18, P, null, (m) => this.inAutoArea(m.pos));
+      const bossOk = !!st.settings.autoBoss; // v0.44.24 설정 「자동 사냥 필드 보스」
+      this.target = this.nearestMonster(18, P, null, (m) => this.inAutoArea(m.pos) && (bossOk || m.tier !== 'boss'));
       if (!this.target) {
         // 가까이 없으면: 구역 안에서 가장 가까운 몬스터 쪽으로 (빈 곳만 돌아다니지 않게)
-        const far = this.monsters.filter((m) => !m.dead && !(m.ignoreUntil > this.time) && m.tier !== 'boss' && this.inAutoArea(m.pos) && !(dist2(m.pos, TOWN) < TOWN.r)).sort((a, b) => dist2(a.pos, P) - dist2(b.pos, P))[0];
-        const sp = !far && this.spawners.filter((q) => !q.mon && q.tier !== 'boss' && this.inAutoArea(q)).sort((a, b) => dist2(a, P) - dist2(b, P))[0]; // 다 잡았으면 곧 다시 나올 자리로
+        const far = this.monsters.filter((m) => !m.dead && !(m.ignoreUntil > this.time) && (bossOk || m.tier !== 'boss') && this.inAutoArea(m.pos) && !(dist2(m.pos, TOWN) < TOWN.r)).sort((a, b) => dist2(a.pos, P) - dist2(b.pos, P))[0];
+        const sp = !far && this.spawners.filter((q) => !q.mon && (bossOk || q.tier !== 'boss') && this.inAutoArea(q)).sort((a, b) => dist2(a, P) - dist2(b, P))[0]; // 다 잡았으면 곧 다시 나올 자리로
         const goal = far ? far.pos : sp;
         if (goal && (this.autoArea?.dungeon == null || far)) {
           if (!this.moveTo || dist2(this.moveTo, goal) > 4 || dist2(P, this.moveTo) < 2) this.autoGo({ x: goal.x, z: goal.z });
@@ -2106,7 +2107,23 @@ export class World {
     return d;
   }
 
+  // v0.44.24 지역 그림 미리 받기: 몬스터 그림 · 땅 타일. 처음 들어가는 지역은 받을 때까지 잠깐 「불러오는 중」 (들어가자마자 끊기던 것)
+  zoneImages(zn) {
+    const out = new Set(), sp = (t) => { const e = DATA.enemies?.[MONSTER_LOOK[t]?.sprite]; if (e?.images) for (const v of Object.values(e.images)) out.add(v); };
+    for (const t of [...Object.keys(zn.spawns || {}), zn.named?.type, zn.boss?.type]) if (t) sp(t);
+    const set = DATA.tiles?.[ZONE_LOOK_W[zn.id]?.set]; if (set?.imgs) for (const v of set.imgs) out.add(v);
+    return [...out];
+  }
+  preloadZone(zn) { (this.zonePre ||= new Set()); if (this.zonePre.has(zn.id)) return; this.zonePre.add(zn.id); for (const p of this.zoneImages(zn)) image(p); }
+  zoneGate(zn) {
+    const need = this.zoneImages(zn).filter((p) => !image(p).ok);
+    if (!need.length) return;
+    this.loadingZone = true; const el = document.getElementById('zoneLoad'); if (el) { el.hidden = false; el.querySelector('b').textContent = zn.name; }
+    const done = () => { this.loadingZone = false; if (el) el.hidden = true; };
+    Promise.race([Promise.all(need.map((p) => image(p).p)), new Promise((r) => setTimeout(r, 8000))]).then(() => requestAnimationFrame(done));
+  }
   update(dt) {
+    if (this.loadingZone) return; // 지역 그림을 받는 동안 멈춘다
     this.time += dt;
     const st = this.st;
     st.playTime += dt;
@@ -2360,8 +2377,12 @@ export class World {
     const zn = zoneAt(P.pos.x, P.pos.z);
     const dg = this.dungeon;
     const id = dg ? 'dg' + dg.zi + '_' + dg.stage : this.inTown ? 'town' : zn?.id || 'wild';
+    // 가까운 지역은 미리 받아 둔다 (경계 25 안)
+    this.preT = (this.preT || 0) - dt;
+    if (this.preT <= 0) { this.preT = 2; for (const q of ZONES) if (Math.hypot(P.pos.x - q.x, P.pos.z - q.z) < q.r + 25) this.preloadZone(q); }
     if (id !== this.zone) {
       this.zone = id;
+      if (zn && !dg) this.zoneGate(zn);
       if (zn) st.lastZone = zn.id;
       this.ui.zone(dg ? { name: `${dg.zone.name} 던전 ${dg.stage}단계`, levels: [dungeonLevel(dg.zone, dg.stage) + this.tierOffset, dungeonLevel(dg.zone, dg.stage) + this.tierOffset] } : id === 'town' ? TOWN : zn);
     }
