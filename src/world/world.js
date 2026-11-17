@@ -1233,7 +1233,7 @@ export class World {
       raw *= 1 - ((R.phys + (A.includes('hard') ? 0.3 : 0)) * (1 - mag) + (R.mag + (A.includes('ward') ? 0.3 : 0)) * mag);
       if (A.includes('shield') && !m.shieldUsed && m.hp < m.maxHp * 0.5) { m.shieldUsed = true; m.fshield = m.maxHp * 0.2; this.fx.text(m.pos.clone().setY(2.4), '보호막', 'miss'); }
       if (m.fshield > 0) { const ab = Math.min(m.fshield, raw); m.fshield -= ab; raw -= ab; }
-      if (A.includes('reflect') && src !== 'dot' && raw > 0) this.hurtPlayer(raw * 0.1, m, { sure: true }); }
+      if (A.includes('reflect') && src !== 'dot' && raw > 0 && !(m.reflT > this.time)) { m.reflT = this.time + 0.5; this.hurtPlayer(Math.min(raw * 0.1, this.d.maxHp * 0.04), m, { sure: true }); } } // 반사: 받은 피해의 10%, 한 번에 최대 HP 4%까지 · 0.5초에 한 번 (강한 캐릭터가 한 방에 죽던 것)
     if (m.vulnT > 0) raw *= this.art('soulmark') ? 1.25 : 1.15;
     if (this.art('sniper') && (src === 'ranged' || ctx) && Math.hypot(m.pos.x - this.player.pos.x, m.pos.z - this.player.pos.z) > 8) raw *= 1.15;
     if (this.art('huntertrap') && m.rootT > 0) raw *= 1.1;

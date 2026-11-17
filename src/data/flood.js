@@ -16,7 +16,7 @@ export const FLOOD_AFFIX = {
   ward: { name: '마력 갑옷', text: '마법 저항 +30%' },
   burst: { name: '폭발', text: '죽으면 잠시 뒤 둘레가 터진다' },
   split: { name: '분열', text: '죽으면 둘로 나뉜다' },
-  reflect: { name: '반사', text: '받은 피해의 10%를 되돌린다' },
+  reflect: { name: '반사', text: '받은 피해의 일부를 되돌린다' },
   shield: { name: '보호막', text: '체력이 절반 아래로 떨어지면 한 번 보호막' },
 };
 export const FLOOD_AFFIX_IDS = Object.keys(FLOOD_AFFIX);
