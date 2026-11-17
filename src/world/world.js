@@ -17,6 +17,7 @@ import { MONSTERS, ZONES, TOWN, TIER_STEP, FINAL_ZONE } from '../data/world.js';
 import { derive, damageReduction, totalStats, skillScale } from '../game/player.js';
 import { monsterRes, mixFxOf } from '../data/resist.js';
 import { ARTS } from '../data/arts.js';
+import { FLOOD, FLOOD_AFFIX, FLOOD_AFFIX_IDS } from '../data/flood.js';
 import { ELIXIRS, ELIXIR_TIME, HERBS, HP_POTIONS, MP_POTIONS } from '../data/potions.js';
 import { addAP, gainExp, rewardFactor, recAwaken } from '../game/growth.js';
 import { addSkillExp, skillValues, skillEff, modsOf, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
@@ -1203,7 +1204,11 @@ export class World {
     if ((m.tier === 'boss' || m.tier === 'named') && d.bossDmg) raw *= 1 + d.bossDmg / 100;
     const dexN = st.dex?.[m.type] || 0; raw *= 1 + (dexN >= 500 ? 0.06 : dexN >= 200 ? 0.04 : dexN >= 50 ? 0.02 : 0);
     // v0.44.41 저항 (물리 · 마법 비율대로) · 약화(표식 · 원소 상처) · 상태 이상 조합(느려지거나 묶인 적에게 혼합 스킬 +20%)
-    { const R = monsterRes(m.type), mag = ctx?.mag ?? (src === 'magic' ? 1 : 0); raw *= 1 - (R.phys * (1 - mag) + R.mag * mag); }
+    { const R = monsterRes(m.type), mag = ctx?.mag ?? (src === 'magic' ? 1 : 0), A = m.affix || [];
+      raw *= 1 - ((R.phys + (A.includes('hard') ? 0.3 : 0)) * (1 - mag) + (R.mag + (A.includes('ward') ? 0.3 : 0)) * mag);
+      if (A.includes('shield') && !m.shieldUsed && m.hp < m.maxHp * 0.5) { m.shieldUsed = true; m.fshield = m.maxHp * 0.2; this.fx.text(m.pos.clone().setY(2.4), '보호막', 'miss'); }
+      if (m.fshield > 0) { const ab = Math.min(m.fshield, raw); m.fshield -= ab; raw -= ab; }
+      if (A.includes('reflect') && src !== 'dot' && raw > 0) this.hurtPlayer(raw * 0.1, m, { sure: true }); }
     if (m.vulnT > 0) raw *= this.art('soulmark') ? 1.25 : 1.15;
     if (this.art('sniper') && (src === 'ranged' || ctx) && Math.hypot(m.pos.x - this.player.pos.x, m.pos.z - this.player.pos.z) > 8) raw *= 1.15;
     if (this.art('huntertrap') && m.rootT > 0) raw *= 1.1;
@@ -1292,6 +1297,8 @@ export class World {
 
   killMonster(m, src, ctx, rf) {
     m.dead = true;
+    if (m.sp?.zone) (this.st.zoneHunt ||= {})[m.sp.zone.id] = Date.now(); // v0.44.43 범람지: 지역별 마지막 사냥
+    if (m.flood) this.floodDeath(m);
     if (src !== 'perk') this.perk('kill');
     m.hp = 0;
     const st = this.st, d = this.d;
@@ -1580,6 +1587,60 @@ export class World {
     return this.monsters.filter((m) => !m.dead && dist2(m.pos, pos) <= r);
   }
 
+  // ───── v0.44.43 범람지 ─────
+  floodZones() { return ALL_ZONES.filter((z) => this.bossCleared(z)); }
+  floodTick() {
+    const st = this.st, now = Date.now(), cleared = this.floodZones();
+    const F = (st.flood ||= { list: [], next: 0 });
+    if (cleared.length < FLOOD.minCleared || F.list.length >= FLOOD.max || now < (F.next || 0)) return;
+    const hunt = st.zoneHunt || {}, cand = cleared.filter((z) => !F.list.some((x) => x.zone === z.id) && now - (hunt[z.id] || 0) > FLOOD.idleMs);
+    F.next = now + FLOOD.everyMs;
+    if (!cand.length) return;
+    const z = cand[Math.floor(Math.random() * cand.length)];
+    F.list.push({ zone: z.id, at: now });
+    this.ui.toast(`${z.name}에 몬스터가 넘쳐났습니다`, '#ff6a5a'); sfx('error');
+  }
+  // 범람 지역에 들어가면 범람 몬스터 · 범람 보스가 나타난다 (그 지역 몬스터, 보스 잡은 지역 중 가장 높은 위험도 × 1.2)
+  floodStep() {
+    const F = this.st.flood; if (!F?.list?.length || this.dungeon || this.inTown) return;
+    const P = this.player.pos, zn = zoneAt(P.x, P.z); if (!zn) return;
+    const f = F.list.find((x) => x.zone === zn.id); if (!f) return;
+    this.floodOn ||= {};
+    if (this.floodOn[zn.id] && this.monsters.some((m) => !m.dead && m.flood === zn.id)) return;
+    if (this.floodOn[zn.id] && this.time - this.floodOn[zn.id] < 30) return;
+    this.floodOn[zn.id] = this.time;
+    const top = Math.max(...this.floodZones().map((z) => z.levels[1])), L = Math.round(top * FLOOD.levelK);
+    const pick = () => FLOOD_AFFIX_IDS[Math.floor(Math.random() * FLOOD_AFFIX_IDS.length)];
+    const mk = (tier, fixed, k) => {
+      const a = Math.random() * 6.28, r = 6 + Math.random() * 6;
+      const m = this.spawn({ zone: zn, x: P.x + Math.cos(a) * r, z: P.z + Math.sin(a) * r, level: L - this.tierOffset, tier, timer: 0, mon: null, fixed });
+      if (!m) return null;
+      m.flood = zn.id; m.home = { x: m.pos.x, z: m.pos.z }; m.state = 'chase';
+      m.affix = tier === 'boss' ? [pick(), pick()] : tier === 'elite' ? [pick(), pick()] : [pick()];
+      if (m.affix.includes('frenzy')) { m.speed *= 1.3; m.def = { ...m.def, interval: m.def.interval / 1.3 }; }
+      m.name = `${tier === 'boss' ? '범람한 ' : ''}${m.name} [${m.affix.map((x) => FLOOD_AFFIX[x].name).join('·')}]`;
+      if (k) { m.maxHp *= k; m.hp = m.maxHp; }
+      m.actor.setGlow(0x400010);
+      return m;
+    };
+    for (let i = 0; i < FLOOD.mobs; i++) mk(i % 4 === 3 ? 'elite' : 'normal');
+    if (!f.bossUp) { const b = mk('boss', zn.boss, FLOOD.bossHp); if (b) { b.floodBoss = true; f.bossUp = true; } }
+    this.ui.toast(`범람한 ${zn.name}`, '#ff6a5a');
+  }
+  floodDeath(m) {
+    const P = m.pos;
+    if (m.affix?.includes('burst')) { this.fx.telegraph?.(P.x, P.z, 2.6, 1, 0xff4020); this.later(1, () => { if (Math.hypot(this.player.pos.x - P.x, this.player.pos.z - P.z) < 2.6) this.hurtPlayer(this.d.maxHp * 0.12, m, { sure: true }); this.fx.ring(P.x, P.z, 2.6, 0xff6020, 0.4); }); }
+    if (m.affix?.includes('split') && !m.child) for (let i = 0; i < 2; i++) { const c = this.spawn({ zone: m.sp.zone, x: P.x + (i ? 1 : -1), z: P.z, level: m.level - this.tierOffset, tier: 'normal', timer: 0, mon: null }); if (c) { c.flood = m.flood; c.child = true; c.maxHp *= 0.4; c.hp = c.maxHp; c.state = 'chase'; c.actor.root.scale.multiplyScalar(0.7); } }
+    if (m.floodBoss) {
+      const F = this.st.flood; F.list = F.list.filter((x) => x.zone !== m.flood);
+      (this.st.zoneHunt ||= {})[m.flood] = Date.now();
+      const lv = m.level;
+      this.dropGround({ kind: 'gold', amount: lv * 400 }, P.x, P.z);
+      this.dropGround({ kind: 'item', item: makeItem(rollBase(lv), { rarity: Math.random() < 0.15 ? 'legend' : 'hero', ilvl: lv }, this.st) }, P.x + 1, P.z);
+      resAdd(this.st, 'ore2', 2 + Math.floor(lv / 40));
+      this.ui.toast('범람이 걷혔습니다', '#7fe07a'); sfx('rankup');
+    }
+  }
   // v0.44.42 수련 비전: 수동 사냥 중 행동만 센다 · 장착한 비전인지
   art(id) { return !!this.st.arts?.equip?.includes(id); }
   artEv(ev, n = 1) {
@@ -2300,7 +2361,7 @@ export class World {
     for (const k in this.buffs) { const b = this.buffs[k]; if (b.t > 0) { b.t -= dt; if (b.t <= 0) { buffChanged = true; if (k === 'venge') this.vengeRelease(b); } } }
     this.auraStep();
     globalThis.__game?.windows?.talkCheck?.();
-    this.scrollT = (this.scrollT || 0) - dt; if (this.scrollT <= 0) { this.scrollT = 1; this.autoScrolls(); }
+    this.scrollT = (this.scrollT || 0) - dt; if (this.scrollT <= 0) { this.scrollT = 1; this.autoScrolls(); this.floodStep(); }
     for (const k in this.st.elix || {}) { const e = this.st.elix[k]; e.t -= dt; if (e.t <= 0) { delete this.st.elix[k]; buffChanged = true; this.ui.dirty(); } }
     for (const k in this.pbuffs || {}) { const b = this.pbuffs[k]; if (b.t > 0) { b.t -= dt; if (b.t <= 0) buffChanged = true; } }
     if (buffChanged) this.d = derive(st, this.buffValues());
@@ -2359,6 +2420,7 @@ export class World {
       const done = researchTick(st);
       if (done) secs.push({ title: '연구 완료', rows: [{ img: bookIcon(), name: `${RESEARCH[done].name} ${researchLv(st, done)}단계` }] });
       secs.push(...this.townAuto());
+      this.floodTick();
       if (st.dailyNew?.length) { this.dailyDone(st.dailyNew); st.dailyNew = []; }
       if (secs.length) { sfx('coin'); if (globalThis.__game?.windows) globalThis.__game.windows.notice(secs); else for (const x of secs) this.ui.toast(x.title, '#7fe07a'); }
       this.checkAchievements();
