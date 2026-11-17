@@ -16,6 +16,7 @@ import { itemIcon, skillIcon, portrait, chestIcon, bookIcon, coinIcon, scrollIco
 import { monsterRes, mixFxOf } from '../data/resist.js';
 import { ARTS, ART, ART_LINE_NAMES, artSlots, artUsable } from '../data/arts.js';
 import { floodPenalty, floodText } from '../data/flood.js';
+import { RELIC, RELIC_GRADES, relicV, altarSlots, altarDur } from '../data/relics.js';
 import { terrain, fogCan, MAP_R, MAP_W, FOG_C, seen as seenAt } from './mapimg.js';
 import { CAMPS, inCamp } from '../engine2d/stage.js';
 import { TIER_NAMES } from '../world/world.js';
@@ -841,6 +842,12 @@ export class Windows {
             ${open ? `<button class="btn" data-research="${id}" ${max || t.lab || st.gold < c.gold ? 'disabled' : ''}>${max ? '완료' : `${c.gold.toLocaleString()}G · 재료 ${c.mats}${c.ess ? ` · ${BASES[c.ess.id].name} ${c.ess.n}` : ''} · ${c.min}분`}</button>` : ''}</div>`;
         }
       }
+      if (b.type === 'altar') { // v0.44.47 유물 제단
+        const R = (st.relics ||= { bag: [], on: [] }), now = Date.now(), slots = altarSlots(b.lv); R.on = (R.on || []).filter((r) => r.until > now);
+        const left = (r) => { const m = Math.ceil((r.until - now) / 60000), h = Math.floor(m / 60); return h >= 24 ? `${Math.floor(h / 24)}일 ${h % 24}시간` : `${h}시간 ${m % 60}분`; };
+        right += `<h3>올린 유물 <span class="cnt">${R.on.length} / ${slots}</span></h3>` + (R.on.map((r, i) => `<div class="row"><div class="grow"><b style="color:${RELIC_GRADES[r.g].color}">${RELIC[r.id].name}</b> <small>${RELIC_GRADES[r.g].name}</small><div class="note">${RELIC[r.id].text(relicV(r))} · ${left(r)}</div></div><button class="btn" data-reloff="${i}">내리기</button></div>`).join('') || '<div class="note">없음</div>')
+          + `<h3>가진 유물 <span class="cnt">${(R.bag || []).length}</span></h3>` + ((R.bag || []).map((r, i) => `<div class="row"><div class="grow"><b style="color:${RELIC_GRADES[r.g].color}">${RELIC[r.id].name}</b> <small>${RELIC_GRADES[r.g].name} · ${Math.round(RELIC_GRADES[r.g].days * altarDur(b.lv) * 10) / 10}일</small><div class="note">${RELIC[r.id].kind} · ${RELIC[r.id].text(relicV(r))}</div></div><button class="btn gold" data-relon="${i}" ${R.on.length >= slots ? 'disabled' : ''}>올리기</button></div>`).join('') || '<div class="note">없음</div>');
+      }
       if (b.type === 'house') right += `<div class="kv"><span>고용 한도</span><b>${mercSlots(st)}명</b><span>지금</span><b>${t.mercs.length}명</b><span>쉬고 난 기운</span><b>힘 +${Math.round(FRESH.k * b.lv * 100)}% · 2시간</b></div>`;
       if (b.type === 'inn') {
         // v0.44.15 침대: 지친 용병이 와서 쉰다 (단계 = 침대 수 · 회복 속도)
@@ -1177,6 +1184,8 @@ export class Windows {
     });
     on('[data-autobrew]', (el) => { const t2 = townOf(st); t2.autoBrew = t2.autoBrew === el.dataset.autobrew ? null : el.dataset.autobrew; audio.play('click'); this.render(); });
     this.el.querySelector('[data-dexzs]')?.addEventListener('change', (e) => { this.dexZone = e.target.value; this.dexMon = null; audio.play('click'); this.render(); });
+    on('[data-relon]', (el) => { const R = st.relics, r = R.bag[+el.dataset.relon], al = Object.values(townOf(st).plots).find((x) => x.type === 'altar'); if (!r || !al || R.on.length >= altarSlots(al.lv)) return; R.bag.splice(+el.dataset.relon, 1); R.on.push({ ...r, until: Date.now() + RELIC_GRADES[r.g].days * 86400e3 * altarDur(al.lv) }); w.d = derive(st, w.buffValues()); audio.play('click'); w.ui.dirty(); this.render(); });
+    on('[data-reloff]', (el) => { const R = st.relics; R.on.splice(+el.dataset.reloff, 1); w.d = derive(st, w.buffValues()); audio.play('click'); w.ui.dirty(); this.render(); });
     on('[data-artl]', (el) => { this.artLine = el.dataset.artl; audio.play('click'); this.render(); });
     on('[data-arteq]', (el) => { const A = (st.arts ||= { prog: {}, open: {}, equip: [] }), id = el.dataset.arteq; A.equip ||= []; if (A.equip.includes(id)) A.equip = A.equip.filter((x) => x !== id); else if (A.equip.length < artSlots(st) && A.open[id] && artUsable(st, ART[id])) A.equip.push(id); audio.play('click'); w.ui.dirty(); this.render(); });
     on('[data-dexm]', (el) => { this.dexMon = el.dataset.dexm; audio.play('click'); this.render(); });

@@ -189,6 +189,7 @@ export class World {
     //  제작소 = 창문 통나무집(가로 7.4) + 통나무 · 모루     숙소 = 문 통나무집, 3단계부터 한 채 더
     //  약초밭 = 작물 7 × 4 줄
     const LOOK = {
+      altar: () => [['dungeon', 167, 0, 0], ['dungeon', 167, -1.6, 0.8], ['dungeon', 167, 1.6, 0.8]], // v0.44.47 유물 제단: 석상 셋
       smithy: (b) => { big('grassland', 296, 0, 0, 0.75, -7.3, 2.2, 'brightness(0.78) sepia(0.35) saturate(1.2)', 4.8); return [['dungeon', 167, 3.6, 3.4], ['grassland', 103, -3.4, 3.6], ['dungeon', 167, -1.2, 4.4], ['grassland', 100, 4.4, 1.0]]; },
       inn: (b) => { big('props', 4, 0, -0.8, 1.45, 0, 0, 'brightness(0.82) saturate(0.85)', 4.2); return [['grassland', 98, 4.2, 3.6], ['grassland', 96, -4.2, 3.4], ['dungeon', 167, -1.4, 4.8], ['dungeon', 167, 1.4, 4.8]]; },
       mine: (b) => { big('dungeon', 286, 0, -0.6, 0.75, 0, 0, 'sepia(0.4) brightness(0.9)', 2.8); return [['cave', 148, 4.6, -1.8], ['cave', 130, -4.4, 1.2], ['cave', 131, 3.8, 3.2], ['cave', 151, -3.6, -2.8], ['grassland', 100, -4.6, 3.6]]; },
