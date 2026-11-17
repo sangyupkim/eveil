@@ -5,11 +5,11 @@ import { BUILDINGS, PLOTS, ENHANCE, EXPEDITIONS, RESEARCH, RESEARCH_MAX, SHELTER
 import { HERBS, herbsAt, RECIPES } from '../data/potions.js';
 import { ZONES } from '../data/world.js';
 import { rollLoot } from './loot.js';
-import { addItem } from './inventory.js';
+import { addItem, bagSize } from './inventory.js';
 import { makeItem, rollBase } from './items.js';
 import { MATERIALS, MAT_DROP, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
 import { BASES } from '../data/items.js';
-import { vault, vaultAdd, vaultSave } from './vault.js';
+import { vault, vaultAdd, vaultSave, vaultSize } from './vault.js';
 import { lifeProgress } from './daily.js';
 import { shardFrom } from './shards.js';
 
@@ -27,6 +27,7 @@ export const resCount = (st, base) => st.inv.filter((x) => x.base === base).redu
 let dropFull = false; // v0.44.64 파견 전리품: 가방 · 창고가 가득이면 넘쳐 담지 않고 버린다
 export function resAdd(st, base, n) {
   if (n <= 0) return;
+  if (dropFull && st.inv.length >= bagSize(st) && vault().items.length >= vaultSize(st)) return; // 둘 다 꽉 차면 같은 칸에 더하지도 않는다
   const it = makeItem(base, { qty: n }, st);
   if (addItem(st, it)) return;
   if (vaultAdd(st, it)) return;
@@ -449,7 +450,7 @@ export function claim(st, id, now = Date.now(), rng = Math.random, put = null) {
   dropFull = true; try { t.mats[zn.id] = (t.mats[zn.id] || 0) + out.mats; } finally { dropFull = false; }
   st.gold += out.gold;
   dropFull = true; try { t.ore += out.ore; } finally { dropFull = false; }
-  const n0 = out.items.length; out.items = out.items.filter((it) => (put ? put(st, it) : addItem(st, it))); out.lost = n0 - out.items.length;
+  const n0 = out.items.length; out.items = (st.inv.length >= bagSize(st) && vault().items.length >= vaultSize(st)) ? [] : out.items.filter((it) => (put ? put(st, it) : addItem(st, it))); // v0.44.65 꽉 차 있으면 하나도 받지 않는다 out.lost = n0 - out.items.length;
   gainExp(m, ex.mult * 10); lifeProgress(st, 'expedition');
   // v0.44.47 파견소 4단계부터 긴 파견은 지도 조각을 가져온다 (긴 원정 30% · 야영 토벌 1 · 깊은 원정 1~2)
   if (gl >= 4) { const mp = ex.id === 'deep' ? 1 + (rng() < 0.5 ? 1 : 0) : ex.id === 'siege' ? 1 : ex.id === 'long' && rng() < 0.3 ? 1 : 0; if (mp) { dropFull = true; try { resAdd(st, 'map_piece', mp); } finally { dropFull = false; } out.mapPiece = mp; } }
