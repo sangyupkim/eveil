@@ -441,6 +441,8 @@ export function claim(st, id, now = Date.now(), rng = Math.random, put = null) {
   st.gold += out.gold; t.ore += out.ore;
   const n0 = out.items.length; out.items = out.items.filter((it) => (put ? put(st, it) : addItem(st, it))); out.lost = n0 - out.items.length;
   gainExp(m, ex.mult * 10); lifeProgress(st, 'expedition');
+  // v0.44.47 파견소 4단계부터 긴 파견은 지도 조각을 가져온다 (긴 원정 30% · 야영 토벌 1 · 깊은 원정 1~2)
+  if (gl >= 4) { const mp = ex.id === 'deep' ? 1 + (rng() < 0.5 ? 1 : 0) : ex.id === 'siege' ? 1 : ex.id === 'long' && rng() < 0.3 ? 1 : 0; if (mp) { resAdd(st, 'map_piece', mp); out.mapPiece = mp; } }
   growSkill(m, 'hunt', ex.mult * 1.5);
   m.job = null;
   return out;
@@ -576,6 +578,7 @@ export { PLOTS, BUILDINGS, EXPEDITIONS };
 export const ORE_RECIPES = [
   { id: 'ore2', lv: 6, gold: 20000, need: { ore: 25, ess3: 2 }, zoneMats: 10 }, // v0.44.12 단계마다 그 단계 정수: 상급 = 응축된
   { id: 'ore3', lv: 8, gold: 80000, need: { ore2: 4, ess5: 2 }, zoneMats: 20 }, // 최상급 = 혼돈의
+  { id: 'unknown_map', lv: 1, gold: 5000, need: { map_piece: 5 }, zoneMats: 0 }, // v0.44.47 지도 조각 5 → 미지의 지도
 ];
 const zoneMatTotal = (st) => Object.keys(MATERIALS).reduce((a, k) => a + resCount(st, 'mat_' + k), 0);
 function takeZoneMats(st, n) { for (const k of Object.keys(MATERIALS).sort((a, b) => resCount(st, 'mat_' + b) - resCount(st, 'mat_' + a))) { if (n <= 0) break; const c = Math.min(n, resCount(st, 'mat_' + k)); resTake(st, 'mat_' + k, c); n -= c; } }

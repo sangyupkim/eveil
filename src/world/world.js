@@ -1654,6 +1654,7 @@ export class World {
       this.dropGround({ kind: 'gold', amount: lv * 400 }, P.x, P.z);
       this.dropGround({ kind: 'item', item: makeItem(rollBase(lv), { rarity: Math.random() < 0.15 ? 'legend' : 'hero', ilvl: lv }, this.st) }, P.x + 1, P.z);
       resAdd(this.st, 'ore2', 2 + Math.floor(lv / 40));
+      resAdd(this.st, 'map_piece', 1); // v0.44.47 범람 해소 = 지도 조각 (유물은 주지 않는다)
       this.ui.toast('범람이 걷혔습니다', '#7fe07a'); sfx('rankup');
     }
   }
@@ -2459,6 +2460,7 @@ export class World {
         if (r.dead) { rows.push({ name: `${r.name} 돌아오지 못함${r.back ? ` · 물약 ${r.back}개 회수` : ''}`, color: '#ff6a5a' }); continue; }
         tot.gold += r.gold; tot.ore += r.ore; tot.mats += r.mats;
         for (const it of r.items) rows.push({ img: itemIcon(it), name: itemName(it), color: itemColor(it), item: it });
+        if (r.mapPiece) rows.push({ name: `지도 조각 ${r.mapPiece}`, color: '#ffd060' });
         if (r.lost) rows.push({ name: `가방 · 창고가 가득 차 ${r.lost}개를 두고 옴`, color: '#ff9a5a' });
       }
       rows.unshift({ img: coinIcon(), name: '금화', qty: tot.gold }, { img: oreIcon(), name: '강화석', qty: tot.ore }, { img: iconUrl(1012), name: '지역 재료', qty: tot.mats });
