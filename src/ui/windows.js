@@ -16,7 +16,7 @@ import { itemIcon, skillIcon, portrait, chestIcon, bookIcon, coinIcon, scrollIco
 import { monsterRes, mixFxOf } from '../data/resist.js';
 import { ARTS, ART, ART_LINE_NAMES, artSlots, artUsable } from '../data/arts.js';
 import { floodPenalty, floodText } from '../data/flood.js';
-import { RELIC, RELIC_GRADES, relicV, altarSlots, altarDur } from '../data/relics.js';
+import { RELIC, RELIC_GRADES, relicV, altarSlots, altarDur, relicBonus } from '../data/relics.js';
 import { terrain, fogCan, MAP_R, MAP_W, FOG_C, seen as seenAt } from './mapimg.js';
 import { CAMPS, inCamp } from '../engine2d/stage.js';
 import { TIER_NAMES } from '../world/world.js';
@@ -41,7 +41,7 @@ import { awakenOk, skillGrade, QUALITY, gradeName } from '../data/awaken_skills.
 import { GEMS, GEM_GRADES, gemId } from '../data/legends.js';
 import { applyShard, canApply, lockMax, shardCost } from '../game/shards.js';
 import { HERBS, HERB_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
-import { wageTotal, mercWage, buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
+import { MYTH_CHANCE, wageTotal, mercWage, buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
 import { RESEARCH_MAX, SHELTER } from '../data/buildings.js';
 import { herbIcon, homeIcon } from './icons.js';
 import { vault, vaultSize, vaultPut, vaultTake, vaultAdd, vaultSave, oldVault, restoreOldVault, vaultReady } from '../game/vault.js';
@@ -855,7 +855,7 @@ export class Windows {
         right += `<h3>쉬는 용병 <small>침대 ${resting.length} / ${beds} · 회복 ×${innRestK(st).toFixed(1)}</small></h3>` + (resting.map((m) => `<div class="row mrow">${this.mercLine(m)}<div class="note" style="min-width:6em">체력 ${Math.floor(m.sta)} / ${staMax(m)}</div></div>`).join('') || '<div class="note">없음</div>');
         const zones = ZONES.filter((z) => isLiberated(st, z.id)), rec = recruits(st), slots = mercSlots(st);
         const nextH = Math.ceil((3600000 - (Date.now() % 3600000)) / 60000);
-        const gw = BUILDINGS.inn.grades(b.lv), gs = gw.reduce((a, v) => a + v, 0);
+        const eLv = Math.min(10, b.lv + Math.round(relicBonus(st, 'inn'))), my = MYTH_CHANCE(eLv), gw0 = BUILDINGS.inn.grades(Math.max(1, Math.min(5, eLv))), gs0 = gw0.reduce((a, v) => a + v, 0), gw = [...gw0.map((v) => v * (1 - my)), gs0 * my], gs = gs0; // 실제 뽑기(rollMerc)와 같은 계산 · 신화 포함
         right += COL + `<h3>찾아온 용병 <small>${nextH}분 뒤 바뀜 · 고용 ${t.mercs.length} / ${slots}</small></h3><div class="note">${GRADES.map((g, i) => `<span style="color:${g.color}">${g.name} ${Math.round((gw[i] / gs) * 100)}%</span>`).join(' · ')}</div>`;
         right += rec.map((m) => `<div class="row mrow">${this.mercLine(m)}<button class="btn gold" data-hirem="${m.id}" ${t.mercs.length >= slots || st.gold < m.cost ? 'disabled' : ''}>${m.cost.toLocaleString()} G</button></div>`).join('') || '<div class="note">없음</div>';
         right += COL + `<h3>내 용병 <small>하루 품삯 <b style="color:#ffd84a">${wageTotal(st).toLocaleString()} G</b>${t.wageLog?.unpaid ? ` · <b style="color:#ff7060">못 받은 용병 ${t.wageLog.unpaid}</b>` : ''}</small></h3>`;
