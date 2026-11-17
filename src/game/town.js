@@ -465,9 +465,11 @@ export function brew(st, id, times = 1, now = Date.now()) {
   t.brew ||= [];
   if (t.brew.length >= BREW_QUEUE) return { ok: false, why: '제작 줄이 가득 찼습니다' };
   for (const [h, q] of Object.entries(r.herbs)) if ((t.herbs[h] || 0) < q * times) return { ok: false, why: `${HERBS[h].name}이(가) 모자랍니다` };
+  for (const [id, q] of Object.entries(r.mats || {})) if (resCount(st, id) < q * times) return { ok: false, why: `${BASES[id].name}이(가) 모자랍니다` };
   const g = brewGold(st, r) * times;
   if (st.gold < g) return { ok: false, why: '금화가 모자랍니다' };
   for (const [h, q] of Object.entries(r.herbs)) t.herbs[h] -= q * times;
+  for (const [id, q] of Object.entries(r.mats || {})) resTake(st, id, q * times);
   st.gold -= g;
   const from = Math.max(now, t.brew.length ? t.brew[t.brew.length - 1].until : now);
   t.brew.push({ id, n: r.n * times, from, until: from + brewTime(r) * times * (1 - researchK(st, 'brew')) });

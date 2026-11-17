@@ -15,7 +15,7 @@ import { SKILLS } from '../data/skills.js';
 import { BASES, WEAPON_CLASSES, RARITY_ORDER } from '../data/items.js';
 import { MONSTERS, ZONES, TOWN, TIER_STEP, FINAL_ZONE } from '../data/world.js';
 import { derive, damageReduction, totalStats } from '../game/player.js';
-import { ELIXIRS, ELIXIR_TIME, HERBS } from '../data/potions.js';
+import { ELIXIRS, ELIXIR_TIME, HERBS, HP_POTIONS, MP_POTIONS } from '../data/potions.js';
 import { addAP, gainExp, rewardFactor, recAwaken } from '../game/growth.js';
 import { addSkillExp, skillValues, skillEff, modsOf, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
 import { rollLoot, rollDeathDrop } from '../game/loot.js';
@@ -1527,14 +1527,41 @@ export class World {
     return this.monsters.filter((m) => !m.dead && dist2(m.pos, pos) <= r);
   }
 
+  // 주문서 읽기: 같은 효과의 주문서가 이미 있으면 그것을 바꾼다 (겹치지 않는다)
+  readScroll(id, quiet = false) {
+    const st = this.st, E = ELIXIRS[id], base = totalStats(st);
+    if (!E || countOf(st, id) <= 0) return false;
+    const v = E.stat ? Math.max(5, Math.round(base[E.buff] * 0.1)) : E.v;
+    takeOne(st, id);
+    st.elix ||= {};
+    for (const k of Object.keys(st.elix)) if (st.elix[k].buff === E.buff) delete st.elix[k];
+    st.elix[id] = { buff: E.buff, v, t: ELIXIR_TIME };
+    this.d = derive(st, this.buffValues());
+    this.ui.toast(`${E.name}${quiet ? ' (자동)' : ''}: ${E.stat ? `${E.text.split(' ')[0]} +${v}` : E.text} · 5분`, E.color);
+    sfx('buff');
+    this.fx.ring(this.player.pos.x, this.player.pos.z, 2.2, new THREE.Color(E.color).getHex(), 0.7);
+    this.ui.dirty();
+    return true;
+  }
+  // v0.44.30 자동 주문서: 골라 둔 주문서는 효과가 끝나면 (마을 밖에서) 다시 읽는다. 같은 효과면 높은 것을 쓰는 중이면 건너뛴다
+  autoScrolls() {
+    const st = this.st, on = st.settings?.autoScroll;
+    if (!on || this.inTown || this.dead) return;
+    for (const id of Object.keys(on)) {
+      if (!on[id] || !ELIXIRS[id] || countOf(st, id) <= 0) continue;
+      const busy = Object.values(st.elix || {}).some((e) => e.buff === ELIXIRS[id].buff && e.t > 3);
+      if (!busy) { this.readScroll(id, true); return; }
+    }
+  }
   usePotion(kind, quiet = false) {
     if (this.dead || this.potionCd > 0) return false;
     const st = this.st;
-    const ids = kind === 'hp' ? ['hp_potion_l', 'hp_potion'] : ['mp_potion_l', 'mp_potion'];
+    const ids = kind === 'hp' ? HP_POTIONS : MP_POTIONS;
     const missing = kind === 'hp' ? this.d.maxHp - st.hp : this.d.maxMp - st.mp;
-    // 가방에서 정해 둔 물약이 있으면 그것, 없으면 부족한 양에 맞는 물약을 먼저
-    const pick = st.potSlot?.[kind];
-    const order = pick ? [pick] : missing > 150 ? ids : [...ids].reverse();
+    // 가방에서 정해 둔 물약이 있으면 그것, 없으면 모자란 양을 채우는 가장 작은 물약 → 없으면 큰 것부터
+    const pick = st.potSlot?.[kind], amt = (i) => BASES[i].restore[kind];
+    const fit = ids.filter((i) => amt(i) >= missing * 0.8).reverse();
+    const order = pick ? [pick] : [...fit, ...ids.filter((i) => !fit.includes(i))];
     const id = order.find((i) => countOf(st, i) > 0);
     if (!id) { if (!quiet) this.ui.toast(kind === 'hp' ? '체력 물약이 없습니다' : '마나 물약이 없습니다'); else this.potionCd = 3; return false; }
     takeOne(st, id);
@@ -2001,7 +2028,7 @@ export class World {
     const st = this.st, d = this.d, P = this.player.pos;
     if (st.hp / d.maxHp < st.settings.autoPotion) {
       // 물약이 떨어졌는데 위험하면 마을로 귀환
-      if (!this.usePotion('hp') && countOf(st, 'hp_potion') + countOf(st, 'hp_potion_l') === 0 && st.hp / d.maxHp < 0.3 && this.recallT <= 0 && !this.inTown) {
+      if (!this.usePotion('hp') && HP_POTIONS.every((i) => countOf(st, i) === 0) && st.hp / d.maxHp < 0.3 && this.recallT <= 0 && !this.inTown) {
         this.ui.log('물약이 없어 귀환합니다', '#ff9a6a');
         this.recall();
         return;
@@ -2152,6 +2179,7 @@ export class World {
     let buffChanged = false;
     for (const k in this.buffs) { const b = this.buffs[k]; if (b.t > 0) { b.t -= dt; if (b.t <= 0) buffChanged = true; } }
     this.auraStep();
+    this.scrollT = (this.scrollT || 0) - dt; if (this.scrollT <= 0) { this.scrollT = 1; this.autoScrolls(); }
     for (const k in this.st.elix || {}) { const e = this.st.elix[k]; e.t -= dt; if (e.t <= 0) { delete this.st.elix[k]; buffChanged = true; this.ui.dirty(); } }
     for (const k in this.pbuffs || {}) { const b = this.pbuffs[k]; if (b.t > 0) { b.t -= dt; if (b.t <= 0) buffChanged = true; } }
     if (buffChanged) this.d = derive(st, this.buffValues());
@@ -2428,14 +2456,7 @@ export class World {
         this.ui.toast(`스탯이 부족합니다 (${req})`);
       }
     } else if (BASES[it.base].type === 'elixir') {
-      const E = ELIXIRS[it.base], base = totalStats(st);
-      const v = E.stat ? Math.max(5, Math.round(base[E.buff] * 0.1)) : E.v;
-      takeOne(st, it.base);
-      (st.elix ||= {})[it.base] = { buff: E.buff, v, t: ELIXIR_TIME };
-      this.d = derive(st, this.buffValues());
-      this.ui.toast(`${E.name}: ${E.stat ? `${E.text.split(' ')[0]} +${v}` : E.text} · 5분`, E.color);
-      sfx('buff');
-      this.fx.ring(this.player.pos.x, this.player.pos.z, 2.2, new THREE.Color(E.color).getHex(), 0.7);
+      this.readScroll(it.base);
     } else if (BASES[it.base].type === 'potion') {
       this.usePotion(BASES[it.base].restore.hp ? 'hp' : 'mp');
     } else {

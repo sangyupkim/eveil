@@ -1,3 +1,4 @@
+import { HP_POTIONS, MP_POTIONS } from '../data/potions.js';
 import { bagSize } from '../game/inventory.js';
 // 화면 위 정보: HP/MP · EXP · 퀵슬롯 · 미니맵 · 이름표 · 알림 · 각성 연출 · 사망 화면
 import { STAT_NAMES, STAT_COLORS, STATS, TIERS, CONFIG } from '../data/config.js';
@@ -221,9 +222,9 @@ export class HUD {
       $('#awakeBadge').textContent = `각성 ${st.awakenings}`;
       $('#bagCnt').textContent = `${st.inv.length}/${bagSize(st)}`;
       // 물약 칸: 가방에서 정해 둔 물약이면 그 그림 · 개수
-      for (const [k, sel, def] of [['hp', '#btnHp', ['hp_potion', 'hp_potion_l']], ['mp', '#btnMp', ['mp_potion', 'mp_potion_l']]]) {
+      for (const [k, sel, def] of [['hp', '#btnHp', HP_POTIONS.slice().reverse()], ['mp', '#btnMp', MP_POTIONS.slice().reverse()]]) {
         const pick = st.potSlot?.[k], img = $(sel + ' img'), want = itemIconCut(pick || def[0]);
-        $(sel + ' em').textContent = pick ? countOf(st, pick) : countOf(st, def[0]) + countOf(st, def[1]);
+        $(sel + ' em').textContent = pick ? countOf(st, pick) : def.reduce((a, i) => a + countOf(st, i), 0);
         if (img.dataset.k !== want.slice(-24)) { img.dataset.k = want.slice(-24); img.src = want; }
       }
       for (let i = 0; i < slots.length; i++) {

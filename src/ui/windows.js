@@ -230,6 +230,7 @@ export class Windows {
     h += '<div class="btns">';
     if (where === 'inv') {
       if (!it.shard && b?.type !== 'mat') h += `<button class="btn gold" data-act="use">${isBook(it) ? '배우기' : b.type === 'potion' ? '사용' : b.type === 'elixir' ? '읽기' : b.type === 'pet' ? '부르기' : '장착'}</button>`;
+      if (b?.type === 'elixir') { const on = !!st.settings?.autoScroll?.[it.base]; h += `<button class="btn${on ? ' on' : ''}" data-ascroll="${it.base}">${on ? '자동 사용 끄기' : '자동 사용'}</button>`; }
       // 물약 퀵슬롯: 이 물약을 체력 · 마나 칸에 두거나 뺀다
       if (b?.type === 'potion') for (const [k, nm] of [['hp', '체력 칸'], ['mp', '마나 칸']]) {
         const on = st.potSlot?.[k] === it.base;
@@ -744,10 +745,10 @@ export class Windows {
         if (q.length) right += `<h3>제작 중 <span class="cnt">${q.length} / ${BREW_QUEUE}</span>${ready ? '<button class="btn gold" data-brewget="bag" style="margin-left:auto">가방으로</button><button class="btn gold" data-brewget="vault">창고로</button>' : ''}</h3>` + q.map((x) => `<div class="row"><div class="cell shopIco">${ico({ base: x.id })}</div><div class="grow"><b>${BASES[x.id].name} ×${x.n}</b> <small class="note">${x.until <= Date.now() ? '완성' : `${Math.ceil((x.until - Date.now()) / 1000)}초`}</small>${gauge(x.from, x.until, 60000, '#7fe07a')}</div></div>`).join('');
         right += COL + '<h3>만들기</h3>';
         for (const rc of RECIPES) {
-          const open = rc.lv <= b.lv, can = (k) => open && Object.entries(rc.herbs).every(([h, q]) => (t.herbs[h] || 0) >= q * k) && st.gold >= brewGold(st, rc) * k;
+          const open = rc.lv <= b.lv, can = (k) => open && Object.entries(rc.herbs).every(([h, q]) => (t.herbs[h] || 0) >= q * k) && Object.entries(rc.mats || {}).every(([id, q]) => resCount(st, id) >= q * k) && st.gold >= brewGold(st, rc) * k;
           const it = { base: rc.id }, E = ELIXIRS[rc.id], fx = E ? E.text : BASES[rc.id].restore.hp ? `HP ${BASES[rc.id].restore.hp}` : `MP ${BASES[rc.id].restore.mp}`;
           right += `<div class="row" style="${open ? '' : 'opacity:.45'}"><div class="cell shopIco">${ico(it)}</div><div class="grow"><b>${BASES[rc.id].name}${rc.n > 1 ? ` ×${rc.n}` : ''}</b> <small class="note">${fx}</small>
-            <div class="note">${open ? Object.entries(rc.herbs).map(([h, q]) => `${HERBS[h].name} ${q}`).join(' · ') + ` · ${brewGold(st, rc)} G · ${brewTime(rc) / 1000}초` : `제작소 ${rc.lv}단계`}</div></div>
+            <div class="note">${open ? Object.entries(rc.herbs).map(([h, q]) => `${HERBS[h].name} ${q}`).concat(Object.entries(rc.mats || {}).map(([id, q]) => `${BASES[id].name} ${q}`)).join(' · ') + ` · ${brewGold(st, rc)} G · ${brewTime(rc) / 1000}초` : `제작소 ${rc.lv}단계`}</div></div>
             ${open ? `<button class="btn" data-brew="${rc.id}|1" ${can(1) ? '' : 'disabled'}>만들기</button><button class="btn" data-brew="${rc.id}|5" ${can(5) ? '' : 'disabled'}>×5</button><button class="btn ${t.autoBrew === rc.id ? 'on' : ''}" data-autobrew="${rc.id}">반복</button>` : ''}</div>`;
         }
       }
@@ -1043,6 +1044,7 @@ export class Windows {
       }
       townDone(r);
     });
+    on('[data-ascroll]', (el) => { const a = ((st.settings ||= {}).autoScroll ||= {}), id = el.dataset.ascroll; if (a[id]) delete a[id]; else a[id] = true; audio.play('click'); w.ui.dirty(); this.render(); });
     on('[data-pslot]', (el) => { const [k, base] = el.dataset.pslot.split('|'); (st.potSlot ||= {})[k] = base || null; audio.play('click'); w.ui.dirty(); this.render(); });
     on('[data-vsel]', (el) => { const [f, k0] = el.dataset.vsel.split('|'), k = Number(k0); let v = this.vsel; if (!v || v.from !== f) v = this.vsel = { from: f, keys: [] }; const i = v.keys.indexOf(k); if (i >= 0) v.keys.splice(i, 1); else v.keys.push(k); if (!v.keys.length) this.vsel = null; audio.play('click'); this.render(); });
     on('[data-vall]', (el) => { const f = el.dataset.vall; this.vsel = { from: f, keys: f === 'v' ? vault().items.map((_, i) => i) : st.inv.map((x) => x.uid) }; if (!this.vsel.keys.length) this.vsel = null; audio.play('click'); this.render(); });
