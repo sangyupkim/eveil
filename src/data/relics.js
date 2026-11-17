@@ -10,6 +10,7 @@ export const RELICS = [
   { id: 'r_lab', name: '학자의 촛대', kind: '마을', key: 'lab', v: 15, text: (v) => `연구 시간 -${v}%` },
   { id: 'r_calm', name: '정화의 성수', kind: '마을', key: 'calm', v: 30, text: (v) => `범람 불이익 -${v}%` },
   { id: 'r_ess', name: '정수의 결정', kind: '둘 다', key: 'ess', v: 20, text: (v) => `정수 얻을 확률 +${v}%` },
+  { id: 'r_inn', name: '나그네의 등불', kind: '마을', key: 'inn', v: 2, text: (v) => `여관에 찾아오는 용병 등급 +${v}단계` },
   { id: 'r_gold', name: '황금 잔', kind: '둘 다', key: 'gold', v: 15, text: (v) => `금화 +${v}% (사냥 · 파견)` },
 ];
 export const RELIC = Object.fromEntries(RELICS.map((r) => [r.id, r]));

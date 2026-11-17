@@ -287,7 +287,7 @@ export const mercSlots = (st) => { const h = findBuilding(st, 'house'); return 1
 export function recruits(st, now = Date.now(), rng = Math.random) {
   const t = townOf(st), inn = findBuilding(st, 'inn'), hr = Math.floor(now / 3600000);
   if (!inn) return [];
-  if (!t.rec || t.rec.hr !== hr) t.rec = { hr, list: Array.from({ length: Math.max(1, 2 + inn.lv - floodPenalty(st).recruits) }, () => rollMerc(rng, inn.lv)) };
+  if (!t.rec || t.rec.hr !== hr) t.rec = { hr, list: Array.from({ length: Math.max(1, 2 + inn.lv - floodPenalty(st).recruits) }, () => rollMerc(rng, Math.min(10, inn.lv + Math.round(relicBonus(st, 'inn'))))) }; // v0.44.52 나그네의 등불
   return t.rec.list;
 }
 export function hire(st, id, now = Date.now()) {
