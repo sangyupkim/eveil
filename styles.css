@@ -607,3 +607,6 @@ html.force-land #rotate { display: none !important; }
 /* v0.44.43 범람지 표시 */
 .wmap .pin.flood { color: #ff7a5a; }
 .wmap .pin.flood::before { background: #ff4a2a !important; box-shadow: 0 0 6px #ff4a2a; }
+/* 설정 줄 단추: 글자가 세로로 쪼개지지 않게 */
+.setRow .opts { flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+.setRow .opts .btn { white-space: nowrap; min-width: 3.2em; flex: 0 0 auto; }
