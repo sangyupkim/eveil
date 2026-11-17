@@ -24,7 +24,7 @@ export function shardFrom(it, st = null, rng = R) {
 }
 // 보스가 떨어뜨리는 파편: 몬스터 레벨에 맞는 무작위 옵션 (희귀 등급 세기)
 export function rollShard(level, st = null, rng = R) {
-  const ids = Object.keys(AFFIXES).filter((id) => !AFFIXES[id].legendOnly);
+  const ids = Object.keys(AFFIXES).filter((id) => !AFFIXES[id].legendOnly && !AFFIXES[id].retired);
   const id = pick(ids, rng), a = AFFIXES[id];
   const max = Math.max(a.min, a.max(level) * RARITY.rare.mult);
   return makeShard({ id, v: Math.max(a.min, Math.round(a.min + rng() * (max - a.min))) }, st);
@@ -37,6 +37,7 @@ export function canApply(it, sh, locks = []) {
   if (!it.affixes?.length) return { ok: false, why: '바꿀 옵션이 없습니다' };
   const a = AFFIXES[sh.id], slot = b.slot;
   if (a.slots && !a.slots.includes(slot)) return { ok: false, why: '이 부위에는 붙지 않는 옵션입니다' };
+  if ((a.notCls && a.notCls.includes(b.cls)) || (a.onlyCls && !a.onlyCls.includes(b.cls))) return { ok: false, why: '이 무기에는 붙지 않는 옵션입니다' };
   const same = it.affixes.findIndex((x) => x.id === sh.id);
   if (same >= 0 && locks.includes(same)) return { ok: false, why: '잠근 옵션과 같은 옵션입니다' };
   if (same < 0 && it.affixes.every((_, i) => locks.includes(i))) return { ok: false, why: '모든 옵션이 잠겨 있습니다' };

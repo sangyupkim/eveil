@@ -218,7 +218,7 @@ export class Windows {
       h += `<div class="sub">${it.qty > 1 ? `×${it.qty}` : ''}</div>`;
     } else {
       h += `<div class="sub">${RARITY[it.rarity].name} ${SLOT_NAMES[b.slot]} · 아이템 레벨 ${it.ilvl}</div>`;
-      if (b.dmg) { const d = scaledDmg(it); h += `<div>${WEAPON_CLASSES[b.cls].name} · 피해 ${d[0]}~${d[1]} · 속도 ${b.speed}</div><div class="sub">주 스탯 ${STAT_NAMES[WEAPON_CLASSES[b.cls].ap]}</div>`; }
+      if (b.dmg) { const d = scaledDmg(it); h += `<div>${WEAPON_CLASSES[b.cls].name} · ${WEAPON_CLASSES[b.cls].kind === 'magic' ? '마법 공격력' : '물리 공격력'} ${d[0]}~${d[1]} · 속도 ${b.speed}</div><div class="sub">주 스탯 ${STAT_NAMES[WEAPON_CLASSES[b.cls].ap]}</div>`; }
       if (b.armor) h += `<div>방어력 ${scaledArmor(it)}</div>`;
       if (b.block) h += `<div>막기 확률 ${Math.round(b.block * 100)}%</div>`;
       if (b.mods) for (const k in b.mods) h += `<div>${modText(k, b.mods[k])}</div>`; // v0.44.18 영어 키가 그대로 보이던 것 (dex +40 등)
@@ -483,7 +483,7 @@ export class Windows {
     const need = expNeeded(st.awakenings);
     const pct = (v) => `${Math.round(v * 100)}%`;
     const kv = [
-      ['피해', `${Math.round(d.dmg[0])}~${Math.round(d.dmg[1])}`], ['공격 속도', `${d.atkRate.toFixed(2)}/초`],
+      ['평타 피해', `${Math.round(d.dmg[0])}~${Math.round(d.dmg[1])}`], ['물리 공격력', `${Math.round(d.patk[0])}~${Math.round(d.patk[1])}`], ['마법 공격력', `${Math.round(d.matk[0])}~${Math.round(d.matk[1])}`], ['공격 속도', `${d.atkRate.toFixed(2)}/초`],
       ['치명타', pct(d.crit)], ['회피', pct(d.dodge)], ['막기', pct(d.block)], ['방어력', Math.round(d.armor)],
       ['주문 배율', `×${d.spellMult.toFixed(2)}`], ['보호막 배율', `×${d.healMult.toFixed(2)}`],
       ['HP 회복', `${d.hpRegen.toFixed(1)}/초`], ['MP 회복', `${d.mpRegen.toFixed(1)}/초`], ['이동 속도', d.moveSpeed.toFixed(1)],

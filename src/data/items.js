@@ -16,6 +16,7 @@ export const WEAPON_CLASSES = {
   // v0.37 딜탱 둘: 한손 무기 + 보조 (방패 · 보주)
   mace: { name: '둔기', kind: 'melee', ap: 'vit', side: 'str', range: 2.0 },        // 맞으면서 버티는 탱커 — 체력으로 피해
   scepter: { name: '홀', kind: 'magic', ap: 'wis', side: 'int', range: 6.5 },       // 마나로 버티고 마나로 때리는 딜탱 — 정신으로 피해
+  dagger: { name: '단검', kind: 'melee', ap: 'dex', side: 'str', range: 1.9 },      // v0.44.37 민첩 한손 근접 (보조 칸과 함께)
 };
 
 // minLvl: 이 아이템 레벨부터 드랍된다. shop: 상점 판매 여부
@@ -33,6 +34,13 @@ export const BASES = {
   broad_sword: { name: '넓은날 검', slot: 'weapon', cls: 'sword', model: 'w_sword', mtint: 0xc8d0e0, dmg: [9, 14], speed: 1.1, req: { str: 16 }, minLvl: 3 },
   greatsword: { name: '대검', slot: 'weapon', cls: 'sword', model: 'w_greatsword', two: true, dmg: [13, 21], speed: 0.82, req: { str: 20 }, minLvl: 4 },
   claymore: { name: '클레이모어', slot: 'weapon', cls: 'sword', model: 'w_greatsword', mtint: 0x8a7aa0, two: true, dmg: [17, 27], speed: 0.78, req: { str: 28 }, minLvl: 8 },
+  // ── v0.44.37 단검 (민첩 · 한손, 빠르다) ──
+  worn_dagger: { name: '낡은 단검', slot: 'weapon', cls: 'dagger', model: 'w_sword', dmg: [3, 6], speed: 1.35, price: 5, minLvl: 1, noDrop: true },
+  dagger: { name: '단검', slot: 'weapon', cls: 'dagger', model: 'w_sword', dmg: [5, 8], speed: 1.4, price: 90, shop: true },
+  stiletto: { name: '스틸레토', slot: 'weapon', cls: 'dagger', model: 'w_sword', dmg: [7, 11], speed: 1.4, req: { dex: 16 }, minLvl: 3 },
+  kris: { name: '크리스', slot: 'weapon', cls: 'dagger', model: 'w_sword', dmg: [10, 15], speed: 1.4, req: { dex: 24 }, minLvl: 7 },
+  shadow_dagger: { name: '그림자 단검', slot: 'weapon', cls: 'dagger', model: 'w_sword', dmg: [12, 19], speed: 1.45, req: { dex: 34 }, minLvl: 12 },
+  void_fang: { name: '공허의 송곳니', slot: 'weapon', cls: 'dagger', model: 'w_sword', dmg: [19, 29], speed: 1.45, req: { dex: 56 }, minLvl: 32 },
   golden_sword: { name: '금빛 검', slot: 'weapon', cls: 'sword', model: 'w_sword', mtint: 0xffd36a, dmg: [14, 22], speed: 1.15, req: { str: 34 }, minLvl: 12 },
   old_bow: { name: '낡은 활', slot: 'weapon', cls: 'bow', model: 'q_bow', dmg: [4, 7], speed: 0.95, price: 5, minLvl: 1, noDrop: true },
   short_bow: { name: '단궁', slot: 'weapon', cls: 'bow', model: 'q_bow', dmg: [7, 11], speed: 1.0, price: 110, shop: true },
@@ -189,10 +197,15 @@ export const BASES = {
   astral_scepter: { name: '성좌의 홀', slot: 'weapon', cls: 'scepter', model: 'w_wand', dmg: [27, 40], speed: 1.05, req: { wis: 44 }, minLvl: 22, mods: { maxMp: 120, mpRegen: 4 } },
   void_scepter: { name: '공허의 홀', slot: 'weapon', cls: 'scepter', model: 'w_wand', dmg: [38, 56], speed: 1.05, req: { wis: 58 }, minLvl: 36, mods: { maxMp: 180, mpRegen: 6 } },
   // ── v0.37 보주 (보조 칸, 홀과 함께): MP · MP 회복 · 조금의 방어 ──
-  glass_orb: { name: '유리 보주', slot: 'offhand', armor: 2, price: 80, shop: true, mods: { maxMp: 20 } },
-  moon_orb: { name: '달빛 보주', slot: 'offhand', armor: 5, req: { wis: 20 }, minLvl: 5, mods: { maxMp: 45, mpRegen: 1 } },
-  rune_orb: { name: '룬 보주', slot: 'offhand', armor: 9, req: { wis: 32 }, minLvl: 14, mods: { maxMp: 80, mpRegen: 2 } },
-  void_orb: { name: '공허의 보주', slot: 'offhand', armor: 16, req: { wis: 56 }, minLvl: 32, mods: { maxMp: 150, mpRegen: 4 } },
+  glass_orb: { name: '유리 보주', slot: 'offhand', armor: 2, price: 80, shop: true, mods: { maxMp: 20, matk: 2 } },
+  moon_orb: { name: '달빛 보주', slot: 'offhand', armor: 5, req: { wis: 20 }, minLvl: 5, mods: { maxMp: 45, mpRegen: 1, matk: 5 } },
+  rune_orb: { name: '룬 보주', slot: 'offhand', armor: 9, req: { wis: 32 }, minLvl: 14, mods: { maxMp: 80, mpRegen: 2, matk: 9 } },
+  void_orb: { name: '공허의 보주', slot: 'offhand', armor: 16, req: { wis: 56 }, minLvl: 32, mods: { maxMp: 150, mpRegen: 4, matk: 18 } },
+  // ── v0.44.37 마도서 (보조 칸): 마법 공격력 — 한손 무기 + 마도서 = 물리 · 마법을 함께 (마검사 등) ──
+  apprentice_tome: { name: '견습 마도서', slot: 'offhand', armor: 1, price: 90, shop: true, mods: { matk: 5 } },
+  rune_tome: { name: '룬 마도서', slot: 'offhand', armor: 2, req: { int: 20 }, minLvl: 6, mods: { matk: 12, int: 2 } },
+  arcane_tome: { name: '비전 마도서', slot: 'offhand', armor: 4, req: { int: 34 }, minLvl: 16, mods: { matk: 26, int: 4 } },
+  abyss_tome: { name: '심연의 마도서', slot: 'offhand', armor: 7, req: { int: 56 }, minLvl: 34, mods: { matk: 52, int: 8 } },
 };
 export const isTwoHandedBase = (b) => !!(b.two ?? WEAPON_CLASSES[b.cls]?.two);
 
@@ -221,7 +234,10 @@ export const AFFIXES = {
   maxMp: { text: '최대 MP +{v}', min: 4, max: (l) => 8 + l * 3 },
   armorPct: { text: '방어력 +{v}%', min: 5, max: (l) => 15 + lk(l), slots: ARMORS },
   dmgPct: { text: '피해 +{v}%', min: 5, max: (l) => 15 + lk(l) * 2, slots: ['weapon'] },
-  spellPct: { text: '주문 피해 +{v}%', min: 5, max: (l) => 12 + lk(l) * 1.5, slots: ['weapon', 'helm', ...JEWEL] },
+  spellPct: { text: '주문 피해 +{v}%', min: 5, max: (l) => 12 + lk(l) * 1.5, slots: ['weapon', 'helm', ...JEWEL], retired: true }, // v0.44.37 폐지 → 마법 공격력으로 바뀐다 (spellToMatk)
+  // v0.44.37 물리 · 마법 공격력 (지팡이 · 홀이 아닌 무기는 마법 공격력 0 → 이 옵션으로)
+  matk: { text: '마법 공격력 +{v}', min: 2, max: (l) => 3 + lk(l) * 1.1, slots: ['weapon', 'offhand', ...JEWEL], notCls: ['staff', 'scepter'] },
+  patk: { text: '물리 공격력 +{v}', min: 2, max: (l) => 3 + lk(l) * 0.9, slots: ['weapon'], onlyCls: ['staff', 'scepter'] },
   atkSpd: { text: '공격 속도 +{v}%', min: 3, max: (l) => Math.min(30, 8 + l * 0.5), slots: ['weapon', 'gloves', ...JEWEL] },
   crit: { text: '치명타 확률 +{v}%', min: 1, max: (l) => Math.min(20, 3 + l * 0.25), slots: ['weapon', 'gloves', 'helm', ...JEWEL] },
   hpRegen: { text: '초당 HP 회복 +{v}', min: 1, max: (l) => 2 + l * 0.4, slots: ['armor', 'belt', 'helm', ...JEWEL] },
@@ -242,7 +258,7 @@ export const AFFIXES = {
 // 이름 앞에 붙는 수식어 (가장 큰 옵션 기준)
 export const AFFIX_PREFIX = {
   str: '거인의', dex: '날렵한', int: '현자의', wis: '고요한', vit: '강건한', maxHp: '생명의', maxMp: '마력의',
-  armorPct: '단단한', dmgPct: '잔혹한', spellPct: '불타는', atkSpd: '재빠른', crit: '예리한', hpRegen: '재생의',
+  armorPct: '단단한', dmgPct: '잔혹한', spellPct: '불타는', matk: '비술의', patk: '묵직한', atkSpd: '재빠른', crit: '예리한', hpRegen: '재생의',
   mpRegen: '샘솟는', moveSpd: '바람의', lifeSteal: '흡혈의', skillExp: '수련자의', goldFind: '탐욕의',
   magicFind: '행운의', allStats: '고대의', finalDmg: '종언의', bossDmg: '왕살해자의', cdr: '시간을 잊은', dmgReduce: '불괴의',
 };
@@ -329,3 +345,7 @@ for (const [k, m] of Object.entries(_MATS)) BASES['mat_' + k] = { name: m.name, 
     b.req = { [stat]: need(b.minLvl ?? 1) };
   }
 }
+
+// v0.44.37 예전 「주문 피해 %」 → 마법 공격력 (그 옵션이 최대치의 몇 %였는지 그대로)
+export const spellToMatk = (v, l = 1) => Math.round((v / (12 + lk(l) * 1.5)) * (3 + lk(l) * 1.1) * 0.8);
+export const affixFits = (a, base) => (!a.slots || a.slots.includes(base.slot)) && (!a.notCls || !a.notCls.includes(base.cls)) && (!a.onlyCls || a.onlyCls.includes(base.cls));

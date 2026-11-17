@@ -14,7 +14,7 @@ import { CONFIG, TIERS, AP_TABLE, STAT_NAMES } from '../data/config.js';
 import { SKILLS } from '../data/skills.js';
 import { BASES, WEAPON_CLASSES, RARITY_ORDER } from '../data/items.js';
 import { MONSTERS, ZONES, TOWN, TIER_STEP, FINAL_ZONE } from '../data/world.js';
-import { derive, damageReduction, totalStats } from '../game/player.js';
+import { derive, damageReduction, totalStats, skillScale } from '../game/player.js';
 import { ELIXIRS, ELIXIR_TIME, HERBS, HP_POTIONS, MP_POTIONS } from '../data/potions.js';
 import { addAP, gainExp, rewardFactor, recAwaken } from '../game/growth.js';
 import { addSkillExp, skillValues, skillEff, modsOf, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
@@ -1135,7 +1135,7 @@ export class World {
     st.hp -= dmg;
     // v0.44.35 가시 갑옷: 때린 적에게 되돌려 준다 (무기 한 방의 3배까지) · 인내의 폭발: 모아 둔다
     const th = this.buffs.thorns;
-    if (th?.t > 0 && m && !m.dead && m.pos && Math.hypot(m.pos.x - this.player.pos.x, m.pos.z - this.player.pos.z) < 8) this.hitMonster(m, Math.min(pre * th.v / 100, this.rollWeapon().v * 3), { src: 'skill' });
+    if (th?.t > 0 && m && !m.dead && m.pos && Math.hypot(m.pos.x - this.player.pos.x, m.pos.z - this.player.pos.z) < 8) this.hitMonster(m, Math.min(pre * th.v / 100, ((this.d.patk[0] + this.d.patk[1]) / 2) * this.d.atkMult * (1 + (this.d.stats.vit || 0) * 0.015) * 3), { src: 'skill' });
     if (this.buffs.venge?.t > 0) this.buffs.venge.store = (this.buffs.venge.store || 0) + pre;
     // 체력 (v0.44.26): 실제로 받은 피해로, HP가 넉넉하면 적게(70%↑ ×0.3) · 위기일수록 많이(30%↓ ×1.5).
     //  최근 10초에 준 피해가 받은 피해의 3배를 넘으면 체력은 절반, 나머지 절반은 주 스탯으로 (멀리서 맞으며 녹이는 마법사 등)
@@ -1536,7 +1536,7 @@ export class World {
   // v0.44.35 인내의 폭발: 모은 피해 × 계수(%)를 둘레로. 탱커가 딜러가 되지 않게 무기 한 방의 1.5 ~ 8배 사이로
   vengeRelease(b) {
     if (!b || b.done) return; b.done = true; b.t = 0;
-    const P = this.player.pos, w = this.rollWeapon().v * Math.max(1, (1 + (this.d.stats.vit || 0) * 0.015) / (this.d.statMult || 1)), v = Math.max(w * 1.5, Math.min((b.store || 0) * b.v / 100, w * 8)), r = b.radius || 6;
+    const P = this.player.pos, w = ((this.d.patk[0] + this.d.patk[1]) / 2) * this.d.atkMult * (1 + (this.d.stats.vit || 0) * 0.015), v = Math.max(w * 1.5, Math.min((b.store || 0) * b.v / 100, w * 8)), r = b.radius || 6;
     this.fx.ring(P.x, P.z, r, 0xe0a050, 0.6); this.fx.play('v_dust', P.x, P.z, { scale: 1.6 }); this.fx.shake?.(0.3); sfx('boom', 0.8);
     for (const m of this.monstersNear(P, r)) this.hitMonster(m, v, { src: 'skill' });
     this.d = derive(this.st, this.buffValues());
@@ -1720,29 +1720,23 @@ export class World {
     if (sk.echo && !v.echoed) this.later(0.6, () => { if (!this.dead) this.castSkill(id, { ...v, mp: 0, power: v.power * sk.echo, echoed: true, cd: this.cds[id] }); });
     const t = this.target;
     if (t) P.face(t.pos.x, t.pos.z);
-    // 혼합 기술: 둘째 스탯이 주 스탯(주문은 지능, 무기 스킬은 무기 스탯)만큼이면 +25%, 아주 높아도 최대 +50%. 쓸 때 그 스탯 행동 기록
-    const mainStat = d.stats[sk.ap === 'int' ? 'int' : d.cls.ap] || 0, mixStat = sk.mix ? d.stats[sk.mix] || 0 : 0;
-    const mixK = sk.mix ? 1 + 0.5 * mixStat / Math.max(1, mainStat + mixStat) : 1;
+    // 쓸 때 그 스탯 행동 기록 (보조 스탯)
     if (sk.mix) addAP(st, sk.mix, v.mp * AP_TABLE.supportPerMp, this.autoMult);
     if (sk.apStat && sk.ap === 'weapon') addAP(st, sk.apStat, v.mp * AP_TABLE.supportPerMp, this.autoMult);
-    const pw = v.power * mixK;
-    // 주문 피해 = 평타 기준 피해(spellBase) × 계수, 치명타는 평타와 같은 확률 · 배율 (spell() 다음에 spellCrit()을 부른다)
+    const pw = v.power;
+    // v0.44.37 스킬 피해 = 공격력(물리 · 마법, 필요 스탯 비율대로) × 계수 × 스킬 스탯 배율(무기 무관) × 장비 보정 × 자원 보너스
+    //  치명타는 평타와 같은 확률 · 배율. spell()과 weaponHit()은 같은 값 (spell 다음에 spellCrit()으로 치명 여부)
+    const sc = skillScale(sk, d.stats), rk = sk.scale ? d.resK?.[sk.scale] || 1 : 1;
     let lastCrit = false;
-    let spell = () => { lastCrit = Math.random() < d.crit; return randRange(0.9, 1.1) * pw * d.spellBase * (lastCrit ? d.critMult : 1); };
-    const spellCrit = () => lastCrit;
-    // 자원 스킬 (철벽 · 비전): 평타 × 계수 × 자원 보너스, 치명타는 평타와 같다
-    if (sk.scale) {
-      // 평타 × 계수 × 자원 보너스(1 ~ 2배: 장비로 늘린 HP · MP, 레벨 대비 방어력)
-      let rk = d.resK?.[sk.scale] || 1;
-      // v0.44.36 체력 스킬: 무기와 상관없이 체력 1당 +1.5% (둔기의 체력 2%가 더 크면 그대로)
-      if (sk.scale === 'hp' || sk.scale === 'armor') rk *= Math.max(1, (1 + (d.stats.vit || 0) * 0.015) / (d.statMult || 1));
-      const roll = () => { const w = this.rollWeapon(); lastCrit = w.crit; return w.v * pw * rk; };
-      spell = roll;
-      weaponHit = () => { const v0 = roll(); return { v: v0, crit: lastCrit }; };
-    }
+    const roll = () => {
+      lastCrit = Math.random() < d.crit;
+      const base = (sc.phys > 0 ? randRange(d.patk[0], d.patk[1]) * sc.phys : 0) + (sc.mag > 0 ? randRange(d.matk[0], d.matk[1]) * sc.mag : 0);
+      return base * d.atkMult * sc.statF * rk * pw * (lastCrit ? d.critMult : 1);
+    };
+    const spell = roll, spellCrit = () => lastCrit;
+    const weaponHit = () => { const v0 = roll(); return { v: v0, crit: lastCrit }; };
     if (sk.hpCost) st.hp = Math.max(1, st.hp - d.maxHp * sk.hpCost); // HP도 쓴다
     if (sk.ap === 'wis' && v.mp > 0) addAP(st, 'wis', v.mp * AP_TABLE.supportPerMp, this.autoMult); // 정신: 쓴 MP만큼
-    let weaponHit = () => { const w = this.rollWeapon(); return { v: w.v * pw, crit: w.crit }; };
     const color = new THREE.Color(sk.color).getHex();
     if (sk.type !== 'buff') this.fx.circle(P.pos.x, P.pos.z, 1.8, color, 0.9); // 버프는 따로 (보호막 · 오라)
     // v0.41 스킬마다 고유 효과 그림 (sk.fx: powers.json 이름) — 맞은 자리 · 범위 안에 찍는다

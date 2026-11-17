@@ -1,3 +1,4 @@
+import { spellToMatk } from '../data/items.js';
 import { GEMS, GEM_GRADES } from '../data/legends.js';
 import { setBonus } from './town.js';
 // 플레이어 상태(저장되는 값)와 거기서 계산되는 능력치.
@@ -61,7 +62,7 @@ export function gearSum(st) {
     if (base.armor) g.armor += scaledArmor(it);
     if (base.block) g.block += base.block;
     if (base.mods) for (const k in base.mods) g[k] = (g[k] || 0) + base.mods[k];
-    for (const a of it.affixes || []) g[a.id] = (g[a.id] || 0) + a.v;
+    for (const a of it.affixes || []) { if (a.id === 'spellPct') g.matk = (g.matk || 0) + spellToMatk(a.v, it.ilvl); else g[a.id] = (g[a.id] || 0) + a.v; } // v0.44.37 주문 피해 % → 마법 공격력
     for (const gm of it.gems || []) { const b = BASES[gm]; if (b) g[GEMS[b.gem].stat] = (g[GEMS[b.gem].stat] || 0) + GEM_GRADES[b.grade].v; }
   }
   const sb = setBonus(st.equip);
@@ -85,6 +86,20 @@ export function totalStats(st, g = gearSum(st)) {
   return out;
 }
 
+// v0.44.37 스킬 피해 배율은 스킬 자기 스탯으로 (무기 종류와 상관없음). 혼합 스킬 = 높은 쪽 70% + 낮은 쪽 30%
+export const STAT_RATE = { str: 0.03, dex: 0.03, int: 0.03, wis: 0.025, vit: 0.015 };
+const MAGIC = new Set(['int', 'wis']);
+export function skillStats(sk) { const l = sk.lines || Object.keys(sk.req || {}); return l.length ? l : [sk.ap === 'int' ? 'int' : sk.ap === 'wis' ? 'wis' : 'str']; }
+export function skillScale(sk, stats) {
+  const ls = skillStats(sk).slice().sort((a, b) => (stats[b] || 0) * STAT_RATE[b] - (stats[a] || 0) * STAT_RATE[a]);
+  const f = (k) => (stats[k] || 0) * STAT_RATE[k];
+  const statF = ls.length === 1 ? 1 + f(ls[0]) : 1 + 0.7 * f(ls[0]) + 0.3 * f(ls[1]);
+  // 공격력: 물리 스탯 스킬 = 물리, 마법 스탯 스킬 = 마법, 섞이면 필요 스탯 비율대로
+  const req = sk.req || {}, tot = ls.reduce((a, k) => a + (req[k] || 1), 0);
+  const mag = ls.reduce((a, k) => a + (MAGIC.has(k) ? (req[k] || 1) : 0), 0) / tot;
+  return { statF, mag, phys: 1 - mag };
+}
+
 // buffs: { armorPct, berserk, might(피해%), focus(치명%) } — 전투 중 일시 효과
 export function derive(st, buffs = {}) {
   const g = gearSum(st);
@@ -102,7 +117,13 @@ export function derive(st, buffs = {}) {
   // 자원 보너스 1 ~ 2배: 능력치만으로 생기는 양보다 장비로 더 늘린 HP · MP, 레벨 대비 방어력 (철벽 · 비전 스킬, 둔기 · 홀 평타)
   // v0.44.36 HP 보너스는 전체 최대 HP로 (체력 스탯을 올리면 보너스가 줄던 것): 각성 단계마다 기준 HP가 오른다
   const hpRef = 100 + 8 * (st.awakenings || 0), hpK = 1 + 0.5 * Math.min(2, Math.max(0, (60 + s.vit * 6 + (g.maxHp || 0)) / hpRef - 1));
-  const mpK = 1 + 0.5 * Math.min(2, Math.max(0, (g.maxMp || 0) / (15 + s.wis * 4.5)));
+  // v0.44.37 MP 보너스도 전체 최대 MP로 (정신을 올리면 줄던 것)
+  const mpRef = 40 + 5 * (st.awakenings || 0), mpK = 1 + 0.5 * Math.min(2, Math.max(0, (15 + s.wis * 4.5 + (g.maxMp || 0)) / mpRef - 1));
+  // v0.44.37 물리 · 마법 공격력: 지팡이 · 홀은 마법(물리는 절반), 그 밖 무기는 물리. 옵션 · 보주 · 마도서가 더한다. 마법은 아주 작은 기본값
+  const magicW = cls.kind === 'magic', atkMult = fin * (1 + ((g.dmgPct || 0) + (buffs.might || 0)) / 100) * (1 + berserk / 100);
+  const patk = magicW ? [wd[0] * 0.5, wd[1] * 0.5] : [wd[0], wd[1]], mBase = 2 + (st.awakenings || 0) * 0.3;
+  patk[0] += g.patk || 0; patk[1] += g.patk || 0;
+  const matk = magicW ? [wd[0] + mBase, wd[1] + mBase] : [mBase, mBase]; matk[0] += g.matk || 0; matk[1] += g.matk || 0;
   const armorK0 = (g.armor + s.vit * 0.4), armK = 1 + armorK0 / (armorK0 + 40 + 8 * (1 + (st.awakenings || 0)));
   const basicK = cls.ap === 'vit' ? 1 + 0.25 * (hpK - 1) : cls.ap === 'wis' ? 1 + 0.25 * (mpK - 1) : 1;
   const armor = (g.armor + s.vit * 0.4) * (1 + ((g.armorPct || 0) + (buffs.armorPct || 0)) / 100);
@@ -116,7 +137,7 @@ export function derive(st, buffs = {}) {
     maxMp: Math.round(15 + s.wis * 4.5 + (g.maxMp || 0)),
     // 둔기 평타는 HP 보너스, 홀 평타는 MP 보너스를 조금 받는다 (딜탱)
     dmg: [wd[0] * dmgMult * basicK, wd[1] * dmgMult * basicK],
-    resK: { hp: hpK, mp: mpK, armor: armK }, statMult,
+    resK: { hp: hpK, mp: mpK, armor: armK }, statMult, patk, matk, atkMult,
     atkRate: Math.min(2.2, speed * (1 + s.dex * 0.004 + (g.atkSpd || 0) / 100 + berserk / 100 + (buffs.haste || 0) / 100)),
     range: cls.range,
     crit: Math.min(0.75, 0.05 + s.dex * 0.0015 + ((g.crit || 0) + (buffs.focus || 0)) / 100),
@@ -124,9 +145,9 @@ export function derive(st, buffs = {}) {
     dodge: Math.min(0.3, s.dex * 0.0012),
     block: g.block ? Math.min(0.5, g.block + s.str * 0.0008) : 0,
     armor,
-    spellMult: (1 + s.int * 0.035) * (1 + (g.spellPct || 0) / 100),
+    spellMult: 1 + s.int * 0.035,
     // 주문 기준 피해: 무기 평균 피해 × 지능 배율 × 피해% × 주문 피해% (주문 스킬 = 이 값 × 계수)
-    spellBase: ((wd[0] + wd[1]) / 2) * (1 + s.int * 0.03) * (1 + ((g.dmgPct || 0) + (buffs.might || 0)) / 100) * (1 + berserk / 100) * (1 + (g.spellPct || 0) / 100 * 0.2) * fin, // 주문 피해 %는 1/5만 (v0.38: 장비마다 겹쳐 주문이 3 ~ 5배가 되던 문제)
+    spellBase: ((matk[0] + matk[1]) / 2) * (1 + s.int * 0.03) * atkMult, // 주문 기준 피해 (v0.44.37 마법 공격력)
     healMult: 1 + s.wis * 0.035,
     hpRegen: 0.5 + s.vit * 0.04 + (g.hpRegen || 0),
     mpRegen: 0.6 + s.wis * 0.07 + (g.mpRegen || 0),

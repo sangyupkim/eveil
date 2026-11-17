@@ -1,5 +1,5 @@
 // 아이템 생성: 등급 · 랜덤 옵션 · 이름 · 가격
-import { BASES, AFFIXES, RARITY, RARITY_ORDER, AFFIX_PREFIX, LEGEND_NAMES, MYTH_NAMES, WEAPON_CLASSES } from '../data/items.js';
+import { BASES, AFFIXES, RARITY, RARITY_ORDER, AFFIX_PREFIX, LEGEND_NAMES, MYTH_NAMES, WEAPON_CLASSES, affixFits } from '../data/items.js';
 import { SKILLS, BOOK_TIERS } from '../data/skills.js';
 import { R, randInt, pick, weighted } from './rng.js';
 import { UNIQUES } from '../data/titles.js';
@@ -31,8 +31,8 @@ export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1 } = {}, 
   const pool = Object.keys(AFFIXES).filter((id) => {
     const a = AFFIXES[id];
     if (a.legendOnly && rarity !== 'legend' && rarity !== 'myth') return false;
-    if (a.mythOnly) return false; // 신화 옵션은 아래에서 따로 두 개
-    return !a.slots || a.slots.includes(slot);
+    if (a.mythOnly || a.retired) return false; // 신화 옵션은 아래에서 따로 두 개
+    return affixFits(a, base);
   });
   // 신화: 신화 전용 옵션 세 개를 먼저 (v0.44.18 두 개 → 세 개) (부위에 맞는 것 중)
   if (rarity === 'myth') { const mp = Object.keys(AFFIXES).filter((id) => AFFIXES[id].mythOnly && (!AFFIXES[id].slots || AFFIXES[id].slots.includes(slot))); for (let i = 0; i < 3 && mp.length; i++) { const id = mp.splice(Math.floor(rng() * mp.length), 1)[0], a = AFFIXES[id], mx = a.max(ilvl); it.affixes.push({ id, v: Math.max(a.min, Math.round(mx * (0.7 + rng() * 0.3))), myth: true }); } }

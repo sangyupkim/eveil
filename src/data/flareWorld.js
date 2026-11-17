@@ -132,6 +132,10 @@ export const ITEM_LOOK = {
   war_hammer: { layers: { main: 'war_hammer' }, icon: 117 }, spiked_mace: { layers: { main: 'reinforced_club' }, icon: 117 }, knight_axe: { layers: { main: 'infantry_axe' }, icon: 117, tint: 0xd8c070 }, dragon_mace: { layers: { main: 'maul' }, icon: 117, tint: 0xff7a5a },
   novice_scepter: { layers: { main: 'wand' }, icon: 104, tint: 0x9a8aa0 }, oak_scepter: { layers: { main: 'wand' }, icon: 104 }, moon_scepter: { layers: { main: 'rod' }, icon: 105, tint: 0xb8d8ff },
   sage_scepter: { layers: { main: 'rod' }, icon: 105, tint: 0x9ad0ff }, rune_scepter: { layers: { main: 'rod' }, icon: 105, tint: 0x8ab0ff }, astral_scepter: { layers: { main: 'rod' }, icon: 105, tint: 0xd0b0ff }, void_scepter: { layers: { main: 'rod' }, icon: 105, tint: 0xb07aff },
+  // v0.44.37 단검 · 마도서
+  worn_dagger: { layers: { main: 'dagger' }, icon: 96, tint: C.brown }, dagger: { layers: { main: 'dagger' }, icon: 96 }, stiletto: { layers: { main: 'dagger' }, icon: 96, tint: 0xc8d0e0 },
+  kris: { layers: { main: 'dagger' }, icon: 96, tint: 0xd8b070 }, shadow_dagger: { layers: { main: 'dagger' }, icon: 96, tint: 0x8a7aa0 }, void_fang: { layers: { main: 'dagger' }, icon: 96, tint: 0xb07aff },
+  apprentice_tome: { icon: 28, tint: 0xc8b090 }, rune_tome: { icon: 28, tint: 0x8ab0ff }, arcane_tome: { icon: 28, tint: 0xb090ff }, abyss_tome: { icon: 28, tint: 0x9a50d0 },
   glass_orb: { icon: 68, tint: 0xd0e8ff }, moon_orb: { icon: 68 }, rune_orb: { icon: 68, tint: 0x8ab0ff }, void_orb: { icon: 68, tint: 0xb07aff },
   rusty_sword: { layers: { main: 'shortsword' }, icon: 97, tint: C.brown }, short_sword: { layers: { main: 'shortsword' }, icon: 97 }, broad_sword: { layers: { main: 'longsword' }, icon: 98 },
   greatsword: { layers: { main: 'greatsword' }, icon: 99 }, claymore: { layers: { main: 'zweihander' }, icon: 100 }, golden_sword: { layers: { main: 'longsword' }, icon: 98, tint: C.gold },
@@ -172,7 +176,7 @@ Object.assign(ITEM_LOOK, { ore2: { icon: 71 }, ore3: { icon: 71 }, ess2: { icon:
 // 처음 복장 (안 입은 부위)
 export const BASE_CLOTHES = { chest: 'cloth_shirt', legs: 'cloth_pants', feet: 'cloth_sandals', hands: 'default_hands' };
 // 떨어진 아이템 그림 (Flare loot 동작)
-export const LOOT_LOOK = { weapon: { sword: 'longsword', bow: 'longbow', staff: 'staff' }, offhand: 'shield', helm: 'leather_armor', armor: 'leather_armor', gloves: 'leather_armor', boots: 'boots', belt: 'belt', amulet: 'ring', ring: 'ring', potion_hp: 'hp_potion', potion_mp: 'mp_potion', book: 'book', gold: 'coins25' };
+export const LOOT_LOOK = { weapon: { sword: 'longsword', bow: 'longbow', staff: 'staff', dagger: 'dagger' }, offhand: 'shield', helm: 'leather_armor', armor: 'leather_armor', gloves: 'leather_armor', boots: 'boots', belt: 'belt', amulet: 'ring', ring: 'ring', potion_hp: 'hp_potion', potion_mp: 'mp_potion', book: 'book', gold: 'coins25' };
 
 // 스킬 아이콘 번호
 export const SKILL_ICON = {
