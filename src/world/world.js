@@ -33,7 +33,7 @@ import { itemName, itemColor, isBook, makeItem, makeBook, rollBase, itemValue } 
 import { seeded, randInt, randRange } from '../game/rng.js';
 import { Actor, makeHero } from '../engine2d/actor.js';
 import { FX, drawPowerFrame } from '../engine2d/fx.js';
-import { resolveCollision, zoneAt, clearLine, findPath, blockedAt, LAKES, MESAS, CAMPS, inCamp, bossSpot } from '../engine2d/stage.js';
+import { zoneRadius, resolveCollision, zoneAt, clearLine, findPath, blockedAt, LAKES, MESAS, CAMPS, inCamp, bossSpot } from '../engine2d/stage.js';
 import { reveal, saveFog, loadFog } from '../ui/mapimg.js';
 import { DATA, image, animImage, drawRect, frameIndex } from '../engine2d/sprites.js';
 import { MONSTER_LOOK, ITEM_LOOK, LOOT_LOOK, ZONE_LOOK as ZONE_LOOK_W } from '../data/flareWorld.js';
@@ -1643,6 +1643,8 @@ export class World {
     this.floodOn ||= {};
     const left = this.monsters.filter((m) => !m.dead && m.flood === zn.id).length;
     { const el = document.querySelector('.zoneName'); if (el && this.floodOn[zn.id]) el.textContent = `범람지 · ${zn.name} · 남은 몬스터 ${left}`; }
+    // 결계 밖으로 나간 범람 몬스터는 제자리로
+    for (const m of this.monsters) if (!m.dead && m.flood === zn.id && zoneAt(m.pos.x, m.pos.z)?.id !== zn.id && m.home) { m.pos.x = m.home.x; m.pos.z = m.home.z; m.state = 'idle'; }
     { const L0 = f.left, sum = L0 ? L0.normal + L0.elite + L0.named + L0.boss : -1;
       if (sum === 0) { this.floodClear(zn.id, P, this.floodLevel(zn)); return; } // 다 잡았는데 남아 있던 범람 정리
       if (this.floodOn[zn.id] && left === 0 && sum > 0) delete this.floodOn[zn.id]; // 몬스터가 사라졌으면 남은 수만큼 다시
@@ -1653,8 +1655,13 @@ export class World {
     const L = this.floodLevel(zn);
     const pick = () => FLOOD_AFFIX_IDS[Math.floor(Math.random() * FLOOD_AFFIX_IDS.length)];
     const mk = (tier, fixed, k) => {
-      const a = Math.random() * 6.28, r = (0.15 + Math.random() * 0.75) * zn.r;
-      const sp = this.freeSpot(zn.x + Math.cos(a) * r, zn.z + Math.sin(a) * r, 0.8);
+      // 결계(지역 모양) 안쪽, 막히지 않은 자리만
+      let sp = null;
+      for (let t = 0; t < 30 && !sp; t++) {
+        const a = Math.random() * 6.28, r = (0.1 + Math.random() * 0.72) * zoneRadius(zn, a), q = this.freeSpot(zn.x + Math.cos(a) * r, zn.z + Math.sin(a) * r, 0.8);
+        if (zoneAt(q.x, q.z)?.id === zn.id && !blockedAt(this.stage, q.x, q.z, 0.8) && Math.hypot(q.x - zn.x, q.z - zn.z) < zoneRadius(zn, Math.atan2(q.z - zn.z, q.x - zn.x)) - 3) sp = q;
+      }
+      sp ||= this.freeSpot(zn.x, zn.z, 0.8);
       const m = this.spawn({ zone: zn, x: sp.x, z: sp.z, level: L - this.tierOffset, tier, timer: 0, mon: null, fixed });
       if (!m) return null;
       m.floodTier = tier; if (m.tier !== tier) { m.tier = tier; } // 일반이 정예로 바뀌어 남은 수가 어긋나던 것
@@ -1696,6 +1703,24 @@ export class World {
     this.ui.banner?.(`${zn?.name || ''} 정화 완료`, '#7fe07a'); this.ui.toast(`범람이 정화되었습니다 · 금화 · 장비 · 상급 강화석 · 지도 조각`, '#7fe07a'); sfx('rankup');
     this.fx.play('sparkle', P.x, P.z, { scale: 2, dur: 1.2 });
     this.ui.dirty();
+  }
+  // 결계 불꽃: 갇힌 동안 지역 경계를 따라 가까운 곳에 불꽃이 탄다 (벽 대신 효과 그림)
+  floodFlames(P) {
+    const F = (this.flames ||= new Map()), L = this.floodLock, zn = L && ALL_ZONES.find((z) => z.id === L.zone);
+    const want = new Set();
+    if (zn && !this.dead) {
+      const N0 = 320;
+      for (let i = 0; i < N0; i++) {
+        const a = (i / N0) * 6.283, r = zoneRadius(zn, a) - 0.6, x = zn.x + Math.cos(a) * r, z = zn.z + Math.sin(a) * r;
+        if (Math.hypot(x - P.x, z - P.z) > 22) continue;
+        want.add(i);
+        if (!F.has(i)) { // 위로 타오르는 불꽃 (불덩이 그림의 위쪽 방향) + 셋에 하나는 불티
+          const it = this.fx.play(i % 3 ? 'fireball' : 'spark_orange', x, z, { y: 0.9, dir: 2, scale: i % 3 ? 0.6 + (i % 5) * 0.06 : 0.9, loop: true, dur: 1e9, alpha: 1, tint: 0xff6a20 });
+          if (it) { it.t = Math.random(); F.set(i, it); }
+        }
+      }
+    }
+    for (const [i, it] of F) if (!want.has(i)) { it.dur = 0; F.delete(i); }
   }
   floodDeath(m) {
     const P = m.pos;
@@ -2697,6 +2722,7 @@ export class World {
 
     // 줍기
     // 자동 사냥 중에는 설정한 것만 밟아서 줍는다 (지나가며 줍기 · 펫도 같은 규칙)
+    this.floodFlames(P.pos);
     // 범람 결계: 지역 밖으로 나가려 하면 안으로 되돌린다 (귀환 · 사망 · 범람 보스 처치로만 풀림)
     if (this.floodLock && !this.dead) {
       const L = this.floodLock, zn = zoneAt(P.pos.x, P.pos.z);
