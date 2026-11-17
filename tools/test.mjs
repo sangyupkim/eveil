@@ -31,6 +31,11 @@ import { titleKey, perkChoices, titleName, TITLE_NAMES } from '../src/data/title
 let n = 0;
 const test = (name, fn) => { fn(); n++; console.log('  ✓', name); };
 
+test('패치 노트: 모든 버전에 items 목록', async () => {
+  const { PATCH_NOTES } = await import('../src/data/patchnotes.js');
+  for (const v of PATCH_NOTES) assert.ok(Array.isArray(v.items), v.ver);
+});
+
 test('새 캐릭터: 스탯 5종 모두 시작값, 레벨 없음', () => {
   const p = newPlayer('방랑자', { face: 'knight' }, null);
   assert.deepEqual(Object.keys(p.stats), STATS);
