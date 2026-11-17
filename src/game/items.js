@@ -1,8 +1,9 @@
 // 아이템 생성: 등급 · 랜덤 옵션 · 이름 · 가격
+import { MIX_ITEM, mixUnique } from '../data/resist.js';
 import { BASES, AFFIXES, RARITY, RARITY_ORDER, AFFIX_PREFIX, LEGEND_NAMES, MYTH_NAMES, WEAPON_CLASSES, affixFits } from '../data/items.js';
 import { SKILLS, BOOK_TIERS } from '../data/skills.js';
 import { R, randInt, pick, weighted } from './rng.js';
-import { UNIQUES } from '../data/titles.js';
+import { UNIQUES, UNIQUE_BASE } from '../data/titles.js';
 import { NAMED_LEGENDS, socketRoll } from '../data/legends.js';
 // 이름 있는 전설 (정해진 옵션 · 고유 효과)
 // 이름 있는 전설: 떨어뜨린 몬스터 레벨에 맞춰 레벨 · 기본템 단계 · 옵션 수치가 오른다 (예전엔 고정이라 지옥에서도 66레벨로 나왔다)
@@ -46,7 +47,17 @@ export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1 } = {}, 
     if (great) v = Math.max(v + 1, Math.round(max * (1.1 + rng() * 0.2)));
     it.affixes.push(great ? { id, v, great: true } : { id, v });
   }
-  if (rarity === 'legend' || rarity === 'myth') { it.title = pick(rarity === 'myth' ? MYTH_NAMES : LEGEND_NAMES, rng); it.unique = Math.floor(rng() * UNIQUES.length); }
+  if (rarity === 'legend' || rarity === 'myth') { it.title = pick(rarity === 'myth' ? MYTH_NAMES : LEGEND_NAMES, rng); it.unique = Math.floor(rng() * UNIQUE_BASE); }
+  // v0.44.41 혼합 전용 장비: 무기 · 보조 · 장신구 전설 · 신화의 20%는 두 스탯 전용 (두 스탯 조건 · 두 스탯 옵션 · 조합 고유 효과)
+  if ((rarity === 'legend' || rarity === 'myth') && ['weapon', 'offhand', 'amulet', 'ring'].includes(slot) && rng() < 0.2) {
+    const keys = Object.keys(MIX_ITEM), key = keys[Math.floor(rng() * keys.length)], [a, b] = key.split('+');
+    const need = Math.round(6 + ilvl * 1.3);
+    it.mix = key; it.mixReq = { [a]: need, [b]: Math.round(need * 0.6) };
+    it.title = `${MIX_ITEM[key].name} ${it.title}`; it.unique = mixUnique(key);
+    const sv = Math.max(2, Math.round(AFFIXES.str.max(ilvl) * r.mult));
+    it.affixes = it.affixes.filter((x) => x.id !== a && x.id !== b).slice(0, Math.max(0, it.affixes.length - 1));
+    it.affixes.unshift({ id: a, v: sv }, { id: b, v: Math.round(sv * 0.7) });
+  }
   const sk = socketRoll(rarity, rng);
   if (sk) { it.sockets = sk; it.gems = []; }
   return it;

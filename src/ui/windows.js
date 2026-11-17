@@ -12,7 +12,8 @@ import { expNeeded } from '../game/growth.js';
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
-import { itemIcon, skillIcon, portrait, chestIcon, bookIcon, coinIcon, scrollIcon, townIcon, oreIcon } from './icons.js';
+import { itemIcon, skillIcon, portrait, chestIcon, bookIcon, coinIcon, scrollIcon, townIcon, oreIcon, monPortrait } from './icons.js';
+import { monsterRes, mixFxOf } from '../data/resist.js';
 import { terrain, fogCan, MAP_R, MAP_W, FOG_C, seen as seenAt } from './mapimg.js';
 import { CAMPS, inCamp } from '../engine2d/stage.js';
 import { TIER_NAMES } from '../world/world.js';
@@ -196,7 +197,7 @@ export class Windows {
     if (isBook(it)) {
       const sk = SKILLS[it.book];
       const gr = skillGrade(sk), qn = QUALITY[sk.q || 2], awk = `${BOOK_TIERS[sk.tier].name} 스킬북 · ${gradeName(gr)} · <span style="color:${qn.color}">${qn.name}</span>`;
-      h += `<div class="sub">${awk} · MP ${sk.mp} · 재사용 ${sk.cd}초</div><div>${sk.desc}</div>`;
+      h += `<div class="sub">${awk} · MP ${sk.mp} · 재사용 ${sk.cd}초</div><div>${sk.desc}</div>${mixFxOf(sk.lines || Object.keys(sk.req || {})).map((f) => `<div class="aff" style="color:#e0b0ff">혼합 효과 · ${f.name}: ${f.text}</div>`).join('')}`;
       if (gr) { const SN = { str: '힘', dex: '민첩', int: '지능', wis: '정신', vit: '체력' }; const a = awakenOk(st, sk); h += `<div class="aff" style="color:${a.ok ? '#7fe07a' : '#ff8a7a'}">${sk.awaken === 4 ? `4차 각성 · 갈래에 ${SN[sk.line]}` : `${gr}차 각성 필요`}${a.ok ? '' : ` — ${a.why}`}</div>`; }
       h += reqLine(sk.req, totalStats(st));
       if (st.skills[it.book]) h += `<div class="aff">아는 스킬 — 숙련 EXP로 흡수</div>`;
@@ -225,6 +226,7 @@ export class Windows {
       if (it.q) h += `<div class="sub">품질 <b style="color:${it.q >= 1.1 ? '#ffd84a' : it.q <= 0.9 ? '#a09a8a' : '#e8e2d4'}">${Math.round(it.q * 100)}%</b> · ${it.rarity === 'myth' ? '115~130' : '85~115'}%</div>`;
       // 옵션마다 이 아이템 레벨 · 등급에서 나올 수 있는 범위
       for (const a of it.affixes) { const A = AFFIXES[a.id], mx = A ? Math.round(Math.max(A.min, A.max(it.ilvl) * (RARITY[it.rarity]?.mult || 1))) : null; h += `<div class="aff"${a.great ? ' style="color:#ffb84a"' : ''}>${affixText(a)}${a.great ? ' <b style="color:#ffb84a">탁월</b>' : ''}${A ? ` <small class="note">${A.min}~${mx}</small>` : ''}</div>`; }
+      if (it.mixReq) h += `<div class="aff" style="color:#e0b0ff">혼합 전용 · ${Object.entries(it.mixReq).map(([k, v]) => `${STAT_NAMES[k]} ${v}`).join(' · ')}</div>`;
       if (it.unique != null) h += `<div class="aff" style="color:#41e07a">◆ ${UNIQUES[it.unique].text}</div>`;
       if (it.sockets) {
         h += `<div class="aff" style="color:#c0b0ff">구멍 ${it.gems.length} / ${it.sockets}${it.gems.map((g) => ` · ${BASES[g].name} ${STAT_NAMES[GEMS[BASES[g].gem].stat]} +${GEM_GRADES[BASES[g].grade].v}`).join('')}</div>`;
@@ -452,7 +454,7 @@ export class Windows {
       const V = variantsOf(id);
       det = `<div class="row" style="border:0">${sicon(id)}<div class="grow"><div class="nm" style="color:${BOOK_TIERS[sk.tier].color}">${sk.name}</div>
           <div class="sub">${BOOK_TIERS[sk.tier].name} · 랭크 ${s.rank}</div></div></div>
-        <div>${sk.desc.replace(/\s*\([^)]*\)/g, '')}</div>
+        <div>${sk.desc.replace(/\s*\([^)]*\)/g, '')}</div>${mixFxOf(sk.lines || Object.keys(sk.req || {})).map((f) => `<div class="aff" style="color:#e0b0ff">혼합 효과 · ${f.name}: ${f.text}</div>`).join('')}
         <div class="kv" style="margin-top:8px">${kv.map(([k, x]) => `<span>${k}</span><b>${x}</b>`).join('')}</div>
         ${reqLine(sk.req, stats)}${meetsReq(st, sk.req, stats) ? '' : '<div class="bad">조건 부족</div>'}
         <h3 style="margin-top:10px">변형</h3>${VARIANT_RANKS.map((r) => `<div class="note">랭크 ${r}</div><div class="btns" style="flex-wrap:wrap;margin:2px 0 6px">${V[r].map((x) => {
@@ -697,19 +699,41 @@ export class Windows {
   }
 
   // 몬스터 도감 (잡은 수 50 · 200 · 500마다 그 몬스터에게 피해 +2 · 4 · 6%) · 보스 기록
+  // v0.44.41 몬스터 도감: 책처럼. 왼쪽 = 지역 · 몬스터 목록, 오른쪽 = 펼친 책 (초상 | 정보). 많이 잡을수록 정보가 열린다
   dex() {
     const st = this.w.st, dx = st.dex || {};
     const tier = (n) => (n >= 500 ? 3 : n >= 200 ? 2 : n >= 50 ? 1 : 0);
-    let left = '', seen = 0, total = 0;
-    for (const z of ZONES) {
-      const types = [...new Set([...Object.keys(z.spawns), z.named.type, z.boss.type])];
-      total += types.length; seen += types.filter((t) => dx[t]).length;
-      left += `<h3>${z.name}</h3><div class="achs">${types.map((t) => { const n = dx[t] || 0, k = tier(n);
-        return `<span class="ach${n ? ' on' : ''}">${n ? MONSTERS[t].name : '???'}<small>${n ? `${n}마리${k ? ` · 피해 +${k * 2}%` : ` · ${50 - n}마리 더`}` : ''}</small></span>`; }).join('')}</div>`;
-    }
-    const br = st.bossRec || {};
-    const right = `<h3>보스 기록</h3>` + ZONES.map((z) => { const r = br[z.id]; return `<div class="row"><div class="grow"><b>${z.boss.name}</b><div class="note">${z.name}</div></div><span class="note">${r ? `${r.kills}번 · 최단 ${r.best}초` : '아직'}</span></div>`; }).join('');
-    return `<div class="cols"><div class="frame" style="flex:1.4"><h3>몬스터 도감 <span class="cnt">${seen} / ${total}</span></h3>${left}</div><div class="frame" style="flex:1">${right}</div></div>`;
+    let seen = 0, total = 0;
+    for (const z of ZONES) { const t = [...new Set([...Object.keys(z.spawns), z.named.type, z.boss.type])]; total += t.length; seen += t.filter((x) => dx[x]).length; }
+    const zi = Math.max(0, ZONES.findIndex((z) => z.id === this.dexZone)), Z = ZONES[zi];
+    const types = [...new Set([...Object.keys(Z.spawns), Z.named.type, Z.boss.type])];
+    const sel = types.includes(this.dexMon) ? this.dexMon : types.find((x) => dx[x]) || types[0];
+    const zones = `<select class="dexSel" data-dexzs="1">${ZONES.map((z, i) => `<option value="${z.id}"${i === zi ? ' selected' : ''}>${esc(z.name)} (${[...new Set([...Object.keys(z.spawns), z.named.type, z.boss.type])].filter((t) => dx[t]).length})</option>`).join('')}</select>`;
+    const list = types.map((t) => { const n = dx[t] || 0, tg = t === Z.boss.type ? ' · 보스' : t === Z.named.type ? ' · 네임드' : '';
+      return `<div class="row pick${t === sel ? ' on' : ''}" data-dexm="${t}"><div class="grow"><b>${n ? esc(MONSTERS[t].name) : '???'}</b><small>${tg}</small></div><span class="note">${n ? `${n}마리` : ''}</span></div>`; }).join('');
+    // 펼친 책
+    const n = dx[sel] || 0, M = MONSTERS[sel], kind = sel === Z.boss.type ? 'boss' : sel === Z.named.type ? 'named' : 'normal';
+    const ms = this.w.monStats(sel, kind, Z), R = monsterRes(sel), k = tier(n);
+    const pr = n ? monPortrait(sel, () => { if (this.kind === 'dex') this.render(); }) : '';
+    const lock = (need, txt) => (n >= need ? txt : `<span class="lockTxt">${need}마리를 잡으면</span>`);
+    const pct = (v) => `${v > 0 ? '+' : ''}${Math.round(v * 100)}%`;
+    const resTxt = (v) => (v > 0 ? `<b style="color:#1f4f9a">${pct(v)} 저항</b>` : v < 0 ? `<b style="color:#a8321a">${pct(-v)} 약점</b>` : '보통');
+    const page1 = `<div class="bookPage"><div class="bookPor">${pr ? `<img src="${pr}" alt="" />` : '<div class="bookQ">?</div>'}</div>
+      <div class="bookName">${n ? esc(M.name) : '???'}</div><div class="note" style="text-align:center">${esc(Z.name)} · ${kind === 'boss' ? '보스' : kind === 'named' ? '네임드' : '일반'}</div>
+      <div class="note" style="text-align:center;margin-top:6px">잡은 수 <b>${n}</b>${k ? ` · 주는 피해 +${k * 2}%` : ''}</div></div>`;
+    const page2 = `<div class="bookPage"><h3>기록</h3><div class="kv">
+      <span>위험도</span><b>${n ? ms.level : '?'}</b>
+      <span>체력</span><b>${lock(10, ms.hp.toLocaleString())}</b>
+      <span>공격력</span><b>${lock(50, `${ms.dmg[0].toLocaleString()} ~ ${ms.dmg[1].toLocaleString()}`)}</b>
+      <span>방어력</span><b>${lock(50, ms.armor)}</b>
+      <span>공격 방식</span><b>${lock(10, ms.attack === 'spell' ? '주문' : ms.attack === 'ranged' ? '원거리' : '근접')}</b>
+      <span>물리</span><b>${lock(100, resTxt(R.phys))}</b>
+      <span>마법</span><b>${lock(100, resTxt(R.mag))}</b>
+      <span>무리</span><b>${lock(100, R.tag || '없음')}</b>
+      <span>도감 보너스</span><b>${n >= 500 ? '최고' : `${n >= 200 ? 500 : n >= 50 ? 200 : 50}마리에 피해 +${(k + 1) * 2}%`}</b></div></div>`;
+    return `<div class="cols"><div class="frame" style="flex:0 0 34%"><h3>몬스터 도감 <span class="cnt">${seen} / ${total}</span></h3>
+        ${zones}<div class="dexList">${list}</div></div>
+      <div class="frame book" style="flex:1"><div class="bookSpread">${page1}${page2}</div></div></div>`;
   }
 
   town() {
@@ -1133,6 +1157,8 @@ export class Windows {
       townDone(r);
     });
     on('[data-autobrew]', (el) => { const t2 = townOf(st); t2.autoBrew = t2.autoBrew === el.dataset.autobrew ? null : el.dataset.autobrew; audio.play('click'); this.render(); });
+    this.el.querySelector('[data-dexzs]')?.addEventListener('change', (e) => { this.dexZone = e.target.value; this.dexMon = null; audio.play('click'); this.render(); });
+    on('[data-dexm]', (el) => { this.dexMon = el.dataset.dexm; audio.play('click'); this.render(); });
     on('[data-hswap]', (el) => { const [h, k] = el.dataset.hswap.split('|'), r = herbSwap(st, h, Number(k)); if (r.ok) audio.play('click'); townDone(r); });
     on('[data-brew]', (el) => { const [id, k] = el.dataset.brew.split('|'), r = brew(st, id, Number(k)); if (r.ok) audio.play('click'); townDone(r); });
     on('[data-brewget]', (el) => { const v = el.dataset.brewget === 'vault', r = brewCollect(st, Date.now(), v ? vaultAdd : null); if (r.n) { audio.play('potion'); w.ui.toast(`${r.n}개를 ${v ? '창고' : '가방'}에 넣었습니다`, '#7fe07a'); } townDone(r); });

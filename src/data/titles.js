@@ -92,3 +92,6 @@ export const UNIQUES = [
   { trig: 'spell', p: 0.3, eff: 'shock', v: 70, text: '주문을 쓰면 30% 확률로 무기 피해 70% 충격파' },
   { trig: 'rangedHit', p: 0.15, eff: 'chill', v: 20, text: '화살이 맞으면 15% 확률로 주변 적 2초 느리게' },
 ];
+// v0.44.41 일반 전설이 뽑는 고유 효과는 여기까지 (그 뒤는 혼합 전용 장비 효과, data/resist.js)
+export const UNIQUE_BASE = UNIQUES.length;
+

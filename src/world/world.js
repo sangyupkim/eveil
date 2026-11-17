@@ -15,6 +15,7 @@ import { SKILLS } from '../data/skills.js';
 import { BASES, WEAPON_CLASSES, RARITY_ORDER } from '../data/items.js';
 import { MONSTERS, ZONES, TOWN, TIER_STEP, FINAL_ZONE } from '../data/world.js';
 import { derive, damageReduction, totalStats, skillScale } from '../game/player.js';
+import { monsterRes, mixFxOf } from '../data/resist.js';
 import { ELIXIRS, ELIXIR_TIME, HERBS, HP_POTIONS, MP_POTIONS } from '../data/potions.js';
 import { addAP, gainExp, rewardFactor, recAwaken } from '../game/growth.js';
 import { addSkillExp, skillValues, skillEff, modsOf, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
@@ -811,6 +812,9 @@ export class World {
     const spd = m.rootT > 0 ? 0 : m.speed * (m.slowT > 0 ? 0.5 : 1); // v0.44.38 얼음 감옥: 묶임
     if (m.slowT > 0) m.slowT -= dt;
     if (m.rootT > 0) m.rootT -= dt;
+    if (m.vulnT > 0) m.vulnT -= dt;
+    // 출혈 · 연소 · 화상: 1초마다
+    if (m.dotT > 0) { m.dotT -= dt; m.dotAcc = (m.dotAcc || 0) + dt; if (m.dotAcc >= 1) { m.dotAcc -= 1; this.hitMonster(m, m.dotV / 0.9, { src: 'dot' }); } }
     m.atkT -= dt;
     if (m.showHp > 0) m.showHp -= dt;
     let moving = 0;
@@ -1191,6 +1195,10 @@ export class World {
     if (m.tier === 'boss' && m.fightStart == null) m.fightStart = this.time;
     if ((m.tier === 'boss' || m.tier === 'named') && d.bossDmg) raw *= 1 + d.bossDmg / 100;
     const dexN = st.dex?.[m.type] || 0; raw *= 1 + (dexN >= 500 ? 0.06 : dexN >= 200 ? 0.04 : dexN >= 50 ? 0.02 : 0);
+    // v0.44.41 저항 (물리 · 마법 비율대로) · 약화(표식 · 원소 상처) · 상태 이상 조합(느려지거나 묶인 적에게 혼합 스킬 +20%)
+    { const R = monsterRes(m.type), mag = ctx?.mag ?? (src === 'magic' ? 1 : 0); raw *= 1 - (R.phys * (1 - mag) + R.mag * mag); }
+    if (m.vulnT > 0) raw *= 1.15;
+    if (ctx?.mixed && (m.slowT > 0 || m.rootT > 0)) raw *= 1.2;
     let red = m.armor / (m.armor + 60) * (1 - pierce);
     if (m.def.behave === 'shield' && !ctx?.spell) {
       const P = this.player.pos, f = m.actor.facing, ang = Math.atan2(P.x - m.pos.x, P.z - m.pos.z);
@@ -1198,6 +1206,13 @@ export class World {
     }
     const dmg = Math.max(1, Math.round(raw * (1 - red)));
     m.hp -= dmg;
+    if (ctx?.mixFx) for (const f of ctx.mixFx) {
+      if (f.id === 'bleed') { m.dotV = Math.max(m.dotV || 0, dmg * 0.1); m.dotT = 3; }
+      else if (f.id === 'vuln') m.vulnT = 4;
+      else if (f.id === 'root' && m.tier !== 'boss') m.rootT = Math.max(m.rootT || 0, f.name === '덫' ? 1 : 0.8);
+      else if (f.id === 'slow') m.slowT = Math.max(m.slowT || 0, 2);
+      else if (f.id === 'shield') { const sh = this.buffs.shield; const add = dmg * 0.06, cap = this.d.maxHp * 0.3; if (sh && sh.t > 0) sh.v = Math.min(cap, sh.v + add); else this.buffs.shield = { v: Math.min(cap, add), t: 6, max: 6 }; }
+    }
     (this.dealtLog ||= []).push([this.time, dmg]); // v0.44.26 최근 준 피해 (체력 · 주 스탯 나누기)
     m.showHp = 6;
     this.lastHit = m;
@@ -1536,6 +1551,11 @@ export class World {
     return this.monsters.filter((m) => !m.dead && dist2(m.pos, pos) <= r);
   }
 
+  // v0.44.41 도감용: 그 지역 · 지금 세계 단계에서 이 몬스터의 체력 · 공격력 (spawn과 같은 식)
+  monStats(type, tier, zn) {
+    const def = MONSTERS[type], T = TIERS[tier], L = zn.levels[1] + this.tierOffset, CK = chapterK(ALL_ZONES.indexOf(zn), tier);
+    return { level: L, hp: Math.round(def.hp * (1 + 0.4 * (L - 1)) * T.hp * TIER_K[this.wt].hp * CK.hp), dmg: def.dmg.map((v) => Math.round(v * (1 + 0.27 * (L - 1)) * T.dmg * TIER_K[this.wt].dmg * CK.dmg)), armor: L * 2, speed: def.speed, attack: def.attack };
+  }
   // v0.44.35 인내의 폭발: 모은 피해 × 계수(%)를 둘레로. 탱커가 딜러가 되지 않게 무기 한 방의 1.5 ~ 8배 사이로
   vengeRelease(b) {
     if (!b || b.done) return; b.done = true; b.t = 0;
@@ -1719,6 +1739,19 @@ export class World {
     if (!v.echoed && sk.req) { const tot = Object.values(sk.req).reduce((a, b) => a + b, 0) || 1; for (const [k, n] of Object.entries(sk.req)) addAP(st, k, AP_TABLE.skillUse * (1 + 0.5 * ((sk.tier || 1) - 1)) * (n / tot), this.autoMult); }
     if (!v.echoed) this.skillExp(id, 1);
     const ctx = { id, mp: v.mp, hits: 0, apGiven: false, slow: sk.slow, root: sk.root };
+    // v0.44.41 연계: 서로 다른 스탯의 단일 스킬을 번갈아 쓰면 「연계」가 쌓이고 (5초 안, 최대 3), 혼합 스킬이 쌓인 만큼 +15%씩 세진다
+    const lines = sk.lines || Object.keys(sk.req || {});
+    let comboK = 1;
+    if (sk.type !== 'buff' && !v.echoed) {
+      if (lines.length === 1) {
+        if (this.comboLine && this.comboLine !== lines[0] && this.time - (this.comboT || 0) < 5) { this.comboN = Math.min(3, (this.comboN || 0) + 1); this.fx.text(P.pos.clone().setY(2.8), `연계 ${this.comboN}`, 'crit'); }
+        this.comboLine = lines[0]; this.comboT = this.time;
+      } else if (lines.length >= 2) {
+        if (this.comboN && this.time - (this.comboT || 0) < 5) { comboK = 1 + 0.15 * this.comboN; this.fx.text(P.pos.clone().setY(2.8), `연계 폭발 +${Math.round((comboK - 1) * 100)}%`, 'crit'); }
+        this.comboN = 0; this.comboLine = null;
+        ctx.mixFx = mixFxOf(lines); ctx.mixed = true;
+      }
+    }
     // 변형 「메아리」: 잠시 뒤 약하게 한 번 더
     if (sk.echo && !v.echoed) this.later(0.6, () => { if (!this.dead) this.castSkill(id, { ...v, mp: 0, power: v.power * sk.echo, echoed: true, cd: this.cds[id] }); });
     const t = this.target;
@@ -1726,10 +1759,11 @@ export class World {
     // 쓸 때 그 스탯 행동 기록 (보조 스탯)
     if (sk.mix) addAP(st, sk.mix, v.mp * AP_TABLE.supportPerMp, this.autoMult);
     if (sk.apStat && sk.ap === 'weapon') addAP(st, sk.apStat, v.mp * AP_TABLE.supportPerMp, this.autoMult);
-    const pw = v.power;
+    const pw = v.power * comboK;
     // v0.44.37 스킬 피해 = 공격력(물리 · 마법, 필요 스탯 비율대로) × 계수 × 스킬 스탯 배율(무기 무관) × 장비 보정 × 자원 보너스
     //  치명타는 평타와 같은 확률 · 배율. spell()과 weaponHit()은 같은 값 (spell 다음에 spellCrit()으로 치명 여부)
     const sc = skillScale(sk, d.stats), rk = sk.scale ? d.resK?.[sk.scale] || 1 : 1;
+    ctx.mag = sc.mag; // 저항 계산용 (마법 비율)
     let lastCrit = false;
     const roll = () => {
       lastCrit = Math.random() < d.crit;

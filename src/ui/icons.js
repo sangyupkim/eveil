@@ -107,3 +107,23 @@ export function iconCut(index) {
   const url = c.toDataURL(); cache.set(key, url); return url;
 }
 export const itemIconCut = (base) => iconCut(ITEM_LOOK[base]?.icon ?? 64);
+
+// v0.44.41 도감 초상: 몬스터 서 있는 모습(정면) 한 장. 그림이 아직 없으면 받는 중에 '' (onReady로 다시 그린다)
+import { MONSTER_LOOK } from '../data/flareWorld.js';
+import { tintedRect } from '../engine2d/sprites.js';
+const monCache = new Map();
+export function monPortrait(type, onReady) {
+  if (monCache.has(type)) return monCache.get(type);
+  const look = MONSTER_LOOK[type] || { sprite: 'goblin' }, def = DATA.enemies?.[look.sprite];
+  if (!def) return '';
+  const a = def.anims.stance || Object.values(def.anims)[0], path = animImage(def, def.anims.stance ? 'stance' : Object.keys(def.anims)[0]);
+  const rect = (a.f['6'] || a.f[6] || Object.values(a.f)[0])?.[0];
+  const img = image(path);
+  if (!img.ok) { img.p?.then(() => onReady?.()); return ''; }
+  const tr = tintedRect(path, look.tint ?? null, rect);
+  if (!tr) return '';
+  const [src, r] = tr, c = document.createElement('canvas'), S2 = 160; c.width = S2; c.height = S2;
+  const g = c.getContext('2d'), k = Math.min(S2 * 0.9 / r[2], S2 * 0.9 / r[3]);
+  g.drawImage(src, r[0], r[1], r[2], r[3], (S2 - r[2] * k) / 2, (S2 - r[3] * k) / 2, r[2] * k, r[3] * k);
+  const url = c.toDataURL(); monCache.set(type, url); return url;
+}

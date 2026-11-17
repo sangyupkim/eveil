@@ -39,6 +39,7 @@ export function canEquip(st, it) {
   const base = BASES[it.base];
   if (!base?.slot) return { ok: false, why: '장착할 수 없는 아이템' };
   if (!meetsReq(st, base.req, totalStats(st))) return { ok: false, why: '스탯 조건이 부족합니다' };
+  if (it.mixReq && !meetsReq(st, it.mixReq, totalStats(st))) return { ok: false, why: '혼합 장비: 두 스탯 조건이 부족합니다' }; // v0.44.41
   const need = needAwaken(it);
   if ((st.awakenings || 0) < need) return { ok: false, why: `각성 ${need} 필요` };
   return { ok: true };
