@@ -77,7 +77,7 @@ function genTerrain(rng) {
   for (const zn of ZONES) {
     const L = ZONE_LOOK[zn.id], wet = ['swamp', 'harbor', 'webwood', 'frost', 'bloodmire', 'crypt'].includes(zn.id) || LAVA_ZONES.has(zn.id);
     const bs = HAS_BANKS.has(L.set) ? L.set : 'grassland', top = bs !== L.set ? [L.set, L.ground[0]] : null;
-    const base = { set: bs, top, lava: LAVA_ZONES.has(zn.id), chasm: L.set === 'ruins', floor: [L.set, L.ground[0]], gr: L.ground, ring: true };
+    const base = { set: bs, top, lava: LAVA_ZONES.has(zn.id), chasm: L.set === 'ruins', floor: [L.set, L.ground[0]], gr: L.ground, ring: true, look: zn.id };
     const road = Math.atan2(-zn.z, -zn.x), gaps = [road, road + 1.6 + rng() * 1.2, road - 1.8 - rng() * 1.4];
     if (rng() < 0.5) gaps.pop();
     const circ = 2 * Math.PI * zn.r * 1.05;
@@ -96,8 +96,10 @@ function genTerrain(rng) {
     if (zoneAt(x, z) || nearGate(x, z, 6)) continue;
     // v0.44.20 지역 가까운 황야 언덕 · 호수는 그 지역 땅으로 (눈밭 옆 풀 언덕이 어색하던 것)
     const nz = ZONES.reduce((b, q) => { const d = Math.hypot(x - q.x, z - q.z) - q.r; return d < b.d ? { q, d } : b; }, { q: null, d: 1e9 });
-    const NL = nz.q && nz.d < 22 ? ZONE_LOOK[nz.q.id] : null, ws = NL && HAS_BANKS.has(NL.set) ? NL.set : 'grassland';
-    const isLake = rng() < 0.45, base = { set: ws, top: null, lava: false, chasm: false, floor: [ws, ws === 'grassland' ? 16 : NL.ground[0]], gr: ws === 'grassland' ? null : NL.ground };
+    // v0.44.33 땅 이어짐(지역 밖 9~15)과 같은 거리로 판단 · 동굴 · 폐허처럼 물가 타일이 없는 땅은 윗면만 그 땅으로 덮는다
+    const NL0 = nz.q && nz.d < 12 ? ZONE_LOOK[nz.q.id] : null, NL = NL0 && NL0.set !== 'grassland' ? NL0 : null;
+    const ws = NL && HAS_BANKS.has(NL.set) ? NL.set : 'grassland', wtop = NL && !HAS_BANKS.has(NL.set) ? [NL.set, NL.ground[0]] : null;
+    const isLake = rng() < 0.45, base = { set: ws, top: wtop, lava: false, chasm: false, floor: NL ? [NL.set, NL.ground[0]] : ['grassland', 16], gr: NL ? NL.ground : null, look: NL ? nz.q.id : null };
     let px = x, pz = z, dir = rng() * Math.PI * 2;
     for (let c = 0, len = 2 + Math.floor(rng() * 4); c < len; c++) {
       const r = 3.5 + rng() * 3;
@@ -111,7 +113,7 @@ function genTerrain(rng) {
     const L = ZONE_LOOK[zn.id];
     const bs = HAS_BANKS.has(L.set) ? L.set : 'grassland', top = bs !== L.set ? [L.set, L.ground[0]] : null, lava = LAVA_ZONES.has(zn.id);
     const chasm = L.set === 'ruins'; // 폐허는 물 대신 밑이 안 보이는 낭떠러지
-    const base = { set: bs, top, lava, chasm, floor: [L.set, L.ground[0]], gr: L.ground };
+    const base = { set: bs, top, lava, chasm, floor: [L.set, L.ground[0]], gr: L.ground, look: zn.id };
     const lakes = zn.id === 'swamp' ? 4 : L.set === 'ruins' ? 2 : LAVA_ZONES.has(zn.id) ? 3 : zn.id === 'harbor' ? 4 : 1 + (rng() < 0.6 ? 1 : 0);
     for (let k = 0, tries = 0; k < lakes && tries < 80; tries++) {
       const a = rng() * 6.28, d = rng() * zn.r * 0.75, r = 6.5 + rng() * 4;
@@ -746,3 +748,18 @@ export function findPath(stage, from, to, r = 0.5, maxNodes = 4000) {
 
 // 처음(시작 화면)은 정해진 세상
 generateWorld(1);
+// 개발용 점검: 언덕 둘레 칸의 절벽 바닥 땅과 바로 바깥 땅의 종류가 다른 곳 세기 (지역별)
+export function terrainAudit() {
+  const bad = {}, cnt = {};
+  const seen = new Set();
+  for (const q0 of MESAS) { if (q0.dungeon) continue; const ci = Math.round((q0.x + q0.z) / (2 * STEP)), cj = Math.round((q0.z - q0.x) / (2 * STEP)), R = Math.ceil(q0.r * 1.6 / STEP) + 2;
+  for (let j = cj - R; j <= cj + R; j++) for (let i = ci - R; i <= ci + R; i++) {
+    const k0 = i + ',' + j; if (seen.has(k0)) continue; seen.add(k0);
+    const q = mesaRing(i, j); if (!q || q.dungeon) continue;
+    const [x, z] = cellXZ(i, j), L = ZONE_LOOK[q.look || zoneAt(x, z)?.id || 'wild'];
+    const g = groundAt(i + 1, j + 1)[0], key = q.look || zoneAt(x, z)?.id || 'wild';
+    cnt[key] = (cnt[key] || 0) + 1;
+    if (g !== L.set && !inMesa(...cellXZ(i + 1, j + 1)) && !lakeCell(i + 1, j + 1)) bad[key] = (bad[key] || 0) + 1;
+  } }
+  return { bad, cnt };
+}
