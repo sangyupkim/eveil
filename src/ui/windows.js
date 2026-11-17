@@ -18,7 +18,7 @@ import { CAMPS, inCamp } from '../engine2d/stage.js';
 import { TIER_NAMES } from '../world/world.js';
 import { entranceOf } from '../data/dungeons.js';
 import { MATERIALS, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
-import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, mercUngear, mercById, recruits, assignMerc, SKILL_OF, SKILLS_ALL, BONUS, bonusOf, awakenMerc, awakenCost, dismiss, staMax, SKILL_NAMES, GRADES, MERC, EXP_STA, deathChance, salvage, salvageValue, reforge, reforgeCost, resCount, resTake, ORE_RECIPES, oreRecipeOk, craftOre, KEY_RECIPES, craftKey, ESS_RECIPES, craftEss, INN_BEDS, innRestK, stopRepeat, MYTH_MARKS, mythMarks, mythLvMax, craftMyth } from '../game/town.js';
+import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, mercUngear, mercById, recruits, assignMerc, SKILL_OF, SKILLS_ALL, BONUS, bonusOf, awakenMerc, awakenCost, dismiss, staMax, SKILL_NAMES, GRADES, MERC, EXP_STA, deathChance, salvage, salvageValue, reforge, reforgeCost, resCount, resTake, ORE_RECIPES, oreRecipeOk, craftOre, KEY_RECIPES, craftKey, ESS_RECIPES, craftEss, INN_BEDS, innRestK, stopRepeat, MYTH_MARKS, mythMarks, mythLvMax, craftMyth, FRESH, freshK } from '../game/town.js';
 import { RESEARCH, researchCost } from '../data/buildings.js';
 import { AFFIXES } from '../data/items.js';
 import { PLOTS, BUILDINGS, EXPEDITIONS, townOf, buildingAt, build, upgrade, collect, enhance, enhanceCap, enhanceCost, hire, mercSlots, dispatch, claim, tick } from '../game/town.js';
@@ -268,7 +268,7 @@ export class Windows {
     const staNeed = Math.round(EXP_STA[P.exp] * (1 - SHELTER.sta * sh));
     h += COL + `<h3 style="margin-top:8px">용병 <small>${P.ids.length} / ${partyMax(st)} · 체력 ${staNeed}</small></h3>`;
     h += t.mercs.filter((m) => !m.job && !m.work).map((m) => { const on = P.ids.includes(m.id), weak = Math.max(0, 1 - m.sta / Math.max(1, staNeed)), dc = zn ? Math.min(0.75, deathChance(m, zn, P.exp, st, boost) * (1 + 2 * weak)) : 0;
-      return `<div class="row mrow pick ${on ? 'on' : ''}" data-pm="${m.id}">${this.mercLine(m, 'hunt')}<div class="note" style="min-width:5.5em;color:${dc > 0.15 ? '#ff7060' : ''}">사망 ${Math.round(dc * 100)}%${m.sta < staNeed ? ` · <b style="color:#ff7060">지침 ${Math.floor(m.sta)} / ${staNeed}</b>` : ''}${m.rest ? ' · 여관' : ''}</div></div>`; }).join('') || '<div class="note">쉬는 용병 없음</div>';
+      return `<div class="row mrow pick ${on ? 'on' : ''}" data-pm="${m.id}">${this.mercLine(m, 'hunt')}<div class="note" style="min-width:5.5em;color:${dc > 0.15 ? '#ff7060' : ''}">사망 ${Math.round(dc * 100)}%${m.sta < staNeed ? ` · <b style="color:#ff7060">지침 ${Math.floor(m.sta)} / ${staNeed}</b>` : ''}${m.rest ? ' · 여관' : ''}${freshK(m) ? ` · <b style="color:#7fe07a">기운 +${Math.round(freshK(m) * 100)}%</b>` : ''}</div></div>`; }).join('') || '<div class="note">쉬는 용병 없음</div>';
     const goods = [...new Set([...st.inv, ...vault().items].filter((x) => ['potion', 'elixir'].includes(BASES[x?.base]?.type)).map((x) => x.base))].map((base) => ({ base, qty: resCount(st, base) })); // 가방 + 창고
     const tot = pack.reduce((a, p) => a + p.qty, 0);
     h += COL + `<h3 style="margin-top:8px">챙길 물건 <small>${tot} / ${packMax(st)} · 안전 +${Math.round(boost.safe * 100)}% · 힘 +${Math.round(boost.pow * 100)}%</small></h3>`;
@@ -751,7 +751,7 @@ export class Windows {
         }
       }
       if (b.type === 'herb') right += `<h3>자라는 약초</h3><div class="herbList">${herbsAt(5).map((h) => { const on = HERBS[h].lv <= b.lv; return `<span class="hb" style="${on ? '' : 'opacity:.4'}"><img src="${herbIcon(h)}" alt="" />${HERBS[h].name} <b>${on ? (t.herbs[h] || 0) : `${HERBS[h].lv}단계`}</b></span>`; }).join('')}</div>`;
-      if (b.type === 'guild') right += this.guildPanel(b);
+      if (b.type === 'guild') right += `<div class="kv"><span>8단계</span><b style="${b.lv >= 8 ? '' : 'opacity:.45'}">죽어도 물약 회수</b><span>10단계</span><b style="${b.lv >= 10 ? '' : 'opacity:.45'}">사망 -30% · 전리품 +10%</b></div>` + this.guildPanel(b);
       if (SKILL_OF[b.type]) {
         const sk = SKILL_OF[b.type], crew = t.mercs.filter((m) => m.work === sel), idle = t.mercs.filter((m) => !m.work && !m.job);
         const eff = crew.filter((m) => !m.tired).reduce((a, m) => a + (m[sk] || 0) / 10, 0) / b.lv;
@@ -782,7 +782,7 @@ export class Windows {
             ${open ? `<button class="btn" data-research="${id}" ${max || t.lab || st.gold < c.gold ? 'disabled' : ''}>${max ? '완료' : `${c.gold.toLocaleString()}G · 재료 ${c.mats}${c.ess ? ` · ${BASES[c.ess.id].name} ${c.ess.n}` : ''} · ${c.min}분`}</button>` : ''}</div>`;
         }
       }
-      if (b.type === 'house') right += `<div class="kv"><span>고용 한도</span><b>${mercSlots(st)}명</b><span>지금</span><b>${t.mercs.length}명</b></div>`;
+      if (b.type === 'house') right += `<div class="kv"><span>고용 한도</span><b>${mercSlots(st)}명</b><span>지금</span><b>${t.mercs.length}명</b><span>쉬고 난 기운</span><b>힘 +${Math.round(FRESH.k * b.lv * 100)}% · 2시간</b></div>`;
       if (b.type === 'inn') {
         // v0.44.15 침대: 지친 용병이 와서 쉰다 (단계 = 침대 수 · 회복 속도)
         const beds = INN_BEDS(b.lv), resting = t.mercs.filter((m) => m.rest);

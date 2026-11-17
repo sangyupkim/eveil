@@ -2229,7 +2229,7 @@ export class World {
       for (const m of back) {
         const r = claimMerc(st, m.id, now, Math.random, put);
         if (!r) continue;
-        if (r.dead) { rows.push({ name: `${r.name} 돌아오지 못함`, color: '#ff6a5a' }); continue; }
+        if (r.dead) { rows.push({ name: `${r.name} 돌아오지 못함${r.back ? ` · 물약 ${r.back}개 회수` : ''}`, color: '#ff6a5a' }); continue; }
         tot.gold += r.gold; tot.ore += r.ore; tot.mats += r.mats;
         for (const it of r.items) rows.push({ img: itemIcon(it), name: itemName(it), color: itemColor(it), item: it });
         if (r.lost) rows.push({ name: `가방 · 창고가 가득 차 ${r.lost}개를 두고 옴`, color: '#ff9a5a' });

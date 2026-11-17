@@ -121,7 +121,7 @@ export function tick(st, now = Date.now()) {
     }
     restAssign(st);
     const innK = innRestK(st);
-    for (const m of t.mercs) if (!m.job && (m.tired || !m.work || m.rest)) { m.sta = Math.min(staMax(m), m.sta + MERC.restSta * rest * (m.rest ? innK : 1) * h); if (m.sta >= staMax(m)) { m.tired = false; m.rest = false; } }
+    for (const m of t.mercs) if (!m.job && (m.tired || !m.work || m.rest)) { m.sta = Math.min(staMax(m), m.sta + MERC.restSta * rest * (m.rest ? innK : 1) * h); if (m.sta >= staMax(m)) { if (m.rest) freshen(st, m); m.tired = false; m.rest = false; } }
   }
   return hours;
 }
@@ -229,10 +229,16 @@ export const BONUS = {
   house: { k: 0.15, max: 0.6, text: (v) => `용병 체력 소모 -${Math.round(v * 100)}%` },
   guild: { k: 0.05, max: 0.3, text: (v) => `파견 시간 -${Math.round(v * 100)}%` },
 };
+// v0.44.28 숙소: 여관에서 푹 쉬고 나온 용병은 한동안 기운이 넘친다 (숙소 단계마다 힘 +3% · 2시간, 다음 파견에 실려 간다)
+export const FRESH = { k: 0.03, ms: 2 * 3600e3 };
+function freshen(st, m) { const h = findBuilding(st, 'house'); if (h) m.fresh = { k: FRESH.k * h.lv, until: Date.now() + FRESH.ms }; }
+export const freshK = (m, now = Date.now()) => (m.fresh && m.fresh.until > now ? m.fresh.k : 0);
+// 파견소 8단계: 죽어도 챙긴 물약은 돌아온다 · 10단계: 죽을 확률 -30% · 전리품 +10%
+const guildLv = (st) => findBuilding(st, 'guild')?.lv || 0;
 export function bonusOf(st, type) {
   const t = townOf(st), e = Object.entries(t.plots).find(([, b]) => b.type === type);
   if (!e || !BONUS[type]) return 0;
-  const sum = t.mercs.filter((m) => m.work === e[0] && !m.tired && !m.job).reduce((a, m) => a + workEff(m, type), 0);
+  const sum = t.mercs.filter((m) => m.work === e[0] && !m.tired && !m.job).reduce((a, m) => a + workEff(m, type) * (1 + freshK(m)), 0);
   return Math.min(BONUS[type].max, sum * BONUS[type].k);
 }
 export const GRADES = [{ name: '평범', color: '#c8c0b0', k: 1 }, { name: '숙련', color: '#6aa8ff', k: 1.5 }, { name: '정예', color: '#d080ff', k: 2.2 }, { name: '전설', color: '#ffb040', k: 3.2 }];
@@ -371,7 +377,7 @@ export function mercPower(m, zn) {
 }
 // 파견 힘: 용병 힘 × 연구 × 쉼터 × 챙긴 영약
 export const partyPower = (st, m, zn, boost = {}) => mercPower(m, zn) * (1 + (st ? researchK(st, 'mercPow') : 0)) * (1 + SHELTER.power * (st ? shelterLv(st, zn.id) : 0)) * (1 + (boost.pow || 0));
-export const deathChance = (m, zn, expId, st = null, boost = {}) => Math.min(0.5, EXP_RISK[expId] * Math.max(0.2, 1 / partyPower(st, m, zn, boost)) ** 2 * (1 - Math.min(0.6, SHELTER.safe * (st ? shelterLv(st, zn.id) : 0))) * (1 - (boost.safe || 0)));
+export const deathChance = (m, zn, expId, st = null, boost = {}) => Math.min(0.5, EXP_RISK[expId] * Math.max(0.2, 1 / partyPower(st, m, zn, boost)) ** 2 * (1 - Math.min(0.6, SHELTER.safe * (st ? shelterLv(st, zn.id) : 0))) * (1 - (boost.safe || 0)) * (st && guildLv(st) >= 10 ? 0.7 : 1));
 // 여러 명을 한 번에: 파견소 단계만큼 인원 · 챙길 물건. pack = [{ base, qty }] (물약 · 영약)
 export function dispatchParty(st, ids, zoneId, expId, pack = [], now = Date.now(), opt = {}) {
   const t = townOf(st), ex = EXPEDITIONS.find((e) => e.id === expId), zn = ZONES.find((z) => z.id === zoneId);
@@ -393,7 +399,7 @@ export function dispatchParty(st, ids, zoneId, expId, pack = [], now = Date.now(
   const boost = packBoost(pack), share = { safe: boost.safe, pow: boost.pow }; // 함께 간 모두가 나눠 쓴다
   const party = `pt${now.toString(36)}`;
   const until = now + ex.min * 60000 * (1 - researchK(st, 'merc')) * (1 - bonusOf(st, 'guild'));
-  for (const m of ms) { const weak = Math.max(0, 1 - m.sta / Math.max(1, staNeed)); m.sta = Math.max(0, m.sta - staNeed); m.work = null; m.rest = false; m.job = { zone: zoneId, exp: expId, from: now, until, party, boost: share, weak }; m.repeat = opt.repeat ? { key: ids.slice().sort().join(','), zone: zoneId, exp: expId, pack } : null; }
+  for (const m of ms) { const weak = Math.max(0, 1 - m.sta / Math.max(1, staNeed)); m.sta = Math.max(0, m.sta - staNeed); m.work = null; m.rest = false; m.job = { zone: zoneId, exp: expId, from: now, until, party, boost: { ...share, pow: (share.pow || 0) + freshK(m, now) }, weak, pack: pack.map((p) => ({ base: p.base, qty: Math.floor(p.qty / ms.length) })).filter((p) => p.qty) }; m.fresh = null; m.repeat = opt.repeat ? { key: ids.slice().sort().join(','), zone: zoneId, exp: expId, pack } : null; }
   return { ok: true, n: ms.length };
 }
 function takeOneItem(st, base) { const it = st.inv.find((x) => x.base === base); if (!it) return; it.qty--; if (it.qty <= 0) st.inv.splice(st.inv.indexOf(it), 1); }
@@ -416,9 +422,14 @@ export function claim(st, id, now = Date.now(), rng = Math.random, put = null) {
   const ex = EXPEDITIONS.find((e) => e.id === m.job.exp), zn = ZONES.find((z) => z.id === m.job.zone);
   const boost = m.job.boost || {}, sh = shelterLv(st, zn.id);
   const lvl = zoneLvl(zn), eff = partyPower(st, m, zn, boost) * (1 + SHELTER.stay * sh);
-  if (rng() < Math.min(0.75, deathChance(m, zn, ex.id, st, boost) * (1 + 2 * (m.job.weak || 0)))) { /* 지친 채로 가면 더 위험 */ t.mercs.splice(t.mercs.indexOf(m), 1); return { dead: true, name: m.name, gold: 0, ore: 0, mats: 0, items: [] }; }
-  const out = { gold: Math.round(lvl * 25 * ex.mult * eff), ore: Math.round(0.8 * ex.mult * eff), items: [] };
-  const rolls = Math.round(ex.mult * eff * 1.5 * (1 + SHELTER.loot * sh));
+  const gl = guildLv(st), safeK = 1, lootK = gl >= 10 ? 1.1 : 1;
+  if (rng() < Math.min(0.75, deathChance(m, zn, ex.id, st, boost) * (1 + 2 * (m.job.weak || 0)) * safeK)) { /* 지친 채로 가면 더 위험 */
+    t.mercs.splice(t.mercs.indexOf(m), 1);
+    let back = 0; if (gl >= 8) for (const p of m.job.pack || []) { resAdd(st, p.base, p.qty); back += p.qty; }
+    return { dead: true, name: m.name, gold: 0, ore: 0, mats: 0, items: [], back };
+  }
+  const out = { gold: Math.round(lvl * 25 * ex.mult * eff * lootK), ore: Math.round(0.8 * ex.mult * eff * lootK), items: [] };
+  const rolls = Math.round(ex.mult * eff * 1.5 * (1 + SHELTER.loot * sh) * lootK);
   for (let k = 0; k < rolls; k++) for (const d of rollLoot({ tier: k % 6 === 5 ? 'elite' : 'normal', level: lvl }, {}, st, rng)) if (d.kind === 'item' && d.item.base && !d.item.book) out.items.push(d.item);
   out.mats = Math.round(ex.mult * 3 * eff * (1 + SHELTER.mats * sh));
   t.mats[zn.id] = (t.mats[zn.id] || 0) + out.mats;
