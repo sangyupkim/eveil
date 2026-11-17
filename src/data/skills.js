@@ -165,7 +165,7 @@ export const SKILL_MOVED = {};
   const TARGET = 32, grade = (sk) => (sk.awaken != null ? sk.awaken : Math.max(0, (sk.tier || 1) - 2));
   const single = (sk) => !sk.passive && Object.keys(sk.req || {}).length === 1 && !sk.lines;
   for (const st of ['str', 'dex', 'int', 'wis', 'vit']) {
-    const mine = () => Object.entries(SKILLS).filter(([, sk]) => single(sk) && sk.req[st]);
+    const mine = () => Object.entries(SKILLS).filter(([id, sk]) => single(sk) && sk.req[st] && !id.startsWith('dg_')); // 단검 계열은 따로 (민첩은 활 + 단검 두 계열)
     while (mine().length > TARGET) {
       const byG = {}; for (const [id, sk] of mine()) (byG[grade(sk)] ||= []).push(id);
       const g = Object.keys(byG).filter((k) => byG[k].length > 2 && byG[k].some((id) => id.startsWith('g_'))).sort((x, y) => byG[y].length - byG[x].length)[0];

@@ -40,7 +40,9 @@ export const BASES = {
   stiletto: { name: '스틸레토', slot: 'weapon', cls: 'dagger', model: 'w_sword', dmg: [7, 11], speed: 1.4, req: { dex: 16 }, minLvl: 3 },
   kris: { name: '크리스', slot: 'weapon', cls: 'dagger', model: 'w_sword', dmg: [10, 15], speed: 1.4, req: { dex: 24 }, minLvl: 7 },
   shadow_dagger: { name: '그림자 단검', slot: 'weapon', cls: 'dagger', model: 'w_sword', dmg: [12, 19], speed: 1.45, req: { dex: 34 }, minLvl: 12 },
-  void_fang: { name: '공허의 송곳니', slot: 'weapon', cls: 'dagger', model: 'w_sword', dmg: [19, 29], speed: 1.45, req: { dex: 56 }, minLvl: 32 },
+  frost_dagger: { name: '서리 단검', slot: 'weapon', cls: 'dagger', model: 'w_sword', dmg: [19, 27], speed: 1.45, req: { dex: 42 }, minLvl: 20 },
+  void_fang: { name: '공허의 송곳니', slot: 'weapon', cls: 'dagger', model: 'w_sword', dmg: [26, 38], speed: 1.45, req: { dex: 52 }, minLvl: 28 },
+  dragon_fang: { name: '용의 송곳니', slot: 'weapon', cls: 'dagger', model: 'w_sword', dmg: [36, 51], speed: 1.45, req: { dex: 62 }, minLvl: 36 },
   golden_sword: { name: '금빛 검', slot: 'weapon', cls: 'sword', model: 'w_sword', mtint: 0xffd36a, dmg: [14, 22], speed: 1.15, req: { str: 34 }, minLvl: 12 },
   old_bow: { name: '낡은 활', slot: 'weapon', cls: 'bow', model: 'q_bow', dmg: [4, 7], speed: 0.95, price: 5, minLvl: 1, noDrop: true },
   short_bow: { name: '단궁', slot: 'weapon', cls: 'bow', model: 'q_bow', dmg: [7, 11], speed: 1.0, price: 110, shop: true },
@@ -204,7 +206,9 @@ export const BASES = {
   // ── v0.44.37 마도서 (보조 칸): 마법 공격력 — 한손 무기 + 마도서 = 물리 · 마법을 함께 (마검사 등) ──
   apprentice_tome: { name: '견습 마도서', slot: 'offhand', armor: 1, price: 90, shop: true, mods: { matk: 5 } },
   rune_tome: { name: '룬 마도서', slot: 'offhand', armor: 2, req: { int: 20 }, minLvl: 6, mods: { matk: 12, int: 2 } },
-  arcane_tome: { name: '비전 마도서', slot: 'offhand', armor: 4, req: { int: 34 }, minLvl: 16, mods: { matk: 26, int: 4 } },
+  storm_tome: { name: '폭풍 마도서', slot: 'offhand', armor: 3, req: { int: 26 }, minLvl: 12, mods: { matk: 18, int: 3 } },
+  arcane_tome: { name: '비전 마도서', slot: 'offhand', armor: 4, req: { int: 34 }, minLvl: 20, mods: { matk: 26, int: 4 } },
+  flame_tome: { name: '화염 마도서', slot: 'offhand', armor: 5, req: { int: 44 }, minLvl: 26, mods: { matk: 38, int: 6 } },
   abyss_tome: { name: '심연의 마도서', slot: 'offhand', armor: 7, req: { int: 56 }, minLvl: 34, mods: { matk: 52, int: 8 } },
 };
 export const isTwoHandedBase = (b) => !!(b.two ?? WEAPON_CLASSES[b.cls]?.two);
@@ -311,7 +315,7 @@ for (const [id, slot, stat, tpl, noun] of STAT_LINES) LINE_LV.forEach((lv, i) =>
 });
 export const HIGH_TEMPLATES = {
   sword: ['inferno_sword', '검'], greatsword: ['rune_blade', '대검'], axe: ['dragon_cleaver', '도끼'], bow: ['dragon_bow', '활'], staff: ['archmage_staff', '지팡이'],
-  shield: ['dragon_shield', '방패'], mace: ['dragon_mace', '철퇴'], scepter: ['void_scepter', '홀'], orb: ['void_orb', '보주'], plate: ['dragon_plate', '판금'], leather: ['shadow_leather', '가죽 갑옷'], robe: ['inferno_robe', '로브'],
+  shield: ['dragon_shield', '방패'], mace: ['dragon_mace', '철퇴'], dagger: ['dragon_fang', '단검'], tome: ['abyss_tome', '마도서'], scepter: ['void_scepter', '홀'], orb: ['void_orb', '보주'], plate: ['dragon_plate', '판금'], leather: ['shadow_leather', '가죽 갑옷'], robe: ['inferno_robe', '로브'],
   helm: ['dragon_helm', '투구'], hood: ['shadow_hood', '두건'], hat: ['archmage_hat', '모자'],
   gaunt: ['dragon_gauntlets', '건틀릿'], lglove: ['shadow_gloves', '장갑'], sleeve: ['ember_sleeves', '소매'],
   boot: ['dragon_boots', '장화'], lboot: ['shadow_boots', '가죽 장화'], mboot: ['ember_boots', '신'],

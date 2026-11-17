@@ -318,7 +318,10 @@ export class Windows {
   // 장비창: 가운데 캐릭터 초상화, 왼쪽 · 오른쪽 줄에 부위별 칸 (겹치지 않게 칸을 줄로)
   equipGrid() {
     const st = this.w.st;
+    // v0.44.39 양손 무기를 들면 보조 칸에 그 무기를 연하게 (보조 장비를 낄 수 없다는 표시)
+    const w2 = st.equip.weapon && isTwoHandedBase(BASES[st.equip.weapon.base]) ? st.equip.weapon : null;
     const cell = (s) => { const it = st.equip[s], sel = this.sel?.from === 'equip' && this.sel.slot === s ? ' sel' : '';
+      if (s === 'offhand' && !it && w2) return `<div class="cell twoGhost" data-eq="weapon"><span class="lab">${SLOT_NAMES[s]}</span>${ico(w2)}</div>`;
       return `<div class="cell${sel}${it ? rar(it) : ''}" data-eq="${s}"><span class="lab">${SLOT_NAMES[s]}</span>${it ? ico(it) : ''}</div>`; };
     return `<div class="doll2"><div class="dcol">${['helm', 'amulet', 'armor', 'gloves', 'belt'].map(cell).join('')}</div>
       <div class="dmid"><img src="${portrait(st.look)}" alt="" /><div class="note">${esc(st.name)}</div></div>

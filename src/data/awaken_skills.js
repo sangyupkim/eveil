@@ -205,3 +205,40 @@ for (const [key, names] of Object.entries(MIX3)) {
     AWAKEN_SKILLS[`m_${ls.join('')}${g}`] = o;
   });
 }
+
+// ───── v0.44.39 단검 계열 (민첩 · 근접 무기): 활 계열(약 23개)만큼, 각성 등급마다 셋 (찌르기 · 회전 · 기습) ─────
+const DG_NAMES = [
+  ['찌르기', '칼날 돌개', '기습'], ['연속 찌르기', '칼날 춤', '그림자 기습'], ['독사 찌르기', '칼날 폭풍', '암습'],
+  ['심장 꿰뚫기', '그림자 칼춤', '섬광 암살'], ['혈월 찌르기', '만검 회오리', '그림자 처형'], ['종언의 일격', '무한 칼날', '영원한 그림자'],
+];
+const DG_DESC = { melee: '단검으로 한 대상의 급소를 깊게 찌른다.', spin: '단검을 휘돌려 둘레의 적을 벤다.', dash: '눈 깜짝할 새 적 뒤로 파고들어 벤다.' };
+for (let g = 0; g <= 5; g++) [[0, 1], [1, 3], [3, 2]].forEach(([ix, q], k) => {
+  const o = makeGraded('str', g, q, ix), sp = o.type === 'spin';
+  Object.assign(o, { name: DG_NAMES[g][k], line: 'dex', school: 'trick', needs: 'melee', color: COLORS.dex[q - 1], fx: 'v_dust',
+    req: { dex: Math.round((R[g] || 14) * (q === 3 ? 1.15 : q === 1 ? 0.85 : 1)) }, power: +(o.power * 1.05).toFixed(2), cd: Math.max(3, o.cd - 1),
+    desc: (sp && o.hits ? '단검을 두 번 휘돌려 둘레의 적을 벤다.' : DG_DESC[o.type]) + ' (근접 무기)' });
+  AWAKEN_SKILLS[`dg_${g}_${k}`] = o;
+});
+
+// v0.44.39 혼합 스킬 늘리기: 2 · 3 · 4차에 상품 하나씩 더 (조합마다 약 10개)
+const MIX2B = {
+  'str+dex': [[3, '칼바람 돌격'], [1, '쌍검 회오리'], [0, '검성의 일섬']],
+  'str+int': [[1, '마염 회전'], [3, '뇌광 돌격'], [4, '원소 마검'], ],
+  'str+wis': [[1, '성광 회전'], [3, '심판의 돌진'], [0, '성검 강림']],
+  'str+vit': [[2, '철혈 가르기'], [0, '거신 강타'], [1, '철혈 회오리']],
+  'dex+int': [[2, '원소 화살비'], [0, '마력 속사'], [1, '성좌 관통']],
+  'dex+wis': [[1, '넋의 관통'], [2, '영혼 소나기'], [0, '영혼 속사']],
+  'dex+vit': [[1, '야수 관통'], [5, '덫 화살비'], [3, '야생의 연사']],
+  'int+wis': [[3, '진리의 사슬'], [4, '현자의 비'], [1, '진리 폭발']],
+  'int+vit': [[3, '마도 사슬'], [1, '마도 폭발'], [5, '마도 창']],
+  'wis+vit': [[2, '금강 회오리'], [3, '금강 일격'], [5, '금강 충격']],
+};
+for (const [key, list] of Object.entries(MIX2B)) {
+  const [a, b] = key.split('+'), M = MIX2[key];
+  list.forEach(([ix, name], k) => {
+    const g = k + 2, o = makeGraded(M.p, g, 3, ix);
+    Object.assign(o, { name, lines: [a, b], line: M.p, school: 'mix', color: M.color, req: { [a]: Math.round(R[g] * 0.69), [b]: Math.round(R[g] * 0.52) }, q: 3, desc: `${SN[a]} · ${SN[b]} 혼합 기술. ${o.desc}` });
+    if (M.p !== 'vit') { delete o.scale; delete o.hpCost; }
+    AWAKEN_SKILLS[`m_${a}${b}${g}b`] = o;
+  });
+}

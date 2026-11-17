@@ -134,8 +134,8 @@ export const ITEM_LOOK = {
   sage_scepter: { layers: { main: 'rod' }, icon: 105, tint: 0x9ad0ff }, rune_scepter: { layers: { main: 'rod' }, icon: 105, tint: 0x8ab0ff }, astral_scepter: { layers: { main: 'rod' }, icon: 105, tint: 0xd0b0ff }, void_scepter: { layers: { main: 'rod' }, icon: 105, tint: 0xb07aff },
   // v0.44.37 단검 · 마도서
   worn_dagger: { layers: { main: 'dagger' }, icon: 96, tint: C.brown }, dagger: { layers: { main: 'dagger' }, icon: 96 }, stiletto: { layers: { main: 'dagger' }, icon: 96, tint: 0xc8d0e0 },
-  kris: { layers: { main: 'dagger' }, icon: 96, tint: 0xd8b070 }, shadow_dagger: { layers: { main: 'dagger' }, icon: 96, tint: 0x8a7aa0 }, void_fang: { layers: { main: 'dagger' }, icon: 96, tint: 0xb07aff },
-  apprentice_tome: { icon: 28, tint: 0xc8b090 }, rune_tome: { icon: 28, tint: 0x8ab0ff }, arcane_tome: { icon: 28, tint: 0xb090ff }, abyss_tome: { icon: 28, tint: 0x9a50d0 },
+  kris: { layers: { main: 'dagger' }, icon: 96, tint: 0xd8b070 }, shadow_dagger: { layers: { main: 'dagger' }, icon: 96, tint: 0x8a7aa0 }, void_fang: { layers: { main: 'dagger' }, icon: 96, tint: 0xb07aff }, frost_dagger: { layers: { main: 'dagger' }, icon: 96, tint: C.ice }, dragon_fang: { layers: { main: 'dagger' }, icon: 96, tint: C.red },
+  apprentice_tome: { icon: 28, tint: 0xc8b090 }, rune_tome: { icon: 28, tint: 0x8ab0ff }, arcane_tome: { icon: 28, tint: 0xb090ff }, storm_tome: { icon: 28, tint: 0x80c0ff }, flame_tome: { icon: 28, tint: 0xff9a60 }, abyss_tome: { icon: 28, tint: 0x9a50d0 },
   glass_orb: { icon: 68, tint: 0xd0e8ff }, moon_orb: { icon: 68 }, rune_orb: { icon: 68, tint: 0x8ab0ff }, void_orb: { icon: 68, tint: 0xb07aff },
   rusty_sword: { layers: { main: 'shortsword' }, icon: 97, tint: C.brown }, short_sword: { layers: { main: 'shortsword' }, icon: 97 }, broad_sword: { layers: { main: 'longsword' }, icon: 98 },
   greatsword: { layers: { main: 'greatsword' }, icon: 99 }, claymore: { layers: { main: 'zweihander' }, icon: 100 }, golden_sword: { layers: { main: 'longsword' }, icon: 98, tint: C.gold },

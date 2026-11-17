@@ -584,3 +584,6 @@ html.force-land #rotate { display: none !important; }
 #zoneLoad[hidden] { display: none; }
 #zoneLoad > div { text-align: center; }
 #zoneLoad b { display: block; font-size: 1.4em; color: #ffd84a; margin-bottom: .3em; }
+/* v0.44.39 양손 무기일 때 보조 칸: 무기를 연하게 */
+.cell.twoGhost img, .cell.twoGhost canvas { opacity: .32; filter: grayscale(.6); }
+.cell.twoGhost { border-style: dashed; }
