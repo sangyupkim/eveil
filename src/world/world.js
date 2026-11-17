@@ -1643,15 +1643,21 @@ export class World {
     this.floodOn ||= {};
     const left = this.monsters.filter((m) => !m.dead && m.flood === zn.id).length;
     { const el = document.querySelector('.zoneName'); if (el && this.floodOn[zn.id]) el.textContent = `범람지 · ${zn.name} · 남은 몬스터 ${left}`; }
+    { const L0 = f.left, sum = L0 ? L0.normal + L0.elite + L0.named + L0.boss : -1;
+      if (sum === 0) { this.floodClear(zn.id, P, this.floodLevel(zn)); return; } // 다 잡았는데 남아 있던 범람 정리
+      if (this.floodOn[zn.id] && left === 0 && sum > 0) delete this.floodOn[zn.id]; // 몬스터가 사라졌으면 남은 수만큼 다시
+    }
     if (this.floodOn[zn.id]) return; // 한 번만 (다시 나지 않는다 · 나갔다 들어와도 남은 몬스터 그대로)
     this.floodOn[zn.id] = this.time;
     for (const m of this.monsters) if (!m.dead && !m.flood && m.sp?.zone?.id === zn.id) { m.dead = true; m.deadT = 0; if (m.sp) m.sp.mon = null; } // 원래 몬스터는 걷어낸다
-    const top = Math.max(zn.levels[1], ...this.floodZones().map((z) => z.levels[1])), L = Math.round(top * FLOOD.levelK);
+    const L = this.floodLevel(zn);
     const pick = () => FLOOD_AFFIX_IDS[Math.floor(Math.random() * FLOOD_AFFIX_IDS.length)];
     const mk = (tier, fixed, k) => {
       const a = Math.random() * 6.28, r = (0.15 + Math.random() * 0.75) * zn.r;
-      const m = this.spawn({ zone: zn, x: zn.x + Math.cos(a) * r, z: zn.z + Math.sin(a) * r, level: L - this.tierOffset, tier, timer: 0, mon: null, fixed });
+      const sp = this.freeSpot(zn.x + Math.cos(a) * r, zn.z + Math.sin(a) * r, 0.8);
+      const m = this.spawn({ zone: zn, x: sp.x, z: sp.z, level: L - this.tierOffset, tier, timer: 0, mon: null, fixed });
       if (!m) return null;
+      m.floodTier = tier; if (m.tier !== tier) { m.tier = tier; } // 일반이 정예로 바뀌어 남은 수가 어긋나던 것
       m.flood = zn.id; m.home = { x: m.pos.x, z: m.pos.z }; m.noLoot = true; // v0.44.46 범람 몬스터는 보상 없음 (해소 보상만)
       m.affix = tier === 'boss' ? [pick(), pick()] : tier === 'elite' ? [pick(), pick()] : [pick()];
       if (m.affix.includes('frenzy')) { m.speed *= 1.3; m.def = { ...m.def, interval: m.def.interval / 1.3 }; }
@@ -1665,26 +1671,39 @@ export class World {
     for (let i = 0; i < f.left.normal; i++) mk('normal');
     for (let i = 0; i < f.left.elite; i++) mk('elite');
     if (f.left.named) mk('named', zn.named);
-    if (f.left.boss) { const b = mk('boss', zn.boss, FLOOD.bossHp); if (b) b.floodBoss = true; }
+    if (f.left.boss) { const b = mk('boss', zn.boss, FLOOD.bossHp); if (b) { b.floodBoss = true; const c = this.freeSpot(zn.x, zn.z, 1.2); b.pos.set(c.x, 0, c.z); b.home = { x: c.x, z: c.z }; } }
     this.ui.toast(`범람한 ${zn.name}`, '#ff6a5a');
+  }
+  // 범람 몬스터 레벨: 보스를 잡은 지역 · 깬 던전 단계 중 가장 높은 곳(세계 단계 포함) × 1.1
+  floodLevel(zn) {
+    const st = this.st, top = Math.max(zn.levels[1], ...this.floodZones().map((z) => Math.max(z.levels[1], (st.dungeons?.[z.id] || 0) > 0 ? dungeonLevel(z, st.dungeons[z.id]) : 0)));
+    return Math.round((top + this.tierOffset) * FLOOD.levelK);
+  }
+  // 정화: 붉은 화면이 걷히고 보상
+  floodClear(zid, P, lv) {
+    const F = this.st.flood; if (!F?.list?.some((x) => x.zone === zid)) return;
+    F.list = F.list.filter((x) => x.zone !== zid);
+    (this.st.zoneHunt ||= {})[zid] = Date.now();
+    if (this.floodOn) delete this.floodOn[zid];
+    if (this.floodLock?.zone === zid) this.floodLock = null;
+    this.stage.flooded = F.list.map((x) => x.zone);
+    this.dropGround({ kind: 'gold', amount: lv * 400 }, P.x, P.z);
+    this.dropGround({ kind: 'item', item: makeItem(rollBase(lv), { rarity: Math.random() < 0.15 ? 'legend' : 'hero', ilvl: lv }, this.st) }, P.x + 1, P.z);
+    resAdd(this.st, 'ore2', 2 + Math.floor(lv / 40));
+    resAdd(this.st, 'map_piece', 1); // 범람 해소 = 지도 조각 (유물은 주지 않는다)
+    { const wk = weekKey(), FW = (this.st.floodWeek ||= {}); if (FW[zid] !== wk) { FW[zid] = wk; const g = Math.min(5, 2 + Math.floor(lv / 120)); resAdd(this.st, 'ess' + g, 3); this.ui.toast('이번 주 첫 정화 · 정수 3개', '#c0a0ff'); } }
+    const zn = ALL_ZONES.find((z) => z.id === zid);
+    this.ui.banner?.(`${zn?.name || ''} 정화 완료`, '#7fe07a'); this.ui.toast(`범람이 정화되었습니다 · 금화 · 장비 · 상급 강화석 · 지도 조각`, '#7fe07a'); sfx('rankup');
+    this.fx.play('sparkle', P.x, P.z, { scale: 2, dur: 1.2 });
+    this.ui.dirty();
   }
   floodDeath(m) {
     const P = m.pos;
-    { const f = this.st.flood?.list?.find((x) => x.zone === m.flood); if (f?.left && !m.child && f.left[m.tier] > 0) f.left[m.tier]--; }
+    const f0 = this.st.flood?.list?.find((x) => x.zone === m.flood), k0 = m.floodTier || m.tier;
+    if (f0?.left && !m.child && f0.left[k0] > 0) f0.left[k0]--;
     if (m.affix?.includes('burst')) { this.fx.telegraph?.(P.x, P.z, 2.6, 1, 0xff4020); this.later(1, () => { if (Math.hypot(this.player.pos.x - P.x, this.player.pos.z - P.z) < 2.6) this.hurtPlayer(this.d.maxHp * 0.12, m, { sure: true }); this.fx.ring(P.x, P.z, 2.6, 0xff6020, 0.4); }); }
-    if (m.affix?.includes('split') && !m.child) for (let i = 0; i < 2; i++) { const c = this.spawn({ zone: m.sp.zone, x: P.x + (i ? 1 : -1), z: P.z, level: m.level - this.tierOffset, tier: 'normal', timer: 0, mon: null }); if (c) { c.flood = m.flood; c.child = true; c.maxHp *= 0.4; c.hp = c.maxHp; c.state = 'chase'; c.actor.root.scale.multiplyScalar(0.7); } }
-    if (m.floodBoss) {
-      const F = this.st.flood; F.list = F.list.filter((x) => x.zone !== m.flood);
-      (this.st.zoneHunt ||= {})[m.flood] = Date.now();
-      const lv = m.level;
-      this.dropGround({ kind: 'gold', amount: lv * 400 }, P.x, P.z);
-      this.dropGround({ kind: 'item', item: makeItem(rollBase(lv), { rarity: Math.random() < 0.15 ? 'legend' : 'hero', ilvl: lv }, this.st) }, P.x + 1, P.z);
-      resAdd(this.st, 'ore2', 2 + Math.floor(lv / 40));
-      resAdd(this.st, 'map_piece', 1); // v0.44.47 범람 해소 = 지도 조각 (유물은 주지 않는다)
-      { const wk = weekKey(), FW = (this.st.floodWeek ||= {}); if (FW[m.flood] !== wk) { FW[m.flood] = wk; const g = Math.min(5, 2 + Math.floor(lv / 120)); resAdd(this.st, 'ess' + g, 3); this.ui.toast('이번 주 첫 해소 보너스', '#ffd84a'); } } // v0.44.49
-      this.ui.toast('범람이 걷혔습니다', '#7fe07a'); sfx('rankup');
-      if (this.floodLock?.zone === m.flood) this.floodLock = null;
-    }
+    if (m.affix?.includes('split') && !m.child) for (let i = 0; i < 2; i++) { const c = this.spawn({ zone: m.sp.zone, x: P.x + (i ? 1 : -1), z: P.z, level: m.level - this.tierOffset, tier: 'normal', timer: 0, mon: null }); if (c) { c.flood = m.flood; c.child = true; c.maxHp *= 0.4; c.hp = c.maxHp; c.state = 'chase'; if (c.actor.root?.scale?.multiplyScalar) c.actor.root.scale.multiplyScalar(0.7); else c.actor.scale = (c.actor.scale || 1) * 0.7; } }
+    if (f0?.left && f0.left.normal + f0.left.elite + f0.left.named + f0.left.boss <= 0) this.floodClear(m.flood, P, m.level); // 범람 보스까지 모두 잡으면 정화
   }
   // v0.44.42 수련 비전: 수동 사냥 중 행동만 센다 · 장착한 비전인지
   art(id) { return !!this.st.arts?.equip?.includes(id); }
