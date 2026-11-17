@@ -449,7 +449,8 @@ export function claim(st, id, now = Date.now(), rng = Math.random, put = null) {
   t.mats[zn.id] = (t.mats[zn.id] || 0) + out.mats;
   st.gold += out.gold;
   t.ore += out.ore;
-  for (const it of out.items) if (!(put ? put(st, it) : addItem(st, it))) st.inv.push(it); out.lost = 0; // v0.44.66 받기 시작한 전리품은 잃지 않는다 (가득이면 가방에 넘쳐 담는다)
+  const got = [], held = []; for (const it of out.items) (put ? put(st, it) : addItem(st, it)) ? got.push(it) : held.push(it);
+  out.items = got; out.held = held; out.lost = 0; // v0.44.68 자리가 없어 못 받은 것은 용병이 들고 기다린다 (넘쳐 담지 않는다)
   gainExp(m, ex.mult * 10); lifeProgress(st, 'expedition');
   // v0.44.47 파견소 4단계부터 긴 파견은 지도 조각을 가져온다 (긴 원정 30% · 야영 토벌 1 · 깊은 원정 1~2)
   if (gl >= 4) { const mp = ex.id === 'deep' ? 1 + (rng() < 0.5 ? 1 : 0) : ex.id === 'siege' ? 1 : ex.id === 'long' && rng() < 0.3 ? 1 : 0; if (mp) { resAdd(st, 'map_piece', mp); out.mapPiece = mp; } }

@@ -653,7 +653,7 @@ export class Windows {
   notice(sections) {
     const cur = document.getElementById('winAlert');
     if (cur && !cur.dataset.notice) { (this.noticeWait ||= []).push(...sections); return; } // 다른 팝업이 떠 있으면 닫힌 뒤에
-    this.noticeQ = [...(cur ? this.noticeQ || [] : []), ...sections];
+    this.noticeQ = [...(cur ? this.noticeQ || [] : []), ...sections].slice(-8).map((sec) => (sec.rows?.length > 60 ? { ...sec, rows: [...sec.rows.slice(0, 60), { name: `그 밖의 ${sec.rows.length - 60}줄`, color: '#c8c0b0' }] } : sec)); // v0.44.68 알림이 끝없이 쌓여 화면이 멈칫하던 것
     const all = this.noticeQ, items = [];
     const html = `<div class="ntc">${'<div class="ntcList">' + all.map((sec) => `<h3>${esc(sec.title)}</h3><div class="ntcRows">${(sec.rows || []).map((r) => {
       const k = r.item ? items.push(r.item) - 1 : -1;

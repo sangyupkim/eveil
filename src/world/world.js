@@ -2567,8 +2567,14 @@ export class World {
   townAuto() {
     const st = this.st, t = townOf(st), now = Date.now(), secs = [];
     const put = (s2, it) => addItem(s2, it) || vaultAdd(s2, it); // 가방이 차면 창고로
+    // v0.44.68 들고 기다리던 전리품: 자리가 나면 받는다
+    let gotHeld = 0;
+    // v0.44.66에서 가방 칸을 넘겨 담긴 것: 넘친 만큼 떼어 용병 짐으로 (가방이 수천 칸으로 불어나 멈칫했다)
+    { const B = bagSize(st); if (st.inv.length > B && t.mercs.length) { const extra = st.inv.splice(B); const m0 = t.mercs[0]; m0.held = [...(m0.held || []), ...extra]; } }
+    for (const m of t.mercs) if (m.held?.length && !lootRoomFull(st)) { const left = []; for (const it of m.held) (put(st, it) ? gotHeld++ : left.push(it)); m.held = left.length ? left : undefined; }
+    if (gotHeld) secs.push({ title: '용병이 들고 있던 전리품', rows: [{ name: `장비 ${gotHeld}개를 받았습니다`, color: '#7fe07a' }] });
     const full = lootRoomFull(st);
-    if (full && t.mercs.some((m) => m.job && now >= m.job.until) && !(this.lootWaitT > now)) { this.lootWaitT = now + 60e3; this.ui.toast('가방 · 창고가 꽉 차 용병이 전리품을 들고 기다립니다', '#ff9a5a'); }
+    if (full && t.mercs.some((m) => (m.job && now >= m.job.until) || m.held?.length) && !(this.lootWaitT > now)) { this.lootWaitT = now + 60e3; this.ui.toast('가방 · 창고가 꽉 차 용병이 전리품을 들고 기다립니다', '#ff9a5a'); }
     const back = full ? [] : t.mercs.filter((m) => m.job && now >= m.job.until); // v0.44.66 꽉 차 있으면 받지 않고 기다린다
     if (back.length) {
       const rows = [], tot = { gold: 0, ore: 0, mats: 0 };
@@ -2577,9 +2583,12 @@ export class World {
         if (!r) continue;
         if (r.dead) { rows.push({ name: `${r.name} 돌아오지 못함${r.back ? ` · 물약 ${r.back}개 회수` : ''}`, color: '#ff6a5a' }); continue; }
         tot.gold += r.gold; tot.ore += r.ore; tot.mats += r.mats;
-        for (const it of r.items) rows.push({ img: itemIcon(it), name: itemName(it), color: itemColor(it), item: it });
+        if (r.held?.length) { const mm = t.mercs.find((x) => x.id === m.id); if (mm) mm.held = [...(mm.held || []), ...r.held]; }
+        for (const it of r.items) { if (rows.filter((x) => x.item).length >= 40) { tot.more = (tot.more || 0) + 1; continue; } rows.push({ img: itemIcon(it), name: itemName(it), color: itemColor(it), item: it }); } // v0.44.68 알림 줄은 40개까지 (수천 줄이 쌓여 화면이 멈칫했다)
+        if (r.held?.length) rows.push({ name: `자리가 없어 ${r.held.length}개는 용병이 들고 기다림`, color: '#ff9a5a' });
         if (r.mapPiece) rows.push({ name: `지도 조각 ${r.mapPiece}`, color: '#ffd060' });
       }
+      if (tot.more) rows.push({ name: `그 밖의 장비 ${tot.more}개`, color: '#c8c0b0' });
       rows.unshift({ img: coinIcon(), name: '금화', qty: tot.gold }, { img: oreIcon(), name: '강화석', qty: tot.ore }, { img: iconUrl(1012), name: '지역 재료', qty: tot.mats });
       secs.push({ title: `파견 귀환 · ${back.map((m) => m.name).join(' · ')}`, rows });
     }
