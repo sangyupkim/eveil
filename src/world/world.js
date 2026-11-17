@@ -573,10 +573,11 @@ export class World {
   }
   enterDungeon(zi, diff = 1, opt = {}) {
     const st = this.st, zn = ALL_ZONES[zi], D = DUNGEON_DIFFS[diff - 1] || DUNGEON_DIFFS[0];
-    if (!takeOne(st, opt.unknown ? 'unknown_map' : D.key)) return;
+    if (opt.gate) { const i = st.inv.indexOf(opt.gate); if (i < 0) return; st.inv.splice(i, 1); } // v0.44.50 열린 미지의 길로 다시
+    else if (!takeOne(st, opt.unknown ? 'unknown_map' : D.key)) return;
     const stage = opt.unknown ? 5 : Math.min(MAX_STAGE, ((st.dungeons ||= {})[zn.id] || 0) + 1);
     this.leaveDungeon(true);
-    this.dungeon = { zi, stage, zone: zn, diff, unknown: !!opt.unknown };
+    this.dungeon = { zi, stage, zone: zn, diff, unknown: !!opt.unknown, until: opt.gate?.until || Date.now() + 86400e3 };
     this.toggleAuto(false);
     const Ld = dungeonLayout(zi), sp0 = cellPos(zi, Ld.start[0], Ld.start[1]);
     this.player.pos.set(sp0.x, 0, sp0.z); this.moveTo = null; this.target = null;
@@ -606,6 +607,8 @@ export class World {
   }
   leaveDungeon(silent = false) {
     if (!this.dungeon) return;
+    // v0.44.50 미지의 땅을 다 못 깨고 나오면 24시간 안에 다시 들어갈 「열린 미지의 길」 (다시 들어가면 처음부터)
+    { const dg = this.dungeon; if (dg.unknown && !dg.cleared && Date.now() < dg.until) { const g = makeItem('unknown_gate', { qty: 1 }, this.st); Object.assign(g, { zi: dg.zi, until: dg.until }); delete g.qty; addItem(this.st, g) || this.st.inv.push(g); } }
     if (this.autoArea?.dungeon != null) this.autoArea = { zone: ALL_ZONES[this.dungeon.zi] }; // 던전에서 켠 자동 사냥은 나오면 그 지역에서
     // 던전 몬스터는 쓰러진 중이던 것 · 보스가 부른 졸개까지 그림째 모두 치운다 (남으면 다시 들어갈 때 잔상이 보였다)
     const inDg = (m) => m.dungeon || m.owner?.dungeon || m.pos.x > DUNGEON_X - 80;
@@ -637,7 +640,7 @@ export class World {
 
   dungeonCleared(m) {
     const st = this.st, dg = this.dungeon, zn = dg.zone;
-    if (dg.unknown) { // 미지의 땅: 유물 하나 (등급은 유물 제단 단계로) + 금화
+    if (dg.unknown) { dg.cleared = true; // 미지의 땅: 유물 하나 (등급은 유물 제단 단계로) + 금화
       const al = Object.values(st.town?.plots || {}).find((b) => b.type === 'altar'), r = rollRelic(al?.lv || 0);
       ((st.relics ||= { bag: [], on: [] }).bag ||= []).push(r); st.gold += dg.L * 300;
       this.ui.toast(`유물 「${RELIC[r.id].name}」 (${RELIC_GRADES[r.g].name})`, RELIC_GRADES[r.g].color); sfx('rankup');
@@ -2695,6 +2698,7 @@ export class World {
     const st = this.st;
     const it = st.inv.find((x) => x.uid === uid);
     if (!it) return;
+    if (it.base === 'unknown_gate') { if (this.dungeon) { this.ui.toast('던전 밖에서 쓸 수 있습니다'); return; } if (Date.now() > (it.until || 0)) { st.inv.splice(st.inv.indexOf(it), 1); this.ui.toast('길이 닫혔습니다'); this.ui.dirty(); return; } this.enterDungeon(it.zi, 1, { unknown: true, gate: it }); globalThis.__game?.windows?.close?.(); return; }
     if (it.base === 'unknown_map') { if (this.dungeon) { this.ui.toast('던전 밖에서 펼칠 수 있습니다'); return; } this.enterUnknown(); globalThis.__game?.windows?.close?.(); return; } // v0.44.47
     this.d = derive(st, this.buffValues());
     if (BASES[it.base]?.type === 'pet') { takeOne(st, it.base); const cat = BASES[it.base].pet === 'pet_cat'; st.pet = { kind: cat ? 'pet_cat' : 'pet_dog', name: cat ? '고양이' : '강아지' }; this.makePet(); this.ui.toast(`${st.pet.name}가 함께합니다! 물건을 주워 오고 함께 싸웁니다`, '#7fe07a'); sfx('learn'); this.ui.dirty(); return; }
