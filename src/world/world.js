@@ -18,7 +18,7 @@ import { derive, damageReduction, totalStats, skillScale } from '../game/player.
 import { monsterRes, mixFxOf } from '../data/resist.js';
 import { ARTS } from '../data/arts.js';
 import { relicBonus, rollRelic, RELIC, RELIC_GRADES } from '../data/relics.js';
-import { FLOOD, FLOOD_AFFIX, FLOOD_AFFIX_IDS } from '../data/flood.js';
+import { nextFloodAt, FLOOD, FLOOD_AFFIX, FLOOD_AFFIX_IDS } from '../data/flood.js';
 import { ELIXIRS, ELIXIR_TIME, HERBS, HP_POTIONS, MP_POTIONS } from '../data/potions.js';
 import { addAP, gainExp, rewardFactor, recAwaken } from '../game/growth.js';
 import { addSkillExp, skillValues, skillEff, modsOf, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
@@ -1618,9 +1618,12 @@ export class World {
   floodTick() {
     const st = this.st, now = Date.now(), cleared = this.floodZones();
     const F = (st.flood ||= { list: [], next: 0 });
+    // 매일 저녁 7시(한국 시간)에 하나. 처음이거나 예전 3일 간격 저장이면 오늘 저녁 7시로 맞춘다
+    if (!F.daily) { F.daily = 1; const t = nextFloodAt(now); F.next = t - 86400e3 <= now && new Date(now + 9 * 3600e3).getUTCHours() >= FLOOD.hourKST ? now : t; }
     if (cleared.length < FLOOD.minCleared || F.list.length >= FLOOD.max || now < (F.next || 0)) return;
-    const hunt = st.zoneHunt || {}, cand = cleared.filter((z) => !F.list.some((x) => x.zone === z.id) && now - (hunt[z.id] || 0) > FLOOD.idleMs);
-    F.next = now + FLOOD.everyMs;
+    const hunt = st.zoneHunt || {}, free = cleared.filter((z) => !F.list.some((x) => x.zone === z.id));
+    const idle = free.filter((z) => now - (hunt[z.id] || 0) > FLOOD.idleMs), cand = idle.length ? idle : free; // 오래 안 간 곳 먼저
+    F.next = nextFloodAt(now);
     if (!cand.length) return;
     const z = cand[Math.floor(Math.random() * cand.length)];
     F.list.push({ zone: z.id, at: now });
@@ -1804,7 +1807,8 @@ export class World {
     let g = 0, n = 0;
     st.inv = st.inv.filter((it) => {
       // 땅에서 막 주운 장비만 판다 — 한 번이라도 입었던 것 · 벗은 것 · 창고에서 꺼낸 것은 절대 팔지 않는다
-      if (!it.loot || it.worn || it.book || !BASES[it.base]?.slot || it.set || it.named || it.rarity === 'hero' || it.rarity === 'legend' || it.rarity === 'myth') return true;
+      const upTo = ['common', 'magic', 'rare'].indexOf(st.settings.autoSellTo || 'rare'), rk = ['common', 'magic', 'rare'].indexOf(it.rarity); // 설정한 등급까지만 판다
+      if (!it.loot || it.worn || it.book || !BASES[it.base]?.slot || it.set || it.named || rk < 0 || rk > upTo) return true;
       g += itemValue(it); n++; return false;
     });
     if (n) { st.gold += g; this.ui.log(`자동 판매: 장비 ${n}개 +${g.toLocaleString()}G`, '#ffd84a'); sfx('coin'); this.ui.dirty(); }
