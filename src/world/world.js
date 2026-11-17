@@ -1791,7 +1791,7 @@ export class World {
         this.later(dur * 0.35, () => {
           if (!t) return;
           sfx('fire', 0.7);
-          this.fx.projectile({
+          this.fx.projectile({ elem: sk.elem,
             from: this.muzzle(), target: t, color, size: sk.splash ? 1.5 : 0.9, speed: 20,
             onHit: (tg) => {
               const at = tg.pos || tg;
@@ -1815,7 +1815,7 @@ export class World {
           const targets = sk.count ? [t, ...this.monstersNear(P.pos, sk.range).filter((m) => m !== t)].filter(Boolean).slice(0, sk.count) : [t];
           for (const tg of targets) {
             if (!tg) continue;
-            this.fx.projectile({
+            this.fx.projectile({ elem: sk.elem,
               from: this.muzzle(), target: tg, color, size: 0.7, speed: 32, bolt: true,
               onHit: (x) => { if (x.pos) FX(x.pos.x, x.pos.z, 0.8); if (!x.dead) { const w = weaponHit(); this.hitMonster(x, w.v, { crit: w.crit, src: 'skill', ctx }); } },
             });
@@ -1849,7 +1849,7 @@ export class World {
         this.fx.meteor(at.x, at.z, sk.radius, 1.0, () => {
           sfx('boom'); FXarea(at.x, at.z, sk.radius, 4);
           for (const m of this.monstersNear(at, sk.radius)) this.hitMonster(m, spell(), { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 });
-        });
+        }, sk.elem || 'fire');
         break;
       }
       case 'nova': {
@@ -1891,7 +1891,7 @@ export class World {
           sfx('shoot', 1.3);
           const end = { x: P.pos.x + ux * sk.range, z: P.pos.z + uz * sk.range };
           if (sk.fx) for (let k = 2; k < sk.range; k += 2.2) this.later(k / 40, () => FX(P.pos.x + ux * k, P.pos.z + uz * k, 0.8));
-          this.fx.projectile({ from: this.muzzle(), target: { pos: new THREE.Vector3(end.x, 1.4, end.z) }, color, size: sk.width > 2 ? 2 : 1, speed: 40, bolt: true, onHit: () => {} });
+          this.fx.projectile({ elem: sk.elem, from: this.muzzle(), target: { pos: new THREE.Vector3(end.x, 1.4, end.z) }, color, size: sk.width > 2 ? 2 : 1, speed: 40, bolt: true, onHit: () => {} });
           for (const m of this.monsters) {
             if (m.dead) continue;
             const px = m.pos.x - P.pos.x, pz = m.pos.z - P.pos.z;
@@ -1918,7 +1918,7 @@ export class World {
             if (sk.fx) for (let k = 0; k < 3; k++) { const a = Math.random() * 6.28, r = Math.random() * sk.radius; FX(at.x + Math.cos(a) * r, at.z + Math.sin(a) * r, 0.8); }
             for (let k = 0; k < 8; k++) {
               const a = Math.random() * 6.28, r = Math.random() * sk.radius, x = at.x + Math.cos(a) * r, z = at.z + Math.sin(a) * r;
-              this.fx.projectile({ from: { x: x - 1, y: 9, z: z - 1 }, target: { x, z, pos: new THREE.Vector3(x, -1.1, z) }, color, size: 0.5, speed: 40, bolt: sk.ap !== 'int', trail: true, onHit: () => {} });
+              this.fx.projectile({ elem: sk.elem, from: { x: x - 1, y: 9, z: z - 1 }, target: { x, z, pos: new THREE.Vector3(x, -1.1, z) }, color, size: 0.5, speed: 40, bolt: sk.ap !== 'int', trail: true, onHit: () => {} });
             }
             sfx(sk.ap === 'int' ? 'ice' : 'hit', 0.5);
             for (const m of this.monstersNear(at, sk.radius)) {

@@ -723,7 +723,7 @@ export class Windows {
       const def = BUILDINGS[b.type], up = def.cost(b.lv);
       const um = up == null ? null : upgradeMats(b.lv), umOk = !um || resCount(st, um.base) >= um.n;
       const an = def.up?.[b.lv - 1] ?? 0, anOk = (st.awakenings || 0) >= an;
-      const fmtT = (ms) => ms >= 3600000 ? `${ms / 3600000}시간` : `${Math.round(ms / 60000)}분`;
+      const fmtT = (ms) => { const m = Math.ceil(ms / 60000), h = Math.floor(m / 60); return h >= 24 ? `${Math.floor(h / 24)}일 ${h % 24}시간` : h ? `${h}시간 ${m % 60}분` : `${m}분`; };
       // 단계별 비용표: 금화 · 재료 · 각성 · 시간
       const costTable = `<h3 style="margin-top:8px">단계별 비용</h3><div class="kv costT">` + Array.from({ length: def.max }, (_, i) => i).map((lv) => {
         const g = def.cost(lv), m = lv ? upgradeMats(lv) : null, aw = lv ? def.up?.[lv - 1] ?? 0 : def.need || 0;

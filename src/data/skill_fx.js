@@ -28,3 +28,30 @@ export const SKILL_AURA = { berserk: 'inferno_aura', war_cry: 'inferno_aura', sw
   divine_shield: 'p_dharma', holy_ward: 'p_dharma', sanctuary: 'p_dharma', aw_wis5c: 'p_dharma', smoke_step: 'h_ghost_mist', focus_mind: 'h_soul_orbit', arcane_shield: 'h_soul_orbit', mana_shield: 'h_soul_orbit',
   taunt_roar: 'bell_gold', stand_fast: 'bell_blue', hunters_mark: 'bell_dark' };
 for (const [id, a] of Object.entries(SKILL_AURA)) if (SKILLS[id]) SKILLS[id].aura = a;
+
+// v0.44.32 원소 맞추기: 이름 · 설명으로 원소를 정하고, 효과 그림 · 색이 원소와 다르면 바꾼다
+// (얼음 스킬에 불꽃, 번개 스킬에 고드름이 떨어지던 것)
+const ELEM_RULES = [
+  ['ice', /얼음|빙창|빙결|서리|눈보라|영도|한기|혹한|얼려|얼어|얼리/],
+  ['lightning', /번개(?!처럼)|뇌전|뇌우|뇌룡|뇌령|뇌격|천둥|벽력|전기|섬광|폭풍신/],
+  ['fire', /불(?!굴|멸|괴|사)|화염|작열|겁화|태양|운석|용암|원소 화살/],
+  ['holy', /신성|심판|성검|정화|성역|징벌|빛의 검|빛을 실어|빛의 물결|빛의 화살/],
+  ['arcane', /마력|비전|마나|별|진리|성좌|현자|정신|넋|영혼|의지|깨달음|환영/],
+];
+const FX_ELEM = { p_burning: 'fire', v_fireburst: 'fire', c_firepost: 'fire', fire: 'fire', fireball: 'fire', c_icespike: 'ice', c_icemultispike: 'ice', c_icetacle: 'ice', status_freeze: 'ice', c_waterpost: 'ice', ice: 'ice',
+  c_lightningclaw: 'lightning', p_dharma: 'holy', p_mirror: 'arcane', c_torrentacle: 'arcane', h_spectral: 'arcane', h_necrotic: 'arcane', h_ghost_mist: 'arcane', arcane: 'arcane' };
+const ELEM_FX = { fire: ['p_burning', 'v_fireburst'], ice: ['c_icespike', 'c_icemultispike'], lightning: ['c_lightningclaw', 'c_lightningclaw'], holy: ['p_dharma', 'p_dharma'], arcane: ['p_mirror', 'c_torrentacle'] };
+export const ELEM_COLOR = { fire: '#ff6a2a', ice: '#9fe4ff', lightning: '#c8d8ff', holy: '#ffe080', arcane: '#a890ff' };
+const BIG = new Set(['nova', 'meteor', 'rain']);
+function hueOf(hex) { const n = parseInt(hex.slice(1), 16), r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  if (!d) return -1; let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; return ((h * 60) + 360) % 360; }
+const colorFits = (el, hex) => { const h = hueOf(hex); return el === 'fire' ? (h >= 0 && (h < 45 || h > 340)) : el === 'ice' ? h >= 180 && h <= 215 : el === 'lightning' ? h >= 200 && h <= 250 || h === -1 : el === 'holy' ? h >= 40 && h <= 60 : h >= 230 && h <= 290; };
+export function skillElem(sk) { const t = `${sk.name} ${sk.desc || ''}`; for (const [el, re] of ELEM_RULES) if (re.test(t)) return el; return null; }
+for (const sk of Object.values(SKILLS)) {
+  if (sk.passive || sk.type === 'buff') continue;
+  const el = skillElem(sk); if (!el) continue;
+  sk.elem = el;
+  if (sk.fx && FX_ELEM[sk.fx] !== el) sk.fx = ELEM_FX[el][BIG.has(sk.type) ? 1 : 0];
+  else if (!sk.fx && ['nova', 'meteor', 'rain', 'chain', 'cone'].includes(sk.type)) sk.fx = ELEM_FX[el][BIG.has(sk.type) ? 1 : 0];
+  if (!colorFits(el, sk.color || '#ffffff')) sk.color = ELEM_COLOR[el];
+}

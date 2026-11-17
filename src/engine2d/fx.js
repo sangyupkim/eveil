@@ -8,6 +8,13 @@ const hex = (c) => '#' + new THREE.Color(c).getHexString();
 const rgba = (c, a) => { const k = new THREE.Color(c); return `rgba(${(k.r * 255) | 0},${(k.g * 255) | 0},${(k.b * 255) | 0},${a})`; };
 
 // 색 이름 → 효과 종류
+const METEOR_PAL = {
+  fire: { a: 0xff6a20, b: 0xffd080, glow: 0xffa040, ring: 0xff8030, tele: 0xff4010 },
+  ice: { a: 0x80d8ff, b: 0xe8faff, glow: 0xa8e8ff, ring: 0x9fe4ff, tele: 0x60c0ff },
+  lightning: { a: 0xc8d8ff, b: 0xffffff, glow: 0xd8e4ff, ring: 0xa8c0ff, tele: 0x8098ff },
+  arcane: { a: 0xa890ff, b: 0xe8e0ff, glow: 0xb8a8ff, ring: 0x9a80ff, tele: 0x8060ff },
+  holy: { a: 0xffe080, b: 0xfff8d0, glow: 0xfff0a0, ring: 0xffe080, tele: 0xffc040 },
+};
 function flavor(color) {
   const hsl = {}; new THREE.Color(color).getHSL(hsl);
   if (hsl.h < 0.12 || hsl.h > 0.95) return 'fire';
@@ -333,14 +340,16 @@ export class FX {
     for (const p of points.slice(1)) { this.play('thunderstrike', p.x, p.z, { scale: 0.8 }); this.burst(p.x, 1.2, p.z, color, 6, 3, 0.3); }
   }
 
-  meteor(x, z, radius, delay, onHit) {
-    this.telegraph(x, z, radius, delay, 0xff4010);
-    this.items.push({ kind: 'meteor', x, z, radius, dur: delay, t: 0, onHit });
+  // v0.44.32 원소마다 다른 낙하: 불 = 불타는 돌, 얼음 · 비전 · 빛 = 그 색 덩이, 번개 = 떨어지는 것 없이 내리꽂힘
+  meteor(x, z, radius, delay, onHit, elem = 'fire') {
+    const P = METEOR_PAL[elem] || METEOR_PAL.fire;
+    this.telegraph(x, z, radius, delay, P.tele);
+    this.items.push({ kind: 'meteor', x, z, radius, dur: delay, t: 0, onHit, elem, P });
   }
 
   // 투사체: 불 → 화염구, 얼음 → 얼음 창, 화살 → 화살, 그 밖은 빛 덩이
-  projectile({ from, target, color = 0xff8a30, size = 0.8, speed = 22, onHit, bolt = false, trail = true }) {
-    const kind = flavor(color);
+  projectile({ from, target, color = 0xff8a30, size = 0.8, speed = 22, onHit, bolt = false, trail = true, elem = null }) {
+    const kind = elem === 'lightning' ? 'light' : elem && elem !== 'holy' ? (elem === 'arcane' ? 'arcane' : elem) : flavor(color);
     const sprite = bolt ? 'arrows' : kind === 'fire' ? 'fireball' : kind === 'ice' ? 'icicle' : size > 1.2 ? 'plasmaball' : null;
     const it = { kind: 'proj', x: from.x, y: from.y ?? 1.4, z: from.z, target, speed, onHit, color, trail, size, bolt, flavor: kind, t: 0, dur: 99,
       last: target.pos ? target.pos.clone() : new THREE.Vector3(target.x, 0, target.z), sprite, def: sprite && DATA.powers[sprite] };
@@ -402,17 +411,21 @@ export class FX {
         }
       } else if (it.kind === 'meteor') {
         const q = Math.min(1, it.t / it.dur);
-        const x = it.x - 6 * (1 - q), y = 14 * (1 - q) + 0.5, z = it.z - 3 * (1 - q);
-        for (let n = 0; n < 3; n++) this.add.add({ x, y, z, vx: Math.random() - 0.5, vy: 1, vz: Math.random() - 0.5, color: n ? 0xff6a20 : 0xffd080, size: 1.6, size1: 0.3, life: 0.4, cell: 'flame', spin: 3 });
-        this.add.add({ x, y, z, color: 0xffa040, size: 2.6, size1: 2, life: 0.06, cell: 'glow' });
-        this.smoke.add({ x, y, z, vy: 0.5, color: 0x221a18, size: 1.4, size1: 3, life: 1, cell: 'smoke', alpha: 0.5 });
+        const x = it.x - 6 * (1 - q), y = 14 * (1 - q) + 0.5, z = it.z - 3 * (1 - q), P = it.P;
+        if (it.elem !== 'lightning') {
+          for (let n = 0; n < 3; n++) this.add.add({ x, y, z, vx: Math.random() - 0.5, vy: 1, vz: Math.random() - 0.5, color: n ? P.a : P.b, size: 1.6, size1: 0.3, life: 0.4, cell: it.elem === 'fire' ? 'flame' : 'glow', spin: 3 });
+          this.add.add({ x, y, z, color: P.glow, size: 2.6, size1: 2, life: 0.06, cell: 'glow' });
+          if (it.elem === 'fire') this.smoke.add({ x, y, z, vy: 0.5, color: 0x221a18, size: 1.4, size1: 3, life: 1, cell: 'smoke', alpha: 0.5 });
+        }
         if (q >= 1) {
           const r = it.radius;
-          this.play('blast', it.x, it.z, { scale: 1.6 });
-          { const q = this.play('quake', it.x, it.z, { scale: 1.5 }); if (q) q.add = false; }
-          this.burst(it.x, 0.6, it.z, 0xff6020, 26, 9, 0.6);
-          this.ring(it.x, it.z, r * 1.3, 0xff8030, 0.55);
-          this.scorch(it.x, it.z, r * 0.9);
+          if (it.elem === 'lightning') { this.play('c_lightningclaw', it.x, it.z, { scale: 2 }); this.add.add({ x: it.x, y: 6, z: it.z, color: P.glow, size: 3, size1: 6, life: 0.2, cell: 'glow' }); }
+          else if (it.elem === 'fire') this.play('blast', it.x, it.z, { scale: 1.6 });
+          else this.play({ ice: 'c_icemultispike', arcane: 'p_mirror', holy: 'p_dharma' }[it.elem] || 'blast', it.x, it.z, { scale: 1.8 });
+          if (it.elem === 'fire') { const q = this.play('quake', it.x, it.z, { scale: 1.5 }); if (q) q.add = false; }
+          this.burst(it.x, 0.6, it.z, P.a, 26, 9, 0.6);
+          this.ring(it.x, it.z, r * 1.3, P.ring, 0.55);
+          if (it.elem === 'fire') this.scorch(it.x, it.z, r * 0.9);
           this.shake(0.5);
           it.onHit?.();
         }
