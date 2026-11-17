@@ -41,7 +41,7 @@ import { awakenOk, skillGrade, QUALITY, gradeName } from '../data/awaken_skills.
 import { GEMS, GEM_GRADES, gemId } from '../data/legends.js';
 import { applyShard, canApply, lockMax, shardCost } from '../game/shards.js';
 import { HERBS, HERB_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
-import { buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
+import { wageTotal, mercWage, buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
 import { RESEARCH_MAX, SHELTER } from '../data/buildings.js';
 import { herbIcon, homeIcon } from './icons.js';
 import { vault, vaultSize, vaultPut, vaultTake, vaultAdd, vaultSave, oldVault, restoreOldVault, vaultReady } from '../game/vault.js';
@@ -593,7 +593,7 @@ export class Windows {
   mercLine(m, hi) {
     const g = GRADES[m.grade || 0], sm = staMax(m);
     const sk = SKILLS_ALL.map((k) => `<span style="${k === hi ? 'color:#ffd84a;font-weight:700' : ''}">${SKILL_NAMES[k]} ${(m[k] || 0).toFixed(1)}</span>`).join(' · ');
-    return `<div class="grow"><b style="color:${g.color}">${esc(m.name)}</b> <small>${g.name} · Lv ${m.lv}${m.aw ? ` · 각성 ${m.aw}` : ''}${m.gear ? ` · 장비 ${m.gear.ilvl}` : ''}${isVet(m) ? ' · <b style="color:#ffd84a">베테랑</b>' : ''}</small>
+    return `<div class="grow"><b style="color:${g.color}">${esc(m.name)}</b> <small>${g.name} · Lv ${m.lv}${m.aw ? ` · 각성 ${m.aw}` : ''} · 하루 ${mercWage(m).toLocaleString()}G${m.gear ? ` · 장비 ${m.gear.ilvl}` : ''}${isVet(m) ? ' · <b style="color:#ffd84a">베테랑</b>' : ''}</small>
       <div class="note">${sk}</div><div class="mini" style="height:5px;max-width:12em"><i style="width:${Math.round((m.sta / sm) * 100)}%;background:#6ad07a"></i></div></div>`;
   }
 
@@ -858,7 +858,7 @@ export class Windows {
         const gw = BUILDINGS.inn.grades(b.lv), gs = gw.reduce((a, v) => a + v, 0);
         right += COL + `<h3>찾아온 용병 <small>${nextH}분 뒤 바뀜 · 고용 ${t.mercs.length} / ${slots}</small></h3><div class="note">${GRADES.map((g, i) => `<span style="color:${g.color}">${g.name} ${Math.round((gw[i] / gs) * 100)}%</span>`).join(' · ')}</div>`;
         right += rec.map((m) => `<div class="row mrow">${this.mercLine(m)}<button class="btn gold" data-hirem="${m.id}" ${t.mercs.length >= slots || st.gold < m.cost ? 'disabled' : ''}>${m.cost.toLocaleString()} G</button></div>`).join('') || '<div class="note">없음</div>';
-        right += COL + `<h3>내 용병</h3>`;
+        right += COL + `<h3>내 용병 <small>하루 품삯 <b style="color:#ffd84a">${wageTotal(st).toLocaleString()} G</b>${t.wageLog?.unpaid ? ` · <b style="color:#ff7060">못 받은 용병 ${t.wageLog.unpaid}</b>` : ''}</small></h3>`;
         t.mercs.forEach((m) => {
           const left = m.job ? Math.max(0, m.job.until - Date.now()) : 0, where = m.work && t.plots[m.work] ? BUILDINGS[t.plots[m.work].type].name : '';
           const state = m.job ? (left > 0 ? `${ZONES.find((z) => z.id === m.job.zone).name} 파견 · ${Math.ceil(left / 60000)}분` : '돌아옴') : m.rest ? '여관에서 쉬는 중' : m.tired ? '지쳐서 쉬는 중' : where ? `${where}에서 일함` : '쉬는 중';

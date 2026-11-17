@@ -2492,7 +2492,9 @@ export class World {
     if (this.townT <= 0) {
       this.townT = 5;
       const T0 = townOf(st), building = Object.entries(T0.plots).filter(([, b]) => b.bld).map(([k, b]) => [k, b.type, b.bld.to]);
+      const wl = townOf(st).wageLog?.day;
       townTick(st);
+      { const W = townOf(st).wageLog; if (W && W.day !== wl) this.ui.toast(`용병 품삯 ${W.paid.toLocaleString()} G${W.unpaid ? ` · ${W.unpaid}명은 못 받아 쉽니다` : ''}`, W.unpaid ? '#ff7060' : '#ffd84a'); }
       const secs = [];
       // 공사 끝 (v0.44.15 알림 팝업)
       const built = building.filter(([k]) => !T0.plots[k]?.bld);

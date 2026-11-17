@@ -106,6 +106,7 @@ export function tick(st, now = Date.now()) {
   const hours = Math.max(0, (now - (t.last || now)) / 3600000);
   t.last = now;
   finishBuilds(st, now);
+  payWages(st, now);
   let left = Math.min(hours, 72);
   while (left > 1e-9) {
     const h = Math.min(0.25, left); left -= h;
@@ -243,7 +244,13 @@ export function bonusOf(st, type) {
   const sum = t.mercs.filter((m) => m.work === e[0] && !m.tired && !m.job).reduce((a, m) => a + workEff(m, type) * (1 + freshK(m)), 0);
   return Math.min(BONUS[type].max, sum * BONUS[type].k);
 }
-export const GRADES = [{ name: '평범', color: '#c8c0b0', k: 1 }, { name: '숙련', color: '#6aa8ff', k: 1.5 }, { name: '정예', color: '#d080ff', k: 2.2 }, { name: '전설', color: '#ffb040', k: 3.2 }];
+export const GRADES = [{ name: '평범', color: '#c8c0b0', k: 1 }, { name: '숙련', color: '#6aa8ff', k: 1.5 }, { name: '정예', color: '#d080ff', k: 2.2 }, { name: '전설', color: '#ffb040', k: 3.2 }, { name: '신화', color: '#ff4a6a', k: 4.6 }];
+// v0.44.55 신화 용병: 여관 7단계부터 가끔 (7 1% · 8 2% · 9 3% · 10 5%)
+export const MYTH_CHANCE = (lv) => [0, 0, 0, 0, 0, 0, 0, 0.01, 0.02, 0.03, 0.05][lv] || 0;
+// 용병 값: 고용비 = 값 × 10, 하루 품삯 = 값 × 1.2 × (1 + 레벨당 4%)
+export const mercValue = (m) => (m.mine + m.herb + m.craft + m.lore + (m.care || 0) + m.hunt * 1.5 + (m.vit || 0)) * 20 * (GRADES[m.grade || 0]?.k || 1);
+export const mercWage = (m) => Math.round(mercValue(m) * 1.2 * (1 + 0.04 * ((m.lv || 1) - 1)));
+export const wageTotal = (st) => townOf(st).mercs.reduce((a, m) => a + mercWage(m), 0);
 const NA = ['브', '셀', '오', '이', '케', '도', '미', '하', '유', '바', '로', '카', '테', '루', '자', '에', '실', '아', '고', '네'], NB = ['란', '마', '덴', '라', '일', '르', '나', '스', '크', '린', '온', '벨', '렌', '드', '아', '토'];
 // v0.44.15 여관에서 쉬기: 지친(또는 체력이 반 아래인) 놀거나 지친 용병이 여관 침대에 눕는다. 여관 단계 = 침대 수 · 회복 속도
 export const INN_BEDS = (lv) => [0, 2, 3, 4, 6, 8, 10, 12, 14, 16, 20][lv] || 0;
@@ -271,14 +278,14 @@ export function rollMerc(rng = Math.random, innLv = 1) {
   // 등급 비율은 여관 단계에 따라 (낮은 단계에는 전설 · 정예가 아예 오지 않는다)
   const gw = BUILDINGS.inn.grades(Math.max(1, Math.min(5, innLv))), gr = rng() * gw.reduce((a, v) => a + v, 0);
   let gi = 0; for (let acc = 0; gi < 4; gi++) { acc += gw[gi]; if (gr < acc) break; }
-  gi = Math.min(3, gi); const g = GRADES[gi];
+  gi = Math.min(3, gi); if (rng() < MYTH_CHANCE(innLv)) gi = 4; const g = GRADES[gi];
   // 셋 중 하나는 뛰어나게 (일 잘하는 용병 · 탐험 잘하는 용병)
   const main = SKILLS_ALL[Math.floor(rng() * SKILLS_ALL.length)], sk = (k) => Math.round((k === main ? 7 + rng() * 6 : 1 + rng() * 5) * g.k * 10) / 10;
   const m = { id: `m${Date.now().toString(36)}${(uidN++).toString(36)}${Math.floor(rng() * 1e4)}`, name: NA[Math.floor(rng() * NA.length)] + NB[Math.floor(rng() * NB.length)], grade: gi, lv: 1, exp: 0, aw: 0,
     mine: sk('mine'), herb: sk('herb'), craft: sk('craft'), lore: sk('lore'), hunt: sk('hunt'), face: ['m01', 'm02', 'm03', 'm04', 'f01', 'f02', 'f03', 'f04'][Math.floor(rng() * 8)], vit: Math.round(rng() * 20 * g.k), work: null, job: null, tired: false };
   m.care = sk('care');
   m.sta = staMax(m);
-  m.cost = Math.round((m.mine + m.herb + m.craft + m.lore + m.care + m.hunt * 1.5 + m.vit) * 20 * g.k);
+  m.cost = Math.round(mercValue(m) * 10); // v0.44.55 고용비 10배
   return m;
 }
 // 고용 한도: 숙소 침대 수 (숙소가 없으면 1명)
@@ -701,4 +708,19 @@ export function herbSwap(st, to, n = 1) {
     t.herbs[from] -= 3; st.gold -= herbSwapGold(to); t.herbs[to] = (t.herbs[to] || 0) + 1;
   }
   return done ? { ok: true, n: done } : { ok: false, why: st.gold < herbSwapGold(to) ? '금화가 모자랍니다' : '바꿀 약초가 모자랍니다' };
+}
+
+// v0.44.55 하루 품삯: 한국 시간 날짜가 바뀌면 고용한 용병 모두의 품삯을 낸다. 모자라면 낸 만큼만, 못 받은 용병은 그날 지쳐서 쉰다
+export function payWages(st, now = Date.now()) {
+  const t = townOf(st, now), day = Math.floor((now + 9 * 3600e3) / 86400e3);
+  if (t.wageDay == null) { t.wageDay = day; return null; }
+  if (day <= t.wageDay || !t.mercs.length) { t.wageDay = Math.max(t.wageDay, day); return null; }
+  const days = Math.min(3, day - t.wageDay); t.wageDay = day; // 오래 비워도 사흘치까지만
+  let paid = 0, unpaid = 0;
+  for (const m of [...t.mercs].sort((a, b) => (b.grade || 0) - (a.grade || 0))) {
+    const w = mercWage(m) * days;
+    if (st.gold >= w) { st.gold -= w; paid += w; } else { unpaid++; m.sta = 0; m.tired = true; }
+  }
+  t.wageLog = { day, paid, unpaid };
+  return t.wageLog;
 }

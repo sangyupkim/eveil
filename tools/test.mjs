@@ -537,4 +537,17 @@ test('모든 src 파일 문법', () => {
   for (const f of walk(new URL('../src', import.meta.url).pathname)) _ex(process.execPath, ['--check', f], { stdio: 'pipe' });
 });
 
+const TW_ = await import('../src/game/town.js');
+test('용병 하루 품삯: 날짜가 바뀌면 내고, 모자라면 못 받은 용병은 쉰다', () => {
+  const p = { gold: 0, inv: [], town: { plots: {}, mercs: [], last: Date.now() } };
+  TW_.townOf(p).mercs.push(TW_.rollMerc(Math.random, 1), TW_.rollMerc(Math.random, 1));
+  const now = Date.now(); TW_.payWages(p, now); // 첫날은 기준만
+  p.gold = TW_.wageTotal(p) + 5;
+  const r = TW_.payWages(p, now + 86400e3);
+  assert.ok(r && r.paid > 0 && r.unpaid === 0 && p.gold === 5);
+  const r2 = TW_.payWages(p, now + 2 * 86400e3);
+  assert.ok(r2.unpaid === 2 && p.town.mercs.every((m) => m.tired));
+  assert.ok(TW_.rollMerc(Math.random, 1).cost > 5000 && TW_.GRADES[4].name === '신화');
+});
+
 console.log(`\n${n}개 통과`);
