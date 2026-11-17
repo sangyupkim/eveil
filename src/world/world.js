@@ -1504,6 +1504,7 @@ export class World {
   removeGround(g) {
     this.scene.remove(g.drawable);
     this.ground.splice(this.ground.indexOf(g), 1);
+    if (g.expires) this.saveGround(); // 주운 아이템이 다음 접속 때 다시 생기지 않게
   }
 
   restoreGround() {
