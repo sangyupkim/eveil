@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import sharp from 'sharp';
 const J = 'assets/flare/enemies.json', E = JSON.parse(fs.readFileSync(J, 'utf8'));
-const BAKED = new Set(['x_knight']); // 그림 안에 그림자가 있는 것
+const BAKED = new Set(['x_knight', 'x_ice_mummy']); // 그림 안에 그림자가 있는 것 (v0.44.26 얼음 망자) // 그림 안에 그림자가 있는 것
 const cache = {};
 for (const [k, d] of Object.entries(E)) {
   if (BAKED.has(k)) { d.noShadow = true; delete d.sw; continue; }

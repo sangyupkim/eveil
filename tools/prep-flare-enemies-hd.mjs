@@ -21,7 +21,7 @@ function parseAnim(file) {
     else if (cur) {
       const [k, v] = l.split('='), a = out.anims[cur];
       if (k === 'frames') a.frames = +v; else if (k === 'duration') a.dur = parseInt(v) * (v.endsWith('s') && !v.endsWith('ms') ? 1000 : 1); else if (k === 'type') a.type = v;
-      else if (k === 'frame') { const [i, d, x, y, w, h, ox, oy] = v.split(',').map(Number); (a.f[d] ||= [])[i] = [x, y, w, h, ox, oy]; }
+      else if (k === 'frame') { const p = v.split(','), [i, d, x, y, w, h, ox, oy] = p.map(Number); (a.f[d] ||= [])[i] = [x, y, w, h, ox, oy]; if (p[8]) (out.refs ||= {})[cur] = p[8].trim(); }
     }
   }
   if (dflt) out.images.default = dflt;
@@ -43,6 +43,8 @@ for (const [name, root] of Object.entries(ENEMIES)) {
     a.images[k] = dst;
   }
   if (k2 < 1) { a.px = Math.round((1 / k2) * 1000) / 1000; for (const an of Object.values(a.anims)) for (const d in an.f) an.f[d] = an.f[d].map((r) => r && r.map((v) => Math.round(v * k2))); }
+  // 프레임이 다른 동작의 그림을 쓰는 경우 (frame=…,die 같은 9번째 값): 그 동작 그림을 이어 준다 (v0.44.26 맞을 때 깜빡이던 미노타우로스)
+  for (const [an, img] of Object.entries(a.refs || {})) if (!a.images[an] && a.images[img]) a.images[an] = a.images[img];
   // 죽는 동작은 한 번만 (v0.44.1)
   for (const n of ['die', 'critdie']) if (a.anims[n]) a.anims[n].type = 'play_once';
   E[name] = { ...E[name], ...a, px: a.px };
