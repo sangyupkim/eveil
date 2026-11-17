@@ -1347,7 +1347,7 @@ export class World {
     if (this.chain >= 3) this.fx.text(this.player.pos.clone().setY(3.2), `연쇄 ${this.chain}`, this.chain >= 10 ? 'crit' : 'heal');
     if (this.chain % 10 === 0) { this.chainSpdT = 5; sfx('buff', 0.6); }
     const exp = m.exp * rf.exp * (this.autoKill ? CONFIG.autoExpPenalty ?? CONFIG.autoPenalty : 1) * (1 + Math.min(20, this.chain) * 0.02) * (this.night > 0.5 ? 1.2 : 1);
-    const results = gainExp(st, exp * (1 + researchK(st, 'exp')));
+    const results = gainExp(st, m.flood ? 0 : exp * (1 + researchK(st, 'exp'))); // 범람 몬스터는 경험치 없음
     for (const r of results) this.onAwaken(r);
 
     // 드랍
@@ -1623,7 +1623,7 @@ export class World {
       const a = Math.random() * 6.28, r = (0.15 + Math.random() * 0.75) * zn.r;
       const m = this.spawn({ zone: zn, x: zn.x + Math.cos(a) * r, z: zn.z + Math.sin(a) * r, level: L - this.tierOffset, tier, timer: 0, mon: null, fixed });
       if (!m) return null;
-      m.flood = zn.id; m.home = { x: m.pos.x, z: m.pos.z };
+      m.flood = zn.id; m.home = { x: m.pos.x, z: m.pos.z }; m.noLoot = true; // v0.44.46 범람 몬스터는 보상 없음 (해소 보상만)
       m.affix = tier === 'boss' ? [pick(), pick()] : tier === 'elite' ? [pick(), pick()] : [pick()];
       if (m.affix.includes('frenzy')) { m.speed *= 1.3; m.def = { ...m.def, interval: m.def.interval / 1.3 }; }
       m.name = `${tier === 'boss' ? '범람한 ' : ''}${m.name} [${m.affix.map((x) => FLOOD_AFFIX[x].name).join('·')}]`;
@@ -1631,14 +1631,17 @@ export class World {
       m.actor.setGlow(0x400010);
       return m;
     };
-    const n = Math.round((zn.count || 18) * FLOOD.mobK);
-    for (let i = 0; i < n; i++) mk(i % 5 === 4 ? 'elite' : 'normal');
-    mk('named', zn.named);
-    { const b = mk('boss', zn.boss, FLOOD.bossHp); if (b) b.floodBoss = true; }
+    // v0.44.46 진행 저장: 남은 수(f.left)대로만 띄운다 (껐다 켜도 이어서)
+    if (!f.left) { const n = Math.round((zn.count || 18) * FLOOD.mobK); f.left = { normal: n - Math.floor(n / 5), elite: Math.floor(n / 5), named: 1, boss: 1 }; }
+    for (let i = 0; i < f.left.normal; i++) mk('normal');
+    for (let i = 0; i < f.left.elite; i++) mk('elite');
+    if (f.left.named) mk('named', zn.named);
+    if (f.left.boss) { const b = mk('boss', zn.boss, FLOOD.bossHp); if (b) b.floodBoss = true; }
     this.ui.toast(`범람한 ${zn.name}`, '#ff6a5a');
   }
   floodDeath(m) {
     const P = m.pos;
+    { const f = this.st.flood?.list?.find((x) => x.zone === m.flood); if (f?.left && !m.child && f.left[m.tier] > 0) f.left[m.tier]--; }
     if (m.affix?.includes('burst')) { this.fx.telegraph?.(P.x, P.z, 2.6, 1, 0xff4020); this.later(1, () => { if (Math.hypot(this.player.pos.x - P.x, this.player.pos.z - P.z) < 2.6) this.hurtPlayer(this.d.maxHp * 0.12, m, { sure: true }); this.fx.ring(P.x, P.z, 2.6, 0xff6020, 0.4); }); }
     if (m.affix?.includes('split') && !m.child) for (let i = 0; i < 2; i++) { const c = this.spawn({ zone: m.sp.zone, x: P.x + (i ? 1 : -1), z: P.z, level: m.level - this.tierOffset, tier: 'normal', timer: 0, mon: null }); if (c) { c.flood = m.flood; c.child = true; c.maxHp *= 0.4; c.hp = c.maxHp; c.state = 'chase'; c.actor.root.scale.multiplyScalar(0.7); } }
     if (m.floodBoss) {
