@@ -610,3 +610,54 @@ html.force-land #rotate { display: none !important; }
 /* 설정 줄 단추: 글자가 세로로 쪼개지지 않게 */
 .setRow .opts { flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
 .setRow .opts .btn { white-space: nowrap; min-width: 3.2em; flex: 0 0 auto; }
+
+/* ───── v0.45 대장간: 탭 + 두 쪽 ───── */
+.smithWrap { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 6px; }
+.smithWrap > .cols { flex: 1; min-height: 0; }
+.fPage { flex: 1 1 0; min-width: 0; overflow: auto; }
+.stabs { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid rgba(217, 182, 106, 0.3); padding: 0 2px; }
+.stab { font: inherit; font-size: calc(var(--u) * 0.95); color: var(--dim); background: linear-gradient(#2a2230, #17121c); border: 1px solid rgba(217, 182, 106, 0.3); border-bottom: none; border-radius: 6px 6px 0 0; padding: 4px 16px; cursor: pointer; }
+.stab.on { color: #ffe7a0; background: linear-gradient(#4a3a26, #2a2016); border-color: rgba(255, 216, 120, 0.7); }
+.stabInfo { margin-left: auto; font-size: calc(var(--u) * 0.85); color: var(--dim); }
+.fGrid { grid-template-columns: repeat(auto-fill, minmax(calc(var(--u) * 3.6), 1fr)); }
+.forgeTop { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
+.forgeTop .nm { font-weight: 700; font-size: calc(var(--u) * 1.05); }
+.forgeSlot { width: calc(var(--u) * 5.2); flex: 0 0 auto; }
+.forgeSlot.empty { margin: 12px auto; width: calc(var(--u) * 6); aspect-ratio: 1; border: 2px dashed rgba(217, 182, 106, 0.35); border-radius: 10px; }
+.plusBig { font-size: calc(var(--u) * 1.4); font-family: var(--f-latin); color: #ffe7a0; }
+.plusBig em, .kv em, #forgeFx em { font-style: normal; color: #7fe07a; font-weight: 700; }
+.arw { font-style: normal; color: #6ad0ff; font-size: .8em; margin: 0 .3em; }
+.forgeGo { justify-content: center; margin-top: 10px; }
+.btn.big { padding: 8px 34px; font-size: calc(var(--u) * 1.05); }
+.refCols { display: flex; gap: 10px; }
+.refCols > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.affBtn { text-align: left; white-space: normal; font-size: calc(var(--u) * 0.82); padding: 4px 8px; }
+.affBtn.on { outline: 1px solid #ffd84a; color: #ffd84a; }
+.shList { display: flex; flex-direction: column; gap: 4px; max-height: calc(var(--vh) * 40); overflow: auto; }
+.salvPick { display: flex; gap: 8px; align-items: flex-start; border: 1px solid rgba(217, 182, 106, 0.25); border-radius: 8px; padding: 6px; margin-bottom: 8px; }
+.salvInfo { flex: 1; min-width: 0; font-size: calc(var(--u) * 0.8); max-height: calc(var(--vh) * 30); overflow: auto; }
+.salvInfo .bigico { width: calc(var(--u) * 2.6); float: left; margin-right: 6px; }
+
+/* 강화 · 제련 결과 연출 (빛 구슬 · 고리 · 둥근 빛) */
+#forgeFx { position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; background: rgba(6, 4, 10, 0.9); animation: ffIn .2s ease-out; }
+#forgeFx .ffBox { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: min(80vw, 420px); padding: 18px 20px 14px; }
+#forgeFx .ffGlow { position: absolute; left: 50%; top: 52px; width: 320px; height: 320px; margin: -160px 0 0 -160px; border-radius: 50%; background: radial-gradient(circle, rgba(255, 226, 120, 0.85), rgba(255, 170, 40, 0.35) 35%, transparent 70%); animation: ffGlow 1.1s ease-out both; pointer-events: none; }
+#forgeFx .ffRing { position: absolute; left: 50%; top: 52px; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; border: 3px solid rgba(255, 230, 150, 0.9); box-shadow: 0 0 18px rgba(255, 210, 90, 0.9); animation: ffRing .9s ease-out .15s both; pointer-events: none; }
+#forgeFx .ffOrb { position: absolute; left: 50%; top: 52px; width: 9px; height: 9px; margin: -4px; border-radius: 50%; background: #fff3c0; box-shadow: 0 0 10px #ffd060; transform: rotate(var(--a)) translateX(0); animation: ffOrb 1s ease-out var(--d) both; pointer-events: none; }
+#forgeFx .ffIco { position: relative; width: 84px; animation: ffPop .6s cubic-bezier(.3, 1.6, .5, 1) both; }
+#forgeFx .ffName { position: relative; margin-top: 10px; font-weight: 700; }
+#forgeFx .ffTitle { position: relative; font-size: calc(var(--u) * 1.7); color: #ffe7a0; text-shadow: 0 0 12px rgba(255, 200, 80, 0.9); animation: ffTitle .5s ease-out .25s both; }
+#forgeFx .ffLines { position: relative; display: flex; flex-direction: column; gap: 3px; margin: 8px 0 10px; font-size: calc(var(--u) * 0.95); animation: ffIn .4s ease-out .45s both; }
+#forgeFx .ffLines span { color: var(--dim); margin-right: .8em; }
+#forgeFx.fail .ffGlow { background: radial-gradient(circle, rgba(140, 150, 170, 0.45), rgba(60, 60, 80, 0.25) 35%, transparent 70%); }
+#forgeFx.fail .ffRing { border-color: rgba(170, 170, 190, 0.6); box-shadow: none; }
+#forgeFx.fail .ffOrb { display: none; }
+#forgeFx.fail .ffTitle { color: #c8c8d4; text-shadow: none; }
+#forgeFx.fail .ffIco { animation: ffShake .45s ease-out both; }
+@keyframes ffIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ffGlow { 0% { transform: scale(.2); opacity: 0; } 30% { opacity: 1; } 100% { transform: scale(1); opacity: .55; } }
+@keyframes ffRing { 0% { transform: scale(.4); opacity: 1; } 100% { transform: scale(2.6); opacity: 0; } }
+@keyframes ffOrb { 0% { transform: rotate(var(--a)) translateX(0); opacity: 1; } 100% { transform: rotate(var(--a)) translateX(150px); opacity: 0; } }
+@keyframes ffPop { 0% { transform: scale(.3); } 100% { transform: scale(1); } }
+@keyframes ffTitle { 0% { transform: scale(1.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes ffShake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(5px); } }

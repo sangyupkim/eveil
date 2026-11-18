@@ -297,6 +297,84 @@ export class Windows {
     return h;
   }
 
+  // ───── v0.45 대장간: 강화 · 제련 · 분해와 용병 탭. 한 탭은 두 쪽(왼쪽 작업 · 오른쪽 고르기)까지만 ─────
+  itemCells(list, selKey, attr) {
+    if (!list.length) return '<div class="note">없음</div>';
+    return `<div class="grid fGrid">${list.map(([k, it, where]) => `<div class="cell${rar(it)}${k === selKey ? ' sel' : ''}" data-${attr}="${k}">${ico(it)}${it.plus ? `<span class="q">+${it.plus}</span>` : ''}${where === '착용' ? '<span class="lab">E</span>' : where === '창고' ? '<span class="lab">창고</span>' : ''}</div>`).join('')}</div>`;
+  }
+  smithyView(b, sel) {
+    const st = this.w.st, tab = (this.smithTab ||= 'enh');
+    const tabs = [['enh', '강화'], ['ref', '제련'], ['salv', '분해 · 용병']];
+    const head = `<div class="stabs">${tabs.map(([k, n]) => `<button class="stab${k === tab ? ' on' : ''}" data-stab="${k}">${n}</button>`).join('')}<span class="stabInfo">대장간 ${b.lv}단계 · <span class="goldTxt">${st.gold.toLocaleString()} G</span></span></div>`;
+    const [L, R] = tab === 'enh' ? this.smithEnh(st) : tab === 'ref' ? this.smithRef(st, b) : this.smithSalv(st, b, sel);
+    return `<div class="smithWrap">${head}<div class="cols"><div class="frame detail fPage">${L}</div><div class="frame detail fPage">${R}</div></div></div>`;
+  }
+  smithEnh(st) {
+    const list = gearList(st, (x) => !x.book && !x.noDrop);
+    if (!list.some((x) => x[0] === this.enhSel)) this.enhSel = null;
+    const right = `<h3>장비 <span class="cnt">${list.length}</span></h3>` + this.itemCells(list, this.enhSel, 'esel');
+    const cur = list.find((x) => x[0] === this.enhSel);
+    if (!cur) return [`<h3>강화</h3><div class="forgeSlot empty"></div>`, right];
+    const [key, it, where] = cur, cap = enhanceCap(st), n = it.plus || 0, max = n >= cap, c = enhanceCost(it, st), b = BASES[it.base];
+    const nx = { ...it, plus: n + 1 };
+    const stat = b.dmg ? (() => { const a = scaledDmg(it), z = scaledDmg(nx); return `<span>${WEAPON_CLASSES[b.cls]?.kind === 'magic' ? '마법 공격력' : '물리 공격력'}</span><b>${a[0]}~${a[1]}${max ? '' : ` <i class="arw">▶</i> <em>${z[0]}~${z[1]}</em>`}</b>`; })() : b.armor ? `<span>방어력</span><b>${scaledArmor(it)}${max ? '' : ` <i class="arw">▶</i> <em>${scaledArmor(nx)}</em>`}</b>` : '';
+    const have = resCount(st, c.oreId), okGold = st.gold >= c.gold, okOre = have >= c.ore;
+    let L = `<div class="forgeTop"><div class="cell forgeSlot${rar(it)}">${ico(it)}</div><div><div class="nm" style="color:${itemColor(it)}">${esc(itemName(it))}</div><div class="note">${where} · Lv ${it.ilvl}</div><div class="plusBig">+${n}${max ? ' <small>상한</small>' : ` <i class="arw">▶</i> <em>+${n + 1}</em>`}</div></div></div>`;
+    if (!max) L += `<div class="kv">${stat}<span>성공 확률</span><b class="${c.jang >= 1 ? 'goldTxt' : ''}">${c.jang >= 1 ? '100%' : `${+(c.chance * 100).toFixed(1)}%`}</b><span>장인의 기운</span><b>${+(c.jang * 100).toFixed(1)}%</b><span>금화</span><b style="${okGold ? '' : 'color:#ff7060'}">${c.gold.toLocaleString()} G</b><span>${c.oreName}</span><b style="${okOre ? '' : 'color:#ff7060'}">${c.ore} <small class="note">/ ${have}</small></b></div>
+      <div class="btns forgeGo"><button class="btn gold big" data-enh="${key}" ${okGold && okOre ? '' : 'disabled'}>강화</button></div>`;
+    else L += `<div class="kv">${stat}</div>`;
+    return [L, right];
+  }
+  smithRef(st, smith) {
+    const t = townOf(st), list = gearList(st, (x) => x.affixes?.length);
+    if (!list.some((x) => x[0] === this.shardTarget)) { this.shardTarget = null; this.shardLocks = []; }
+    const right = `<h3>장비 <span class="cnt">${list.length}</span></h3>` + this.itemCells(list, this.shardTarget, 'starget');
+    const cur = list.find((x) => x[0] === this.shardTarget);
+    if (!cur) return [`<h3>제련</h3><div class="forgeSlot empty"></div>`, right];
+    const [, it, where] = cur, max = lockMax(smith.lv), Lk = this.shardLocks || [];
+    const shards = [...st.inv, ...vault().items].filter((x) => x?.shard);
+    if (!shards.some((x) => x.uid === this.shardSel)) this.shardSel = null;
+    const sh = shards.find((x) => x.uid === this.shardSel)?.shard;
+    let L = `<div class="forgeTop"><div class="cell forgeSlot${rar(it)}">${ico(it)}</div><div><div class="nm" style="color:${itemColor(it)}">${esc(itemName(it))}</div><div class="note">${where} · 잠금 ${Lk.length} / ${max}</div></div></div>`;
+    L += `<div class="refCols"><div><div class="note">잠글 옵션</div>${it.affixes.map((a, k) => { const on = Lk.includes(k); return `<button class="btn affBtn ${on ? 'on' : ''}" data-slock="${k}" ${!on && Lk.length >= max ? 'disabled' : ''}>${on ? '<b>잠금</b> ' : ''}${affixText(a)}</button>`; }).join('')}</div>`;
+    L += `<div><div class="note">부여할 능력 <span class="cnt">${shards.length}</span></div><div class="shList">${shards.map((x) => { const okk = canApply(it, x.shard, Lk).ok; return `<button class="btn affBtn ${x.uid === this.shardSel ? 'on' : ''}" data-shard="${x.uid}" style="color:#c58cff;${okk ? '' : 'opacity:.4'}">${affixText(x.shard)}</button>`; }).join('') || '<div class="note">파편 없음</div>'}</div></div></div>`;
+    if (sh) { const c = shardCost(it), ok = canApply(it, sh, Lk); L += `<div class="btns forgeGo"><button class="btn gold big" data-sapply="1" ${!ok.ok || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>${ok.ok ? `제련 · ${c.gold.toLocaleString()} G · 강화석 ${c.ore}` : ok.why}</button></div>`; }
+    return [L, right];
+  }
+  // 용병 칸 (건물 공용): 이 건물에서 일하는 용병 · 쉬는 용병 · 다른 건물 용병(데려오기)
+  mercPanel(b, sel) {
+    const st = this.w.st, t = townOf(st), sk = SKILL_OF[b.type];
+    if (!sk) return '';
+    const crew = t.mercs.filter((m) => m.work === sel), full = crew.length >= b.lv;
+    const by = (a, c) => (c[sk] || 0) - (a[sk] || 0);
+    const idle = t.mercs.filter((m) => !m.work && !m.job).sort(by), other = t.mercs.filter((m) => m.work && m.work !== sel && t.plots[m.work] && !m.job).sort(by);
+    let h = `<h3>일하는 용병 <span class="cnt">${crew.length} / ${b.lv}</span> <small>${SKILL_NAMES[sk]} · ${BONUS[b.type] ? BONUS[b.type].text(bonusOf(st, b.type)) : ''}</small></h3>`;
+    h += crew.map((m) => `<div class="row mrow">${this.mercLine(m, sk)}<button class="btn" data-mwork="${m.id}|">쉬게</button></div>`).join('') || '<div class="note">없음</div>';
+    if (idle.length) h += `<h3 style="margin-top:8px">쉬는 용병</h3>` + idle.map((m) => `<div class="row mrow">${this.mercLine(m, sk)}<button class="btn" data-mwork="${m.id}|${sel}" ${full ? 'disabled' : ''}>일 맡기기</button></div>`).join('');
+    if (other.length) h += `<h3 style="margin-top:8px">다른 건물</h3>` + other.map((m) => `<div class="row mrow">${this.mercLine(m, sk)}<div class="note" style="min-width:4.5em">${BUILDINGS[t.plots[m.work].type].name}</div><button class="btn" data-mwork="${m.id}|${sel}" ${full ? 'disabled' : ''}>데려오기</button></div>`).join('');
+    return h;
+  }
+  smithSalv(st, b, sel) {
+    const junk = st.inv.filter((x) => !x.book && BASES[x.base]?.slot && !x.named).map((x) => ['b:' + x.uid, x, '가방']);
+    if (!junk.some((x) => x[0] === this.salvSel)) this.salvSel = null;
+    const cur = junk.find((x) => x[0] === this.salvSel);
+    let R = `<h3>분해 <span class="cnt">${junk.length}</span><button class="btn" data-salvageall="1" style="margin-left:auto">일반 · 마법 모두</button></h3>`;
+    if (cur) { const it = cur[1], v = salvageValue(it); R += `<div class="salvPick"><div class="salvInfo">${this.describe(it, '가방')}</div><div class="btns"><button class="btn gold" data-salvage="${it.uid}">분해 · 강화석 ${v.ore} · ${MATERIALS[v.mat].name} ${v.matN}</button></div></div>`; }
+    R += this.itemCells(junk, this.salvSel, 'vsalv');
+    return [this.mercPanel(b, sel), R];
+  }
+  // 강화 · 제련 결과 연출: 장비 그림 둘레로 빛이 터지고, 바뀐 능력치를 보여 준다
+  forgeFx(ok, it, title, lines) {
+    document.getElementById('forgeFx')?.remove();
+    const el = document.createElement('div'); el.id = 'forgeFx'; el.className = ok ? 'ok' : 'fail';
+    el.innerHTML = `<div class="ffBox"><div class="ffGlow"></div><div class="ffRing"></div>${Array.from({ length: 10 }, (_, i) => `<i class="ffOrb" style="--a:${i * 36}deg;--d:${(i % 3) * 0.08}s"></i>`).join('')}<div class="cell ffIco${rar(it)}">${ico(it)}</div>
+      <div class="ffName" style="color:${itemColor(it)}">${esc(itemName(it))}</div><div class="ffTitle">${title}</div><div class="ffLines">${lines.join('')}</div><button class="btn gold" data-ffok="1">확인</button></div>`;
+    document.body.appendChild(el);
+    const close = () => el.remove();
+    el.querySelector('[data-ffok]').onclick = close;
+    setTimeout(() => el.addEventListener('click', (e) => { if (e.target === el) close(); }), 400);
+  }
+
   // 대장간: 능력치 파편으로 착용 장비의 옵션 하나를 바꾼다 (잠근 옵션은 그대로)
   // 제련: ① 장비(착용 · 가방) → ② 능력치 파편 → ③ 잠글 옵션 → 제련. 결과는 팝업으로 전 · 후를 보여 준다
   shardPanel(smith) {
@@ -789,6 +867,7 @@ export class Windows {
       if (b.bld) right = `<h3>${def.name} · ${b.bld.to === 1 ? '짓는 중' : `${b.bld.to}단계로 올리는 중`} <small class="note">${fmtT(Math.max(60000, b.bld.until - Date.now()))}</small></h3>${gauge(b.bld.from, b.bld.until, 60000, '#ffd84a')}` + (bmode ? costTable : '');
       else right = `<h3>${def.name} · ${b.lv}단계</h3>` + (one ? '' : `<div class="btns" style="margin:0 0 8px"><button class="btn" data-upgrade="1" ${up == null || st.gold < up || !umOk || !anOk ? 'disabled' : ''}>${up == null ? '최고 단계' : !anOk ? `각성 ${an} 필요` : `단계 올리기 ${up.toLocaleString()} G${um ? ` · ${BASES[um.base].name} ${um.n}` : ''}`}</button></div><div class="note">${def.desc}</div>`);
       if (bmode && !b.bld) right += costTable;
+      if (one && b.type === 'smithy' && !b.bld) return this.smithyView(b, sel); // v0.45 대장간: 탭으로 나눈 두 쪽 화면
       if (!bmode && !(b.bld?.to === 1)) {
       if (b.type === 'workshop') {
         right += `<h3>약초</h3><div class="herbList">${HERB_IDS.map((h) => `<span class="hb"><img src="${herbIcon(h)}" alt="" />${HERBS[h].name} <b>${t.herbs[h] || 0}</b></span>`).join('')}</div>`;
@@ -1074,10 +1153,14 @@ export class Windows {
     on('[data-upgrade]', () => { const r = upgrade(st, this.townSel); if (r.ok) audio.play('rankup'); townDone(r, '단계를 올렸습니다'); });
     on('[data-collect]', () => { const r = collect(st, this.townSel); if (r?.n) { audio.play('coin'); w.ui.toast(r.got ? `약초: ${Object.entries(r.got).map(([h, q]) => `${HERBS[h].name} ${q}`).join(' · ')}` : `${r.what} ${r.n}개를 거뒀습니다${r.o2 ? ` · 상급 ${r.o2}` : ''}${r.o3 ? ` · 최상급 ${r.o3}` : ''}`, '#7fe07a'); } w.ui.dirty(); this.render(); });
     on('[data-enh]', (el) => {
-      const it = gearAt(st, el.dataset.enh), r = enhance(st, it); if (el.dataset.enh.startsWith('v:')) vaultSave();
+      const it = gearAt(st, el.dataset.enh), b0 = BASES[it.base], before = b0.dmg ? scaledDmg(it).join('~') : b0.armor ? scaledArmor(it) : null, p0 = it.plus || 0;
+      const r = enhance(st, it); if (el.dataset.enh.startsWith('v:')) vaultSave();
       if (!r.ok) { w.ui.toast(r.why); audio.play('error'); }
-      else if (r.success) { audio.play('awaken'); w.fx.pillar(w.player.pos.x, w.player.pos.z, 0xffd060, 0.8); w.ui.toast(`강화 성공! +${r.plus}`, '#ffd84a'); w.refreshGear(); }
-      else { audio.play('error'); w.ui.toast(`강화 실패 · 장인의 기운 ${+((r.jang || 0) * 100).toFixed(1)}%`); }
+      else if (r.success) {
+        audio.play('awaken'); w.fx.pillar(w.player.pos.x, w.player.pos.z, 0xffd060, 0.8); w.refreshGear();
+        const after = b0.dmg ? scaledDmg(it).join('~') : b0.armor ? scaledArmor(it) : null, nm = b0.dmg ? (WEAPON_CLASSES[b0.cls]?.kind === 'magic' ? '마법 공격력' : '물리 공격력') : '방어력';
+        this.forgeFx(true, it, `+${r.plus} 강화 성공`, [`<div><span>강화</span><b>+${p0}</b><i class="arw">▶</i><em>+${r.plus}</em></div>`, ...(before != null ? [`<div><span>${nm}</span><b>${before}</b><i class="arw">▶</i><em>${after}</em></div>`] : [])]);
+      } else { audio.play('error'); this.forgeFx(false, it, '강화 실패', [`<div><span>장인의 기운</span><em>${+((r.jang || 0) * 100).toFixed(1)}%</em></div>`]); }
       w.ui.dirty(); this.render();
     });
     on('[data-mythlv]', (el) => { const mx = mythLvMax(st); globalThis.__mythLv = Math.max(10, Math.min(mx, (globalThis.__mythLv ?? mx) + Number(el.dataset.mythlv))); audio.play('click'); this.render(); });
@@ -1095,6 +1178,9 @@ export class Windows {
     on('[data-camp]', (el) => { const [z, what] = el.dataset.camp.split('|'); const r = w.buildCamp(z, what); if (!r.ok && r.why) w.ui.toast(r.why); w.ui.dirty(); this.render(); });
     on('[data-salvage]', (el) => { const r = salvage(st, Number(el.dataset.salvage)); if (r.ok) { audio.play('coin'); w.ui.toast(`분해: 강화석 ${r.ore} · ${MATERIALS[r.mat].name} ${r.matN}`, '#ffd84a'); if (r.shard) w.ui.toast(`능력치 파편: ${affixText(r.shard.shard)}`, '#c58cff'); } townDone(r); });
     on('[data-salvageall]', () => { let n = 0, sh = 0; for (const x of [...st.inv]) if (!x.book && BASES[x.base]?.slot && ['common', 'magic'].includes(x.rarity)) { const r = salvage(st, x.uid); if (r.ok) { n++; if (r.shard) sh++; } } if (sh) w.ui.toast(`능력치 파편 ${sh}개`, '#c58cff'); audio.play('coin'); w.ui.toast(`장비 ${n}개 분해`, '#ffd84a'); townDone({ ok: true }); });
+    on('[data-stab]', (el) => { this.smithTab = el.dataset.stab; audio.play('click'); this.render(); });
+    on('[data-esel]', (el) => { this.enhSel = el.dataset.esel; audio.play('click'); this.render(); });
+    on('[data-vsalv]', (el) => { this.salvSel = el.dataset.vsalv; audio.play('click'); this.render(); });
     on('[data-shard]', (el) => { const u = Number(el.dataset.shard); this.shardSel = this.shardSel === u ? null : u; this.shardLocks = []; audio.play('click'); this.render(); });
     on('[data-starget]', (el) => { this.shardTarget = el.dataset.starget; this.shardLocks = []; audio.play('click'); this.render(); });
     on('[data-slock]', (el) => { const k = Number(el.dataset.slock), L = this.shardLocks ||= []; const i = L.indexOf(k); if (i >= 0) L.splice(i, 1); else L.push(k); audio.play('click'); this.render(); });
@@ -1104,8 +1190,7 @@ export class Windows {
       const r = applyShard(st, it, this.shardSel, this.shardLocks || [], sm?.lv || 0); if (r.ok && String(this.shardTarget).startsWith('v:')) vaultSave();
       if (r.ok) {
         audio.play('rankup'); this.shardSel = null; w.refreshGear();
-        const list = it.affixes.map((a) => `<div class="aff" style="${a === r.now ? 'color:#c58cff;font-weight:700' : ''}">${a === r.now ? `<s style="opacity:.6">${affixText(r.old)}</s> → ` : ''}${affixText(a)}</div>`).join('');
-        setTimeout(() => this.popup('제련 결과', `<div style="margin:.5em 0;color:${itemColor(it)}">${esc(itemName(it))}</div>${list}`), 0);
+        this.forgeFx(true, it, '제련 성공', [`<div><b style="opacity:.6"><s>${affixText(r.old)}</s></b><i class="arw">▶</i><em style="color:#c58cff">${affixText(r.now)}</em></div>`]);
       }
       townDone(r);
     });
