@@ -49,14 +49,18 @@ export function rewardItems(st, q) {
     const CLS_STAT = { sword: 'str', bow: 'dex', staff: 'int', mace: 'vit', scepter: 'wis' }; // 요구 능력치가 없는 무기는 계열의 능력치로 본다
     const S = totalStats(st), MAIN = ['str', 'dex', 'int', 'wis', 'vit'], smax = Math.max(1, ...MAIN.map((k) => S[k] || 0));
     // 요구 능력치 중 내 값이 가장 큰 것 (가장 높은 능력치를 요구하면 100). 비슷하면(1% 안) 시작 무기 계열이 이긴다
-    const fit = (b) => { const ks = Object.keys(b.req || {}).filter((k) => MAIN.includes(k)); if (!ks.length && b.cls) ks.push(CLS_STAT[b.cls]); return ks.length ? Math.round((100 * Math.max(...ks.map((k) => S[k] || 0))) / smax) : 100; };
+    // v0.49.2 복합 능력치: 상위 두 능력치(둘째가 첫째의 절반 이상일 때)를 내 빌드로 보고, 이번 보상이 노릴 능력치를 그 비율대로 고른다
+    const order = [...MAIN].sort((x, y) => (S[y] || 0) - (S[x] || 0)), top = (S[order[1]] || 0) >= (S[order[0]] || 0) * 0.5 ? order.slice(0, 2) : order.slice(0, 1);
+    const wsum = top.reduce((a, k) => a + (S[k] || 0) ** 2, 0); let roll = Math.random() * wsum, aim = top[0]; for (const k of top) { roll -= (S[k] || 0) ** 2; if (roll < 0) { aim = k; break; } }
+    const fit = (b) => { const ks = Object.keys(b.req || {}).filter((k) => MAIN.includes(k)); if (!ks.length && b.cls) ks.push(CLS_STAT[b.cls]); if (!ks.length) return 100; if (ks.includes(aim)) return 100 + (ks.every((k) => top.includes(k)) ? 1 : 0); return Math.round((100 * Math.max(...ks.map((k) => (top.includes(k) ? S[k] || 0 : (S[k] || 0) * 0.5)))) / smax) * 0.9; };
     const pool = Object.keys(BASES).filter((id) => {
       const b = BASES[id];
       return b.slot === slot && ((b.minLvl ?? 1) <= ilvl || b.shop) && b.minLvl !== 99 && !b.noDrop;
     });
-    const score = (id) => { const b = BASES[id], ok = meetsReq(st, b.req, S); return (ok ? 1e6 : 0) + (slot === 'weapon' && b.cls === cls ? 500 : 0) + fit(b) * 1e3 + (b.minLvl ?? 1); };
+    const score = (id) => { const b = BASES[id], ok = meetsReq(st, b.req, S); return (ok ? 1e6 : 0) + (slot === 'weapon' && b.cls === cls ? 2e5 : 0) + fit(b) * 1e3 + (b.minLvl ?? 1); };
     pool.sort((a, b) => score(b) - score(a));
-    if (pool.length) out.push(makeItem(pool[0], { rarity, ilvl: Math.min(ilvl, Math.max(1, st.awakenings || 0)) }, st)); // 지금 낄 수 있는 레벨로 (v0.42 각성 제한)
+    const MO = ['str', 'dex', 'int', 'wis', 'vit'], mixKey = [order[0], order[1]].sort((x, y) => MO.indexOf(x) - MO.indexOf(y)).join('+'); // 혼합 전용이 되면 내 상위 두 능력치 조합
+    if (pool.length) out.push(makeItem(pool[0], { rarity, ilvl: Math.min(ilvl, Math.max(1, st.awakenings || 0)), favor: top.length > 1 ? top : [top[0], order[1]], mix: mixKey }, st)); // 지금 낄 수 있는 레벨로 (v0.42 각성 제한)
   }
   if (r.book) out.push(makeBook((QUEST_BOOKS[st.start] || QUEST_BOOKS.sword)[r.book], st));
   return out;

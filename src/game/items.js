@@ -20,7 +20,8 @@ export const namedOf = (zoneId) => NAMED_LEGENDS[zoneId] || [];
 
 const uid = (st) => (st ? st.nextUid++ : Math.floor(Math.random() * 1e9));
 
-export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1 } = {}, st = null, rng = R) {
+// favor: 능력치 옵션을 이 능력치 위주로 (퀘스트 보상, v0.49.2) · mix: 혼합 전용 장비가 되면 이 조합으로
+export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1, favor = null, mix = null } = {}, st = null, rng = R) {
   const base = BASES[baseId];
   if (!base) throw new Error('없는 아이템: ' + baseId);
   if (base.type === 'potion' || base.stack) return { uid: uid(st), base: baseId, qty };
@@ -38,7 +39,8 @@ export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1 } = {}, 
   // 신화: 신화 전용 옵션 세 개를 먼저 (v0.44.18 두 개 → 세 개) (부위에 맞는 것 중)
   if (rarity === 'myth') { const mp = Object.keys(AFFIXES).filter((id) => AFFIXES[id].mythOnly && (!AFFIXES[id].slots || AFFIXES[id].slots.includes(slot))); for (let i = 0; i < 3 && mp.length; i++) { const id = mp.splice(Math.floor(rng() * mp.length), 1)[0], a = AFFIXES[id], mx = a.max(ilvl); it.affixes.push({ id, v: Math.max(a.min, Math.round(mx * (0.7 + rng() * 0.3))), myth: true }); } }
   for (let i = 0; i < n - (rarity === 'myth' ? it.affixes.length : 0) && pool.length; i++) {
-    const id = pool.splice(Math.floor(rng() * pool.length), 1)[0];
+    let id = pool.splice(Math.floor(rng() * pool.length), 1)[0];
+    if (favor && ['str', 'dex', 'int', 'wis', 'vit'].includes(id) && !favor.includes(id) && rng() < 0.7) { const alt = pool.filter((x) => favor.includes(x)); if (alt.length) { pool.push(id); id = alt[Math.floor(rng() * alt.length)]; pool.splice(pool.indexOf(id), 1); } }
     const a = AFFIXES[id];
     const max = Math.max(a.min, a.max(ilvl) * r.mult);
     let v = Math.max(a.min, Math.round(a.min + (rarity === 'myth' ? 0.5 + rng() * 0.5 : rng()) * (max - a.min))); // 신화는 옵션이 범위의 위쪽 절반에서만
@@ -50,7 +52,7 @@ export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1 } = {}, 
   if (rarity === 'legend' || rarity === 'myth') { it.title = pick(rarity === 'myth' ? MYTH_NAMES : LEGEND_NAMES, rng); it.unique = Math.floor(rng() * UNIQUE_BASE); }
   // v0.44.41 혼합 전용 장비: 무기 · 보조 · 장신구 전설 · 신화의 20%는 두 스탯 전용 (두 스탯 조건 · 두 스탯 옵션 · 조합 고유 효과)
   if ((rarity === 'legend' || rarity === 'myth') && ['weapon', 'offhand', 'amulet', 'ring'].includes(slot) && rng() < 0.2) {
-    const keys = Object.keys(MIX_ITEM), key = keys[Math.floor(rng() * keys.length)], [a, b] = key.split('+');
+    const keys = Object.keys(MIX_ITEM), key = mix && MIX_ITEM[mix] ? mix : keys[Math.floor(rng() * keys.length)], [a, b] = key.split('+');
     const need = Math.round(6 + ilvl * 1.3);
     it.mix = key; it.mixReq = { [a]: need, [b]: Math.round(need * 0.6) };
     it.title = `${MIX_ITEM[key].name} ${it.title}`; it.unique = mixUnique(key);
