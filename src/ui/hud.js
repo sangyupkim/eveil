@@ -41,6 +41,9 @@ export class HUD {
     $('#menuToggle').onclick = () => $('.menuCol').classList.toggle('closed');
     $('#qToggle').onclick = () => $('#questBox').classList.toggle('min');
     $('#qpToggle').onclick = () => $('#qPanel').classList.toggle('min');
+    // v0.49.7 퀘스트를 누르면 퀘스트 창, 기록을 누르면 지난 기록 창
+    $('#qPanel .qbody').onclick = () => globalThis.__game?.windows?.show('quest');
+    $('#questBox .qbody').onclick = () => globalThis.__game?.windows?.show('log');
     this.dirty();
   }
 
@@ -64,6 +67,7 @@ export class HUD {
     el.textContent = msg;
     if (color) el.style.color = color;
     const box = $('#log');
+    (this.logHist ||= []).push({ t: Date.now(), msg, color }); if (this.logHist.length > 300) this.logHist.splice(0, this.logHist.length - 300); // v0.49.7 기록 창용
     box.appendChild(el);
     while (box.children.length > 5) box.firstChild.remove();
   }

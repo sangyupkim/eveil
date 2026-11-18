@@ -79,7 +79,7 @@ export function showNotes() {
 }
 const repickCost = (t) => 2000 * (t.tier + 1) ** 2;
 const nextTitle = (st) => { const i = TITLE_AT.findIndex((n) => st.awakenings < n); return i < 0 ? '' : ` · ${i + 1}차 각성 ${titleName(titleKey(st.stats, 10, i), i)}까지 ${TITLE_AT[i] - st.awakenings}`; };
-const TITLES = { arts: '수련 비전', gems: '보석상', map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', news: '공지 · 패치', menu: '메뉴', rank: '랭킹' };
+const TITLES = { arts: '수련 비전', gems: '보석상', map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', news: '공지 · 패치', menu: '메뉴', rank: '랭킹', log: '기록' };
 // 진행 게이지 (시작 ~ 끝 시각). 예전 저장은 시작 시각이 없어 dur로 어림
 const gauge = (from, until, dur = 3600000, color = '#7ad0ff') => { const f = from || until - dur, k = Math.max(0, Math.min(1, (Date.now() - f) / Math.max(1, until - f))); return `<div class="mini" style="margin-top:3px"><i style="width:${(k * 100).toFixed(1)}%;background:linear-gradient(#bfe8ff,${color})"></i></div>`; };
 // 보석 합치기 · 빼기 값
@@ -93,7 +93,7 @@ const COL = '<!--COL-->';
 const lk = (it) => (it?.lock ? '<span class="lk"></span>' : ''); // v0.45 잠근 아이템 표시
 const cellTag = (it) => { if (!it?.shard) return ''; const t = affixText(it.shard), v = t.match(/[+-]?[\d.]+%?/); return `<span class="ctag">${t.split(' ')[0].slice(0, 2)}<br>${v ? v[0] : ''}</span>`; }; // v0.45 칸 안에 들어가게 짧게 (골드 획득 +367% → 골드+367%)
 const NPC_ONLY = ['shop', 'town', 'vault', 'gems'];
-const TAB_ORDER = ['gems', 'map', 'inv', 'vault', 'skills', 'char', 'arts', 'quest', 'dex', 'rank', 'town', 'shop', 'guide', 'news', 'menu'];
+const TAB_ORDER = ['gems', 'map', 'inv', 'vault', 'skills', 'char', 'arts', 'quest', 'log', 'dex', 'rank', 'town', 'shop', 'guide', 'news', 'menu'];
 const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '');
 // 장비 찾기 (v0.41.3): 'e:부위' 착용 · 'b:uid' 가방 · 'v:uid' 창고 — 대장간 · 보석상은 세 곳 모두에서 고른다
 const gearAt = (st, key) => { const [k, v] = String(key || '').split(':'); return k === 'e' ? st.equip[v] : k === 'v' ? vault().items.find((x) => x.uid === Number(v)) : st.inv.find((x) => x.uid === Number(v)); };
@@ -169,7 +169,7 @@ export class Windows {
     const icons = { arts: bookIcon(), inv: chestIcon(), skills: bookIcon(), char: portrait(this.w.st.look), shop: coinIcon(), quest: scrollIcon(), town: townIcon(), dex: bookIcon(), map: scrollIcon(), guide: bookIcon(), vault: homeIcon() };
     const tabs = $('.tabs', this.el);
     // 탭은 그림 없이 같은 모양의 글자 단추로
-    const TAB_TXT = { arts: '비전', gems: '보석', map: '지도', inv: '가방', skills: '스킬', char: '능력', quest: '퀘스트', dex: '도감', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '설정', news: '공지', rank: '랭킹' };
+    const TAB_TXT = { arts: '비전', gems: '보석', map: '지도', inv: '가방', skills: '스킬', char: '능력', quest: '퀘스트', dex: '도감', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '설정', news: '공지', rank: '랭킹', log: '기록' };
     // 상인 · 건물 창은 그 상인의 탭만, 탭이 하나면 탭 줄을 숨긴다
     const list = this.talk ? TAB_ORDER.filter((k) => this.talk.includes(k) || k === this.talkFirst) : TAB_ORDER.filter((k) => !NPC_ONLY.includes(k) && (!['guide', 'news'].includes(k) || k === this.kind)); // 공지 · 가이드북은 설정 창에서 연다
     tabs.style.visibility = list.length < 2 ? 'hidden' : '';
@@ -478,6 +478,12 @@ export class Windows {
     L += `<div><div class="note">부여할 능력 <span class="cnt">${shards.length}</span></div><div class="shList">${shards.map((x) => { const okk = canApply(it, x.shard, Lk).ok; return `<button class="btn affBtn ${x.uid === this.shardSel ? 'on' : ''}" data-shard="${x.uid}" style="color:#c58cff;${okk ? '' : 'opacity:.4'}">${affixText(x.shard)}</button>`; }).join('') || '<div class="note">파편 없음</div>'}</div></div></div>`;
     if (sh) { const c = shardCost(it), ok = canApply(it, sh, Lk); L += `<div class="btns forgeGo"><button class="btn gold big" data-sapply="1" ${!ok.ok || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>${ok.ok ? `제련 · ${c.gold.toLocaleString()} G · 강화석 ${c.ore}` : ok.why}</button></div>`; }
     return [L, right];
+  }
+  // v0.49.7 기록 창: 지난 기록 (최근 300줄, 새것이 위) — 왼쪽 오늘 기록 전부 | 오른쪽 종류별 개수
+  log() {
+    const H = [...(this.w.ui.logHist || [])].reverse(), tm = (t) => { const d = new Date(t); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+    const L = `<h3>기록 <span class="cnt">${H.length}</span></h3>` + (H.map((x) => `<div class="row logRow"><small class="note">${tm(x.t)}</small><div class="grow" style="${x.color ? `color:${x.color}` : ''}">${esc(x.msg)}</div></div>`).join('') || '<div class="note">없음</div>');
+    return `<div class="cols"><div class="frame" style="flex:1;overflow:auto">${L}</div></div>`;
   }
   // v0.49 랭킹: 레벨(각성) · 전투력 탭. 왼쪽 순위 목록 | 오른쪽 내 기록. 열면 바로 불러온다 (1분 안에는 다시 받지 않는다)
   rank() {

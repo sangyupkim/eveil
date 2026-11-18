@@ -42,6 +42,26 @@
         <div class="pill gold"><span id="gold">0</span> G</div>
         <div class="pill ore" title="강화석"><img id="oreIco" alt="" /><span id="oreN">0</span></div>
       </div>
+      <!-- v0.49.7 미니맵은 체력바 밑 (누르면 지도) -->
+      <div id="mapWrap"><canvas id="minimap" width="200" height="200"></canvas></div>
+    </div>
+
+    <!-- 우상단: 메뉴 단추 한 줄 · 퀘스트 · 기록 -->
+    <div id="tr">
+      <div class="menuCol">
+        <button class="ibtn menu-toggle" id="menuToggle" title="메뉴 펼치기"><b class="chev"></b></button>
+        <div class="menuItems" id="menuItems">
+          <button data-win="menu" class="ibtn" title="메뉴 (Esc)"><b class="gear"></b></button>
+          <button data-win="inv" class="ibtn" title="가방 (I)"><img data-ico="chest" alt="" /><span class="cnt" id="bagCnt">0/40</span></button>
+          <button data-win="skills" class="ibtn" title="스킬 (K)"><img data-ico="book" alt="" /></button>
+          <button data-win="char" class="ibtn" title="능력 (C)"><img data-ico="face" alt="" /></button>
+          <button data-win="quest" class="ibtn" title="퀘스트 (J)"><img data-ico="scroll" alt="" /></button>
+          <button data-win="rank" class="ibtn" title="랭킹"><img data-ico="rank" alt="" /></button>
+          <button data-win="shop" id="shopBtn" class="ibtn" title="상점" hidden><img data-ico="coin" alt="" /></button>
+        </div>
+      </div>
+      <!-- v0.49.7 퀘스트 · 기록은 오른쪽 (누르면 퀘스트 창 · 기록 창) -->
+      <div id="trBoxes">
       <div id="qPanel" class="hudBox">
         <button class="qhead" id="qpToggle">퀘스트 <small class="chev"></small></button>
         <div class="qbody">
@@ -56,22 +76,6 @@
           <div id="log"></div>
         </div>
       </div>
-    </div>
-
-    <!-- 우상단: 미니맵 · 메뉴 단추 -->
-    <div id="tr">
-      <div id="mapWrap"><canvas id="minimap" width="200" height="200"></canvas></div>
-      <div class="menuCol">
-        <button class="ibtn menu-toggle" id="menuToggle" title="메뉴 펼치기"><b class="chev"></b></button>
-        <div class="menuItems" id="menuItems">
-          <button data-win="menu" class="ibtn" title="메뉴 (Esc)"><b class="gear"></b></button>
-          <button data-win="inv" class="ibtn" title="가방 (I)"><img data-ico="chest" alt="" /><span class="cnt" id="bagCnt">0/40</span></button>
-          <button data-win="skills" class="ibtn" title="스킬 (K)"><img data-ico="book" alt="" /></button>
-          <button data-win="char" class="ibtn" title="능력 (C)"><img data-ico="face" alt="" /></button>
-          <button data-win="quest" class="ibtn" title="퀘스트 (J)"><img data-ico="scroll" alt="" /></button>
-          <button data-win="rank" class="ibtn" title="랭킹"><img data-ico="rank" alt="" /></button>
-          <button data-win="shop" id="shopBtn" class="ibtn" title="상점" hidden><img data-ico="coin" alt="" /></button>
-        </div>
       </div>
     </div>
 

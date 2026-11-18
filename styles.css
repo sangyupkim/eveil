@@ -744,3 +744,15 @@ html.force-land #rotate { display: none !important; }
 #noticeCard b { color: #7fe07a; font-weight: 600; }
 #noticeCard span { color: #c8c0b0; }
 #noticeCard.out { opacity: 0; pointer-events: none; }
+/* v0.49.7 HUD 배치: 왼쪽 = 초상화 · 막대 · 미니맵, 오른쪽 = 메뉴 단추 한 줄 → 퀘스트 · 기록 */
+#tr { flex-direction: column; align-items: flex-end; gap: 6px; }
+.menuCol { flex-direction: row-reverse; align-items: center; }
+.menuItems { display: flex; flex-direction: row; direction: ltr; gap: 6px; }
+.menu-toggle { height: calc(var(--u) * 3.9); width: calc(var(--u) * 2.4); }
+.menuCol .chev { transform: rotate(-135deg) translate(-0.1em, 0.1em); }
+.menuCol.closed .chev { transform: rotate(45deg) translate(0.1em, -0.1em); }
+#tl #mapWrap { margin-top: 6px; pointer-events: auto; }
+#trBoxes { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; width: calc(var(--u) * 20); }
+#trBoxes #qPanel, #trBoxes #questBox { margin-top: 0; width: 100%; max-width: none; text-align: right; pointer-events: auto; }
+#trBoxes .qbody { cursor: pointer; }
+.logRow { gap: 10px; padding: 3px 4px; } .logRow small { min-width: 3em; }
