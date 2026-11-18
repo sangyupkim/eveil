@@ -1316,6 +1316,9 @@ export class Windows {
     on('[data-popclose]', () => { this.sel = null; this.vsel = null; audio.play('click'); this.render(); });
     on('[data-gmergeall]', () => {
       const have = [...new Set([...st.inv, ...vault().items].filter((x) => BASES[x?.base]?.type === 'gem').map((x) => x.base))].map((base) => ({ base, qty: resCount(st, base) }));
+      { let n = 0, g = 0; for (const x of have) { const b = BASES[x.base]; if (b.grade + 1 >= GEM_GRADES.length) continue; const k = Math.floor(x.qty / 3); n += k; g += k * mergeCost(b.grade); }
+        if (!n) { w.ui.toast('합칠 보석이 없습니다'); audio.play('error'); return; }
+        if (!confirm(`보석을 ${n}번 합칩니다 (금화 최대 ${g.toLocaleString()} G).\n실패하면 보석을 잃을 수 있습니다. 합칠까요?`)) return; }
       let ok = 0, fail = 0, lost = 0, gold = 0; const made = {};
       for (const x of have) { const b = BASES[x.base]; if (b.grade + 1 >= GEM_GRADES.length) continue; const cost = mergeCost(b.grade), nid = gemId(b.gem, b.grade + 1);
         for (let k = Math.floor(x.qty / 3); k > 0; k--) { if (st.gold < cost || resCount(st, x.base) < 3) break; st.gold -= cost; gold += cost;
