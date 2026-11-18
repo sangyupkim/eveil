@@ -211,7 +211,7 @@ body:not(.touch) #btnRecall { right: calc(var(--u) * 11.8); bottom: calc(var(--u
 .mini i { display: block; height: 100%; }
 .statRow { display: grid; grid-template-columns: 4em 3.6em 1fr; gap: 8px; align-items: center; padding: 6px 0; }
 .statRow b { font-family: var(--f-latin); font-size: calc(var(--u) * 1.2); }
-.kv { display: grid; grid-template-columns: 1fr auto; gap: 3px 14px; font-size: calc(var(--u) * 0.88); color: var(--dim); }
+.kv { max-width: 22em; display: grid; grid-template-columns: 1fr auto; gap: 3px 14px; font-size: calc(var(--u) * 0.88); color: var(--dim); }
 .kv b { color: var(--ink); font-weight: 400; text-align: right; font-family: var(--f-latin); }
 .sicon { width: calc(var(--u) * 3); height: calc(var(--u) * 3); border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; font-family: var(--f-title); font-weight: 800; border: 2px solid var(--brass-dk); box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.7); color: #fff; text-shadow: 0 1px 2px #000; }
 .sicon img { width: 90%; height: 90%; object-fit: contain; }
@@ -694,3 +694,20 @@ html.force-land #rotate { display: none !important; }
 #gameAsk .askPick .btn:disabled { opacity: .35; }
 #gameAsk .askPick .btn:not(.on):not(:disabled) { opacity: .55; filter: grayscale(.6); }
 #gameAsk .askPick .btn.on { outline: 2px solid #ffd84a; outline-offset: -2px; }
+/* v0.45.7 등급 거르기 줄 */
+.rarRow { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0 6px; }
+.rarRow .btn { padding: 2px 8px; min-height: 0; font-size: .85em; }
+.rarRow .btn:not(.on) { opacity: .6; }
+/* v0.45.7 가방 아이템 정보는 장비 칸 양옆을 가리지 않는다 (넓은 화면) */
+@media (min-width: 900px) { .itemPop.eqMid { left: calc(var(--u) * 5); right: calc(var(--u) * 5); } }
+/* v0.45.7 약초밭 · 광산 오른쪽: 큰 그림 카드로 칸을 채운다 */
+.herbCards { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--u) * 6), 1fr)); gap: 8px; }
+.herbCards .hb { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border: 1px solid rgba(217, 182, 106, 0.28); border-radius: 8px; background: radial-gradient(circle at 50% 35%, #2a2238, #120e1a 85%); text-align: center; font-size: .9em; }
+.herbCards .hb img { width: calc(var(--u) * 3.4); height: calc(var(--u) * 3.4); object-fit: contain; }
+.herbCards .hb b { font-size: 1.1em; color: var(--brass-hi); }
+/* v0.45.7 용병 줄: 이 건물 능력치를 크게 */
+.mrow .mKey { display: flex; flex-direction: column; align-items: center; min-width: 3.6em; margin: 0 6px; line-height: 1.1; }
+.mrow .mKey small { font-size: .7em; color: var(--dim); }
+.mrow .mKey b { font-size: 1.35em; color: #ffd84a; font-family: var(--f-latin); }
+.kv.costT { max-width: none; grid-template-columns: auto 1fr; }
+.kv.costT span { white-space: nowrap; }
