@@ -38,7 +38,7 @@ export const CONFIG = {
   deathItemLifetime: 15 * 60,   // 떨어뜨린 아이템이 남아 있는 시간(초)
 
   inventorySize: 40,
-  quickSlots: 6,
+  quickSlots: 8, // v0.49.8 6 → 8
   skillMaxRank: 10,
   respawnTime: 35,          // 일반 몬스터 재생성(초)
   namedRespawn: 180,

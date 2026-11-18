@@ -204,7 +204,7 @@ export function setupInput(world, stage, windows) {
     if (['inv', 'skills', 'char', 'quest', 'map', 'guide', 'menu'].includes(a)) { windows.toggle(a); return; }
     if (a === 'shop') { if (world.canShop) windows.toggle('shop'); return; }
     if (windows.open || e.repeat) return;
-    if (/^s[1-6]$/.test(a)) { world.manual(); world.useSkill(world.st.quick[Number(a[1]) - 1]); }
+    if (/^s[1-8]$/.test(a)) { world.manual(); world.useSkill(world.st.quick[Number(a[1]) - 1]); }
     if (a === 'hp') world.usePotion('hp');
     if (a === 'mp') world.usePotion('mp');
     if (a === 'auto') world.toggleAuto();
