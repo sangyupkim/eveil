@@ -169,7 +169,18 @@ globalThis.__stage = stage;
   drawAccount();
   await refreshChars();
 
+  // v0.44.70 같은 브라우저의 다른 탭에서 같은 캐릭터가 돌고 있으면: 그 탭이 저장하고 멈출 때까지 잠깐 기다린 뒤 그 진행을 이어 받는다
+  const tabCh = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('eveil-tabs') : null;
+  const tabClaim = (cid) => new Promise((ok) => {
+    if (!tabCh) return ok(false);
+    const t = setTimeout(() => { tabCh.removeEventListener('message', on); ok(false); }, 1500);
+    const on = (e) => { if (e.data?.type === 'done' && e.data.cid === cid) { clearTimeout(t); tabCh.removeEventListener('message', on); ok(true); } };
+    tabCh.addEventListener('message', on);
+    tabCh.postMessage({ type: 'claim', cid });
+  });
+  window.__tabCh = tabCh;
   const start = async (st, fresh = false) => {
+    if (!fresh && await tabClaim(st?.cid || sel)) { const L = fixSave(loadChar(st?.cid || sel)); if (L) st = L; } // 다른 탭이 방금 저장한 진행
     // 계정이면 이 기기를 '지금 하는 기기'로 정하고, 그 순간 서버의 최신 저장으로 이어 한다
     // (다른 기기에서 방금까지 하던 진행). 새 캐릭터는 서버 저장을 덮어쓴다
     if (cloud.id) {
@@ -311,13 +322,20 @@ function startGame(stage, st) {
   cloud.finalState = () => (window.__noSave ? null : st); // 넘겨줄 때 올릴 마지막 진행
   // v0.44.69 오래 켜 둔 예전 버전 창: 서버가 저장을 거절하면 새 버전으로 다시 연다 (더 새 진행을 덮지 않게)
   cloud.onOld = () => { if (window.__oldReload) return; window.__oldReload = 1; window.__noSave = true; try { const L = loadChar(st.cid); if (L) { L.savedAt = 0; localStorage.setItem(keyOf(st.cid), JSON.stringify(L)); } } catch { /* 무시 */ } hud.toast('새 버전이 있어 다시 엽니다', '#ffd84a'); setTimeout(() => location.reload(), 1500); };
-  cloud.onMoved = () => {
+  window.__tabCh?.addEventListener('message', (e) => {
+    if (e.data?.type !== 'claim' || e.data.cid !== st.cid || window.__stop) return;
+    save(true); // 지금까지의 진행을 이 기기에 저장 (서버에도)
+    window.__tabCh.postMessage({ type: 'done', cid: st.cid });
+    cloud.onMoved('tab');
+  });
+  cloud.onMoved = (why) => {
+    const tab = why === 'tab';
     window.__noSave = true; window.__stop = true;
     // 이 기기의 저장은 낡은 것으로 표시: 다음에 켜면 서버(새 기기) 저장을 받는다
-    try { const L = loadChar(st.cid); if (L) { L.savedAt = 0; localStorage.setItem(keyOf(st.cid), JSON.stringify(L)); } } catch { /* 무시 */ }
+    if (!tab) try { const L = loadChar(st.cid); if (L) { L.savedAt = 0; localStorage.setItem(keyOf(st.cid), JSON.stringify(L)); } } catch { /* 무시 */ }
     const el = document.createElement('div');
     el.id = 'movedBox';
-    el.innerHTML = '<div><b>다른 기기에서 접속했습니다</b><p>이 기기의 게임은 멈췄습니다. 진행은 새로 접속한 기기에서 이어집니다.</p><button class="plate gold">처음 화면으로</button></div>';
+    el.innerHTML = tab ? '<div><b>다른 탭에서 이 캐릭터를 열었습니다</b><p>이 탭의 게임은 멈췄습니다. 진행은 새로 연 탭에서 이어집니다.</p><button class="plate gold">처음 화면으로</button></div>' : '<div><b>다른 기기에서 접속했습니다</b><p>이 기기의 게임은 멈췄습니다. 진행은 새로 접속한 기기에서 이어집니다.</p><button class="plate gold">처음 화면으로</button></div>';
     el.querySelector('button').onclick = () => location.reload();
     document.body.appendChild(el);
   };
