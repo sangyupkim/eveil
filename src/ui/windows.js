@@ -922,7 +922,18 @@ export class Windows {
   }
   // v0.44.15 완료 알림: 파견 귀환 · 제작 · 수확 · 연구 · 공사. sections = [{ title, rows: [{ img, name, qty, color, item }] }]
   // 왼쪽 목록 · 오른쪽 고른 아이템 설명. 열려 있는 동안 새 알림은 같은 창에 더한다. ×· 바깥 · Esc · 확인으로 닫는다
+  // v0.49.5 완료 알림은 작은 카드로 (직접 사냥 중에 큰 창이 입력을 막지 않게). 8초 뒤 사라지고, 누르면 자세한 창
   notice(sections) {
+    if (document.getElementById('winAlert')?.dataset.notice) { this.noticeFull(sections); return; } // 자세한 창을 보는 중이면 거기에 더한다
+    this.noticePend = [...(this.noticePend || []), ...sections].slice(-8);
+    let el = document.getElementById('noticeCard');
+    if (!el) { el = document.createElement('div'); el.id = 'noticeCard'; document.body.appendChild(el); el.onclick = (e) => { e.stopPropagation(); const P = this.noticePend || []; this.noticePend = []; el.remove(); if (P.length) this.noticeFull(P); }; }
+    const sum = {}; for (const sec of this.noticePend) { const n = (sec.rows || []).filter((r) => r.item).length; const k = String(sec.title).split(' · ')[0]; sum[k] = (sum[k] || 0) + (n || 0) + (n ? 0 : 0.001); }
+    el.innerHTML = Object.entries(sum).slice(0, 3).map(([k, n]) => `<div><b>${esc(k)}</b>${n >= 1 ? ` <span>장비 ${Math.floor(n)}</span>` : ''}</div>`).join('') + (Object.keys(sum).length > 3 ? `<div><span>외 ${Object.keys(sum).length - 3}건</span></div>` : '');
+    el.classList.remove('out'); clearTimeout(this.noticeT);
+    this.noticeT = setTimeout(() => { el.classList.add('out'); setTimeout(() => { if (el.classList.contains('out')) el.remove(); }, 600); }, 8000);
+  }
+  noticeFull(sections) {
     const cur = document.getElementById('winAlert');
     if (cur && !cur.dataset.notice) { (this.noticeWait ||= []).push(...sections); return; } // 다른 팝업이 떠 있으면 닫힌 뒤에
     this.noticeQ = [...(cur ? this.noticeQ || [] : []), ...sections].slice(-8).map((sec) => (sec.rows?.length > 60 ? { ...sec, rows: [...sec.rows.slice(0, 60), { name: `그 밖의 ${sec.rows.length - 60}줄`, color: '#c8c0b0' }] } : sec)); // v0.44.68 알림이 끝없이 쌓여 화면이 멈칫하던 것
@@ -937,7 +948,7 @@ export class Windows {
     el.dataset.notice = '1';
     el.querySelectorAll('[data-ntc]').forEach((r) => { r.onclick = () => { el.querySelectorAll('.ntcRow.on').forEach((x) => x.classList.remove('on')); r.classList.add('on'); el.querySelector('.ntcInfo').innerHTML = this.describe(items[+r.dataset.ntc], 'notice'); audio.play('click'); }; });
     // 닫히면 기다리던 알림을 띄운다
-    new MutationObserver((_, ob) => { if (!document.body.contains(el)) { ob.disconnect(); this.noticeQ = []; const w = this.noticeWait; this.noticeWait = null; if (w?.length) setTimeout(() => this.notice(w), 300); } }).observe(document.body, { childList: true });
+    new MutationObserver((_, ob) => { if (!document.body.contains(el)) { ob.disconnect(); this.noticeQ = []; const w = this.noticeWait; this.noticeWait = null; if (w?.length) setTimeout(() => this.noticeFull(w), 300); } }).observe(document.body, { childList: true });
   }
   alert(title, text = '') { this.popup(title, text ? `<p>${esc(text)}</p>` : '', false); }
 

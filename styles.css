@@ -739,3 +739,8 @@ html.force-land #rotate { display: none !important; }
 .rankRow .rk { width: 2.2em; text-align: center; color: var(--dim); }
 .rankRow .rk.top0 { color: #ffd84a; font-size: 1.15em; } .rankRow .rk.top1 { color: #d8d8e8; } .rankRow .rk.top2 { color: #d89a5a; }
 .rankRow.on { background: rgba(255, 216, 74, 0.12); border-radius: 6px; }
+/* v0.49.5 완료 알림 카드: 위쪽 가운데에 작게, 누르면 자세한 창 */
+#noticeCard { position: fixed; top: calc(var(--u) * 6.4); left: 50%; transform: translateX(-50%); z-index: 20; max-width: 70vw; padding: 5px 12px; border: 1px solid rgba(127, 224, 122, 0.6); border-radius: 8px; background: rgba(14, 12, 18, 0.88); color: #e8dcc0; font-size: calc(var(--u) * 0.78); cursor: pointer; transition: opacity .5s; text-align: center; }
+#noticeCard b { color: #7fe07a; font-weight: 600; }
+#noticeCard span { color: #c8c0b0; }
+#noticeCard.out { opacity: 0; pointer-events: none; }
