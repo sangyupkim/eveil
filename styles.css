@@ -735,3 +735,7 @@ html.force-land #rotate { display: none !important; }
 #winAlert .clearLoot { flex: 1; min-width: 0; max-height: 55vh; overflow-y: auto; border-left: 1px solid rgba(217,182,106,.25); padding-left: .9em; }
 #winAlert .clearLoot h3 { margin: .2em 0; font-size: .95em; color: #ffd84a; }
 #winAlert .clearLoot .ntcRows { grid-template-columns: 1fr; }
+/* v0.49 랭킹 */
+.rankRow .rk { width: 2.2em; text-align: center; color: var(--dim); }
+.rankRow .rk.top0 { color: #ffd84a; font-size: 1.15em; } .rankRow .rk.top1 { color: #d8d8e8; } .rankRow .rk.top2 { color: #d89a5a; }
+.rankRow.on { background: rgba(255, 216, 74, 0.12); border-radius: 6px; }

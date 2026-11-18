@@ -36,6 +36,7 @@ import { FX, drawPowerFrame } from '../engine2d/fx.js';
 import { zoneRadius, resolveCollision, zoneAt, clearLine, findPath, blockedAt, LAKES, MESAS, CAMPS, inCamp, bossSpot, addGateProps, removeProps } from '../engine2d/stage.js';
 import { rumorsOf, analyzeDone, rumorName, PLUS } from '../game/rumor.js';
 import { CHAMP, rollChamp } from '../data/champions.js';
+import { combatPower } from '../game/power.js';
 import { MUTS, MUT_AFFIX, MUT_RESIST, COLLAPSE_SEC, mutCount, rollMuts, mutBonus } from '../data/mutators.js';
 import { rollShard } from '../game/shards.js';
 import { reveal, saveFog, loadFog } from '../ui/mapimg.js';
@@ -508,6 +509,7 @@ export class World {
   rumorStep(dt) {
     if ((this.rumorT = (this.rumorT || 0) - dt) > 0) return;
     this.rumorT = 1;
+    this.st.power = combatPower(this.d, this.st); // v0.49 랭킹 전투력 (저장에 실려 서버로)
     const st = this.st, cleared = ALL_ZONES.map((z, i) => (this.bossCleared(z) ? i : -1)).filter((i) => i >= 0);
     const done = analyzeDone(st, cleared);
     if (done) {

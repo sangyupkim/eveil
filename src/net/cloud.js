@@ -67,9 +67,9 @@ export const cloud = {
   // 우편함 (계정마다). claim은 받은 금화 합계를 돌려준다
   async mail() { if (!account) return []; const r = await post({ type: 'ash_mail', token: account.token }); return r.ok ? r.list || [] : []; },
   async mailClaim(ids) { if (!account) return { ok: false }; return post({ type: 'ash_mail_claim', token: account.token, ...(ids ? { ids } : {}) }); },
-  async rank() {
-    if (!(await this.available())) return [];
-    const r = await post({ type: 'ash_rank' });
+  async rank(by = 'aw') {
+    if (!(await this.available())) return null;
+    const r = await post({ type: 'ash_rank', by });
     return r.ok ? r.list || [] : [];
   },
 

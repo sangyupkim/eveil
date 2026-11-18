@@ -36,7 +36,7 @@ export class HUD {
     const face = portrait(world.st.look);
     $('#face').src = face;
     const icons = { chest: chestIcon(), book: bookIcon(), coin: coinIcon(), face, sword: swordIcon(), home: homeIcon(), duel: duelIcon(),
-      hpot: itemIconCut('hp_potion'), mpot: itemIconCut('mp_potion'), scroll: scrollIcon(), town: townIcon(), boots: itemIcon({ base: 'leather_boots' }) };
+      hpot: itemIconCut('hp_potion'), mpot: itemIconCut('mp_potion'), scroll: scrollIcon(), town: townIcon(), boots: itemIcon({ base: 'leather_boots' }), rank: itemIconCut('great_helm') };
     document.querySelectorAll('img[data-ico]').forEach((im) => { im.src = icons[im.dataset.ico] || ''; });
     $('#menuToggle').onclick = () => $('.menuCol').classList.toggle('closed');
     $('#qToggle').onclick = () => $('#questBox').classList.toggle('min');

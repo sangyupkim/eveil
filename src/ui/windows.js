@@ -1,5 +1,6 @@
 import { bagSize } from '../game/inventory.js';
 import { gameConfirm, gamePick } from './ask.js';
+import { powerParts } from '../game/power.js';
 import { rumorsOf, analyzeStart, analyzeTime, rumorUpgrade, rumorName, PLUS, PLUS_MAX, RUMOR_MAX, RUMOR_P } from '../game/rumor.js';
 // 창: 가방(장비) · 스킬 · 능력(스탯/성향) · 상점 · 메뉴
 import { STATS, STAT_NAMES, STAT_COLORS, STAT_DESC, CONFIG } from '../data/config.js';
@@ -78,7 +79,7 @@ export function showNotes() {
 }
 const repickCost = (t) => 2000 * (t.tier + 1) ** 2;
 const nextTitle = (st) => { const i = TITLE_AT.findIndex((n) => st.awakenings < n); return i < 0 ? '' : ` · ${i + 1}차 각성 ${titleName(titleKey(st.stats, 10, i), i)}까지 ${TITLE_AT[i] - st.awakenings}`; };
-const TITLES = { arts: '수련 비전', gems: '보석상', map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', news: '공지 · 패치', menu: '메뉴' };
+const TITLES = { arts: '수련 비전', gems: '보석상', map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', news: '공지 · 패치', menu: '메뉴', rank: '랭킹' };
 // 진행 게이지 (시작 ~ 끝 시각). 예전 저장은 시작 시각이 없어 dur로 어림
 const gauge = (from, until, dur = 3600000, color = '#7ad0ff') => { const f = from || until - dur, k = Math.max(0, Math.min(1, (Date.now() - f) / Math.max(1, until - f))); return `<div class="mini" style="margin-top:3px"><i style="width:${(k * 100).toFixed(1)}%;background:linear-gradient(#bfe8ff,${color})"></i></div>`; };
 // 보석 합치기 · 빼기 값
@@ -92,7 +93,7 @@ const COL = '<!--COL-->';
 const lk = (it) => (it?.lock ? '<span class="lk"></span>' : ''); // v0.45 잠근 아이템 표시
 const cellTag = (it) => { if (!it?.shard) return ''; const t = affixText(it.shard), v = t.match(/[+-]?[\d.]+%?/); return `<span class="ctag">${t.split(' ')[0].slice(0, 2)}<br>${v ? v[0] : ''}</span>`; }; // v0.45 칸 안에 들어가게 짧게 (골드 획득 +367% → 골드+367%)
 const NPC_ONLY = ['shop', 'town', 'vault', 'gems'];
-const TAB_ORDER = ['gems', 'map', 'inv', 'vault', 'skills', 'char', 'arts', 'quest', 'dex', 'town', 'shop', 'guide', 'news', 'menu'];
+const TAB_ORDER = ['gems', 'map', 'inv', 'vault', 'skills', 'char', 'arts', 'quest', 'dex', 'rank', 'town', 'shop', 'guide', 'news', 'menu'];
 const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '');
 // 장비 찾기 (v0.41.3): 'e:부위' 착용 · 'b:uid' 가방 · 'v:uid' 창고 — 대장간 · 보석상은 세 곳 모두에서 고른다
 const gearAt = (st, key) => { const [k, v] = String(key || '').split(':'); return k === 'e' ? st.equip[v] : k === 'v' ? vault().items.find((x) => x.uid === Number(v)) : st.inv.find((x) => x.uid === Number(v)); };
@@ -168,7 +169,7 @@ export class Windows {
     const icons = { arts: bookIcon(), inv: chestIcon(), skills: bookIcon(), char: portrait(this.w.st.look), shop: coinIcon(), quest: scrollIcon(), town: townIcon(), dex: bookIcon(), map: scrollIcon(), guide: bookIcon(), vault: homeIcon() };
     const tabs = $('.tabs', this.el);
     // 탭은 그림 없이 같은 모양의 글자 단추로
-    const TAB_TXT = { arts: '비전', gems: '보석', map: '지도', inv: '가방', skills: '스킬', char: '능력', quest: '퀘스트', dex: '도감', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '설정', news: '공지' };
+    const TAB_TXT = { arts: '비전', gems: '보석', map: '지도', inv: '가방', skills: '스킬', char: '능력', quest: '퀘스트', dex: '도감', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '설정', news: '공지', rank: '랭킹' };
     // 상인 · 건물 창은 그 상인의 탭만, 탭이 하나면 탭 줄을 숨긴다
     const list = this.talk ? TAB_ORDER.filter((k) => this.talk.includes(k) || k === this.talkFirst) : TAB_ORDER.filter((k) => !NPC_ONLY.includes(k) && (!['guide', 'news'].includes(k) || k === this.kind)); // 공지 · 가이드북은 설정 창에서 연다
     tabs.style.visibility = list.length < 2 ? 'hidden' : '';
@@ -475,6 +476,22 @@ export class Windows {
     L += `<div><div class="note">부여할 능력 <span class="cnt">${shards.length}</span></div><div class="shList">${shards.map((x) => { const okk = canApply(it, x.shard, Lk).ok; return `<button class="btn affBtn ${x.uid === this.shardSel ? 'on' : ''}" data-shard="${x.uid}" style="color:#c58cff;${okk ? '' : 'opacity:.4'}">${affixText(x.shard)}</button>`; }).join('') || '<div class="note">파편 없음</div>'}</div></div></div>`;
     if (sh) { const c = shardCost(it), ok = canApply(it, sh, Lk); L += `<div class="btns forgeGo"><button class="btn gold big" data-sapply="1" ${!ok.ok || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>${ok.ok ? `제련 · ${c.gold.toLocaleString()} G · 강화석 ${c.ore}` : ok.why}</button></div>`; }
     return [L, right];
+  }
+  // v0.49 랭킹: 레벨(각성) · 전투력 탭. 왼쪽 순위 목록 | 오른쪽 내 기록. 열면 바로 불러온다 (1분 안에는 다시 받지 않는다)
+  rank() {
+    const st = this.w.st, R = (this.rankData ||= {});
+    return this.tabView('랭킹', 'rank', [['aw', '레벨'], ['pw', '전투력']], (by) => {
+      const D = R[by];
+      if (!D || Date.now() - D.at > 60000) { if (!D?.loading) { R[by] = { ...(D || {}), loading: true, at: D?.at || 0 }; cloud.rank(by).then((list) => { R[by] = { list: list ?? [], at: Date.now() }; if (this.kind === 'rank') this.render(); }); } }
+      const list = R[by]?.list, myName = st.nick || st.name, val = (r) => (by === 'pw' ? (r.pw || 0).toLocaleString() : `각성 ${r.aw}`);
+      const me = list ? list.findIndex((r) => r.name === myName) : -1;
+      const L = `<h3>${by === 'pw' ? '전투력' : '레벨'} 순위 <span class="cnt">${list ? list.length : ''}</span></h3>` + (list == null ? '<div class="note">불러오는 중</div>' : !list.length ? '<div class="note">기록 없음</div>'
+        : list.map((r, i) => `<div class="row rankRow${i === me ? ' on' : ''}"><b class="rk${i < 3 ? ' top' + i : ''}">${i + 1}</b><div class="grow"><b>${esc(r.name)}</b> <small style="color:#ffd860">${esc(r.title || '')}</small></div><b class="goldTxt">${val(r)}</b></div>`).join(''));
+      const pw = st.power || 0, P = this.w.d ? powerParts(this.w.d, st) : null, big = (v) => (v >= 1e8 ? `${(v / 1e8).toFixed(1)}억` : v >= 1e4 ? `${(v / 1e4).toFixed(1)}만` : Math.round(v).toLocaleString());
+      const Rr = `<h3>내 기록</h3><div class="kv tight"><span>이름</span><b>${esc(myName || '')}</b><span>각성</span><b>${st.awakenings || 0}</b><span>전투력</span><b class="goldTxt">${pw.toLocaleString()}</b><span>순위</span><b>${me >= 0 ? `${me + 1}위` : list ? '50위 밖' : ''}</b></div>`
+        + (P ? `<h3 style="margin-top:10px">전투력</h3><div class="kv tight"><span>공격</span><b>${big(P.off)}</b><span>방어</span><b>${big(P.def)}</b></div>` : '');
+      return [L, Rr];
+    });
   }
   // v0.46 연구소 지도: 왼쪽 분석 · 고른 소문 강화 | 오른쪽 소문 목록
   labMap(st, t, now) {
@@ -1232,8 +1249,6 @@ export class Windows {
           <span>자동 저장</span><b>${CONFIG.autosaveInterval}초</b>
           <span>그림</span><b>Flare (CC-BY-SA 3.0)</b>
           <span>서버 저장</span><b>${cloud.id ? `${esc(cloud.id)}${cloud.state === 'error' ? ' · 실패' : cloud.savedAt ? ' · 저장됨' : ''}` : '로그인 안 함'}</b></div>
-        <h3 style="margin-top:12px">순위 <button class="btn" data-rank="1">불러오기</button></h3>
-        ${this.rankList ? (this.rankList.length ? this.rankList.slice(0, 10).map((r, i) => `<div class="row"><b style="width:2em">${i + 1}</b><div class="grow">${esc(r.name)} <small style="color:#ffd860">${esc(r.title || '')}</small></div><span class="note">각성 ${r.aw} · 던전 ${r.dg}</span></div>`).join('') : '<div class="note">기록 없음</div>') : ''}
       </div></div>`;
   }
 
@@ -1477,7 +1492,6 @@ export class Windows {
       if (st.gold < cost) return;
       w.ui.titlePick({ tier: t.tier, key: t.key, name: t.name, choices: perkChoices(t.key, t.tier) }, (perk) => { st.gold -= cost; t.perk = perk; w.ui.toast(`${t.name}: ${perk.text}`, '#ffd860'); w.ui.dirty(); this.render(); });
     });
-    on('[data-rank]', async () => { this.rankList = await cloud.rank(); this.render(); });
     on('[data-lock]', (el) => {
       const u = Number(el.dataset.lock), it = st.inv.find((x) => x.uid === u) || Object.values(st.equip).find((x) => x?.uid === u) || vault().items.find((x) => x?.uid === u);
       if (!it) return; it.lock = !it.lock; if (vault().items.includes(it)) vaultSave();
