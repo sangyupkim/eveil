@@ -711,3 +711,11 @@ html.force-land #rotate { display: none !important; }
 .mrow .mKey b { font-size: 1.35em; color: #ffd84a; font-family: var(--f-latin); }
 .kv.costT { max-width: none; grid-template-columns: auto 1fr; }
 .kv.costT span { white-space: nowrap; }
+/* v0.45.8 가방 팝업 위 착용 장비 줄 */
+.eqStrip { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; margin: 0 0 8px; max-width: calc(100% - 4.5em); }
+.eqStrip .cell { border-radius: 5px; }
+.eqStrip .cell:not(.hit) { opacity: .45; }
+.eqStrip .cell.hit { outline: 2px solid #ffd84a; outline-offset: 0; opacity: 1; }
+/* 이름 바로 옆에 값 (눈이 멀리 오가지 않게) */
+.kv.tight { grid-template-columns: auto auto; justify-content: start; column-gap: 1.4em; }
+.kv.tight b { text-align: left; }

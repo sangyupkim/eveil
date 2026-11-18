@@ -541,6 +541,12 @@ export class Windows {
   }
 
   // 장비창: 가운데 캐릭터 초상화, 왼쪽 · 오른쪽 줄에 부위별 칸 (겹치지 않게 칸을 줄로)
+  // v0.45.8 가방 아이템 팝업 위에 착용 장비를 작게 한 줄로 (팝업이 장비 칸을 덮어도 비교할 수 있게), 같은 부위는 빛낸다
+  eqStrip(cur) {
+    const st = this.w.st, sl = BASES[cur?.base]?.slot || '';
+    const S = ['weapon', 'offhand', 'helm', 'armor', 'gloves', 'belt', 'boots', 'amulet', 'ring1', 'ring2'];
+    return `<div class="eqStrip">${S.map((s) => { const it = st.equip[s], hit = sl && s.startsWith(sl.replace(/\d$/, '')); return `<div class="cell${it ? rar(it) : ''}${hit ? ' hit' : ''}" data-eq="${s}" title="${SLOT_NAMES[s]}">${it ? ico(it) : ''}</div>`; }).join('')}</div>`;
+  }
   equipGrid() {
     const st = this.w.st;
     // v0.44.39 양손 무기를 들면 보조 칸에 그 무기를 연하게 (보조 장비를 낄 수 없다는 표시)
@@ -634,7 +640,7 @@ export class Windows {
     // v0.45 왼쪽 장비 | 오른쪽 가방. 고른 아이템은 반대쪽 칸 위에 팝업으로 (정보 · 비교 · 버튼)
     const pop = cur ? `<div class="itemPop"><button class="btn popX" data-popclose="1">닫기</button><div class="detail">${this.describe(cur, this.sel?.from)}</div>${this.statDiff(cur)}${this.worn(cur)}</div>` : '';
     const fromEq = this.sel?.from === 'equip';
-    return `<div class="cols"><div class="frame popHost" style="flex:0 0 42%;overflow:auto"><h3>장비</h3>${this.equipGrid()}${cur && !fromEq ? pop.replace('class="itemPop"', 'class="itemPop eqMid"') : ''}</div><div class="frame popHost" style="flex:1;overflow:auto">${this.bagHead()}${this.bagGrid()}${cur && fromEq ? pop : ''}</div></div>`;
+    return `<div class="cols"><div class="frame popHost" style="flex:0 0 42%;overflow:auto"><h3>장비</h3>${this.equipGrid()}${cur && !fromEq ? pop.replace('class="itemPop"', 'class="itemPop eqMid"').replace('data-popclose="1">닫기</button>', `data-popclose="1">닫기</button>${this.eqStrip(cur)}`) : ''}</div><div class="frame popHost" style="flex:1;overflow:auto">${this.bagHead()}${this.bagGrid()}${cur && fromEq ? pop : ''}</div></div>`;
   }
 
   skills() {
@@ -1124,7 +1130,7 @@ export class Windows {
       if (!x) return ['<h3>합치기</h3><div class="forgeSlot empty"></div>', R];
       const b = BASES[x.base], up = b.grade + 1 < GEM_GRADES.length, cost = mergeCost(b.grade), ch = mergeChance(b.grade), nx = up ? gemId(b.gem, b.grade + 1) : null;
       let L = `<div class="forgeTop"><div class="cell forgeSlot">${ico(x)}</div><div><div class="nm">${b.name}</div><div class="note">${STAT_NAMES[GEMS[b.gem].stat]} +${GEM_GRADES[b.grade].v} · ${x.qty}개</div></div></div>`;
-      if (up) L += `<div class="kv"><span>결과</span><b>${BASES[nx]?.name || ''} <em>${STAT_NAMES[GEMS[b.gem].stat]} +${GEM_GRADES[b.grade + 1].v}</em></b><span>필요</span><b style="${x.qty < 3 ? 'color:#ff7060' : ''}">3개 <small class="note">/ ${x.qty}</small></b><span>금화</span><b style="${st.gold < cost ? 'color:#ff7060' : ''}">${cost.toLocaleString()} G</b><span>성공 확률</span><b>${Math.round(ch * 100)}%</b></div><div class="btns forgeGo"><button class="btn gold big" data-gmerge="${x.base}" ${x.qty < 3 || st.gold < cost ? 'disabled' : ''}>합치기</button></div>`;
+      if (up) L += `<div class="kv tight"><span>결과</span><b>${BASES[nx]?.name || ''} <em>${STAT_NAMES[GEMS[b.gem].stat]} +${GEM_GRADES[b.grade + 1].v}</em></b><span>필요</span><b style="${x.qty < 3 ? 'color:#ff7060' : ''}">3개 <small class="note">/ ${x.qty}</small></b><span>금화</span><b style="${st.gold < cost ? 'color:#ff7060' : ''}">${cost.toLocaleString()} G</b><span>성공 확률</span><b>${Math.round(ch * 100)}%</b></div><div class="btns forgeGo"><button class="btn gold big" data-gmerge="${x.base}" ${x.qty < 3 || st.gold < cost ? 'disabled' : ''}>합치기</button></div>`;
       else L += '<div class="note">최고 등급</div>';
       return [L, R];
     });
