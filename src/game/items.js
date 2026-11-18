@@ -51,7 +51,7 @@ export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1, favor =
   }
   if (rarity === 'legend' || rarity === 'myth') { it.title = pick(rarity === 'myth' ? MYTH_NAMES : LEGEND_NAMES, rng); it.unique = Math.floor(rng() * UNIQUE_BASE); }
   // v0.44.41 혼합 전용 장비: 무기 · 보조 · 장신구 전설 · 신화의 20%는 두 스탯 전용 (두 스탯 조건 · 두 스탯 옵션 · 조합 고유 효과)
-  if ((rarity === 'legend' || rarity === 'myth') && ['weapon', 'offhand', 'amulet', 'ring'].includes(slot) && rng() < 0.2) {
+  if ((rarity === 'legend' || rarity === 'myth') && ['weapon', 'offhand', 'amulet', 'ring'].includes(slot) && mix !== 'none' && rng() < 0.2) {
     const keys = Object.keys(MIX_ITEM), key = mix && MIX_ITEM[mix] ? mix : keys[Math.floor(rng() * keys.length)], [a, b] = key.split('+');
     const need = Math.round(6 + ilvl * 1.3);
     it.mix = key; it.mixReq = { [a]: need, [b]: Math.round(need * 0.6) };
