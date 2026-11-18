@@ -1,6 +1,11 @@
 // 패치 노트 (게임 안 [메뉴 → 패치 노트]에서 본다). 새 버전이 나오면 맨 위에 더한다.
-export const GAME_VERSION = '0.49.3';
+export const GAME_VERSION = '0.49.4';
 export const PATCH_NOTES = [
+  {
+    ver: '0.49.4', date: '2026-11-19',
+    head: '랭킹 창을 정리했습니다.',
+    items: ['1. 랭킹 창 오른쪽 위의 필요 없는 금화 표시를 없앴습니다.'],
+  },
   {
     ver: '0.49.3', date: '2026-11-19',
     head: '퀘스트 보상 장비가 내 각성 갈래에 맞게 나옵니다.',

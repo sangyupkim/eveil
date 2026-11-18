@@ -426,7 +426,7 @@ export class Windows {
   // 건물 탭 화면: 맨 위 탭 줄 + 두 쪽 [왼쪽, 오른쪽]
   tabView(b, key, tabs, pages) {
     const st = this.w.st, cur = this.bTab?.[key] && tabs.some((x) => x[0] === this.bTab[key]) ? this.bTab[key] : tabs[0][0];
-    const head = `<div class="stabs">${tabs.map(([k, n]) => `<button class="tab txt${k === cur ? ' on' : ''}" data-stab="${key}|${k}"><span>${n}</span></button>`).join('')}<span class="stabInfo">${typeof b === 'string' ? b : `${BUILDINGS[b.type].name} ${b.lv}단계`} · <span class="goldTxt">${st.gold.toLocaleString()} G</span></span></div>`;
+    const head = `<div class="stabs">${tabs.map(([k, n]) => `<button class="tab txt${k === cur ? ' on' : ''}" data-stab="${key}|${k}"><span>${n}</span></button>`).join('')}${b === null ? '' : `<span class="stabInfo">${typeof b === 'string' ? b : `${BUILDINGS[b.type].name} ${b.lv}단계`} · <span class="goldTxt">${st.gold.toLocaleString()} G</span></span>`}</div>`; // null = 오른쪽 위 정보 없음 (랭킹)
     const [L, R] = pages(cur);
     return `<div class="smithWrap">${head}<div class="cols"><div class="frame detail fPage">${L}</div><div class="frame detail fPage">${R}</div></div></div>`;
   }
@@ -482,7 +482,7 @@ export class Windows {
   // v0.49 랭킹: 레벨(각성) · 전투력 탭. 왼쪽 순위 목록 | 오른쪽 내 기록. 열면 바로 불러온다 (1분 안에는 다시 받지 않는다)
   rank() {
     const st = this.w.st, R = (this.rankData ||= {});
-    return this.tabView('랭킹', 'rank', [['aw', '레벨'], ['pw', '전투력']], (by) => {
+    return this.tabView(null, 'rank', [['aw', '레벨'], ['pw', '전투력']], (by) => {
       const D = R[by];
       if (!D || Date.now() - D.at > 60000) { if (!D?.loading) { R[by] = { ...(D || {}), loading: true, at: D?.at || 0 }; cloud.rank(by).then((list) => { R[by] = { list: list ?? [], at: Date.now() }; if (this.kind === 'rank') this.render(); }); } }
       const list = R[by]?.list, myName = st.nick || st.name, val = (r) => (by === 'pw' ? (r.pw || 0).toLocaleString() : `각성 ${r.aw}`);
