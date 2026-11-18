@@ -2526,10 +2526,13 @@ export class World {
     // 가까운 전리품 먼저 (싸우는 중이 아닐 때)
     const fighting = this.monsters.some((m) => !m.dead && m.state === 'chase' && dist2(m.pos, P) < 6);
     if (!fighting) {
-      const g = this.ground.filter((x) => !x.deathDrop && dist2(x, P) < 12 && this.autoWants(x)).sort((a, b) => dist2(a, P) - dist2(b, P))[0];
-      if (g && !(g.kind === 'item' && st.inv.length >= bagSize(st) && !BASES[g.item.base]?.stack)) {
-        if (!this.moveTo || dist2(this.moveTo, g) > 0.5) this.autoGo({ x: g.x, z: g.z }); else this.target = null;
-        return;
+      // v0.49.15 둘레 약 10칸 안의 전리품을 줍는다 (예전엔 3.5칸이라 조금 먼 것은 지나쳤다). 6초 넘게 못 닿으면(막힌 곳) 그것은 건너뛴다
+      const full = st.inv.length >= bagSize(st);
+      const g = this.ground.filter((x) => !x.deathDrop && dist2(x, P) < 100 && this.autoWants(x) && !(x.autoGiveUp > this.time) && this.inAutoArea(x) && !(x.kind === 'item' && full && !BASES[x.item.base]?.stack && !x.item.shard)).sort((a, b) => dist2(a, P) - dist2(b, P))[0];
+      if (g) {
+        if (this.autoLootG !== g) { this.autoLootG = g; this.autoLootT = this.time; }
+        if (this.time - this.autoLootT > 6) { g.autoGiveUp = this.time + 60; this.autoLootG = null; }
+        else { if (!this.moveTo || dist2(this.moveTo, g) > 0.5) this.autoGo({ x: g.x, z: g.z }); this.target = null; return; }
       }
     }
     if (this.target && !this.target.dead && !this.inAutoArea(this.target.pos)) this.target = null; // 구역 밖 몬스터는 쫓지 않는다
