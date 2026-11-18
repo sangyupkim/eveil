@@ -52,6 +52,11 @@ export const EFFECTS = {
   vit: [{ id: 'ward', text: (v) => `3초 동안 받는 피해 -${v}%`, v: 20 }, { id: 'thorns', text: (v) => `가까운 적에게 무기 피해 ${v}% 반격`, v: 50 }],
 };
 const TIER_K = [1, 1.4, 1.8, 2.4, 3.2];
+// v0.49.17 한 갈래에 효과 · 발동이 둘씩뿐이라 세 선택지 중 둘이 같은 효과로 겹쳤다 → 갈래마다 하나씩 더 (어울리는 것을 빌려 온다, 회복 효과는 없음)
+const EXTRA_EFF = { str: EFFECTS.vit[0], dex: EFFECTS.str[0], int: EFFECTS.wis[0], wis: EFFECTS.int[1], vit: EFFECTS.str[1] };
+const EXTRA_TRIG = { str: { id: 'hurt', text: '맞으면', p: 0.2 }, int: { id: 'crit', text: '치명타가 나면', p: 0.3 }, wis: { id: 'kill', text: '적을 쓰러뜨리면', p: 0.3 }, vit: { id: 'kill', text: '적을 쓰러뜨리면', p: 0.35 } };
+const trigsOf = (a) => [...TRIGGERS[a], ...(EXTRA_TRIG[a] ? [EXTRA_TRIG[a]] : [])];
+const effsOf = (a) => [...EFFECTS[a], EXTRA_EFF[a]];
 
 // 스탯에서 갈래 키: 시작값(10)을 뺀 성장량으로 본다
 // 2등이 1등의 60% 이상이면 두 스탯, 4차 각성(tier 3)에서는 3등도 60% 이상이면 세 스탯 갈래
@@ -67,11 +72,13 @@ export function perkChoices(key, tier) {
   const parts = key.split('+'), pool = [];
   const pairs = parts.length === 1 ? [[parts[0], parts[0]]] : parts.flatMap((a) => parts.filter((b) => b !== a).map((b) => [a, b]));
   const mk = parts.length >= 3 ? 1.1 : parts.length === 2 ? 1.07 : 1; // v0.44.40 혼합 갈래 특성 +7% · 세 갈래 +10%
-  for (const [a, b] of pairs) for (const t of TRIGGERS[a]) for (const e of EFFECTS[b]) { const v = Math.round(e.v * TIER_K[tier] * mk); pool.push({ trig: t.id, p: t.p, eff: e.id, v, text: `${t.text} ${e.text(v)}` }); }
+  for (const [a, b] of pairs) for (const t of trigsOf(a)) for (const e of effsOf(b)) { const v = Math.round(e.v * TIER_K[tier] * mk); pool.push({ trig: t.id, p: t.p, eff: e.id, v, text: `${t.text} ${e.text(v)}` }); }
   // 갈래 · 단계로 정해지는 순서로 섞어 셋
   let h = [...key].reduce((x, c) => (x * 31 + c.charCodeAt(0)) >>> 0, 7 + tier * 101);
-  const out = [];
-  while (out.length < 3 && pool.length) { h = (h * 1103515245 + 12345) >>> 0; out.push(pool.splice(h % pool.length, 1)[0]); }
+  // 섞은 순서에서 효과 · 발동이 서로 다른 것 셋 (모자라면 발동만 겹쳐도, 그래도 모자라면 아무거나)
+  const order = []; while (pool.length) { h = (h * 1103515245 + 12345) >>> 0; order.push(pool.splice(h % pool.length, 1)[0]); }
+  const out = [], fits = [(c) => !out.some((o) => o.eff === c.eff || o.trig === c.trig), (c) => !out.some((o) => o.eff === c.eff), () => true];
+  for (const ok of fits) for (const c of order) { if (out.length >= 3) break; if (!out.includes(c) && ok(c)) out.push(c); }
   return out;
 }
 
