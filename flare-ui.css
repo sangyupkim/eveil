@@ -120,15 +120,20 @@ input[type=range] { accent-color: var(--brass); }
 /* v0.49.8 휴대폰 스킬 칸: 공격 단추를 둘러싼 반원 두 줄 (안쪽 3칸 · 바깥 5칸, 엄지가 공격 단추에서 돌려 누르기 좋게) */
 body.touch #quick { right: calc(10px + env(safe-area-inset-right)); bottom: calc(var(--u) * 1.6 + env(safe-area-inset-bottom)); width: 0; height: 0; display: block; }
 body.touch #quick .slot { position: absolute; width: calc(var(--u) * 3.4); height: calc(var(--u) * 3.4); transform: translate(50%, 50%); }
-body.touch #quick .slot .nm { display: none; } /* 휴대폰은 이름 없이 그림만 (칸끼리 글자가 겹쳐서) */
-body.touch #quick .slot:nth-child(1) { right: calc(var(--u) * 9.36); bottom: calc(var(--u) * 6.80); }
-body.touch #quick .slot:nth-child(2) { right: calc(var(--u) * 6.26); bottom: calc(var(--u) * 9.64); }
-body.touch #quick .slot:nth-child(3) { right: calc(var(--u) * 2.08); bottom: calc(var(--u) * 10.19); }
-body.touch #quick .slot:nth-child(4) { right: calc(var(--u) * 14.45); bottom: calc(var(--u) * 5.67); }
-body.touch #quick .slot:nth-child(5) { right: calc(var(--u) * 12.86); bottom: calc(var(--u) * 9.51); }
-body.touch #quick .slot:nth-child(6) { right: calc(var(--u) * 10.00); bottom: calc(var(--u) * 12.52); }
-body.touch #quick .slot:nth-child(7) { right: calc(var(--u) * 6.25); bottom: calc(var(--u) * 14.31); }
-body.touch #quick .slot:nth-child(8) { right: calc(var(--u) * 2.11); bottom: calc(var(--u) * 14.64); }
+body.touch #quick .slot .nm { display: none; }
+/* v0.49.8 휴대폰 스킬 칸은 둥글게 (공격 단추와 같은 모양) */
+body.touch #quick .slot { border-radius: 50%; overflow: visible; background: radial-gradient(circle at 40% 30%, #3a2f4c, #17111f 75%); border: 2px solid var(--brass-dk); }
+body.touch #quick .slot .ico { border-radius: 50%; overflow: hidden; width: 86%; height: 86%; }
+body.touch #quick .slot .cd { border-radius: 50%; }
+body.touch #quick .slot .rank { right: -6px; bottom: -6px; } /* 휴대폰은 이름 없이 그림만 (칸끼리 글자가 겹쳐서) */
+body.touch #quick .slot:nth-child(1) { right: calc(var(--u) * 9.66); bottom: calc(var(--u) * 6.68); }
+body.touch #quick .slot:nth-child(2) { right: calc(var(--u) * 6.57); bottom: calc(var(--u) * 9.72); }
+body.touch #quick .slot:nth-child(3) { right: calc(var(--u) * 2.30); bottom: calc(var(--u) * 10.43); }
+body.touch #quick .slot:nth-child(4) { right: calc(var(--u) * 15.04); bottom: calc(var(--u) * 5.79); }
+body.touch #quick .slot:nth-child(5) { right: calc(var(--u) * 13.59); bottom: calc(var(--u) * 9.48); }
+body.touch #quick .slot:nth-child(6) { right: calc(var(--u) * 11.01); bottom: calc(var(--u) * 12.49); }
+body.touch #quick .slot:nth-child(7) { right: calc(var(--u) * 7.60); bottom: calc(var(--u) * 14.50); }
+body.touch #quick .slot:nth-child(8) { right: calc(var(--u) * 3.72); bottom: calc(var(--u) * 15.29); }
 .slot.empty .nm::after { content: ''; }
 
 /* 휴대폰 폭: 탭 줄이 오른쪽에서 잘리지 않게 — 고르지 않은 탭은 그림만 */
