@@ -127,6 +127,7 @@ export class Windows {
   show(kind) {
     if (kind === 'map' && this.kind !== 'map') this.mapCenter = true;
     // 상점 · 건물 · 창고는 마을 NPC나 건물 앞에서만 (talk로 열어 준 것만)
+    if (this.talk && !this.talk.includes(kind) && kind !== this.talkFirst && !NPC_ONLY.includes(kind)) { this.talk = null; this.talkAt = null; this.townMode = null; }
     if (NPC_ONLY.includes(kind) && !this.talk?.includes(kind)) { this.w.ui.toast(kind === 'town' ? '경비대장이나 건물 앞에서 이용할 수 있습니다' : kind === 'vault' ? '창고는 마을 상인에게서 이용할 수 있습니다' : '상인에게 가서 이용할 수 있습니다'); audio.play('error'); return; }
     if (this.kind !== kind) this.sel = null;
     this.kind = kind;
@@ -138,7 +139,7 @@ export class Windows {
   // NPC · 건물에서 열기: kinds = 이번에 쓸 수 있는 창, mode = 'build'(경비대장) | 'one'(건물 앞)
   // v0.44.34 NPC 창을 열면 자동 사냥을 끄고, 그 자리에서 멀어지면 창을 닫는다
   talkTo(kinds, first, mode = null) {
-    this.talk = kinds; this.townMode = mode;
+    this.talk = kinds; this.talkFirst = first; this.townMode = mode;
     const P = this.w.player?.pos; this.talkAt = P ? { x: P.x, z: P.z } : null;
     if (this.w.auto) this.w.toggleAuto(false);
     this.show(first);
@@ -166,8 +167,12 @@ export class Windows {
     const tabs = $('.tabs', this.el);
     // 탭은 그림 없이 같은 모양의 글자 단추로
     const TAB_TXT = { arts: '비전', gems: '보석', map: '지도', inv: '가방', skills: '스킬', char: '능력', quest: '퀘스트', dex: '도감', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '설정', news: '공지' };
-    tabs.innerHTML = TAB_ORDER.filter((k) => !NPC_ONLY.includes(k) || this.talk?.includes(k)).map((k) => `<button class="tab txt${k === this.kind ? ' on' : ''}" data-tab="${k}"><span>${TAB_TXT[k]}</span></button>`).join('');
+    // 상인 · 건물 창은 그 상인의 탭만, 탭이 하나면 탭 줄을 숨긴다
+    const list = this.talk ? TAB_ORDER.filter((k) => this.talk.includes(k) || k === this.talkFirst) : TAB_ORDER.filter((k) => !NPC_ONLY.includes(k));
+    tabs.style.visibility = list.length < 2 ? 'hidden' : '';
+    tabs.innerHTML = list.map((k) => `<button class="tab txt${k === this.kind ? ' on' : ''}" data-tab="${k}"><span>${TAB_TXT[k]}</span></button>`).join('');
     tabs.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => this.show(b.dataset.tab); });
+    const on = tabs.querySelector('.tab.on'); if (on) { const l = on.offsetLeft - tabs.offsetLeft; if (l < tabs.scrollLeft || l + on.offsetWidth > tabs.scrollLeft + tabs.clientWidth) tabs.scrollLeft = l - 8; }
     const body = $('.body', this.el);
     // 다시 그려도 스크롤 위치는 지킨다
     const keep = [...body.querySelectorAll('.frame')].map((f) => f.scrollTop);
