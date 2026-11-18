@@ -35,6 +35,7 @@ import { Actor, makeHero } from '../engine2d/actor.js';
 import { FX, drawPowerFrame } from '../engine2d/fx.js';
 import { zoneRadius, resolveCollision, zoneAt, clearLine, findPath, blockedAt, LAKES, MESAS, CAMPS, inCamp, bossSpot, addGateProps, removeProps } from '../engine2d/stage.js';
 import { rumorsOf, analyzeDone, rumorName, PLUS } from '../game/rumor.js';
+import { CHAMP, rollChamp } from '../data/champions.js';
 import { MUTS, MUT_AFFIX, MUT_RESIST, COLLAPSE_SEC, mutCount, rollMuts, mutBonus } from '../data/mutators.js';
 import { rollShard } from '../game/shards.js';
 import { reveal, saveFog, loadFog } from '../ui/mapimg.js';
@@ -535,6 +536,45 @@ export class World {
     }
     for (const r of R) if (r.x != null && !G[r.id]) G[r.id] = addGateProps(this.stage, ALL_ZONES[r.zi], r.x, r.z);
   }
+  // v0.48 강화 몬스터: 난이도 단계 r만큼 능력을 붙인다 (몸 · 이름 · 보상)
+  champion(m, r) {
+    if (!m || m.flood || m.child || m.golden) return;
+    const ids = rollChamp(m.tier, r).filter((x) => !(m.affix || []).includes(x)); if (!ids.length) return;
+    m.affix = [...(m.affix || []), ...ids]; m.champ = (m.champ || 0) + ids.length;
+    if (ids.includes('frenzy')) { m.speed *= 1.3; m.def = { ...m.def, interval: m.def.interval / 1.3 }; }
+    if (ids.includes('strong')) m.dmg = m.dmg.map((v) => v * 1.4);
+    if (ids.includes('giant')) { m.maxHp *= 1.8; m.actor.scale *= 1.2; m.actor.drawScale *= 1.2; }
+    m.maxHp = Math.round(m.maxHp * (1 + 0.15 * ids.length)); m.hp = m.maxHp; m.exp *= 1 + 0.5 * ids.length;
+    m.baseName ||= m.name; m.name = `${m.baseName} [${m.affix.filter((x) => CHAMP[x]).map((x) => CHAMP[x].name).join('·')}]`;
+    if (m.tier === 'normal') m.actor.setGlow(0x2a2400);
+    if (ids.includes('horde')) for (let i = 0; i < 3; i++) { const a = i * 2.1, zn = m.sp?.zone || this.dungeon?.zone; if (!zn) break; const c = this.spawn({ zone: zn, x: m.pos.x + Math.cos(a) * 1.8, z: m.pos.z + Math.sin(a) * 1.8, level: m.level - this.tierOffset, tier: 'normal', timer: 0, mon: null, forceType: m.type }); if (c) { c.child = true; c.dungeon = m.dungeon; c.home = { x: c.pos.x, z: c.pos.z }; c.name = `${c.name} 졸개`; } }
+  }
+  // 강화 몬스터가 때렸을 때
+  champHit(m, dmg) {
+    const A = m.affix, st = this.st, D = (this.pdeb ||= {});
+    if (A.includes('fire')) D.burn = { t: 3, v: this.d.maxHp * 0.01, lv: m.level };
+    if (A.includes('cold')) D.slow = Math.max(D.slow || 0, 2);
+    if (A.includes('curse')) D.vuln = 4;
+    if (A.includes('manaburn')) st.mp = Math.max(0, st.mp - this.d.maxMp * 0.05);
+    if (A.includes('vamp')) m.hp = Math.min(m.maxHp, m.hp + dmg * 0.3);
+  }
+  // 몬스터 없이 받는 피해 (화상 · 낙뢰): 그 자리 레벨로 방어력 계산
+  envHurt(v, lv) { this.hurtPlayer(v, { level: lv ?? (this.dungeon ? this.dungeon.zone.levels[1] + this.tierOffset : zoneAt(this.player.pos.x, this.player.pos.z)?.levels?.[1] + this.tierOffset || 1), dead: true }, { sure: true }); }
+  // 플레이어 상태 이상 · 강화 몬스터의 순간이동 · 속박
+  debuffStep(dt) {
+    const D = this.pdeb; if (D) {
+      for (const k of ['slow', 'vuln', 'root']) if (D[k] > 0) D[k] -= dt;
+      if (D.burn) { D.burn.t -= dt; D.burn.tick = (D.burn.tick ?? 1) - dt; if (D.burn.tick <= 0) { D.burn.tick = 1; if (!this.dead) this.envHurt(D.burn.v, D.burn.lv); } if (D.burn.t <= 0) D.burn = null; }
+    }
+    if (this.dead || this.inTown) return;
+    const P = this.player.pos;
+    for (const m of this.monsters) {
+      if (m.dead || !m.affix || m.state !== 'chase' || (m.dungeon && this.dungeon && !this.dungeon.started)) continue;
+      const dd = Math.hypot(m.pos.x - P.x, m.pos.z - P.z);
+      if (m.affix.includes('teleport') && dd > 9 && dd < 30 && !(m.tpT > this.time)) { m.tpT = this.time + 6; const a = Math.random() * 6.28, q = this.freeSpot(P.x + Math.cos(a) * 2, P.z + Math.sin(a) * 2, 0.8); this.fx.play?.('sparkle', m.pos.x, m.pos.z, { scale: 0.8, dur: 0.4 }); m.pos.x = q.x; m.pos.z = q.z; this.fx.play?.('sparkle', q.x, q.z, { scale: 0.8, dur: 0.4 }); }
+      if (m.affix.includes('jailer') && dd < 8 && !(m.jailT > this.time)) { m.jailT = this.time + 9; (this.pdeb ||= {}).root = 1; this.fx.text(P.clone().setY(2.6), '속박', 'miss'); }
+    }
+  }
   // v0.47 던전 변이: 지금 던전에 그 변이가 있나
   mut(id) { return !!this.dungeon?.muts?.includes(id); }
   // 들어간 뒤 변이를 보고 [시작] (그전엔 몬스터가 움직이지 않는다) · 무너지는 던전 시간 · 화상 · 낙뢰 · 위쪽 띠
@@ -548,11 +588,11 @@ export class World {
     if (el.dataset.k !== key) { el.dataset.k = key; el.innerHTML = (left != null ? `<b class="${left < 60 ? 'low' : ''}">${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}</b>` : '') + dg.muts.map((id) => `<span>${MUTS[id].name}</span>`).join(''); }
     if (left === 0) { this.ui.toast('던전이 무너졌습니다', '#ff7060'); sfx('error'); this.leaveDungeon(); return; }
     if (this.dead) return;
-    if (this.mut('burning') && (dg.burnT = (dg.burnT ?? 3) - dt) <= 0) { dg.burnT = 3; this.hurtPlayer(this.d.maxHp * 0.015, null, { sure: true }); this.fx.play?.('fire', this.player.pos.x, this.player.pos.z, { scale: 0.6, dur: 0.6 }); }
+    if (this.mut('burning') && (dg.burnT = (dg.burnT ?? 3) - dt) <= 0) { dg.burnT = 3; this.envHurt(this.d.maxHp * 0.015); this.fx.play?.('fire', this.player.pos.x, this.player.pos.z, { scale: 0.6, dur: 0.6 }); }
     if (this.mut('storm') && (dg.stormT = (dg.stormT ?? 6) - dt) <= 0) {
       dg.stormT = 6 + Math.random() * 3; const P = { x: this.player.pos.x, z: this.player.pos.z };
       this.fx.telegraph?.(P.x, P.z, 2.2, 1.2, 0x80c0ff);
-      this.later(1.2, () => { if (!this.dungeon) return; this.fx.play?.('lightning', P.x, P.z, { scale: 1.2, dur: 0.5 }); if (Math.hypot(this.player.pos.x - P.x, this.player.pos.z - P.z) < 2.2) this.hurtPlayer(this.d.maxHp * 0.08, null, { sure: true }); });
+      this.later(1.2, () => { if (!this.dungeon) return; this.fx.play?.('lightning', P.x, P.z, { scale: 1.2, dur: 0.5 }); if (Math.hypot(this.player.pos.x - P.x, this.player.pos.z - P.z) < 2.2) this.envHurt(this.d.maxHp * 0.08); });
     }
   }
   // 변이 보기: 들어갔을 때는 [시작] (나가기도 고를 수 있다), 그 뒤엔 보기만
@@ -682,6 +722,7 @@ export class World {
       m.home = { x: p.x, z: p.z };
       const MA = (this.dungeon.muts || []).filter((x) => MUT_AFFIX.includes(x)); // v0.47 몬스터 변이
       if (MA.length) { m.affix = [...new Set([...(m.affix || []), ...MA])]; if (MA.includes('frenzy')) { m.speed *= 1.3; m.def = { ...m.def, interval: m.def.interval / 1.3 }; } }
+      if (!opt.unknown) this.champion(m, this.wt - 1 + (HP ? 1 + Math.floor((opt.hidden.plus || 0) / 2) : diff - 1)); // v0.48 던전이 어려울수록 강화 몬스터
     };
     for (let n = 0; n < (opt.unknown ? 30 : HP ? 16 : 14 + Math.min(8, stage)) && cells.length; n++) put(pick(), 'normal'); // 낮은 단계는 몬스터가 적다
     cells.sort((a, b) => Ld.dist[b] - Ld.dist[a]);
@@ -959,7 +1000,7 @@ export class World {
       sp.timer -= dt;
       // 플레이어 바로 앞에서 튀어나오지 않게 · 먼 곳은 가까워질 때 만든다 (몬스터 수 · 메모리 절약)
       const d = Math.hypot(sp.x - p.x, sp.z - p.z);
-      if (sp.timer <= 0 && d > 14 && d < SPAWN_NEAR) this.spawn(sp);
+      if (sp.timer <= 0 && d > 14 && d < SPAWN_NEAR) { const nm = this.spawn(sp); if (nm) this.champion(nm, this.wt - 1); } // v0.48 세계 단계가 높을수록 강화 몬스터
     }
   }
 
@@ -1304,8 +1345,10 @@ export class World {
       addAP(st, 'wis', (ab / d.maxHp) * AP_TABLE.hurtScale, apMult);
       if (dmg <= 0.5) { this.fx.text(head, '마나 방패', 'miss'); this.perk('hurt'); return; }
     }
+    if ((this.pdeb?.vuln || 0) > 0) dmg *= 1.2; // v0.48 저주
     dmg = Math.max(1, Math.round(dmg));
     st.hp -= dmg;
+    if (m?.affix && !m.dead && m.def) this.champHit(m, dmg);
     // v0.44.35 가시 갑옷: 때린 적에게 되돌려 준다 (무기 한 방의 3배까지) · 인내의 폭발: 모아 둔다
     const th = this.buffs.thorns;
     if (th?.t > 0 && m && !m.dead && m.pos && Math.hypot(m.pos.x - this.player.pos.x, m.pos.z - this.player.pos.z) < 8) { this.artEv('vengeHit'); } if (th?.t > 0 && m && !m.dead && m.pos && Math.hypot(m.pos.x - this.player.pos.x, m.pos.z - this.player.pos.z) < 8) this.hitMonster(m, Math.min(pre * (th.v + (this.art('retribution') ? 10 : 0)) / 100, ((this.d.patk[0] + this.d.patk[1]) / 2) * this.d.atkMult * (1 + (this.d.stats.vit || 0) * 0.015) * 3), { src: 'skill' });
@@ -1368,6 +1411,7 @@ export class World {
       raw *= 1 - ((R.phys + (A.includes('hard') ? 0.3 : 0)) * (1 - mag) + (R.mag + (A.includes('ward') ? 0.3 : 0)) * mag);
       if (A.includes('shield') && !m.shieldUsed && m.hp < m.maxHp * 0.5) { m.shieldUsed = true; m.fshield = m.maxHp * 0.2; this.fx.text(m.pos.clone().setY(2.4), '보호막', 'miss'); }
       if (m.fshield > 0) { const ab = Math.min(m.fshield, raw); m.fshield -= ab; raw -= ab; }
+      if (A.includes('shock') && src !== 'dot' && !(m.shockT > this.time) && Math.random() < 0.25) { m.shockT = this.time + 1; this.fx.play?.('lightning', this.player.pos.x, this.player.pos.z, { scale: 0.7, dur: 0.4 }); this.hurtPlayer(this.d.maxHp * 0.03, m, { sure: true }); }
       if (A.includes('reflect') && src !== 'dot' && raw > 0 && !(m.reflT > this.time)) { m.reflT = this.time + 0.5; this.hurtPlayer(Math.min(raw * 0.1, this.d.maxHp * 0.04), m, { sure: true }); } } // 반사: 받은 피해의 10%, 한 번에 최대 HP 4%까지 · 0.5초에 한 번 (강한 캐릭터가 한 방에 죽던 것)
     if (m.dungeon && this.dungeon?.muts && ctx?.id) { const sc = SKILLS[ctx.id]?.school; if (Object.entries(MUT_RESIST).some(([k, v]) => v === sc && this.mut(k))) raw *= 0.5; } // v0.47 원소 변이
     if (m.vulnT > 0) raw *= this.art('soulmark') ? 1.25 : 1.15;
@@ -1514,6 +1558,7 @@ export class World {
 
     // 드랍
     const drops = m.noLoot ? [] : rollLoot(m, { auto: this.autoKill, magicFind: d.magicFind + researchK(st, 'luck'), goldFind: d.goldFind * (1 + researchK(st, 'gold')) }, st);
+    if (m.champ && !m.noLoot && !m.child) for (let k = 0; k < m.champ; k++) if (Math.random() < 0.35) drops.push(...rollLoot(m, { auto: this.autoKill, magicFind: d.magicFind + researchK(st, 'luck') + 50, goldFind: d.goldFind }, st)); // v0.48 강화 몬스터는 더 준다
     drops.forEach((dr, i) => {
       const a = (i / Math.max(1, drops.length)) * Math.PI * 2 + Math.random();
       const r = drops.length > 1 ? 1.2 + Math.random() : 0.6;
@@ -2582,6 +2627,7 @@ export class World {
     this.merchantStep(dt);
     this.rumorStep(dt);
     this.dungeonStep(dt);
+    this.debuffStep(dt);
     this.petStep(dt);
     this.skyStep(dt);
     this.campStep(dt);
@@ -2787,7 +2833,7 @@ export class World {
       if (this.autoThink <= 0) { this.autoThink = 0.2; this.autoBrain(); }
     }
     let moving = false;
-    const speed = d.moveSpeed * ((this.chainSpdT || 0) > 0 ? 1.15 : 1) * (this.mut('frozen') ? 0.8 : 1);
+    const speed = d.moveSpeed * ((this.chainSpdT || 0) > 0 ? 1.15 : 1) * (this.mut('frozen') ? 0.8 : 1) * ((this.pdeb?.root || 0) > 0 ? 0 : (this.pdeb?.slow || 0) > 0 ? 0.6 : 1);
     if (this.chainSpdT > 0) this.chainSpdT -= dt;
     const aq = this.atkQueue;
     if (aq && (aq.m.dead || this.time > aq.until)) this.atkQueue = null;
