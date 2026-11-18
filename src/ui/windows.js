@@ -152,7 +152,7 @@ export class Windows {
   }
 
   close() {
-    this.talk = null; this.talkAt = null; this.townMode = null; this.vsel = null; this.sellPick = null;
+    this.talk = null; this.talkAt = null; this.townMode = null; this.vsel = null; this.sellPick = null; this.vPick = null;
     this.waitKey = null;
     this.portalAt = null; this.mapZoom = null; this.mapCenter = true;
     this.el.hidden = true;
@@ -1131,7 +1131,10 @@ export class Windows {
       if (k === 'sell') {
         if (this.shopSrc !== 'v') { const cur = this.cur(); return [this.describe(cur, cur ? 'inv' : null), `<div class="srcRow">${this.srcBtns('shopsrc', false)}</div>` + this.bagHead() + this.bagGrid()]; }
         const V = vault().items, it = V.find((x) => x?.uid === this.vSel);
-        const R = `<h3>${this.srcBtns('shopsrc', true)} <span class="cnt">${V.length}</span></h3><div class="grid">${V.map((x) => x ? `<div class="cell${rar(x)}${x.uid === this.vSel ? ' sel' : ''}" data-vshop="${x.uid}">${ico(x)}${cellTag(x)}${lk(x)}${x.qty > 1 ? `<span class="q">${x.qty}</span>` : ''}</div>` : '').join('')}</div>`;
+        // v0.45.3 창고도 여러 개 팔기 · 일반 · 마법 팔기 (가방과 같은 단추)
+        const vp = this.vPick, vpG = vp ? V.filter((x) => x && vp.includes(x.uid)).reduce((a, x) => a + itemValue(x), 0) : 0;
+        const vBtns = (vp ? `<button class="btn gold" data-vpick="go" ${vp.length ? '' : 'disabled'}>${vp.length}개 판매 ${vpG.toLocaleString()}G</button><button class="btn" data-vpick="off">취소</button>` : '<button class="btn" data-vpick="on">여러 개 팔기</button>') + '<button class="btn" data-vselljunk="1">일반 · 마법 팔기</button>';
+        const R = `<h3>${this.srcBtns('shopsrc', true)} <span class="cnt">${V.length}</span><span style="margin-left:auto"></span>${vBtns}</h3><div class="grid">${V.map((x) => x ? `<div class="cell${rar(x)}${(vp ? vp.includes(x.uid) : x.uid === this.vSel) ? ' sel' : ''}" data-vshop="${x.uid}">${ico(x)}${cellTag(x)}${lk(x)}${x.qty > 1 ? `<span class="q">${x.qty}</span>` : ''}</div>` : '').join('')}</div>`;
         return [it ? this.describe(it, 'view') + `<div class="btns forgeGo"><button class="btn gold big" data-vsell="${it.uid}" ${it.lock ? 'disabled' : ''}>${it.lock ? '잠김' : `판매 ${itemValue(it).toLocaleString()}G`}</button></div>` : this.describe(null), R];
       }
       if (!goods.includes(this.shopSel)) this.shopSel = goods[0];
@@ -1337,8 +1340,17 @@ export class Windows {
     on('[data-shopsel]', (el) => { this.shopSel = el.dataset.shopsel; audio.play('click'); this.render(); });
     on('[data-gmsel]', (el) => { this.gemMerge = el.dataset.gmsel; audio.play('click'); this.render(); });
     on('[data-salvsrc]', (el) => { this.salvSrc = el.dataset.salvsrc; this.salvSel = null; audio.play('click'); this.render(); });
-    on('[data-shopsrc]', (el) => { this.shopSrc = el.dataset.shopsrc; this.vSel = null; this.sel = null; audio.play('click'); this.render(); });
-    on('[data-vshop]', (el) => { this.vSel = Number(el.dataset.vshop); audio.play('click'); this.render(); });
+    on('[data-shopsrc]', (el) => { this.shopSrc = el.dataset.shopsrc; this.vSel = null; this.vPick = null; this.sellPick = null; this.sel = null; audio.play('click'); this.render(); });
+    on('[data-vshop]', (el) => { const u = Number(el.dataset.vshop);
+      if (this.vPick) { const it = vault().items.find((x) => x?.uid === u); if (it && !it.lock && BASES[it.base]?.type !== 'mat') { const i = this.vPick.indexOf(u); if (i >= 0) this.vPick.splice(i, 1); else this.vPick.push(u); } }
+      else this.vSel = u; audio.play('click'); this.render(); });
+    const vSellWhere = (f) => { if (!vaultReady()) { w.ui.toast('창고를 불러오는 중입니다'); return; } let g = 0, n = 0; const V = vault().items;
+      for (let i = V.length - 1; i >= 0; i--) { const it = V[i]; if (!it || it.lock || !f(it)) continue; g += itemValue(it); n++; V.splice(i, 1); }
+      if (n) { vaultSave(); st.gold += g; audio.play('coin'); w.ui.toast(`${n}개 판매: +${g.toLocaleString()}G`, '#ffd84a'); } this.vPick = null; this.vSel = null; w.ui.dirty(); this.render(); };
+    const isJunk = (it) => !it.book && BASES[it.base]?.slot && !it.set && ['common', 'magic'].includes(it.rarity);
+    ask('[data-vpick]', (el) => (el.dataset.vpick !== 'go' || !this.vPick?.length ? null : ['판매', `창고에서 고른 아이템 ${this.vPick.length}개를 팝니다`, '판매']), (el) => {
+      const a = el.dataset.vpick; if (a === 'on') { this.vPick = []; this.vSel = null; } else if (a === 'off') this.vPick = null; else { const P = this.vPick || []; return vSellWhere((it) => P.includes(it.uid)); } audio.play('click'); this.render(); });
+    ask('[data-vselljunk]', () => ['일괄 판매', '창고의 일반 · 마법 장비를 모두 팝니다', '판매'], () => vSellWhere(isJunk));
     on('[data-popclose]', () => { this.sel = null; this.vsel = null; audio.play('click'); this.render(); });
     on('[data-gmergeall]', async () => {
       const have = [...new Set([...st.inv, ...vault().items].filter((x) => BASES[x?.base]?.type === 'gem').map((x) => x.base))].map((base) => ({ base, qty: resCount(st, base) }));
