@@ -615,8 +615,7 @@ html.force-land #rotate { display: none !important; }
 .smithWrap { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 6px; }
 .smithWrap > .cols { flex: 1; min-height: 0; }
 .fPage { flex: 1 1 0; min-width: 0; overflow: auto; }
-.stabs { display: flex; align-items: center; gap: 8px; }
-.stabs .tab { height: calc(var(--u) * 2.8); }
+.stabs { display: flex; align-items: center; gap: 3px; }
 .stabInfo { margin-left: auto; font-size: calc(var(--u) * 0.85); color: var(--dim); }
 .fGrid { grid-template-columns: repeat(auto-fill, minmax(calc(var(--u) * 3.6), 1fr)); }
 .forgeTop { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
