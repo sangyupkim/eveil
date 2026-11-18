@@ -659,3 +659,4 @@ html.force-land #rotate { display: none !important; }
 @keyframes ffPop { 0% { transform: scale(.3); } 100% { transform: scale(1); } }
 @keyframes ffTitle { 0% { transform: scale(1.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 @keyframes ffShake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(5px); } }
+.fPage > .salvInfo { max-height: none; font-size: inherit; }
