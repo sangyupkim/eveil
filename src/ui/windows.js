@@ -338,12 +338,12 @@ export class Windows {
   workshopView(b, sel) {
     const st = this.w.st, t = townOf(st), P = this.workshopParts(st, b, t);
     return this.tabView(b, 'workshop', [['make', '제작'], ['swap', '교환'], ['merc', '용병']], (k) => {
-      if (k === 'make') return [P.queue || `<h3>제작 중 <span class="cnt">0 / ${BREW_QUEUE}</span></h3><div class="note">없음</div>`, P.recipes];
+      if (k === 'make') return [P.queue || `<h3>제작 중 <span class="cnt">0 / ${BREW_QUEUE}</span></h3><div class="note">없음</div>`, P.recipes + P.ore];
       if (k === 'swap') {
         // 오른쪽: 가진 재료 (약초 · 강화석 · 정수)
         const mats = ['ore', ...ORE_RECIPES.map((r) => r.id), ...new Set(ESS_RECIPES.flatMap((r) => [r.id, ...Object.keys(r.need)]))].filter((id, i, a) => BASES[id] && a.indexOf(id) === i);
         const inv = P.herbs + `<h3>재료</h3><div class="herbList">${mats.map((id) => `<span class="hb">${ico({ base: id })}${BASES[id].name} <b>${resCount(st, id).toLocaleString()}</b></span>`).join('')}</div>`;
-        return [P.swap + P.ore + P.ess, inv];
+        return [P.swap + P.ess, inv];
       }
       return this.mercTab(b, sel);
     });
