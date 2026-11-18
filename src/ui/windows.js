@@ -109,6 +109,9 @@ export class Windows {
     this.w = world;
     this.save = save;
     this.el = $('#window');
+    // v0.49.10 창을 연 터치가 새 창의 탭 · 단추까지 누르지 않게: 창이 열린 직후 잠깐 들어오는 클릭은 버린다 (휴대폰 이중 터치)
+    this.clickBlock = 0;
+    for (const ev of ['click', 'pointerup', 'mouseup']) this.el.addEventListener(ev, (e) => { if (performance.now() < this.clickBlock) { e.stopPropagation(); e.preventDefault(); } }, true);
     this.kind = null;
     this.sel = null;     // 선택한 아이템 { from: 'inv'|'equip', uid|slot }
     this.skillSel = null;
@@ -134,6 +137,7 @@ export class Windows {
     if (NPC_ONLY.includes(kind) && !this.talk?.includes(kind)) { this.w.ui.toast(kind === 'town' ? '경비대장이나 건물 앞에서 이용할 수 있습니다' : kind === 'vault' ? '창고는 마을 상인에게서 이용할 수 있습니다' : '상인에게 가서 이용할 수 있습니다'); audio.play('error'); return; }
     if (this.kind !== kind) this.sel = null;
     this.kind = kind;
+    if (this.el.hidden) this.clickBlock = performance.now() + 450;
     this.el.hidden = false;
     audio.play('click');
     this.render();
