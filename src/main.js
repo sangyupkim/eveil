@@ -263,8 +263,9 @@ function startGame(stage, st) {
     if (window.__noSave) return;
     world.saveGround();
     st.savedAt = Date.now();
-    if (!saveChar(st)) console.warn('저장 실패');
-    cloud.save(st, force === true);
+    st.gver = GAME_VERSION; const json = JSON.stringify(st); // v0.49.16 기기 · 서버 저장이 같은 문자열을 쓴다 (예전엔 두 번 만들어 휴대폰에서 멈칫)
+    if (!saveChar(st, json)) console.warn('저장 실패');
+    cloud.save(st, force === true, json);
   };
   const windows = new Windows(world, save);
   hud.onDirty = () => { clearTimeout(hud.winT); hud.winT = setTimeout(() => windows.refresh(), 0); };

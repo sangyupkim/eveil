@@ -40,7 +40,7 @@ import { combatPower } from '../game/power.js';
 import { MUTS, MUT_AFFIX, MUT_RESIST, COLLAPSE_SEC, mutCount, rollMuts, mutBonus } from '../data/mutators.js';
 import { rollShard } from '../game/shards.js';
 import { reveal, saveFog, loadFog } from '../ui/mapimg.js';
-import { DATA, image, animImage, drawRect, frameIndex } from '../engine2d/sprites.js';
+import { DATA, image, animImage, drawRect, frameIndex, filteredRect } from '../engine2d/sprites.js';
 import { MONSTER_LOOK, ITEM_LOOK, LOOT_LOOK, ZONE_LOOK as ZONE_LOOK_W } from '../data/flareWorld.js';
 import { PLOTS, BUILDINGS, VAULT_SPOT } from '../data/buildings.js';
 import { townOf, tick as townTick, researchK, researchTick, researchLv } from '../game/town.js';
@@ -155,7 +155,7 @@ export class World {
       if (!tt) return;
       image(def.imgs[tt[0]]);
       const d = { z: z + 2 * k, draw: (ctx, stg) => { const src = image(def.imgs[tt[0]]); if (!src.ok || !stg.onScreen(x, z, 8)) return; const p = stg.toScreen(x + ox * k, z + oz * k);
-        if (filter) { ctx.save(); ctx.filter = filter; } drawRect(ctx, src.im, tt.slice(1), p.x, p.y, stg.scale() * k); if (filter) ctx.restore(); } };
+        const F = filter && filteredRect(src.im, tt.slice(1), filter); drawRect(ctx, F ? F.im : src.im, F ? F.rect : tt.slice(1), p.x, p.y, stg.scale() * k); } };
       this.stage.add(d); this.townDraw.push(d);
       for (let u = -r; u <= r; u += 1.2) for (let v = -r; v <= r; v += 1.2) if (Math.abs(u) + Math.abs(v) <= r) col(x + u, z + v, 0.8);
     };
@@ -168,7 +168,7 @@ export class World {
         const tt = def.tiles[id]; if (!tt) continue;
         image(def.imgs[tt[0]]);
         const x = cur.x + dx + px / 64 - cx, z = cur.z + dz + py / 32 - cz;
-        const d = { z: cur.z + dz + 1.6, draw: (ctx, stg) => { const src = image(def.imgs[tt[0]]); if (!src.ok || !stg.onScreen(x, z, 10)) return; const p = stg.toScreen(x, z); if (filter) { ctx.save(); ctx.filter = filter; } drawRect(ctx, src.im, tt.slice(1), p.x, p.y, stg.scale()); if (filter) ctx.restore(); } };
+        const d = { z: cur.z + dz + 1.6, draw: (ctx, stg) => { const src = image(def.imgs[tt[0]]); if (!src.ok || !stg.onScreen(x, z, 10)) return; const p = stg.toScreen(x, z); const F = filter && filteredRect(src.im, tt.slice(1), filter); drawRect(ctx, F ? F.im : src.im, F ? F.rect : tt.slice(1), p.x, p.y, stg.scale()); } };
         this.stage.add(d); this.townDraw.push(d);
       }
       // 바닥 차지: 가로 약 7.4칸 · 세로 약 3칸 (지붕 아래 벽 안쪽)
@@ -182,7 +182,7 @@ export class World {
         const tt = def.tiles[id]; if (!tt) continue;
         image(def.imgs[tt[0]]);
         const x = x0 + (px / 64) * k, z = z0 + (py / 32) * k;
-        const d = { z: z0 + 1.2, draw: (ctx, stg) => { const src = image(def.imgs[tt[0]]); if (!src.ok || !stg.onScreen(x, z, 8)) return; const p = stg.toScreen(x, z); if (filter) { ctx.save(); ctx.filter = filter; } drawRect(ctx, src.im, tt.slice(1), p.x, p.y, stg.scale() * k); if (filter) ctx.restore(); } };
+        const d = { z: z0 + 1.2, draw: (ctx, stg) => { const src = image(def.imgs[tt[0]]); if (!src.ok || !stg.onScreen(x, z, 8)) return; const p = stg.toScreen(x, z); const F = filter && filteredRect(src.im, tt.slice(1), filter); drawRect(ctx, F ? F.im : src.im, F ? F.rect : tt.slice(1), p.x, p.y, stg.scale() * k); } };
         this.stage.add(d); this.townDraw.push(d);
       }
       for (let u = -1.8; u <= 1.8; u += 0.9) for (let v = -1; v <= 1; v += 0.9) col(x0 + 0.75 * k + u * k, z0 + v * k, 0.6);

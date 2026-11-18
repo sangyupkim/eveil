@@ -181,14 +181,14 @@ export const cloud = {
   },
 
   // 저장을 서버에도 올린다. 너무 잦으면 건너뛰고, force면 바로 (창을 닫을 때)
-  async save(st, force = false) {
+  async save(st, force = false, json = null) {
     if (!account || this.moved || st.savedAt === lastAt) return;
     const now = Date.now();
     if (!force && (pending || now - lastPut < GAP * 1000)) return;
     if (!(await this.available())) return;
     lastPut = now; lastAt = st.savedAt;
     st.gver = GAME_VERSION; // v0.44.69 저장한 게임 버전: 서버는 더 새 버전이 쓴 저장을 예전 버전이 덮지 못하게 한다
-    pending = post({ type: 'ash_save', token: account.token, cid: st.cid, data: JSON.stringify(st), at: st.savedAt }, force);
+    pending = post({ type: 'ash_save', token: account.token, cid: st.cid, data: json ?? JSON.stringify(st), at: st.savedAt }, force);
     const r = await pending;
     pending = null;
     this.state = r.ok ? 'saved' : 'error';

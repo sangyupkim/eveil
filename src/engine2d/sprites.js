@@ -102,6 +102,20 @@ export function tinted(path, color) {
   return c;
 }
 
+// v0.49.16 색 필터를 건 조각을 한 번만 만들어 둔다 (매 프레임 ctx.filter로 그리면 휴대폰에서 주기적으로 멈칫했다)
+const filtered = new WeakMap();
+export function filteredRect(src, rect, filter) {
+  if (!src || !rect || !filter) return null;
+  let m = filtered.get(src); if (!m) { m = new Map(); filtered.set(src, m); }
+  const key = rect.slice(0, 4).join(',') + '|' + filter;
+  let hit = m.get(key);
+  if (!hit) {
+    const [x, y, w, h, ox, oy] = rect, c = document.createElement('canvas'); c.width = Math.max(1, w); c.height = Math.max(1, h);
+    const g = c.getContext('2d'); g.filter = filter; g.drawImage(src, x, y, w, h, 0, 0, w, h);
+    hit = { im: c, rect: [0, 0, w, h, ox, oy] }; m.set(key, hit);
+  }
+  return hit;
+}
 // rect = [x, y, w, h, ox, oy] — (sx, sy)가 발끝(기준점)
 export function drawRect(ctx, src, rect, sx, sy, s = 1) {
   if (!src || !rect) return;

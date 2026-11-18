@@ -5,7 +5,7 @@ export const CHAR_MAX = 6;
 export const keyOf = (cid) => `ashen-save-${cid}`;
 export const newCid = () => 'c' + Math.random().toString(36).slice(2, 10).padEnd(8, '0');
 const read = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
-const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } };
+const write = (k, v, json = null) => { try { localStorage.setItem(k, json ?? JSON.stringify(v)); return true; } catch { return false; } };
 
 export function charIds() {
   let ids = read(LIST);
@@ -18,11 +18,11 @@ export function charIds() {
   return ids.filter((c) => /^[a-z0-9]{4,16}$/.test(c));
 }
 export const loadChar = (cid) => read(keyOf(cid));
-export function saveChar(st) {
+export function saveChar(st, json = null) { // json: 이미 만든 문자열 (v0.49.16 저장할 때 한 번만 문자열로)
   if (!st.cid) st.cid = newCid();
   const ids = charIds();
   if (!ids.includes(st.cid)) { ids.push(st.cid); write(LIST, ids); }
-  return write(keyOf(st.cid), st);
+  return write(keyOf(st.cid), st, json);
 }
 export function deleteChar(cid) {
   write(LIST, charIds().filter((c) => c !== cid));
