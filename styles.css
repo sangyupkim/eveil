@@ -680,3 +680,11 @@ html.force-land #rotate { display: none !important; }
 .srcBtns { display: inline-flex; gap: 3px; }
 .srcBtns .btn { padding: 2px 10px; }
 .srcRow { margin-bottom: 4px; }
+/* v0.45.2 게임 안 확인 창 (gameConfirm) */
+#gameAsk { position: fixed; inset: 0; z-index: 170; display: flex; align-items: center; justify-content: center; background: rgba(8, 6, 12, 0.6); color: #e8dcc0; text-align: center; }
+#gameAsk > div { min-width: 18em; max-width: 92vw; max-height: 92vh; overflow-y: auto; padding: 1.2em 1.6em; border: 1px solid #c9a050; background: #15111c; box-shadow: 0 0 24px rgba(0,0,0,.6); }
+#gameAsk b { font-size: 1.15em; color: #ffb060; display: block; margin-bottom: .4em; }
+#gameAsk .askBtns { display: flex; gap: .8em; justify-content: center; margin-top: .8em; }
+#gameAsk .plate { min-width: 7em; white-space: nowrap; word-break: keep-all; }
+#gameAsk .askItem { display: flex; align-items: center; gap: .6em; justify-content: center; margin: .3em 0; }
+#gameAsk .askItem img { width: 3em; height: 3em; }

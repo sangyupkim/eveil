@@ -131,7 +131,7 @@ globalThis.__stage = stage;
   $('#btnNewCancel').onclick = () => { audio.play('click'); showNew(false); };
   $('#btnDelChar').onclick = async () => {
     const c = chars.find((x) => x.cid === sel);
-    if (!c || !confirm(`${nameOf(c) || '이 캐릭터'}를 지울까요? 되돌릴 수 없습니다.`)) return;
+    if (!c || !(await (await import('./ui/ask.js')).gameConfirm('캐릭터 지우기', `${nameOf(c) || '이 캐릭터'}를 지울까요? 되돌릴 수 없습니다`, '지우기'))) return;
     deleteChar(c.cid);
     await cloud.delChar(c.cid);
     sel = null;
@@ -192,7 +192,7 @@ globalThis.__stage = stage;
       const remote = c.ok && !fresh ? fixSave(c.data) : null;
       if (remote && (!st || (remote.savedAt || 0) > (st.savedAt || 0))) { remote.cid ||= sel; st = remote; saveChar(st); }
     }
-    if (!st) { alert('저장을 불러오지 못했습니다'); return; }
+    if (!st) { import('./ui/ask.js').then((m) => m.gameConfirm('저장을 불러오지 못했습니다', '', '확인', '', true)); return; }
     setLast(st.cid);
     audio.setVolumes(st.settings.music, st.settings.sfx);
     await waitImage(portrait(st.look).replace('assets/flare/', ''));

@@ -1,4 +1,5 @@
 import { bagSize } from '../game/inventory.js';
+import { gameConfirm } from './ask.js';
 // 창: 가방(장비) · 스킬 · 능력(스탯/성향) · 상점 · 메뉴
 import { STATS, STAT_NAMES, STAT_COLORS, STAT_DESC, CONFIG } from '../data/config.js';
 import { SKILLS, BOOK_TIERS } from '../data/skills.js';
@@ -773,7 +774,7 @@ export class Windows {
       ['화면 보기', 'hud', ['체력 · 마나', '내 캐릭터: 칭호 · 이름 · 체력 · 마나. 체력이 낮으면 깜빡입니다', '퀘스트: 진행 중인 퀘스트와 오늘의 의뢰', '기록: 지역 정보 · 얻은 것', '미니맵', '메뉴: 가방 · 스킬 · 능력 · 퀘스트 · 설정', '스킬 칸', '공격 버튼', '조이스틱: 만질 때만 보입니다']],
       ['버튼', 'buttons', ['귀환: 마을로 돌아갑니다', '자동 사냥: 켠 지역 안에서만, 가장 가까운 몬스터를 찾아가며 장애물을 돌아갑니다. 얻는 것이 조금 줄어듭니다', '마나 물약', '체력 물약', '공격. 사람 · 건물 · 포탈 · 창고 앞에서는 그 이름으로 바뀝니다', '스킬. 스킬 창에서 칸을 정합니다']],
       ['미니맵 표시', 'minimap', ['빨간 점: 몬스터 · 주황 점: 정예 · 네임드 · 금색 마름모: 보스 · 하늘색 고리: 포탈 · 초록 세모: 던전 입구 · 노란 테: 마을']],
-      ['NPC와 대화', 'talk', ['경비대장 하겐: 퀘스트 보고 · 오늘의 의뢰 보상 · 건물 짓기', '가까이 가면 공격 버튼이 이름으로 바뀝니다. 누르면 대화. 상인 오르텐은 상점, 보석상 리엔은 보석 합치기 · 박기 · 빼기, 현자는 도감']],
+      ['NPC와 대화', 'talk', ['경비대장 하겐: 퀘스트 보고 · 오늘의 의뢰 보상 · 건물 짓기', '가까이 가면 공격 버튼이 이름으로 바뀝니다. 누르면 대화. 상인 오르텐은 상점, 보석상 리엔은 보석 합치기 · 끼우기 · 빼기, 현자는 도감']],
       ['건물 쓰기', 'building', ['지은 건물', '건물 앞에서 버튼이 건물 이름으로 바뀝니다. 누르면 그 건물 창이 열립니다']],
       ['포탈', 'portal', ['마을 · 발견한 야영지의 포탈', '포탈 위에서 버튼을 눌러 갈 곳을 고릅니다']],
       ['공용 창고', 'vaultspot', ['상인 옆 공용 창고 상자', '상자 앞에서 버튼을 누르면 창고가 열립니다']],
@@ -1104,10 +1105,10 @@ export class Windows {
     if (sel) {
       mid = `<div class="nm" style="color:${itemColor(sel)}">${esc(itemName(sel))}</div><div class="note">구멍 ${sel.gems.length} / ${sel.sockets}</div>`;
       mid += sel.gems.map((g, k) => row(ico({ base: g }), BASES[g].name, `${STAT_NAMES[GEMS[BASES[g].gem].stat]} +${GEM_GRADES[BASES[g].grade].v}`, `<button class="btn" data-gpull="${this.gemSel}|${k}">빼기 · ${pullCost(g).toLocaleString()}G</button>`)).join('');
-      if (sel.gems.length < sel.sockets) mid += `<div class="note" style="margin-top:6px">박을 보석</div><div class="grid gemGrid">${have.map((x) => `<div class="cell" data-gput="${this.gemSel}|${x.base}" title="${esc(BASES[x.base].name)}">${ico(x)}<span class="q">${x.qty}</span></div>`).join('') || '<div class="note">가진 보석이 없습니다</div>'}</div>`;
+      if (sel.gems.length < sel.sockets) mid += `<div class="note" style="margin-top:6px">끼울 보석</div><div class="grid gemGrid">${have.map((x) => `<div class="cell" data-gput="${this.gemSel}|${x.base}" title="${esc(BASES[x.base].name)}">${ico(x)}<span class="q">${x.qty}</span></div>`).join('') || '<div class="note">가진 보석이 없습니다</div>'}</div>`;
     }
-    // v0.45 보석상: 박기 (오른쪽 장비 → 왼쪽 구멍 · 박을 보석) | 합치기 (오른쪽 보석 → 왼쪽 합치기)
-    return this.tabView('보석상', 'gems', [['put', '박기'], ['merge', '합치기']], (k) => {
+    // v0.45 보석상: 박기 (오른쪽 장비 → 왼쪽 구멍 · 끼울 보석) | 합치기 (오른쪽 보석 → 왼쪽 합치기)
+    return this.tabView('보석상', 'gems', [['put', '끼우기'], ['merge', '합치기']], (k) => {
       if (k === 'put') return [mid, left + leftV];
       if (!have.some((x) => x.base === this.gemMerge)) this.gemMerge = have[0]?.base;
       const R = `<h3>가진 보석 <span class="cnt">${have.length}</span><button class="btn gold" data-gmergeall="1" style="margin-left:auto">일괄 합치기</button></h3><div class="grid fGrid">${have.map((x) => `<div class="cell${x.base === this.gemMerge ? ' sel' : ''}" data-gmsel="${x.base}" title="${esc(BASES[x.base].name)}">${ico(x)}<span class="q">${x.qty}</span></div>`).join('') || '<div class="note">없음</div>'}</div>`;
@@ -1196,6 +1197,10 @@ export class Windows {
   bind(body) {
     const w = this.w, st = w.st;
     const on = (sel, fn) => body.querySelectorAll(sel).forEach((el) => { el.onclick = () => fn(el); });
+    // v0.45.2 되돌릴 수 없는 일은 게임 안 확인 창을 거친다: m(el) → [제목, 글, 예 글자, 그림 HTML] | null(묻지 않음)
+    const ask = (sel, m, fn) => on(sel, async (el) => { const q = m(el); if (q) { audio.play('click'); if (!(await gameConfirm(q[0], q[1], q[2], q[3] || ''))) return; } fn(el); });
+    const itemHtml = (it, sub = '') => `<div class="askItem">${ico(it)}<span style="color:${itemColor(it)}">${esc(itemName(it))}${sub ? `<br><small style="color:#c8c0b0">${sub}</small>` : ''}</span></div>`;
+    const gemSub = (g) => `${STAT_NAMES[GEMS[BASES[g].gem].stat]} +${GEM_GRADES[BASES[g].grade].v}`;
     on('[data-uid]', (el) => {
       const uid = Number(el.dataset.uid);
       // 여러 개 팔기: 눌러서 고르기 · 풀기 (재료는 팔 수 없다)
@@ -1207,8 +1212,14 @@ export class Windows {
     const sn = body.querySelector('#sellN');
     if (sn) sn.oninput = () => { const it = st.inv.find((x) => x.uid === this.sel?.uid); if (it) body.querySelector('#sellNv').textContent = `${sn.value}개 · ${itemValue({ ...it, qty: Number(sn.value) }).toLocaleString()}G`; };
     on('[data-eq]', (el) => { if (st.equip[el.dataset.eq]) { this.sel = { from: 'equip', slot: el.dataset.eq }; audio.play('click'); this.render(); } });
-    on('[data-act]', (el) => {
+    on('[data-act]', async (el) => {
       const a = el.dataset.act;
+      let nPick = null;
+      { const it0 = st.inv.find((x) => x.uid === this.sel?.uid);
+        if (it0 && !it0.lock && ['drop', 'sell', 'sellall'].includes(a)) { const n0 = a === 'sellall' || !(it0.qty > 1) ? (it0.qty || 1) : Math.max(1, Math.min(it0.qty, Number(document.getElementById('sellN')?.value) || 1));
+          audio.play('click');
+          if (!(await gameConfirm(a === 'drop' ? '버리기' : '판매', a === 'drop' ? '바닥에 버립니다' : `${n0 > 1 ? `${n0}개 · ` : ''}${itemValue({ ...it0, qty: n0 }).toLocaleString()} G`, a === 'drop' ? '버리기' : '판매', itemHtml(it0)))) return;
+          nPick = n0; } }
       if (a === 'use') w.useItem(this.sel.uid);
       if (a === 'unequip') w.unequip(this.sel.slot);
       const selIt = st.inv.find((x) => x.uid === this.sel?.uid);
@@ -1218,7 +1229,7 @@ export class Windows {
         const i = st.inv.findIndex((x) => x.uid === this.sel.uid), it = st.inv[i];
         if (it) {
           // 쌓인 물건은 고른 개수만 판다
-          const n = a === 'sellall' || !(it.qty > 1) ? (it.qty || 1) : Math.max(1, Math.min(it.qty, Number(document.getElementById('sellN')?.value) || 1));
+          const n = nPick != null ? Math.min(nPick, it.qty || 1) : a === 'sellall' || !(it.qty > 1) ? (it.qty || 1) : Math.max(1, Math.min(it.qty, Number(document.getElementById('sellN')?.value) || 1));
           const g = itemValue({ ...it, qty: n });
           if (it.qty > n) it.qty -= n; else st.inv.splice(i, 1);
           st.gold += g; w.ui.toast(`${itemName(it)}${n > 1 ? ` ×${n}` : ''} 판매: +${g.toLocaleString()}G`); audio.play('coin');
@@ -1291,8 +1302,8 @@ export class Windows {
     on('[data-uireset]', () => { st.settings.ui = undefined; applyUi(st); this.render(); });
     on('[data-plot]', (el) => { this.townSel = el.dataset.plot; audio.play('click'); this.render(); });
     const townDone = (r, okMsg) => { if (!r?.ok) { if (r?.why) w.ui.toast(r.why); audio.play('error'); } else { if (okMsg) w.ui.toast(okMsg, '#ffd84a'); w.refreshTown(); w.ui.dirty(); } this.render(); };
-    on('[data-build]', (el) => { const r = build(st, this.townSel || PLOTS[0].id, el.dataset.build); if (r.ok) audio.play('rankup'); townDone(r, `${BUILDINGS[el.dataset.build].name}을(를) 지었습니다`); });
-    on('[data-upgrade]', () => { const r = upgrade(st, this.townSel); if (r.ok) audio.play('rankup'); townDone(r, '단계를 올렸습니다'); });
+    ask('[data-build]', (el) => ['건물 짓기', `${BUILDINGS[el.dataset.build].name}을(를) 짓습니다`, '짓기'], (el) => { const r = build(st, this.townSel || PLOTS[0].id, el.dataset.build); if (r.ok) audio.play('rankup'); townDone(r, `${BUILDINGS[el.dataset.build].name}을(를) 지었습니다`); });
+    ask('[data-upgrade]', () => ['건물 강화', '다음 단계로 올립니다', '올리기'], () => { const r = upgrade(st, this.townSel); if (r.ok) audio.play('rankup'); townDone(r, '단계를 올렸습니다'); });
     on('[data-collect]', () => { const r = collect(st, this.townSel); if (r?.n) { audio.play('coin'); w.ui.toast(r.got ? `약초: ${Object.entries(r.got).map(([h, q]) => `${HERBS[h].name} ${q}`).join(' · ')}` : `${r.what} ${r.n}개를 거뒀습니다${r.o2 ? ` · 상급 ${r.o2}` : ''}${r.o3 ? ` · 최상급 ${r.o3}` : ''}`, '#7fe07a'); } w.ui.dirty(); this.render(); });
     on('[data-enh]', (el) => {
       const it = gearAt(st, el.dataset.enh), b0 = BASES[it.base], before = b0.dmg ? scaledDmg(it).join('~') : b0.armor ? scaledArmor(it) : null, p0 = it.plus || 0;
@@ -1306,20 +1317,20 @@ export class Windows {
       w.ui.dirty(); this.render();
     });
     on('[data-mythlv]', (el) => { const mx = mythLvMax(st); globalThis.__mythLv = Math.max(10, Math.min(mx, (globalThis.__mythLv ?? mx) + Number(el.dataset.mythlv))); audio.play('click'); this.render(); });
-    on('[data-mythcraft]', () => { const r = craftMyth(st, Math.random, globalThis.__mythLv); if (r.ok) { audio.play('awaken'); w.fx.pillar(w.player.pos.x, w.player.pos.z, 0xff4a8a, 3, 8, 2.5); } townDone(r, r.ok ? `${itemName(r.item)}을(를) 얻었습니다` : null); });
+    ask('[data-mythcraft]', () => ['신화 제작', '신화 장비를 만듭니다', '제작'], () => { const r = craftMyth(st, Math.random, globalThis.__mythLv); if (r.ok) { audio.play('awaken'); w.fx.pillar(w.player.pos.x, w.player.pos.z, 0xff4a8a, 3, 8, 2.5); } townDone(r, r.ok ? `${itemName(r.item)}을(를) 얻었습니다` : null); });
     on('[data-keycraft]', (el) => { const r = craftKey(st, el.dataset.keycraft); if (r.ok) audio.play('rankup'); townDone(r, `${BASES[el.dataset.keycraft].name}을(를) 만들었습니다`); });
     on('[data-esscraft]', (el) => { const [rid, n] = el.dataset.esscraft.split('|'); const r = craftEss(st, rid, Number(n)); if (r.ok) audio.play('coin'); townDone(r, r.ok ? `${BASES[r.id].name} ${r.n}개를 얻었습니다` : null); });
     on('[data-orecraft]', (el) => { const [id, n] = el.dataset.orecraft.split('|'); const r = craftOre(st, id, Number(n)); if (r.ok) audio.play('rankup'); townDone(r, `${BASES[id].name} ${n}개를 만들었습니다`); });
-    on('[data-hirem]', (el) => townDone(hire(st, el.dataset.hirem), '용병을 고용했습니다'));
+    ask('[data-hirem]', () => ['고용', '이 용병을 고용합니다', '고용'], (el) => townDone(hire(st, el.dataset.hirem), '용병을 고용했습니다'));
     on('[data-mwork]', (el) => { const [id, pl] = el.dataset.mwork.split('|'); townDone(assignMerc(st, id, pl || null)); });
-    on('[data-mawk]', (el) => { const r = awakenMerc(st, el.dataset.mawk); if (r.ok) audio.play('awaken'); townDone(r, '용병이 각성했습니다'); });
-    on('[data-mfire]', (el) => { if (confirm('이 용병을 내보낼까요?')) townDone(dismiss(st, el.dataset.mfire)); });
+    ask('[data-mawk]', () => ['용병 각성', '이 용병을 각성합니다', '각성'], (el) => { const r = awakenMerc(st, el.dataset.mawk); if (r.ok) audio.play('awaken'); townDone(r, '용병이 각성했습니다'); });
+    ask('[data-mfire]', () => ['용병 내보내기', '이 용병을 내보냅니다. 되돌릴 수 없습니다', '내보내기'], (el) => townDone(dismiss(st, el.dataset.mfire)));
     on('[data-tier]', (el) => { w.setTier(Number(el.dataset.tier)); this.render(); });
     on('[data-travel]', (el) => { this.portalAt = null; this.mapZoom = null; this.close(); w.travel(el.dataset.travel); });
     on('[data-mzoom]', (el) => { const Z = [1, 1.6, 2.4, 3.2], i = Math.max(0, Math.min(Z.length - 1, Z.indexOf(this.mapZoom || 1) + Number(el.dataset.mzoom))); this.mapZoom = Z[i]; this.mapCenter = true; audio.play('click'); this.render(); });
     on('[data-camp]', (el) => { const [z, what] = el.dataset.camp.split('|'); const r = w.buildCamp(z, what); if (!r.ok && r.why) w.ui.toast(r.why); w.ui.dirty(); this.render(); });
-    on('[data-salvage]', (el) => { const raw = el.dataset.salvage, r = salvage(st, Number(String(raw).replace('v:', '')), String(raw).startsWith('v:')); if (r.ok) { audio.play('coin'); w.ui.toast(`분해: 강화석 ${r.ore} · ${MATERIALS[r.mat].name} ${r.matN}`, '#ffd84a'); if (r.shard) w.ui.toast(`능력치 파편: ${affixText(r.shard.shard)}`, '#c58cff'); } townDone(r); });
-    on('[data-salvageall]', () => { let n = 0, sh = 0; for (const x of [...st.inv]) if (!x.book && BASES[x.base]?.slot && ['common', 'magic'].includes(x.rarity)) { const r = salvage(st, x.uid); if (r.ok) { n++; if (r.shard) sh++; } } if (sh) w.ui.toast(`능력치 파편 ${sh}개`, '#c58cff'); audio.play('coin'); w.ui.toast(`장비 ${n}개 분해`, '#ffd84a'); townDone({ ok: true }); });
+    ask('[data-salvage]', (el) => { const raw = String(el.dataset.salvage), it = gearAt(st, raw.startsWith('v:') ? raw : 'b:' + raw); return it ? ['분해', '되돌릴 수 없습니다', '분해', itemHtml(it)] : null; }, (el) => { const raw = el.dataset.salvage, r = salvage(st, Number(String(raw).replace('v:', '')), String(raw).startsWith('v:')); if (r.ok) { audio.play('coin'); w.ui.toast(`분해: 강화석 ${r.ore} · ${MATERIALS[r.mat].name} ${r.matN}`, '#ffd84a'); if (r.shard) w.ui.toast(`능력치 파편: ${affixText(r.shard.shard)}`, '#c58cff'); } townDone(r); });
+    ask('[data-salvageall]', () => ['일괄 분해', '가방의 일반 · 마법 장비를 모두 분해합니다', '분해'], () => { let n = 0, sh = 0; for (const x of [...st.inv]) if (!x.book && BASES[x.base]?.slot && ['common', 'magic'].includes(x.rarity)) { const r = salvage(st, x.uid); if (r.ok) { n++; if (r.shard) sh++; } } if (sh) w.ui.toast(`능력치 파편 ${sh}개`, '#c58cff'); audio.play('coin'); w.ui.toast(`장비 ${n}개 분해`, '#ffd84a'); townDone({ ok: true }); });
     on('[data-stab]', (el) => { const [k, v] = el.dataset.stab.split('|'); (this.bTab ||= {})[k] = v; audio.play('click'); this.render(); });
     on('[data-labsel]', (el) => { this.labSel = el.dataset.labsel; audio.play('click'); this.render(); });
     on('[data-innsel]', (el) => { this.innSel = el.dataset.innsel; audio.play('click'); this.render(); });
@@ -1329,11 +1340,11 @@ export class Windows {
     on('[data-shopsrc]', (el) => { this.shopSrc = el.dataset.shopsrc; this.vSel = null; this.sel = null; audio.play('click'); this.render(); });
     on('[data-vshop]', (el) => { this.vSel = Number(el.dataset.vshop); audio.play('click'); this.render(); });
     on('[data-popclose]', () => { this.sel = null; this.vsel = null; audio.play('click'); this.render(); });
-    on('[data-gmergeall]', () => {
+    on('[data-gmergeall]', async () => {
       const have = [...new Set([...st.inv, ...vault().items].filter((x) => BASES[x?.base]?.type === 'gem').map((x) => x.base))].map((base) => ({ base, qty: resCount(st, base) }));
       { let n = 0, g = 0; for (const x of have) { const b = BASES[x.base]; if (b.grade + 1 >= GEM_GRADES.length) continue; const k = Math.floor(x.qty / 3); n += k; g += k * mergeCost(b.grade); }
         if (!n) { w.ui.toast('합칠 보석이 없습니다'); audio.play('error'); return; }
-        if (!confirm(`보석을 ${n}번 합칩니다 (금화 최대 ${g.toLocaleString()} G).\n실패하면 보석을 잃을 수 있습니다. 합칠까요?`)) return; }
+        if (!(await gameConfirm('일괄 합치기', `보석을 ${n}번 합칩니다 · 금화 최대 ${g.toLocaleString()} G\n실패하면 보석을 잃을 수 있습니다`, '합치기'))) return; }
       let ok = 0, fail = 0, lost = 0, gold = 0; const made = {};
       for (const x of have) { const b = BASES[x.base]; if (b.grade + 1 >= GEM_GRADES.length) continue; const cost = mergeCost(b.grade), nid = gemId(b.gem, b.grade + 1);
         for (let k = Math.floor(x.qty / 3); k > 0; k--) { if (st.gold < cost || resCount(st, x.base) < 3) break; st.gold -= cost; gold += cost;
@@ -1344,14 +1355,14 @@ export class Windows {
       w.ui.dirty(); this.render();
     });
     on('[data-expdrop]', (el) => { const [r, v] = el.dataset.expdrop.split('|'), t = townOf(st); (t.expDrop ||= {})[r] = v === '1'; audio.play('click'); this.render(); });
-    on('[data-junk]', (el) => { const r = el.dataset.junk, nm = { potion: '물약', common: '일반 장비', magic: '마법 장비', rare: '희귀 장비', hero: '영웅 장비', legend: '전설 장비', myth: '신화 장비' }[r];
-      if (!confirm(`가방 · 창고의 ${nm}을(를) 모두 버립니다. 되돌릴 수 없습니다.`)) return; const n = discardJunk(st, r); audio.play('click'); w.ui.toast(`${nm} ${n}개를 버렸습니다`); w.ui.dirty(); this.render(); });
+    on('[data-junk]', async (el) => { const r = el.dataset.junk, nm = { potion: '물약', common: '일반 장비', magic: '마법 장비', rare: '희귀 장비', hero: '영웅 장비', legend: '전설 장비', myth: '신화 장비' }[r];
+      if (!(await gameConfirm('버리기', `가방 · 창고의 ${nm}을(를) 모두 버립니다. 되돌릴 수 없습니다`, '버리기'))) return; const n = discardJunk(st, r); audio.play('click'); w.ui.toast(`${nm} ${n}개를 버렸습니다`); w.ui.dirty(); this.render(); });
     on('[data-esel]', (el) => { this.enhSel = el.dataset.esel; audio.play('click'); this.render(); });
     on('[data-vsalv]', (el) => { this.salvSel = el.dataset.vsalv; audio.play('click'); this.render(); });
     on('[data-shard]', (el) => { const u = Number(el.dataset.shard); this.shardSel = this.shardSel === u ? null : u; this.shardLocks = []; audio.play('click'); this.render(); });
     on('[data-starget]', (el) => { this.shardTarget = el.dataset.starget; this.shardLocks = []; audio.play('click'); this.render(); });
     on('[data-slock]', (el) => { const k = Number(el.dataset.slock), L = this.shardLocks ||= []; const i = L.indexOf(k); if (i >= 0) L.splice(i, 1); else L.push(k); audio.play('click'); this.render(); });
-    on('[data-sapply]', () => {
+    ask('[data-sapply]', () => { const it = gearAt(st, this.shardTarget); return it ? ['파편 쓰기', '옵션이 바뀝니다', '쓰기', itemHtml(it)] : null; }, () => {
       const it = gearAt(st, this.shardTarget);
       const sm = Object.values(townOf(st).plots).find((q) => q.type === 'smithy');
       const r = applyShard(st, it, this.shardSel, this.shardLocks || [], sm?.lv || 0); if (r.ok && String(this.shardTarget).startsWith('v:')) vaultSave();
@@ -1375,22 +1386,22 @@ export class Windows {
     on('[data-vput]', (el) => { const r = vaultPut(st, Number(el.dataset.vput)); if (!r.ok && r.why) { w.ui.toast(r.why); audio.play('error'); } else audio.play('click'); w.ui.dirty(); this.render(); });
     on('[data-vtake]', (el) => { const r = vaultTake(st, Number(el.dataset.vtake)); if (!r.ok && r.why) { w.ui.toast(r.why); audio.play('error'); } else audio.play('click'); w.ui.dirty(); this.render(); });
     on('[data-notes]', () => showNotes());
-    on('[data-research]', (el) => townDone(researchStart(st, el.dataset.research), '연구를 시작했습니다'));
+    ask('[data-research]', () => ['연구', '연구를 시작합니다', '시작'], (el) => townDone(researchStart(st, el.dataset.research), '연구를 시작했습니다'));
     on('[data-mgear]', (el) => this.mercGearPick(el.dataset.mgear));
     on('[data-school]', (el) => { this.skillSchool = el.dataset.school; this.skillSel = null; audio.play('click'); this.render(); });
     on('[data-gsel]', (el) => { this.gemSel = el.dataset.gsel; audio.play('click'); this.render(); });
     const gemItem = (key) => gearAt(st, key);
-    on('[data-gmerge]', (el) => {
+    ask('[data-gmerge]', (el) => { const b = BASES[el.dataset.gmerge]; return ['보석 합치기', `${b.name} 3개 · 금화 ${mergeCost(b.grade).toLocaleString()} G · 성공 ${Math.round(mergeChance(b.grade) * 100)}%\n실패하면 보석을 잃을 수 있습니다`, '합치기', itemHtml({ base: el.dataset.gmerge })]; }, (el) => {
       const id = el.dataset.gmerge, b = BASES[id], cost = mergeCost(b.grade); if (resCount(st, id) < 3 || st.gold < cost) return;
       st.gold -= cost;
       if (Math.random() < mergeChance(b.grade)) { resTake(st, id, 3); const nid = gemId(b.gem, b.grade + 1); addItem(st, makeItem(nid, { qty: 1 }, st)); audio.play('rankup'); this.popup('합치기 성공', `<div class="aff" style="color:#c0b0ff">${BASES[nid].name}</div>`); }
       else { const lost = Math.floor(Math.random() * 3); resTake(st, id, lost); audio.play('error'); this.popup('합치기 실패', `<div class="aff">${b.name} ${lost}개를 잃었습니다</div>`); } // 실패: 0~2개가 사라진다
       w.ui.dirty(); this.render();
     });
-    on('[data-gput]', (el) => { const i = el.dataset.gput.lastIndexOf('|'), key = el.dataset.gput.slice(0, i), id = el.dataset.gput.slice(i + 1), it = gemItem(key); if (!it || it.gems.length >= it.sockets || resCount(st, id) < 1) return; resTake(st, id, 1); it.gems.push(id); if (key.startsWith('v:')) vaultSave(); audio.play('rankup'); w.refreshGear(); w.ui.dirty(); this.render(); });
-    on('[data-gpull]', (el) => { const i = el.dataset.gpull.lastIndexOf('|'), key = el.dataset.gpull.slice(0, i), k = Number(el.dataset.gpull.slice(i + 1)), it = gemItem(key), g = it?.gems[k]; if (!g) return; const c = pullCost(g); if (st.gold < c) { w.ui.toast('금화가 모자랍니다'); return; } st.gold -= c; it.gems.splice(k, 1); if (key.startsWith('v:')) vaultSave(); addItem(st, makeItem(g, { qty: 1 }, st)); audio.play('click'); w.refreshGear(); w.ui.dirty(); this.render(); });
-    on('[data-var]', (el) => { const s = st.skills[this.skillSel]; if (!s) return; const [r, k] = el.dataset.var.split('|'); if (s.rank < +r || s.mod?.[r]) return; (s.mod ||= {})[r] = k; audio.play('rankup'); w.ui.dirty(); this.render(); });
-    on('[data-repick]', (el) => {
+    ask('[data-gput]', (el) => { const i = el.dataset.gput.lastIndexOf('|'), it = gearAt(st, el.dataset.gput.slice(0, i)), g = el.dataset.gput.slice(i + 1); return it ? ['보석 끼우기', `${itemName(it)}에 끼웁니다`, '끼우기', itemHtml({ base: g }, gemSub(g))] : null; }, (el) => { const i = el.dataset.gput.lastIndexOf('|'), key = el.dataset.gput.slice(0, i), id = el.dataset.gput.slice(i + 1), it = gemItem(key); if (!it || it.gems.length >= it.sockets || resCount(st, id) < 1) return; resTake(st, id, 1); it.gems.push(id); if (key.startsWith('v:')) vaultSave(); audio.play('rankup'); w.refreshGear(); w.ui.dirty(); this.render(); });
+    ask('[data-gpull]', (el) => { const i = el.dataset.gpull.lastIndexOf('|'), it = gearAt(st, el.dataset.gpull.slice(0, i)), g = it?.gems[Number(el.dataset.gpull.slice(i + 1))]; return g ? ['보석 빼기', `금화 ${pullCost(g).toLocaleString()} G`, '빼기', itemHtml({ base: g }, gemSub(g))] : null; }, (el) => { const i = el.dataset.gpull.lastIndexOf('|'), key = el.dataset.gpull.slice(0, i), k = Number(el.dataset.gpull.slice(i + 1)), it = gemItem(key), g = it?.gems[k]; if (!g) return; const c = pullCost(g); if (st.gold < c) { w.ui.toast('금화가 모자랍니다'); return; } st.gold -= c; it.gems.splice(k, 1); if (key.startsWith('v:')) vaultSave(); addItem(st, makeItem(g, { qty: 1 }, st)); audio.play('click'); w.refreshGear(); w.ui.dirty(); this.render(); });
+    ask('[data-var]', () => ['스킬 변형', '한 번 고르면 바꿀 수 없습니다', '고르기'], (el) => { const s = st.skills[this.skillSel]; if (!s) return; const [r, k] = el.dataset.var.split('|'); if (s.rank < +r || s.mod?.[r]) return; (s.mod ||= {})[r] = k; audio.play('rankup'); w.ui.dirty(); this.render(); });
+    ask('[data-repick]', () => ['특성 다시 고르기', '금화를 내고 특성을 다시 고릅니다', '고르기'], (el) => {
       const t = st.titles[Number(el.dataset.repick)], cost = repickCost(t);
       if (st.gold < cost) return;
       w.ui.titlePick({ tier: t.tier, key: t.key, name: t.name, choices: perkChoices(t.key, t.tier) }, (perk) => { st.gold -= cost; t.perk = perk; w.ui.toast(`${t.name}: ${perk.text}`, '#ffd860'); w.ui.dirty(); this.render(); });
@@ -1402,13 +1413,13 @@ export class Windows {
       audio.play('click'); w.ui.toast(it.lock ? '잠갔습니다' : '잠금을 풀었습니다'); w.ui.dirty(); this.render();
     });
     // v0.45 창고 아이템도 상점에서 판다
-    on('[data-vsell]', (el) => {
+    ask('[data-vsell]', (el) => { const it = vault().items.find((x) => x?.uid === Number(el.dataset.vsell)); return it && !it.lock ? ['판매', `${itemValue(it).toLocaleString()} G`, '판매', itemHtml(it)] : null; }, (el) => {
       if (!vaultReady()) { w.ui.toast('창고를 불러오는 중입니다'); return; }
       const V = vault().items, i = V.findIndex((x) => x?.uid === Number(el.dataset.vsell)), it = V[i]; if (!it) return;
       if (it.lock) { w.ui.toast('잠근 아이템입니다'); audio.play('error'); return; }
       const g = itemValue(it); V.splice(i, 1); vaultSave(); st.gold += g; w.ui.toast(`${itemName(it)} 판매: +${g.toLocaleString()}G`); audio.play('coin'); this.vSel = null; w.ui.dirty(); this.render();
     });
-    on('[data-sellpick]', (el) => {
+    ask('[data-sellpick]', (el) => (['on', 'off'].includes(el.dataset.sellpick) || !this.sellPick?.length ? null : ['판매', `고른 아이템 ${this.sellPick.length}개를 팝니다`, '판매']), (el) => {
       const a = el.dataset.sellpick;
       if (a === 'on') this.sellPick = [];
       else if (a === 'off') this.sellPick = null;
@@ -1426,7 +1437,7 @@ export class Windows {
     on('[data-bagsort]', () => { st.inv.sort(itemOrder); audio.play('click'); w.ui.dirty(); this.render(); });
     // v0.44.34 창고 정렬 (서버 창고와 맞춘 뒤에만)
     on('[data-vsort]', () => { if (!vaultReady()) { w.ui.toast('창고를 불러오는 중입니다'); return; } vault().items.sort(itemOrder); vaultSave(); audio.play('click'); this.render(); });
-    on('[data-selljunk]', () => {
+    ask('[data-selljunk]', () => ['일괄 판매', '가방의 일반 · 마법 장비를 모두 팝니다', '판매'], () => {
       let g = 0, n = 0;
       st.inv = st.inv.filter((it) => { if (it.lock || it.book || !BASES[it.base]?.slot || it.set || !['common', 'magic'].includes(it.rarity)) return true; g += itemValue(it); n++; return false; });
       if (n) { st.gold += g; audio.play('coin'); w.ui.toast(`장비 ${n}개 판매: +${g.toLocaleString()}G`, '#ffd84a'); }
@@ -1472,7 +1483,7 @@ export class Windows {
     on('[data-install]', async () => { const p = window.__install; if (!p) return; p.prompt(); await p.userChoice.catch(() => {}); window.__install = null; this.render(); });
     on('[data-save]', () => { this.save(true); w.ui.toast('저장했습니다'); });
     on('[data-reset]', async () => {
-      if (confirm('정말 이 캐릭터를 지울까요? 되돌릴 수 없습니다.')) {
+      if (await gameConfirm('캐릭터 지우기', '정말 이 캐릭터를 지울까요? 되돌릴 수 없습니다', '지우기')) {
         window.__noSave = true;
         const { deleteChar } = await import('../game/chars.js');
         deleteChar(st.cid);
