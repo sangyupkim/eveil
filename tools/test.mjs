@@ -550,4 +550,11 @@ test('용병 하루 품삯: 날짜가 바뀌면 내고, 모자라면 못 받은 
   assert.ok(TW_.rollMerc(Math.random, 1).cost > 5000 && TW_.GRADES[4].name === '신화');
 });
 
+test('잠근 장비는 분해되지 않는다', () => {
+  const p = { gold: 0, inv: [], town: { plots: {}, mercs: [], last: Date.now() }, nextUid: 1 };
+  const it = makeItem('short_sword', { rarity: 'magic', ilvl: 10 }, p); it.lock = true; p.inv.push(it);
+  assert.ok(!TW_.salvage(p, it.uid).ok && p.inv.length === 1);
+  it.lock = false; assert.ok(TW_.salvage(p, it.uid).ok);
+});
+
 console.log(`\n${n}개 통과`);

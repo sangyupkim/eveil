@@ -189,12 +189,13 @@ export function salvageValue(it) {
 }
 // 분해 파편 확률: 마법 8% · 희귀 15% · 영웅 25% · 전설 35%
 export const SALVAGE_SHARD = { common: 0, magic: 0.08, rare: 0.15, hero: 0.25, legend: 0.35 };
-export function salvage(st, uid) {
-  const i = st.inv.findIndex((x) => x.uid === uid);
-  const it = st.inv[i];
+export function salvage(st, uid, fromVault = false) {
+  const L = fromVault ? vault().items : st.inv, i = L.findIndex((x) => x?.uid === uid);
+  const it = L[i];
+  if (it?.lock) return { ok: false, why: '잠근 아이템입니다' };
   if (!it || it.book || !BASES[it.base]?.slot || it.named) return { ok: false, why: '분해할 수 없습니다' };
   const v = salvageValue(it), t = townOf(st);
-  st.inv.splice(i, 1); t.ore += v.ore; t.mats[v.mat] = (t.mats[v.mat] || 0) + v.matN;
+  L.splice(i, 1); if (fromVault) vaultSave(); t.ore += v.ore; t.mats[v.mat] = (t.mats[v.mat] || 0) + v.matN;
   // 분해하면 그 장비의 옵션 하나가 능력치 파편으로 나올 수 있다 (등급이 높을수록 자주)
   let shard = null;
   if (it.affixes?.length && Math.random() < SALVAGE_SHARD[it.rarity] * (1 + 0.2 * (t.research?.shard || 0))) { shard = shardFrom(it, st); if (shard) st.inv.push(shard); }

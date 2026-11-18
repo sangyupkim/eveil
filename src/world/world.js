@@ -1858,7 +1858,7 @@ export class World {
     st.inv = st.inv.filter((it) => {
       // 땅에서 막 주운 장비만 판다 — 한 번이라도 입었던 것 · 벗은 것 · 창고에서 꺼낸 것은 절대 팔지 않는다
       const upTo = ['common', 'magic', 'rare'].indexOf(st.settings.autoSellTo || 'rare'), rk = ['common', 'magic', 'rare'].indexOf(it.rarity); // 설정한 등급까지만 판다
-      if (!it.loot || it.worn || it.book || !BASES[it.base]?.slot || it.set || it.named || rk < 0 || rk > upTo) return true;
+      if (it.lock || !it.loot || it.worn || it.book || !BASES[it.base]?.slot || it.set || it.named || rk < 0 || rk > upTo) return true;
       g += itemValue(it); n++; return false;
     });
     if (n) { st.gold += g; this.ui.log(`자동 판매: 장비 ${n}개 +${g.toLocaleString()}G`, '#ffd84a'); sfx('coin'); this.ui.dirty(); }
