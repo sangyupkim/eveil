@@ -688,3 +688,9 @@ html.force-land #rotate { display: none !important; }
 #gameAsk .plate { min-width: 7em; white-space: nowrap; word-break: keep-all; }
 #gameAsk .askItem { display: flex; align-items: center; gap: .6em; justify-content: center; margin: .3em 0; }
 #gameAsk .askItem img { width: 3em; height: 3em; }
+#gameAsk .askPick { display: grid; grid-template-columns: repeat(auto-fill, minmax(7em, 1fr)); gap: 6px; margin: .6em 0; max-width: 34em; }
+#gameAsk .askPick .btn { display: flex; flex-direction: column; align-items: center; padding: 6px 4px; white-space: nowrap; }
+#gameAsk .askPick .btn small { font-size: .75em; color: #c8c0b0; }
+#gameAsk .askPick .btn:disabled { opacity: .35; }
+#gameAsk .askPick .btn:not(.on):not(:disabled) { opacity: .55; filter: grayscale(.6); }
+#gameAsk .askPick .btn.on { outline: 2px solid #ffd84a; outline-offset: -2px; }

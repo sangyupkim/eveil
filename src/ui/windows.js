@@ -1,5 +1,5 @@
 import { bagSize } from '../game/inventory.js';
-import { gameConfirm } from './ask.js';
+import { gameConfirm, gamePick } from './ask.js';
 // 창: 가방(장비) · 스킬 · 능력(스탯/성향) · 상점 · 메뉴
 import { STATS, STAT_NAMES, STAT_COLORS, STAT_DESC, CONFIG } from '../data/config.js';
 import { SKILLS, BOOK_TIERS } from '../data/skills.js';
@@ -490,7 +490,7 @@ export class Windows {
     const junk = fromV ? vault().items.filter(ok).map((x) => ['v:' + x.uid, x, '창고']) : st.inv.filter(ok).map((x) => ['b:' + x.uid, x, '가방']);
     if (!junk.some((x) => x[0] === this.salvSel)) this.salvSel = null;
     const cur = junk.find((x) => x[0] === this.salvSel);
-    const R = `<h3>${this.srcBtns('salvsrc', fromV)} <span class="cnt">${junk.length}</span>${fromV ? '' : '<button class="btn" data-salvageall="1" style="margin-left:auto">일반 · 마법 모두 분해</button>'}</h3>` + this.itemCells(junk, this.salvSel, 'vsalv');
+    const R = `<h3>${this.srcBtns('salvsrc', fromV)} <span class="cnt">${junk.length}</span>${fromV ? '' : '<button class="btn" data-salvageall="1" style="margin-left:auto">등급별 분해</button>'}</h3>` + this.itemCells(junk, this.salvSel, 'vsalv');
     if (!cur) return [`<h3>분해</h3><div class="forgeSlot empty"></div>`, R];
     const it = cur[1], v = salvageValue(it);
     return [`<div class="salvInfo">${this.describe(it, 'view')}</div><div class="kv"><span>강화석</span><b>${v.ore}</b><span>${MATERIALS[v.mat].name}</span><b>${v.matN}</b></div><div class="btns forgeGo"><button class="btn gold big" data-salvage="${fromV ? 'v:' : ''}${it.uid}" ${it.lock ? 'disabled' : ''}>${it.lock ? '잠김' : '분해'}</button></div>`, R];
@@ -1038,7 +1038,7 @@ export class Windows {
             <button class="btn" data-enh="${key}" ${max || st.gold < c.gold || resCount(st, c.oreId) < c.ore ? 'disabled' : ''}>강화</button></div>`;
         }
         const junk = st.inv.filter((x) => !x.book && BASES[x.base]?.slot && !x.named);
-        if (junk.length) right += `<h3 style="margin-top:8px">분해 <button class="btn" data-salvageall="1">일반 · 마법 모두</button></h3>` + junk.map((x) => { const v = salvageValue(x); return `<div class="row"><div class="cell shopIco${rar(x)}">${ico(x)}</div><div class="grow"><b style="color:${itemColor(x)}">${esc(itemName(x))}</b><div class="note">강화석 ${v.ore} · ${MATERIALS[v.mat].name} ${v.matN}</div></div><button class="btn" data-salvage="${x.uid}">분해</button></div>`; }).join('');
+        if (junk.length) right += `<h3 style="margin-top:8px">분해 <button class="btn" data-salvageall="1">등급별 분해</button></h3>` + junk.map((x) => { const v = salvageValue(x); return `<div class="row"><div class="cell shopIco${rar(x)}">${ico(x)}</div><div class="grow"><b style="color:${itemColor(x)}">${esc(itemName(x))}</b><div class="note">강화석 ${v.ore} · ${MATERIALS[v.mat].name} ${v.matN}</div></div><button class="btn" data-salvage="${x.uid}">분해</button></div>`; }).join('');
         right += COL + this.shardPanel(b);
       }
       if (b.type === 'lab') {
@@ -1111,7 +1111,7 @@ export class Windows {
     return this.tabView('보석상', 'gems', [['put', '끼우기'], ['merge', '합치기']], (k) => {
       if (k === 'put') return [mid, left + leftV];
       if (!have.some((x) => x.base === this.gemMerge)) this.gemMerge = have[0]?.base;
-      const R = `<h3>가진 보석 <span class="cnt">${have.length}</span><button class="btn gold" data-gmergeall="1" style="margin-left:auto">일괄 합치기</button></h3><div class="grid fGrid">${have.map((x) => `<div class="cell${x.base === this.gemMerge ? ' sel' : ''}" data-gmsel="${x.base}" title="${esc(BASES[x.base].name)}">${ico(x)}<span class="q">${x.qty}</span></div>`).join('') || '<div class="note">없음</div>'}</div>`;
+      const R = `<h3>가진 보석 <span class="cnt">${have.length}</span><button class="btn gold" data-gmergeall="1" style="margin-left:auto">등급별 합치기</button></h3><div class="grid fGrid">${have.map((x) => `<div class="cell${x.base === this.gemMerge ? ' sel' : ''}" data-gmsel="${x.base}" title="${esc(BASES[x.base].name)}">${ico(x)}<span class="q">${x.qty}</span></div>`).join('') || '<div class="note">없음</div>'}</div>`;
       const x = have.find((y) => y.base === this.gemMerge);
       if (!x) return ['<h3>합치기</h3><div class="forgeSlot empty"></div>', R];
       const b = BASES[x.base], up = b.grade + 1 < GEM_GRADES.length, cost = mergeCost(b.grade), ch = mergeChance(b.grade), nx = up ? gemId(b.gem, b.grade + 1) : null;
@@ -1333,7 +1333,16 @@ export class Windows {
     on('[data-mzoom]', (el) => { const Z = [1, 1.6, 2.4, 3.2], i = Math.max(0, Math.min(Z.length - 1, Z.indexOf(this.mapZoom || 1) + Number(el.dataset.mzoom))); this.mapZoom = Z[i]; this.mapCenter = true; audio.play('click'); this.render(); });
     on('[data-camp]', (el) => { const [z, what] = el.dataset.camp.split('|'); const r = w.buildCamp(z, what); if (!r.ok && r.why) w.ui.toast(r.why); w.ui.dirty(); this.render(); });
     ask('[data-salvage]', (el) => { const raw = String(el.dataset.salvage), it = gearAt(st, raw.startsWith('v:') ? raw : 'b:' + raw); return it ? ['분해', '되돌릴 수 없습니다', '분해', itemHtml(it)] : null; }, (el) => { const raw = el.dataset.salvage, r = salvage(st, Number(String(raw).replace('v:', '')), String(raw).startsWith('v:')); if (r.ok) { audio.play('coin'); w.ui.toast(`분해: 강화석 ${r.ore} · ${MATERIALS[r.mat].name} ${r.matN}`, '#ffd84a'); if (r.shard) w.ui.toast(`능력치 파편: ${affixText(r.shard.shard)}`, '#c58cff'); } townDone(r); });
-    ask('[data-salvageall]', () => ['일괄 분해', '가방의 일반 · 마법 장비를 모두 분해합니다', '분해'], () => { let n = 0, sh = 0; for (const x of [...st.inv]) if (!x.book && BASES[x.base]?.slot && ['common', 'magic'].includes(x.rarity)) { const r = salvage(st, x.uid); if (r.ok) { n++; if (r.shard) sh++; } } if (sh) w.ui.toast(`능력치 파편 ${sh}개`, '#c58cff'); audio.play('coin'); w.ui.toast(`장비 ${n}개 분해`, '#ffd84a'); townDone({ ok: true }); });
+    // v0.45.5 등급을 골라 한꺼번에 분해 (가방, 잠근 장비 제외)
+    on('[data-salvageall]', async () => {
+      const can = (x) => !x.book && !x.lock && BASES[x.base]?.slot;
+      const cnt = (r) => st.inv.filter((x) => can(x) && x.rarity === r).length;
+      const opts = RARITY_IDS.map((r) => ({ key: r, label: RARITY[r].name, color: RARITY[r].color, sub: `${cnt(r)}개`, on: ['common', 'magic'].includes(r), off: !cnt(r) }));
+      if (!opts.some((o) => !o.off)) { w.ui.toast('분해할 장비가 없습니다'); audio.play('error'); return; }
+      audio.play('click');
+      const pick = await gamePick('등급별 분해', opts, '분해', '가방의 고른 등급 장비를 모두 분해합니다'); if (!pick?.length) return;
+      let n = 0, sh = 0; for (const x of [...st.inv]) if (can(x) && pick.includes(x.rarity)) { const r = salvage(st, x.uid); if (r.ok) { n++; if (r.shard) sh++; } }
+      if (sh) w.ui.toast(`능력치 파편 ${sh}개`, '#c58cff'); audio.play('coin'); w.ui.toast(`장비 ${n}개 분해`, '#ffd84a'); townDone({ ok: true }); });
     on('[data-stab]', (el) => { const [k, v] = el.dataset.stab.split('|'); (this.bTab ||= {})[k] = v; audio.play('click'); this.render(); });
     on('[data-labsel]', (el) => { this.labSel = el.dataset.labsel; audio.play('click'); this.render(); });
     on('[data-innsel]', (el) => { this.innSel = el.dataset.innsel; audio.play('click'); this.render(); });
@@ -1354,16 +1363,20 @@ export class Windows {
     on('[data-popclose]', () => { this.sel = null; this.vsel = null; audio.play('click'); this.render(); });
     on('[data-gmergeall]', async () => {
       const have = [...new Set([...st.inv, ...vault().items].filter((x) => BASES[x?.base]?.type === 'gem').map((x) => x.base))].map((base) => ({ base, qty: resCount(st, base) }));
-      { let n = 0, g = 0; for (const x of have) { const b = BASES[x.base]; if (b.grade + 1 >= GEM_GRADES.length) continue; const k = Math.floor(x.qty / 3); n += k; g += k * mergeCost(b.grade); }
-        if (!n) { w.ui.toast('합칠 보석이 없습니다'); audio.play('error'); return; }
-        if (!(await gameConfirm('일괄 합치기', `보석을 ${n}번 합칩니다 · 금화 최대 ${g.toLocaleString()} G\n실패하면 보석을 잃을 수 있습니다`, '합치기'))) return; }
+      // v0.45.5 합칠 등급을 고른다 (등급마다 합칠 횟수 · 금화 · 성공 확률)
+      { const per = GEM_GRADES.map((G, k) => { if (k + 1 >= GEM_GRADES.length) return null; let n = 0; for (const x of have) if (BASES[x.base].grade === k) n += Math.floor(x.qty / 3); return n; });
+        const opts = per.map((n, k) => (n == null ? null : { key: k, label: `${GEM_GRADES[k + 1].pre || "보통"} 만들기`, sub: `${n}번 · ${Math.round(mergeChance(k) * 100)}%`, on: n > 0, off: !n })).filter(Boolean);
+        if (!opts.some((o) => !o.off)) { w.ui.toast('합칠 보석이 없습니다'); audio.play('error'); return; }
+        audio.play('click');
+        const pick = await gamePick('등급별 합치기', opts, '합치기', '실패하면 보석을 잃을 수 있습니다'); if (!pick?.length) return;
+        for (let i = have.length - 1; i >= 0; i--) if (!pick.includes(BASES[have[i].base].grade)) have.splice(i, 1); }
       let ok = 0, fail = 0, lost = 0, gold = 0; const made = {};
       for (const x of have) { const b = BASES[x.base]; if (b.grade + 1 >= GEM_GRADES.length) continue; const cost = mergeCost(b.grade), nid = gemId(b.gem, b.grade + 1);
         for (let k = Math.floor(x.qty / 3); k > 0; k--) { if (st.gold < cost || resCount(st, x.base) < 3) break; st.gold -= cost; gold += cost;
           if (Math.random() < mergeChance(b.grade)) { resTake(st, x.base, 3); resAdd(st, nid, 1); made[nid] = (made[nid] || 0) + 1; ok++; } else { const l = Math.floor(Math.random() * 3); resTake(st, x.base, l); lost += l; fail++; } } }
       if (!ok && !fail) { w.ui.toast('합칠 보석이 없습니다'); audio.play('error'); return; }
       audio.play('rankup');
-      this.popup('일괄 합치기', `<div class="kv"><span>성공</span><b>${ok}번</b><span>실패</span><b>${fail}번 · ${lost}개 잃음</b><span>금화</span><b>${gold.toLocaleString()} G</b></div>` + Object.entries(made).map(([id, n]) => `<div class="aff" style="color:#c0b0ff">${BASES[id].name} +${n}</div>`).join(''));
+      this.popup('등급별 합치기', `<div class="kv"><span>성공</span><b>${ok}번</b><span>실패</span><b>${fail}번 · ${lost}개 잃음</b><span>금화</span><b>${gold.toLocaleString()} G</b></div>` + Object.entries(made).map(([id, n]) => `<div class="aff" style="color:#c0b0ff">${BASES[id].name} +${n}</div>`).join(''));
       w.ui.dirty(); this.render();
     });
     on('[data-expdrop]', (el) => { const [r, v] = el.dataset.expdrop.split('|'), t = townOf(st); (t.expDrop ||= {})[r] = v === '1'; audio.play('click'); this.render(); });
