@@ -1,6 +1,11 @@
 // 패치 노트 (게임 안 [메뉴 → 패치 노트]에서 본다). 새 버전이 나오면 맨 위에 더한다.
-export const GAME_VERSION = '0.49.13';
+export const GAME_VERSION = '0.49.14';
 export const PATCH_NOTES = [
+  {
+    ver: '0.49.14', date: '2026-11-19',
+    head: '포탈 근처에 몬스터가 생기지 않습니다.',
+    items: ['1. 야영지 포탈 둘레의 안전한 곳에는 몬스터가 생기지 않습니다.'],
+  },
   {
     ver: '0.49.13', date: '2026-11-19',
     head: '분해 결과를 창으로 보여 줍니다.',

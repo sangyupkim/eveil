@@ -942,7 +942,7 @@ export class World {
       const bsp = bossSpot(zn);
       this.spawners.push({ zone: zn, x: bsp.x, z: bsp.z, level: zn.levels[1] + 1, tier: 'boss', timer: 0, mon: null, fixed: zn.boss });
     }
-    this.spawners = this.spawners.filter((sp) => !inCamp(sp.x, sp.z, 4));
+    this.spawners = this.spawners.filter((sp) => !inCamp(sp.x, sp.z, 6)); // v0.49.14 포탈 둘레 넉넉히
   }
 
   spawn(sp) {
@@ -968,6 +968,8 @@ export class World {
     if (tier === 'boss') actor.setGlow(0x400800);
     const a = Math.random() * Math.PI * 2;
     const fp = this.freeSpot(sp.x + Math.cos(a) * 1.5, sp.z + Math.sin(a) * 1.5, 0.9);
+    // v0.49.14 포탈(야영지) 둘레는 몬스터가 공격하지 않는 곳이라 거기서는 나지 않는다 — 범람 · 습격 · 졸개 등 모든 생성에서 둘레 밖으로 밀어낸다
+    { const c = inCamp(fp.x, fp.z, 5); if (c) { let ang = Math.atan2(fp.z - c.z, fp.x - c.x); if (!isFinite(ang)) ang = Math.random() * 6.28; for (let k = 0; k < 8; k++) { const q = this.freeSpot(c.x + Math.cos(ang) * 13, c.z + Math.sin(ang) * 13, 0.9); if (!inCamp(q.x, q.z, 5)) { fp.x = q.x; fp.z = q.z; fp.moved = true; break; } ang += 0.8; } } }
     actor.pos.set(fp.x, 0, fp.z);
     actor.facing = Math.random() * 6.28;
     actor.root.rotation.y = actor.facing;
@@ -980,7 +982,7 @@ export class World {
       exp: def.exp * (1 + 0.3 * (L - 1)) * T.exp * CK.exp,
       speed: def.speed * (tier === 'boss' ? 1.1 : 1),
       state: 'idle', atkT: 1, wanderT: Math.random() * 4, deadT: 0, slowT: 0, showHp: 0,
-      home: { x: sp.x, z: sp.z },
+      home: fp.moved ? { x: fp.x, z: fp.z } : { x: sp.x, z: sp.z }, // 포탈 둘레에서 밀려났으면 그 자리가 집
     };
     if (tier === 'normal' && !sp.forceType && Math.random() < (this.night > 0.5 ? 1 / 120 : 1 / 250)) {
       m.golden = true; m.name = '황금 ' + m.name; m.maxHp *= 3; m.exp *= 3; actor.setGlow(0x5a4400);
