@@ -183,3 +183,10 @@ body.touch #quick .slot:nth-child(8) { right: calc(var(--u) * 3.72); bottom: cal
 ::-webkit-scrollbar-thumb { background: linear-gradient(#a8844a, #6a5230); border-radius: 4px; border: 1px solid #2a2016; }
 ::-webkit-scrollbar-thumb:hover { background: linear-gradient(#c8a060, #8a6a3a); }
 ::-webkit-scrollbar-corner, ::-webkit-scrollbar-button { display: none; background: transparent; }
+
+/* v0.49.8 휴대폰 스킬 배치 「사각」: 공격 단추 위 4칸 × 2줄 (설정에서 고른다) */
+body.touch.qgrid #quick { right: calc(10px + env(safe-area-inset-right)); bottom: calc(var(--u) * 9.4 + env(safe-area-inset-bottom)); width: auto; height: auto; display: grid; grid-template-columns: repeat(4, auto); gap: calc(var(--u) * 1.4) calc(var(--u) * 0.6); }
+body.touch.qgrid #quick .slot, body.touch.qgrid #quick .slot:nth-child(n) { position: relative; right: auto; bottom: auto; transform: none; width: calc(var(--u) * 3.6); height: calc(var(--u) * 3.6); border-radius: 3px; background: url('assets/flare/menus/slot_empty.png') center / 100% 100%; border: 1px solid var(--brass-dk); }
+body.touch.qgrid #quick .slot .ico { border-radius: 0; width: 80%; height: 80%; }
+body.touch.qgrid #quick .slot .cd { border-radius: 0; }
+body.touch.qgrid #quick .slot .nm { display: block; }

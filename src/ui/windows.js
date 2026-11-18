@@ -1238,6 +1238,7 @@ export class Windows {
         <div class="setRow"><span>조이스틱 크기</span><div class="opts">${uiSlider('joy', 0.6, 1.6)}</div></div>
         <div class="setRow"><span>단추 크기</span><div class="opts">${uiSlider('btn', 0.6, 1.6)}</div></div>
         <div class="setRow"><span>단추 투명도</span><div class="opts">${uiSlider('alpha', 0.3, 1)}</div></div>
+        <div class="setRow"><span>휴대폰 스킬 배치</span><div class="opts"><button class="btn${set.skillLayout === 'grid' ? '' : ' on'}" data-qlay="ring">원형</button><button class="btn${set.skillLayout === 'grid' ? ' on' : ''}" data-qlay="grid">사각</button></div></div>
         <div class="setRow"><span>UI 위치</span><div class="opts"><button class="btn" data-uiedit="1">위치 편집</button><button class="btn" data-uireset="1">처음대로</button></div></div>
         <div class="setRow"><span>세계 단계</span><div class="opts">${TIER_NAMES.map((n, i) => `<button class="btn${(st.worldTier || 1) === i + 1 ? ' on' : ''}" data-tier="${i + 1}" ${i + 1 > (st.maxTier || 1) ? 'disabled' : ''}>${n}</button>`).join('')}</div></div>
         <div class="setRow"><span>타겟 고정</span><div class="opts">${onoff('targetLock', set.targetLock !== false)}</div></div>
@@ -1372,6 +1373,7 @@ export class Windows {
     body.querySelectorAll('[data-ui]').forEach((el) => {
       el.oninput = () => { uiSettings(st)[el.dataset.ui] = Number(el.value) / 100; el.nextElementSibling.textContent = el.value; applyUi(st); };
     });
+    on('[data-qlay]', (el) => { st.settings.skillLayout = el.dataset.qlay; applyUi(st); audio.play('click'); w.ui.dirty(); this.render(); });
     on('[data-uiedit]', () => { this.close(); editUi(st, () => w.ui.toast('UI 위치를 저장했습니다')); });
     on('[data-uireset]', () => { st.settings.ui = undefined; applyUi(st); this.render(); });
     on('[data-plot]', (el) => { this.townSel = el.dataset.plot; audio.play('click'); this.render(); });

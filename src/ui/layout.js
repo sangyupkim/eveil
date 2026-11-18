@@ -14,6 +14,7 @@ export function uiSettings(st) {
 export function applyUi(st) {
   const u = uiSettings(st);
   document.documentElement.style.setProperty('--uiK', u.scale);
+  document.body.classList.toggle('qgrid', st.settings?.skillLayout === 'grid'); // v0.49.8 휴대폰 스킬 배치: 원형(기본) · 사각 두 줄
   if (globalThis.__stage) globalThis.__stage.userZoom = u.zoom; // 화면 확대는 설정에서만
   for (const [key, [sel, size, origin]] of Object.entries(PARTS)) {
     const el = $(sel);
