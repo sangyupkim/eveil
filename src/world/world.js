@@ -824,7 +824,7 @@ export class World {
     const row = (r) => `<div class="ntcRow">${r.img ? `<img src="${r.img}" alt="" />` : ''}<span style="color:${r.color}">${esc(r.name)}</span></div>`;
     const html = `<div class="clearBox"><div class="clearStats"><div class="kv tight"><span>걸린 시간</span><b>${fmtT}</b><span>준 피해</span><b>${big(dmg)}</b><span>초당 피해</span><b>${big(dmg / sec)}</b><span>처치</span><b>${run.kills || 0}</b>${run.muts?.length ? `<span>변이</span><b>${run.muts.length}개</b>` : ''}</div>${run.muts?.length ? `<div class="note" style="margin-top:6px">${run.muts.map((id) => MUTS[id].name).join(' · ')}</div>` : ''}</div>`
       + `<div class="clearLoot"><h3>보상</h3><div class="ntcRows">${rows.map(row).join('') || '<div class="note">없음</div>'}</div>${got.length ? `<h3>주운 장비 ${got.length}</h3><div class="ntcRows">${got.slice(0, 12).map((it) => row({ img: itemIcon(it), name: itemName(it), color: itemColor(it) })).join('')}</div>` : ''}</div></div>`;
-    globalThis.__game?.windows?.popup?.(title, html, true);
+    globalThis.__game?.windows?.popup?.(title, html, true, true); // 닫기를 눌러야만 사라진다
   }
   // v0.46 숨은 던전 돌파: 소문이 사라지고, 보물 상자 셋(부위) 중 하나를 고른다. 지역보다 한 단계 높은 장비 · 희귀 이상
   hiddenCleared(m) {
@@ -1507,7 +1507,7 @@ export class World {
     m.dead = true;
     if (m.dungeon && this.dungeon) this.dungeon.kills = (this.dungeon.kills || 0) + 1; else if (m.flood) { const fr = (this.floodRun ||= { t0: this.time, dmg: 0, kills: 0 }); fr.kills++; }
     if (m.sp?.zone) (this.st.zoneHunt ||= {})[m.sp.zone.id] = Date.now(); // v0.44.43 범람지: 지역별 마지막 사냥
-    if (m.tier === 'boss' && !m.flood && !this.dungeon?.unknown) this.st.bossTop = Math.max(this.st.bossTop || 0, m.level); // v0.44.62 이번 패치 뒤 잡은 가장 높은 보스 (범람 · 미지의 땅 기준)
+    if (m.tier === 'boss' && !m.flood && !this.dungeon?.unknown && m.level >= (this.st.bossTop || 0)) { this.st.bossTop = m.level; const zi = ALL_ZONES.indexOf(m.sp?.zone || this.dungeon?.zone); if (zi >= 0) this.st.bossTopZi = zi; } // v0.49.12 그 보스의 지역도 (범람 세기 보정) // v0.44.62 이번 패치 뒤 잡은 가장 높은 보스 (범람 · 미지의 땅 기준)
     if (m.flood) this.floodDeath(m);
     else if (m.tier === 'boss' && !m.dungeon && m.sp?.zone && Math.random() < 0.1) { resAdd(this.st, 'odd_map', 1); this.ui.toast('알 수 없는 지도 조각', '#ffd060'); } // v0.44.49 필드 보스 10%
     if (src !== 'perk') this.perk('kill');
@@ -1857,6 +1857,8 @@ export class World {
       m.affix = tier === 'boss' ? [pick(), pick()] : tier === 'elite' ? [pick(), pick()] : [pick()];
       if (m.affix.includes('frenzy')) { m.speed *= 1.3; m.def = { ...m.def, interval: m.def.interval / 1.3 }; }
       m.name = `${tier === 'boss' ? '범람한 ' : ''}${m.name} [${m.affix.map((x) => FLOOD_AFFIX[x].name).join('·')}]`;
+      // v0.49.12 지역 세기 보정은 범람 난 지역이 아니라 가장 높은 보스를 잡은 지역 것으로 (낮은 지역 범람이 레벨만 높고 약했다)
+      { const fz = this.floodRefZi(), cz = ALL_ZONES.indexOf(zn); if (fz >= 0 && cz >= 0 && fz !== cz) { const A = chapterK(fz, tier), B = chapterK(cz, tier); m.maxHp = Math.round(m.maxHp * A.hp / B.hp); m.hp = m.maxHp; m.dmg = m.dmg.map((v) => v * A.dmg / B.dmg); } }
       if (k) { m.maxHp *= k; m.hp = m.maxHp; }
       m.actor.setGlow(0x400010);
       return m;
@@ -1870,6 +1872,11 @@ export class World {
     this.ui.toast(`범람한 ${zn.name}`, '#ff6a5a');
   }
   // 범람 몬스터 레벨: 보스를 잡은 지역 · 깬 던전 단계 중 가장 높은 곳(세계 단계 포함) × 1.1
+  // 범람 세기 기준 지역: 가장 높은 보스를 잡은 지역 (예전 저장은 보스를 잡은 지역 중 가장 높은 곳)
+  floodRefZi() {
+    if (this.st.bossTopZi != null) return this.st.bossTopZi;
+    let best = -1; ALL_ZONES.forEach((z, i) => { if (this.bossCleared(z)) best = i; }); return best;
+  }
   floodLevel(zn) {
     // v0.44.62 이번 패치 뒤 잡은 가장 높은 보스 레벨 기준 (아직 없으면 그 지역 레벨)
     const top = this.st.bossTop || (zn.levels[1] + this.tierOffset);

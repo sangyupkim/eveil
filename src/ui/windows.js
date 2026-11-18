@@ -63,10 +63,11 @@ const pentagon = (stats) => {
 };
 // 패치 노트 창 (새 버전이면 처음 한 번 저절로)
 // 팝업 닫기 (확인 · × · 바깥 누르기 · Esc). main.js의 공지 창도 쓴다
-export function closable(el) {
-  const close = () => { audio.play('click'); el.remove(); document.removeEventListener('keydown', esc); };
+export function closable(el, strict = false) {
+  const close = () => { audio.play('click'); el.remove(); document.removeEventListener('keydown', esc, true); };
   const esc = (e) => { if (e.key === 'Escape' && document.body.contains(el)) { e.stopPropagation(); close(); } };
   el.querySelectorAll('.popClose, .popX').forEach((b) => { b.onclick = close; });
+  if (strict) return; // v0.49.12 결과 창: 닫기 · 확인 단추로만 닫는다
   el.addEventListener('pointerdown', (e) => { if (e.target === el) close(); });
   document.addEventListener('keydown', esc, true);
 }
@@ -925,13 +926,18 @@ export class Windows {
 
   // 창 위 팝업 (결과 · 알림 · 우편함 · 용병 장비 …): [확인] · 오른쪽 위 × · 바깥 누르기 · Esc로 닫는다.
   // 닫기 단추는 반드시 popClose로 찾는다 (내용 안 단추가 먼저 잡혀 닫히지 않던 문제, v0.39.2)
-  popup(title, html, wide = true) {
-    document.getElementById('winAlert')?.remove();
+  popup(title, html, wide = true, strict = false) {
+    const cur = document.getElementById('winAlert');
+    // v0.49.12 결과 창(strict)이 떠 있으면 다른 팝업은 그것을 닫은 뒤에 띄운다 (결과 창이 다른 팝업에 덮여 사라지지 않게)
+    if (cur?.dataset.strict) { (this.popWait ||= []).push([title, html, wide, strict]); return; }
+    cur?.remove();
     const el = document.createElement('div');
     el.id = 'winAlert';
-    el.innerHTML = `<div class="${wide ? 'popWide' : ''}"><button class="popX" title="닫기">×</button><b>${esc(title)}</b>${html}<button class="plate gold popClose">확인</button></div>`;
-    closable(el);
+    if (strict) el.dataset.strict = '1';
+    el.innerHTML = `<div class="${wide ? 'popWide' : ''}"><button class="popX" title="닫기">×</button><b>${esc(title)}</b>${html}<button class="plate gold popClose">${strict ? '닫기' : '확인'}</button></div>`;
+    closable(el, strict);
     document.body.appendChild(el);
+    if (strict) new MutationObserver((_, ob) => { if (!document.body.contains(el)) { ob.disconnect(); const q = this.popWait || []; this.popWait = []; for (const a of q) this.popup(...a); } }).observe(document.body, { childList: true });
   }
   // v0.44.15 완료 알림: 파견 귀환 · 제작 · 수확 · 연구 · 공사. sections = [{ title, rows: [{ img, name, qty, color, item }] }]
   // 왼쪽 목록 · 오른쪽 고른 아이템 설명. 열려 있는 동안 새 알림은 같은 창에 더한다. ×· 바깥 · Esc · 확인으로 닫는다
