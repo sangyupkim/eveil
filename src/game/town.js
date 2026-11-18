@@ -472,7 +472,7 @@ export function claim(st, id, now = Date.now(), rng = Math.random, put = null) {
   out.items = got; out.held = held; out.lost = 0; // v0.44.68 자리가 없어 못 받은 것은 용병이 들고 기다린다 (넘쳐 담지 않는다)
   gainExp(m, ex.mult * 10); lifeProgress(st, 'expedition');
   // v0.44.47 파견소 4단계부터 긴 파견은 지도 조각을 가져온다 (긴 원정 30% · 야영 토벌 1 · 깊은 원정 1~2)
-  if (gl >= 4) { const mp = ex.id === 'deep' ? 1 + (rng() < 0.5 ? 1 : 0) : ex.id === 'siege' ? 1 : ex.id === 'long' && rng() < 0.3 ? 1 : 0; if (mp) { resAdd(st, 'map_piece', mp); out.mapPiece = mp; } }
+  if (gl >= 4) { const mp = ex.id === 'deep' ? 1 + (rng() < 0.5 ? 1 : 0) : ex.id === 'siege' ? 1 : ex.id === 'long' && rng() < 0.3 ? 1 : 0; if (mp) { resAdd(st, 'odd_map', mp); out.mapPiece = mp; } }
   growSkill(m, 'hunt', ex.mult * 1.5);
   m.job = null;
   return out;

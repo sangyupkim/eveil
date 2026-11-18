@@ -719,3 +719,6 @@ html.force-land #rotate { display: none !important; }
 /* 이름 바로 옆에 값 (눈이 멀리 오가지 않게) */
 .kv.tight { grid-template-columns: auto auto; justify-content: start; column-gap: 1.4em; }
 .kv.tight b { text-align: left; }
+/* v0.46 소문 핀: 아직 못 찾은 것은 흐린 고리, 찾은 것은 금빛 점 */
+.wmap .pin.rumor { width: 14px; height: 14px; margin: -3px 0 0 -3px; border-radius: 50%; border: 2px dashed #ffd060; opacity: .8; }
+.wmap .pin.rumor.found { width: 9px; height: 9px; margin: 0; border: 0; background: #ffd060; box-shadow: 0 0 6px #ffd060; opacity: 1; }

@@ -266,6 +266,15 @@ export function createStage(canvas) {
 
 // ───── 배경 물건 ─────
 const CHUNK = 16;
+// v0.46 숨은 던전 입구: 지역 던전 입구와 같은 문 · 동굴 + 횃불 (게임 중에 생기고 없어진다)
+export function addGateProps(stage, zn, x, z) {
+  const set = ZONE_LOOK[zn.id]?.set;
+  const [ds, di] = set === 'ruins' ? ['ruins', 250] : set === 'desert' ? ['desert', 184] : set === 'cave' ? ['dungeon', 116] : ['dungeon', 113];
+  return [addProp(stage, ds, di, x, z - 1.2, 0), addProp(stage, 'dungeon', 167, x - 1.8, z - 0.6, 0), addProp(stage, 'dungeon', 167, x + 1.8, z - 0.6, 0)].filter(Boolean);
+}
+export function removeProps(stage, list) {
+  for (const p of list || []) { const key = Math.floor(p.x / CHUNK) + ',' + Math.floor(p.z / CHUNK), arr = stage.props.get(key); if (arr) { const i = arr.indexOf(p); if (i >= 0) arr.splice(i, 1); } const f = stage.flats.indexOf(p); if (f >= 0) stage.flats.splice(f, 1); }
+}
 function addProp(stage, set, id, x, z, r, lift = 0) {
   const t = DATA.tiles[set]?.tiles[id];
   if (!t) return;

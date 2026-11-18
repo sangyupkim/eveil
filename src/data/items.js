@@ -146,7 +146,8 @@ export const BASES = {
   ruby_ring: { name: '홍옥 반지', slot: 'ring', minLvl: 30 },
   ...Object.fromEntries(Object.entries(GEMS).flatMap(([g, x]) => GEM_GRADES.map((gr, k) => [gemId(g, k), { name: `${gr.pre ? gr.pre + ' ' : ''}${x.name}`, type: 'gem', gem: g, grade: k, stack: true, price: 250 * (k + 1) ** 2, shop: false }]))),
   dungeon_key: { name: '던전 열쇠', type: 'key', price: 1500, stack: true },
-  map_piece: { name: '지도 조각', type: 'mat', price: 0, stack: true, icon: 42 }, // v0.44.47 미지의 땅
+  odd_map: { name: '알 수 없는 지도 조각', type: 'mat', price: 0, stack: true, icon: 42 }, // v0.46 연구소에서 분석 → 미지의 땅 조각 · 소문
+  map_piece: { name: '미지의 땅 조각', type: 'mat', price: 0, stack: true, icon: 42 }, // v0.44.47 미지의 땅
   unknown_gate: { name: '열린 미지의 길', type: 'map', price: 0, icon: 42 }, // v0.44.50 24시간 안 다시 들어가기 (it.zi · it.until)
   unknown_map: { name: '미지의 지도', type: 'map', price: 0, stack: true, icon: 42 },
   myth_mark: { name: '신화의 흔적', type: 'mat', price: 0, stack: true, icon: 42 }, // v0.42.10 강화 · 극한 돌파마다 1개, 100개로 신화 장비

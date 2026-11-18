@@ -1,5 +1,6 @@
 import { bagSize } from '../game/inventory.js';
 import { gameConfirm, gamePick } from './ask.js';
+import { rumorsOf, analyzeStart, analyzeTime, rumorUpgrade, rumorName, PLUS, PLUS_MAX, RUMOR_MAX, RUMOR_P } from '../game/rumor.js';
 // 창: 가방(장비) · 스킬 · 능력(스탯/성향) · 상점 · 메뉴
 import { STATS, STAT_NAMES, STAT_COLORS, STAT_DESC, CONFIG } from '../data/config.js';
 import { SKILLS, BOOK_TIERS } from '../data/skills.js';
@@ -358,8 +359,9 @@ export class Windows {
         const low = [...t.mercs].sort((a, c) => a.sta / staMax(a) - c.sta / staMax(c));
         return [`<h3>숙소 · ${b.lv}단계</h3><div class="kv"><span>고용 한도</span><b>${mercSlots(st)}명</b><span>지금</span><b>${t.mercs.length}명</b><span>쉬고 난 기운</span><b>힘 +${Math.round(FRESH.k * b.lv * 100)}% · 2시간</b><span>하루 품삯</span><b class="goldTxt">${wageTotal(st).toLocaleString()} G</b></div>`,
           `<h3>용병 체력 <span class="cnt">${t.mercs.length}</span></h3>` + low.map((m) => mercRow(m, `<div class="note" style="min-width:5.5em">${m.rest ? '여관' : m.tired ? '지침' : m.job ? '파견' : ''} ${Math.floor(m.sta)} / ${staMax(m)}</div>`)).join('')]; });
-      case 'lab': return this.tabView(b, 'lab', [['main', '연구'], MT], (k) => {
+      case 'lab': return this.tabView(b, 'lab', [['main', '연구'], ['map', '지도'], MT], (k) => {
         if (k === 'merc') return this.mercTab(b, sel);
+        if (k === 'map') return this.labMap(st, t, now);
         const ids = Object.keys(RESEARCH); if (!ids.includes(this.labSel)) this.labSel = ids[0];
         const R = ids.map((id) => { const r = RESEARCH[id], lv = researchLv(st, id), open = b.lv >= r.lab; return `<div class="row pick${id === this.labSel ? ' on' : ''}" data-labsel="${id}" style="${open ? '' : 'opacity:.45'}"><div class="grow"><b>${r.name}</b> <small>${lv} / ${RESEARCH_MAX}</small><div class="note">${open ? (lv ? r.text(lv) : '없음') : `연구소 ${r.lab}단계`}</div></div></div>`; }).join('');
         const id = this.labSel, r = RESEARCH[id], lv = researchLv(st, id), c = researchCost(lv, id), max = lv >= RESEARCH_MAX, open = b.lv >= r.lab;
@@ -473,6 +475,25 @@ export class Windows {
     L += `<div><div class="note">부여할 능력 <span class="cnt">${shards.length}</span></div><div class="shList">${shards.map((x) => { const okk = canApply(it, x.shard, Lk).ok; return `<button class="btn affBtn ${x.uid === this.shardSel ? 'on' : ''}" data-shard="${x.uid}" style="color:#c58cff;${okk ? '' : 'opacity:.4'}">${affixText(x.shard)}</button>`; }).join('') || '<div class="note">파편 없음</div>'}</div></div></div>`;
     if (sh) { const c = shardCost(it), ok = canApply(it, sh, Lk); L += `<div class="btns forgeGo"><button class="btn gold big" data-sapply="1" ${!ok.ok || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>${ok.ok ? `제련 · ${c.gold.toLocaleString()} G · 강화석 ${c.ore}` : ok.why}</button></div>`; }
     return [L, right];
+  }
+  // v0.46 연구소 지도: 왼쪽 분석 · 고른 소문 강화 | 오른쪽 소문 목록
+  labMap(st, t, now) {
+    const R = rumorsOf(st), odd = resCount(st, 'odd_map'), fmt = (ms) => { const m = Math.max(1, Math.ceil(ms / 60000)), h = Math.floor(m / 60); return h ? `${h}시간 ${m % 60}분` : `${m}분`; };
+    let L = `<h3>지도 분석</h3><div class="kv tight"><span>알 수 없는 조각</span><b>${odd}</b><span>미지의 땅 조각</span><b>${resCount(st, 'map_piece')}</b><span>소문</span><b>${Math.round(RUMOR_P * 100)}%</b></div>`;
+    if (t.mapLab) L += `<div class="row"><div class="grow"><b>${t.mapLab.n}장 분석 중</b> <small class="note">${fmt(t.mapLab.until - now)}</small>${gauge(t.mapLab.from, t.mapLab.until)}</div></div>`;
+    else L += `<div class="btns"><button class="btn" data-mapan="1" ${odd ? '' : 'disabled'}>1장 · ${fmt(analyzeTime(st, 1))}</button><button class="btn gold" data-mapan="all" ${odd ? '' : 'disabled'}>모두 ${odd}장 · ${fmt(analyzeTime(st, Math.max(1, odd)))}</button></div>`;
+    if (!R.some((r) => r.id === this.rumorSel)) this.rumorSel = R[0]?.id;
+    const r = R.find((x) => x.id === this.rumorSel);
+    if (r) {
+      const p = r.plus || 0, cur = PLUS[p], nx = PLUS[p + 1], zn = ZONES[r.zi], to = this.w.tierOffset || 0;
+      const pct = (v) => `${+(v * 100).toFixed(1)}%`;
+      L += `<h3 style="margin-top:10px">${esc(rumorName(r))}</h3><div class="kv tight"><span>몬스터</span><b>Lv ${zn.levels[1] + 5 + to} · 체력 ×${cur.hp}${nx ? ` <i class="arw">▶</i> <em>×${nx.hp}</em>` : ''}</b><span>장비</span><b>Lv ${zn.levels[1] + 6 + cur.lv + to}${nx ? ` <i class="arw">▶</i> <em>${zn.levels[1] + 6 + nx.lv + to}</em>` : ''}</b><span>전설</span><b>${pct(cur.legend)}${nx ? ` <i class="arw">▶</i> <em>${pct(nx.legend)}</em>` : ''}</b><span>신화</span><b>${pct(cur.myth)}${nx ? ` <i class="arw">▶</i> <em>${pct(nx.myth)}</em>` : ''}</b>`;
+      if (nx) { const c = nx.cost; L += `<span>금화</span><b style="${st.gold < c.gold ? 'color:#ff7060' : ''}">${c.gold.toLocaleString()} G</b>` + Object.entries(c).filter(([k2]) => k2 !== 'gold').map(([k2, v]) => `<span>${BASES[k2].name}</span><b style="${resCount(st, k2) < v ? 'color:#ff7060' : ''}">${resCount(st, k2).toLocaleString()} / ${v}</b>`).join(''); }
+      L += `</div><div class="btns forgeGo"><button class="btn gold big" data-rup="${r.id}" ${nx ? '' : 'disabled'}>${nx ? `+${p + 1} 강화` : '최고 단계'}</button></div>`;
+    }
+    const where = (x) => (x.found ? '발견' : x.x != null ? '그 지역 어딘가' : '아직 모름');
+    const Rh = `<h3>소문 <span class="cnt">${R.length} / ${RUMOR_MAX}</span></h3>` + (R.map((x) => `<div class="row pick${x.id === this.rumorSel ? ' on' : ''}" data-rsel="${x.id}"><div class="grow"><b style="color:${x.plus ? '#ff9a3c' : '#ffd060'}">${esc(rumorName(x))}</b> <small class="note">${where(x)}</small></div></div>`).join('') || '<div class="note">없음</div>');
+    return [L, Rh];
   }
   // 용병 탭 (건물 공용): 왼쪽 이 건물에서 일하는 용병 | 오른쪽 쉬는 용병 → 다른 건물에서 일하는 용병 (데려오기)
   mercTab(b, sel) {
@@ -806,6 +827,7 @@ export class Windows {
       ['상점', 'shop', ['파는 물건', '가방: 팔 수 있습니다']],
       ['지도', 'map', ['갈 곳', '지도. 가 본 곳만 밝혀집니다']],
       ['던전', 'dungeon', ['던전 지도', '단계'], ['그 지역 보스를 잡아야 던전이 열립니다(미니맵 입구가 초록으로 바뀜). 던전 입구 앞에서 버튼이 「던전」으로 바뀝니다. 오늘의 의뢰 · 보스가 가끔 주는 열쇠로 들어갑니다', '가장 깊은 곳의 우두머리를 잡으면 다음 단계가 열립니다. 단계마다 몬스터 레벨이 2씩 올라, 10단계는 다음 지역보다 높습니다', '돌파하면 공격 버튼이 나가기로 바뀝니다. 전리품을 줍고 눌러 나갑니다']],
+      ['숨은 던전', 'dungeon', ['지도 분석', '소문 · 강화'], ['사냥 · 파견에서 나오는 알 수 없는 지도 조각을 연구소 「지도」 탭에서 분석하면 미지의 땅 조각이나 소문이 나옵니다. 소문은 보스를 잡은 가장 높은 지역에서 두 단계 아래까지의 지역에 생깁니다', '소문 지역을 돌아다니면 숨은 던전 입구가 나타납니다. 지역보다 강하고, 깨면 보물 상자 셋 중 하나를 골라 장비를 받습니다. 연구소에서 지도를 강화하면 더 세지고 보상이 좋아지며, +2부터 신화 장비가 나옵니다']],
       ['보스', 'boss', ['색칠된 곳에 곧 공격이 들어옵니다. 가운데부터 차오르면 터집니다'], ['멀리서 맴돌면 뛰어들기 · 저격 같은 원거리 공격을 합니다', '보스마다 고유한 공격이 있습니다']],
       ['설정', 'menu', ['화면 확대', 'UI 위치 바꾸기']],
       ['그 밖에', null, [], ['죽으면 가끔 장비 하나를 그 자리에 떨어뜨립니다. 다시 가서 주워야 합니다', '세계 단계: 평온 → 악몽 → 지옥. 지역은 20곳(위험도 1~120)이고, 다음 단계는 마지막 지역 종말의 왕좌의 보스를 잡고 그 던전을 3단계(지옥은 6단계)까지 돌파해야 열립니다. 악몽은 위험도 +120, 지옥은 +240. 오를수록 몬스터가 훨씬 세지고 보스가 패턴을 자주 씁니다', '도감: 몬스터를 잡으면 채워지고 보너스를 받습니다', '능력치 파편: 장비를 갈아 낄 때 10% · 보스 장비 대신 12% · 분해할 때 마법 8% · 희귀 15% · 영웅 25% · 전설 35%. 대장간에서 장비 옵션 하나와 바꿉니다', '같은 장비도 품질 85~115%와 옵션 수치가 매번 다릅니다']],
@@ -919,6 +941,8 @@ export class Windows {
       pins.push(`<div class="pin camp ${place(+X(c.x), +Y(c.z), zn.name)}${got ? '' : ' off'}${here && got && here !== c.zone ? ' go' : ''}${st.flood?.list?.some((f) => f.zone === c.zone) ? ' flood' : ''}" style="left:${X(c.x)}px;top:${Y(c.z)}px" ${here && got ? `data-travel="${c.zone}"` : ''}><span>${zn.name}</span></div>`);
     }
     for (const zn of ZONES) { const e = entranceOf(zn); if (seenAt(e.x, e.z)) pins.push(`<div class="pin gate" style="left:${X(e.x)}px;top:${Y(e.z)}px" title="던전"></div>`); }
+    // v0.46 소문: 발견한 입구는 그 자리, 아직이면 지역 가운데 (어딘가)
+    for (const r of rumorsOf(st)) { const zn = ZONES[r.zi]; if (!zn) continue; const x = r.found ? r.x : zn.x, z = r.found ? r.z : zn.z; pins.push(`<div class="pin rumor${r.found ? ' found' : ''}" style="left:${X(x)}px;top:${Y(z)}px" title="${esc(rumorName(r))}"></div>`); }
     pins.push(`<div class="pin me" style="left:${X(P.x)}px;top:${Y(P.z)}px"></div>`);
     // 오른쪽: 지금 있는 야영지 시설
     const cz = here && here !== 'town' ? here : inCamp(P.x, P.z)?.zone, k2 = cz && st.camps?.[cz];
@@ -1364,6 +1388,9 @@ export class Windows {
     on('[data-shopsel]', (el) => { this.shopSel = el.dataset.shopsel; audio.play('click'); this.render(); });
     on('[data-gmsel]', (el) => { this.gemMerge = el.dataset.gmsel; audio.play('click'); this.render(); });
     on('[data-mside]', (el) => { this.mercSide = el.dataset.mside; audio.play('click'); this.render(); });
+    on('[data-rsel]', (el) => { this.rumorSel = el.dataset.rsel; audio.play('click'); this.render(); });
+    on('[data-mapan]', (el) => { const n = el.dataset.mapan === 'all' ? 1e9 : 1; const r = analyzeStart(st, n); if (!r.ok) { w.ui.toast(r.why); audio.play('error'); } else audio.play('click'); w.ui.dirty(); this.render(); });
+    ask('[data-rup]', (el) => { const r = rumorsOf(st).find((x) => x.id === el.dataset.rup); return r ? ['지도 강화', `${rumorName(r)} → +${(r.plus || 0) + 1}\n입구 자리가 새로 정해집니다`, '강화'] : null; }, (el) => { const r = rumorUpgrade(st, el.dataset.rup); if (!r.ok) { w.ui.toast(r.why); audio.play('error'); } else { audio.play('rankup'); w.ui.toast(`지도 강화 +${r.plus}`, '#ffd060'); } w.ui.dirty(); this.render(); });
     on('[data-salvr]', (el) => { this.salvR = el.dataset.salvr || null; this.salvSel = null; audio.play('click'); this.render(); });
     on('[data-salvsrc]', (el) => { this.salvSrc = el.dataset.salvsrc; this.salvSel = null; audio.play('click'); this.render(); });
     on('[data-shopsrc]', (el) => { this.shopSrc = el.dataset.shopsrc; this.vSel = null; this.vPick = null; this.sellPick = null; this.sel = null; audio.play('click'); this.render(); });

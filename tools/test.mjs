@@ -7,6 +7,7 @@ import { learn, addSkillExp, canLearn, skillValues } from '../src/game/skills.js
 import { rollLoot, rollDeathDrop } from '../src/game/loot.js';
 import { makeItem, itemName, rollBase } from '../src/game/items.js';
 import * as await_fs from 'node:fs';
+import * as RM from '../src/game/rumor.js';
 import { craftOre, enhanceCost, resAdd, resCount, essGrade, craftKey } from '../src/game/town.js';
 import { MATERIALS } from '../src/data/crafting.js';
 import { finishBuilds, brew, brewCollect, dispatchParty, shelterUp, deathChance, rollMerc, researchStart } from '../src/game/town.js';
@@ -555,6 +556,19 @@ test('잠근 장비는 분해되지 않는다', () => {
   const it = makeItem('short_sword', { rarity: 'magic', ilvl: 10 }, p); it.lock = true; p.inv.push(it);
   assert.ok(!TW_.salvage(p, it.uid).ok && p.inv.length === 1);
   it.lock = false; assert.ok(TW_.salvage(p, it.uid).ok);
+});
+
+test('소문 지도: 두 단계 아래 지역까지 · 분석 · 강화', () => {
+  assert.deepEqual(RM.rumorZones([0, 1, 2, 3, 5]), [3, 5]);
+  const p = { gold: 1e9, inv: [], town: { plots: { a: { type: 'lab', lv: 1 } }, mercs: [], last: Date.now() }, nextUid: 1 };
+  resAdd(p, 'odd_map', 20);
+  assert.ok(RM.analyzeStart(p, 1e9, 0).ok && resCount(p, 'odd_map') === 0);
+  assert.equal(RM.analyzeDone(p, [4, 5, 6], 1), null); // 아직
+  const r = RM.analyzeDone(p, [4, 5, 6], 1e12, () => 0.1); // 모두 소문 쪽 → 5개까지, 나머지는 조각
+  assert.equal(p.rumors.length, RM.RUMOR_MAX); assert.equal(r.pieces, 15); assert.ok(p.rumors.every((x) => x.zi >= 4));
+  resAdd(p, 'ore2', 10); resAdd(p, 'map_piece', 0);
+  assert.ok(RM.rumorUpgrade(p, p.rumors[0].id).ok && p.rumors[0].plus === 1);
+  assert.ok(!RM.rumorUpgrade(p, p.rumors[0].id).ok); // 재료 모자람
 });
 
 console.log(`\n${n}개 통과`);

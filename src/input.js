@@ -49,6 +49,7 @@ export function setupInput(world, stage, windows) {
     // 포탈 (마을 차원문 · 발견한 야영지): 공격 버튼으로 탄다
     const pt = [{ x: 0, z: -2, zone: 'town' }, ...CAMPS.filter((c) => world.st.camps?.[c.zone])].find((q) => near(q, 3));
     if (pt) return { name: '포탈', go: () => { windows.portalAt = pt.zone; windows.show('map'); } };
+    { const hr = world.rumorNear(3.2); if (hr) return { name: '숨은 던전', exit: true, go: () => world.askRumor(hr) }; }
     { const dz = world.dungeonNear(3); if (dz >= 0) return { name: '던전', exit: true, go: () => world.askDungeon(dz) }; }
     if (world.inTown && near(VAULT_SPOT, 2.6)) return { name: '창고', go: () => windows.talkTo(['vault'], 'vault') };
     if (world.inTown) {

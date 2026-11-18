@@ -33,7 +33,9 @@ import { itemName, itemColor, isBook, makeItem, makeBook, rollBase, itemValue } 
 import { seeded, randInt, randRange } from '../game/rng.js';
 import { Actor, makeHero } from '../engine2d/actor.js';
 import { FX, drawPowerFrame } from '../engine2d/fx.js';
-import { zoneRadius, resolveCollision, zoneAt, clearLine, findPath, blockedAt, LAKES, MESAS, CAMPS, inCamp, bossSpot } from '../engine2d/stage.js';
+import { zoneRadius, resolveCollision, zoneAt, clearLine, findPath, blockedAt, LAKES, MESAS, CAMPS, inCamp, bossSpot, addGateProps, removeProps } from '../engine2d/stage.js';
+import { rumorsOf, analyzeDone, rumorName, PLUS } from '../game/rumor.js';
+import { rollShard } from '../game/shards.js';
 import { reveal, saveFog, loadFog } from '../ui/mapimg.js';
 import { DATA, image, animImage, drawRect, frameIndex } from '../engine2d/sprites.js';
 import { MONSTER_LOOK, ITEM_LOOK, LOOT_LOOK, ZONE_LOOK as ZONE_LOOK_W } from '../data/flareWorld.js';
@@ -499,6 +501,51 @@ export class World {
     }
   }
 
+  // ───────── v0.46 소문 · 숨은 던전 ─────────
+  // 1초마다: 연구소 지도 분석이 끝났나 · 소문 지역에 들어오면 입구 자리를 정한다 · 입구 그림을 맞춘다
+  rumorStep(dt) {
+    if ((this.rumorT = (this.rumorT || 0) - dt) > 0) return;
+    this.rumorT = 1;
+    const st = this.st, cleared = ALL_ZONES.map((z, i) => (this.bossCleared(z) ? i : -1)).filter((i) => i >= 0);
+    const done = analyzeDone(st, cleared);
+    if (done) {
+      sfx('rankup');
+      this.ui.toast(`지도 분석 완료 · 미지의 땅 조각 ${done.pieces}${done.rumors.length ? ` · 소문 ${done.rumors.length}` : ''}`, '#ffd060');
+      for (const zi of done.rumors) this.ui.log(`${ALL_ZONES[zi].name} 어딘가에 숨은 던전이 있다는 소문`, '#ffd060');
+      this.ui.dirty();
+    }
+    const R = rumorsOf(st), G = (this.gateProps ||= {});
+    for (const id of Object.keys(G)) if (!R.some((x) => x.id === id && x.x != null)) { removeProps(this.stage, G[id]); delete G[id]; }
+    const P = this.player.pos;
+    if (!this.dungeon && !this.inTown) {
+      const zn = zoneAt(P.x, P.z), zi = zn ? ALL_ZONES.indexOf(zn) : -1;
+      for (const r of R) {
+        if (r.zi === zi && r.x == null) { // 그 지역 어딘가 (입구 · 들어온 자리에서 떨어진 곳)
+          const e = entranceOf(zn);
+          for (let k = 0; k < 40; k++) {
+            const a = Math.random() * 6.283, d = (0.3 + 0.55 * Math.random()) * zn.r, x = zn.x + Math.cos(a) * d, z = zn.z + Math.sin(a) * d;
+            if (zoneAt(x, z) !== zn || Math.hypot(x - e.x, z - e.z) < 12 || Math.hypot(x - P.x, z - P.z) < 14 || blockedAt(this.stage, x, z, 2) || blockedAt(this.stage, x, z - 1.5, 2)) continue;
+            r.x = x; r.z = z; break;
+          }
+          if (r.x != null) this.ui.toast(`${zn.name} 어딘가에서 숨은 던전의 기운이 느껴집니다`, '#ffd060');
+        }
+        if (r.x != null && !r.found && Math.hypot(r.x - P.x, r.z - P.z) < 9) { r.found = true; this.ui.toast(`숨은 던전을 발견했습니다 · ${rumorName(r)}`, '#ffd060'); sfx('rare'); this.fx.pillar(r.x, r.z, 0xffd060, 1.4, 6, 1.2); this.ui.dirty(); }
+      }
+    }
+    for (const r of R) if (r.x != null && !G[r.id]) G[r.id] = addGateProps(this.stage, ALL_ZONES[r.zi], r.x, r.z);
+  }
+  rumorNear(rad = 3) {
+    if (this.dungeon) return null;
+    const P = this.player.pos;
+    return rumorsOf(this.st).find((r) => r.x != null && Math.hypot(r.x - P.x, r.z - P.z) < rad) || null;
+  }
+  askRumor(r) {
+    if (this.asking) return;
+    const pl = PLUS[r.plus || 0], zn = ALL_ZONES[r.zi];
+    this.asking = true; this.moveTo = null; this.target = null; this.toggleAuto(false);
+    this.ui.ask(rumorName(r), `몬스터 Lv ${zn.levels[1] + 5 + this.tierOffset} · 체력 ×${pl.hp} · 공격력 ×${pl.dmg}<br>한 번만 들어갈 수 있습니다 (나오면 다시 들어갈 수 있고, 깨면 사라집니다)`, '들어가기', (yes) => { this.asking = false; if (yes) this.enterDungeon(r.zi, 1, { hidden: r }); });
+  }
+
   // ───────── 떠돌이 상인 (사냥터에 가끔 나타나 4분 머문다) ─────────
   merchantStep(dt) {
     return; // 떠돌이 상인은 없앴다 (야영지 포탈 상인으로 충분, 0.28.0)
@@ -574,16 +621,18 @@ export class World {
   enterDungeon(zi, diff = 1, opt = {}) {
     const st = this.st, zn = ALL_ZONES[zi], D = DUNGEON_DIFFS[diff - 1] || DUNGEON_DIFFS[0];
     if (opt.gate) { const i = st.inv.indexOf(opt.gate); if (i < 0) return; st.inv.splice(i, 1); } // v0.44.50 열린 미지의 길로 다시
-    else if (!takeOne(st, opt.unknown ? 'unknown_map' : D.key)) return;
-    const stage = opt.unknown ? 5 : Math.min(MAX_STAGE, ((st.dungeons ||= {})[zn.id] || 0) + 1);
+    else if (!opt.hidden && !takeOne(st, opt.unknown ? 'unknown_map' : D.key)) return;
+    const stage = opt.unknown ? 5 : opt.hidden ? 1 : Math.min(MAX_STAGE, ((st.dungeons ||= {})[zn.id] || 0) + 1);
     this.leaveDungeon(true);
     this.dungeon = { zi, stage, zone: zn, diff, unknown: !!opt.unknown, until: opt.gate?.until || Date.now() + 86400e3 };
+    const HP = opt.hidden ? PLUS[opt.hidden.plus || 0] : null; // v0.46 숨은 던전: 지역보다 세게 (지도 강화만큼 더)
+    if (HP) Object.assign(this.dungeon, { hidden: opt.hidden.id, plus: opt.hidden.plus || 0 });
     this.toggleAuto(false);
     const Ld = dungeonLayout(zi), sp0 = cellPos(zi, Ld.start[0], Ld.start[1]);
     this.player.pos.set(sp0.x, 0, sp0.z); this.moveTo = null; this.target = null;
     this.stage.cam.x = sp0.x; this.stage.cam.z = sp0.z;
     this.fx.arrive(sp0.x, sp0.z);
-    const mod = stageMods(stage), L = opt.unknown ? (st.bossTop ? Math.max(1, Math.round(st.bossTop * 1.05) - this.tierOffset) : Math.round(Math.max(...ALL_ZONES.filter((z) => this.bossCleared(z)).map((z) => z.levels[1])) * 1.1)) : dungeonLevel(zn, stage); // v0.44.62 잡은 보스 기준 (spawn이 세계 단계를 더한다)
+    const mod = stageMods(stage), L = opt.unknown ? (st.bossTop ? Math.max(1, Math.round(st.bossTop * 1.05) - this.tierOffset) : Math.round(Math.max(...ALL_ZONES.filter((z) => this.bossCleared(z)).map((z) => z.levels[1])) * 1.1)) : HP ? zn.levels[1] + 5 : dungeonLevel(zn, stage); // v0.44.62 잡은 보스 기준 (spawn이 세계 단계를 더한다)
     if (opt.unknown) this.dungeon.L = L; // 1단계는 지역 중간 레벨부터 (필드 → 던전 격차를 줄였다)
     // 세계 단계 보정은 spawn에서 더한다 (예전엔 두 번 더해 지옥 던전이 283레벨이 됐다)
     // 몬스터: 시작에서 먼 칸일수록 많이 · 정예는 깊은 곳, 우두머리는 가장 먼 방
@@ -593,15 +642,16 @@ export class World {
     const put = (k, tier, fixed) => {
       const p = cellPos(zi, k % N, Math.floor(k / N));
       const m = this.spawn({ zone: zn, x: p.x, z: p.z, level: L, tier, timer: 0, mon: null, fixed });
-      m.maxHp = m.hp = Math.round(m.maxHp * mod.hp * D.hp); m.dmg = m.dmg.map((v) => v * mod.dmg * D.dmg); m.dungeon = true; m.exp *= 1.5 * D.loot;
+      m.maxHp = m.hp = Math.round(m.maxHp * mod.hp * D.hp * (HP?.hp || 1)); m.dmg = m.dmg.map((v) => v * mod.dmg * D.dmg * (HP?.dmg || 1)); m.dungeon = true; m.exp *= 1.5 * D.loot;
       m.home = { x: p.x, z: p.z };
     };
-    for (let n = 0; n < (opt.unknown ? 30 : 14 + Math.min(8, stage)) && cells.length; n++) put(pick(), 'normal'); // 낮은 단계는 몬스터가 적다
+    for (let n = 0; n < (opt.unknown ? 30 : HP ? 16 : 14 + Math.min(8, stage)) && cells.length; n++) put(pick(), 'normal'); // 낮은 단계는 몬스터가 적다
     cells.sort((a, b) => Ld.dist[b] - Ld.dist[a]);
-    for (let n = 0; n < (opt.unknown ? 10 : 4) && cells.length; n++) put(cells.splice(Math.floor(Math.random() * Math.min(opt.unknown ? 30 : 12, cells.length)), 1)[0], 'elite');
-    put(Ld.boss[1] * N + Ld.boss[0], 'boss', { type: opt.unknown ? zn.named.type : zn.boss.type, name: opt.unknown ? '유물 수호자' : `${zn.name} 던전 우두머리` });
-    { const bm = this.monsters[this.monsters.length - 1]; if (bm?.tier === 'boss') { const k = 0.55 + 0.09 * stage; bm.maxHp = bm.hp = Math.round(bm.maxHp * k); } } // 우두머리: 1단계 0.64배 → 10단계 1.45배
+    for (let n = 0; n < (opt.unknown ? 10 : HP ? 6 : 4) && cells.length; n++) put(cells.splice(Math.floor(Math.random() * Math.min(opt.unknown ? 30 : 12, cells.length)), 1)[0], 'elite');
+    put(Ld.boss[1] * N + Ld.boss[0], 'boss', { type: opt.unknown ? zn.named.type : zn.boss.type, name: opt.unknown ? '유물 수호자' : HP ? `${zn.name}의 숨은 주인` : `${zn.name} 던전 우두머리` });
+    { const bm = this.monsters[this.monsters.length - 1]; if (bm?.tier === 'boss') { const k = HP ? 1.6 : 0.55 + 0.09 * stage; bm.maxHp = bm.hp = Math.round(bm.maxHp * k); } } // 우두머리: 1단계 0.64배 → 10단계 1.45배
     if (opt.unknown) { for (const m of this.monsters) if (m.dungeon) m.noLoot = true; this.trapT = 3; this.ui.toast('미지의 땅 — 끝에 유물이 있습니다', '#ffd060'); }
+    else if (HP) this.ui.toast(`${rumorName(opt.hidden)} — 가장 깊은 곳의 숨은 주인을 찾으세요`, '#ffd060');
     else this.ui.toast(`${zn.name} 던전 ${stage}단계 · ${D.name} — 가장 깊은 곳의 우두머리를 찾으세요`, diff > 1 ? '#ff7a9a' : '#ffd84a');
     this.ui.dirty();
   }
@@ -646,6 +696,7 @@ export class World {
       this.ui.toast(`유물 「${RELIC[r.id].name}」 (${RELIC_GRADES[r.g].name})`, RELIC_GRADES[r.g].color); sfx('rankup');
       this.fx.pillar(m.pos.x, m.pos.z, 0xffd060, 1.8, 6, 1.5); this.ui.dirty(); return;
     }
+    if (dg.hidden) { this.hiddenCleared(m); return; }
     st.dungeons[zn.id] = Math.max(st.dungeons[zn.id] || 0, dg.stage);
     this.checkTierUnlock();
     this.dailyDone(dailyProgress(st, { kind: 'dungeon', zone: zn.id }));
@@ -676,6 +727,34 @@ export class World {
     this.ui.toast(`던전 ${dg.stage}단계 · ${D.name} 돌파!`, '#ffd84a');
     sfx('awaken');
     dg.cleared = true; // 공격 버튼이 「나가기」로 바뀐다 (input.js). 전리품을 다 줍고 나간다
+  }
+
+  // v0.46 숨은 던전 돌파: 소문이 사라지고, 보물 상자 셋(부위) 중 하나를 고른다. 지역보다 한 단계 높은 장비 · 희귀 이상
+  hiddenCleared(m) {
+    const st = this.st, dg = this.dungeon, zn = dg.zone, pl = PLUS[dg.plus || 0];
+    dg.cleared = true;
+    const R = rumorsOf(st), i = R.findIndex((r) => r.id === dg.hidden); if (i >= 0) R.splice(i, 1);
+    const lv = zn.levels[1] + 6 + pl.lv + this.tierOffset, mf = Math.max(0, this.d.magicFind + researchK(st, 'luck'));
+    const myth = Math.random() < Math.min(0.05, pl.myth + (pl.myth ? (mf / 100) * 0.001 : 0)), legend = !myth && Math.random() < pl.legend + Math.min(0.05, (mf / 100) * 0.003);
+    const rarity = myth ? 'myth' : legend ? 'legend' : Math.random() < 0.4 ? 'hero' : 'rare';
+    if (dg.plus >= 2 && lv >= (st.awakenings || 0) - 20) { resAdd(st, 'myth_mark', 1); this.ui.log(`신화의 흔적 +1 (${resCount(st, 'myth_mark')})`, '#ff7aa8'); }
+    // 금화 · 보석 둘 · 능력치 파편 하나는 바로 떨어진다
+    this.dropGround({ kind: 'gold', amount: Math.round(lv * 120 * (1 + dg.plus * 0.5)) }, m.pos.x, m.pos.z - 1);
+    for (let k = 0; k < 2 + Math.floor(dg.plus / 2); k++) this.dropGround({ kind: 'item', item: makeItem(`gem_${['ruby', 'emerald', 'sapphire', 'amethyst', 'diamond'][Math.floor(Math.random() * 5)]}_${gemGradeFor(lv)}`, { qty: 1 }, st) }, m.pos.x - 1.2 + k * 0.6, m.pos.z - 0.4);
+    this.dropGround({ kind: 'item', item: rollShard(lv, st) }, m.pos.x + 1.2, m.pos.z - 0.4);
+    // 상자 셋 = 부위 셋
+    const groups = [['무기', ['weapon']], ['보조 장비', ['offhand']], ['투구', ['helm']], ['갑옷', ['armor']], ['장갑', ['gloves']], ['허리띠', ['belt']], ['신발', ['boots']], ['목걸이', ['amulet']], ['반지', ['ring']]];
+    const three = []; while (three.length < 3) { const g = groups[Math.floor(Math.random() * groups.length)]; if (!three.includes(g)) three.push(g); }
+    const give = (slots) => {
+      let base = null; for (let k = 0; k < 80 && !base; k++) { const b = rollBase(lv); if (slots.includes(BASES[b]?.slot)) base = b; }
+      if (!base) { const ids = Object.keys(BASES).filter((id) => slots.includes(BASES[id].slot) && !BASES[id].noDrop && (BASES[id].minLvl ?? 1) <= lv); base = ids.sort((a, b) => (BASES[b].minLvl ?? 1) - (BASES[a].minLvl ?? 1))[0] || rollBase(lv); }
+      this.dropGround({ kind: 'item', item: makeItem(base, { rarity, ilvl: lv }, st) }, m.pos.x, m.pos.z + 1);
+      if (myth) { this.fx.shake(0.6); this.fx.pillar(m.pos.x, m.pos.z, 0xff4a8a, 3, 8, 2.5); sfx('rare'); this.ui.toast('신화 장비!', '#ff4a8a'); (st.rec ||= {}).myths = (st.rec.myths || 0) + 1; }
+      this.ui.dirty();
+    };
+    sfx('awaken'); this.ui.toast('숨은 던전 돌파! 보물 상자 하나를 고르세요', '#ffd060');
+    this.ui.choose('보물 상자', '하나를 고르면 그 부위의 장비가 나옵니다', three.map(([n]) => ({ label: n })), (k) => give(three[k >= 0 ? k : 0][1]));
+    this.ui.dirty();
   }
 
   // 각성 20 · 40 · 60: 키운 스탯으로 칭호를 받고 특성 하나를 고른다
@@ -1325,7 +1404,7 @@ export class World {
     if (m.sp?.zone) (this.st.zoneHunt ||= {})[m.sp.zone.id] = Date.now(); // v0.44.43 범람지: 지역별 마지막 사냥
     if (m.tier === 'boss' && !m.flood && !this.dungeon?.unknown) this.st.bossTop = Math.max(this.st.bossTop || 0, m.level); // v0.44.62 이번 패치 뒤 잡은 가장 높은 보스 (범람 · 미지의 땅 기준)
     if (m.flood) this.floodDeath(m);
-    else if (m.tier === 'boss' && !m.dungeon && m.sp?.zone && Math.random() < 0.1) { resAdd(this.st, 'map_piece', 1); this.ui.toast('지도 조각', '#ffd060'); } // v0.44.49 필드 보스 10%
+    else if (m.tier === 'boss' && !m.dungeon && m.sp?.zone && Math.random() < 0.1) { resAdd(this.st, 'odd_map', 1); this.ui.toast('알 수 없는 지도 조각', '#ffd060'); } // v0.44.49 필드 보스 10%
     if (src !== 'perk') this.perk('kill');
     m.hp = 0;
     const st = this.st, d = this.d;
@@ -1699,10 +1778,10 @@ export class World {
     this.dropGround({ kind: 'gold', amount: lv * 400 }, P.x, P.z);
     this.dropGround({ kind: 'item', item: makeItem(rollBase(lv), { rarity: Math.random() < 0.15 ? 'legend' : 'hero', ilvl: lv }, this.st) }, P.x + 1, P.z);
     resAdd(this.st, 'ore2', 2 + Math.floor(lv / 40));
-    resAdd(this.st, 'map_piece', 1); // 범람 해소 = 지도 조각 (유물은 주지 않는다)
+    resAdd(this.st, 'odd_map', 1); // 범람 해소 = 알 수 없는 지도 조각 (v0.46) (유물은 주지 않는다)
     { const wk = weekKey(), FW = (this.st.floodWeek ||= {}); if (FW[zid] !== wk) { FW[zid] = wk; const g = Math.min(5, 2 + Math.floor(lv / 120)); resAdd(this.st, 'ess' + g, 3); this.ui.toast('이번 주 첫 정화 · 정수 3개', '#c0a0ff'); } }
     const zn = ALL_ZONES.find((z) => z.id === zid);
-    this.ui.banner?.(`${zn?.name || ''} 정화 완료`, '#7fe07a'); this.ui.toast(`범람이 정화되었습니다 · 금화 · 장비 · 상급 강화석 · 지도 조각`, '#7fe07a'); sfx('rankup');
+    this.ui.banner?.(`${zn?.name || ''} 정화 완료`, '#7fe07a'); this.ui.toast(`범람이 정화되었습니다 · 금화 · 장비 · 상급 강화석 · 알 수 없는 지도 조각`, '#7fe07a'); sfx('rankup');
     this.fx.play('sparkle', P.x, P.z, { scale: 2, dur: 1.2 });
     this.ui.dirty();
   }
@@ -2438,6 +2517,7 @@ export class World {
     this.checkChests();
     this.raidStep(dt);
     this.merchantStep(dt);
+    this.rumorStep(dt);
     this.petStep(dt);
     this.skyStep(dt);
     this.campStep(dt);
@@ -2586,7 +2666,7 @@ export class World {
         if (r.held?.length) { const mm = t.mercs.find((x) => x.id === m.id); if (mm) mm.held = [...(mm.held || []), ...r.held]; }
         for (const it of r.items) { if (rows.filter((x) => x.item).length >= 40) { tot.more = (tot.more || 0) + 1; continue; } rows.push({ img: itemIcon(it), name: itemName(it), color: itemColor(it), item: it }); } // v0.44.68 알림 줄은 40개까지 (수천 줄이 쌓여 화면이 멈칫했다)
         if (r.held?.length) rows.push({ name: `자리가 없어 ${r.held.length}개는 용병이 들고 기다림`, color: '#ff9a5a' });
-        if (r.mapPiece) rows.push({ name: `지도 조각 ${r.mapPiece}`, color: '#ffd060' });
+        if (r.mapPiece) rows.push({ name: `알 수 없는 지도 조각 ${r.mapPiece}`, color: '#ffd060' });
       }
       if (tot.more) rows.push({ name: `그 밖의 장비 ${tot.more}개`, color: '#c8c0b0' });
       rows.unshift({ img: coinIcon(), name: '금화', qty: tot.gold }, { img: oreIcon(), name: '강화석', qty: tot.ore }, { img: iconUrl(1012), name: '지역 재료', qty: tot.mats });
@@ -2755,7 +2835,7 @@ export class World {
       this.zone = id;
       if (zn && !dg) this.zoneGate(zn);
       if (zn) st.lastZone = zn.id;
-      this.ui.zone(dg ? { name: `${dg.zone.name} 던전 ${dg.stage}단계`, levels: [dungeonLevel(dg.zone, dg.stage) + this.tierOffset, dungeonLevel(dg.zone, dg.stage) + this.tierOffset] } : id === 'town' ? TOWN : zn);
+      this.ui.zone(dg?.hidden ? { name: `${dg.zone.name} 숨은 던전${dg.plus ? ` +${dg.plus}` : ''}`, levels: [dg.zone.levels[1] + 5 + this.tierOffset, dg.zone.levels[1] + 5 + this.tierOffset] } : dg ? { name: `${dg.zone.name} 던전 ${dg.stage}단계`, levels: [dungeonLevel(dg.zone, dg.stage) + this.tierOffset, dungeonLevel(dg.zone, dg.stage) + this.tierOffset] } : id === 'town' ? TOWN : zn);
     }
     this.musicT = (this.musicT || 0) - dt;
     if (this.musicT <= 0) {
