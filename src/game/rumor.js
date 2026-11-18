@@ -74,7 +74,7 @@ export function rumorUpgrade(st, id) {
   for (const [k, v] of Object.entries(c)) if (k !== 'gold' && resCount(st, k) < v) return { ok: false, why: '재료가 모자랍니다' };
   st.gold -= c.gold;
   for (const [k, v] of Object.entries(c)) if (k !== 'gold') resTake(st, k, v);
-  r.plus++; r.x = r.z = undefined; // 강화하면 입구 자리도 새로 (다시 찾는다)
+  r.plus++; r.x = r.z = undefined; r.found = false; r.muts = undefined; // 강화하면 입구 자리도 새로 (다시 찾는다)
   return { ok: true, plus: r.plus };
 }
 export const rumorName = (r) => `${ZONES[r.zi]?.name || ''} 숨은 던전${r.plus ? ` +${r.plus}` : ''}`;

@@ -722,3 +722,16 @@ html.force-land #rotate { display: none !important; }
 /* v0.46 소문 핀: 아직 못 찾은 것은 흐린 고리, 찾은 것은 금빛 점 */
 .wmap .pin.rumor { width: 14px; height: 14px; margin: -3px 0 0 -3px; border-radius: 50%; border: 2px dashed #ffd060; opacity: .8; }
 .wmap .pin.rumor.found { width: 9px; height: 9px; margin: 0; border: 0; background: #ffd060; box-shadow: 0 0 6px #ffd060; opacity: 1; }
+/* v0.47 던전 변이 띠 · 무너지는 시간 */
+#dgMuts { position: fixed; top: calc(var(--u) * 4.2); left: 50%; transform: translateX(-50%); z-index: 6; display: flex; gap: 6px; align-items: center; pointer-events: auto; cursor: pointer; }
+#dgMuts:empty { display: none; }
+#dgMuts span { padding: 2px 8px; border: 1px solid rgba(255, 176, 96, 0.6); border-radius: 10px; background: rgba(20, 12, 8, 0.75); color: #ffb060; font-size: calc(var(--u) * 0.75); white-space: nowrap; }
+#dgMuts b { padding: 2px 10px; border-radius: 10px; background: rgba(20, 12, 8, 0.85); border: 1px solid #ffd84a; color: #ffd84a; font-size: calc(var(--u) * 1.1); font-family: var(--f-latin); }
+#dgMuts b.low { color: #ff6050; border-color: #ff6050; }
+/* v0.47 돌파 결과 창 */
+#winAlert .clearBox { display: flex; gap: 1.2em; width: 40em; max-width: 90vw; text-align: left; }
+#winAlert .clearStats { flex: 0 0 15em; }
+#winAlert .clearStats .kv b { font-size: 1.15em; color: #ffd84a; }
+#winAlert .clearLoot { flex: 1; min-width: 0; max-height: 55vh; overflow-y: auto; border-left: 1px solid rgba(217,182,106,.25); padding-left: .9em; }
+#winAlert .clearLoot h3 { margin: .2em 0; font-size: .95em; color: #ffd84a; }
+#winAlert .clearLoot .ntcRows { grid-template-columns: 1fr; }

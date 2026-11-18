@@ -35,6 +35,7 @@ import { Actor, makeHero } from '../engine2d/actor.js';
 import { FX, drawPowerFrame } from '../engine2d/fx.js';
 import { zoneRadius, resolveCollision, zoneAt, clearLine, findPath, blockedAt, LAKES, MESAS, CAMPS, inCamp, bossSpot, addGateProps, removeProps } from '../engine2d/stage.js';
 import { rumorsOf, analyzeDone, rumorName, PLUS } from '../game/rumor.js';
+import { MUTS, MUT_AFFIX, MUT_RESIST, COLLAPSE_SEC, mutCount, rollMuts, mutBonus } from '../data/mutators.js';
 import { rollShard } from '../game/shards.js';
 import { reveal, saveFog, loadFog } from '../ui/mapimg.js';
 import { DATA, image, animImage, drawRect, frameIndex } from '../engine2d/sprites.js';
@@ -465,7 +466,7 @@ export class World {
     const c = (this.st.playTime % 1200) / 1200;
     const target = c > 0.8 ? 1 : 0;
     this.night = (this.night || 0) + (target - (this.night || 0)) * Math.min(1, dt * 0.3);
-    this.stage.night = this.inTown || this.dungeon ? this.night * 0.4 : this.night;
+    this.stage.night = this.mut('dark') ? 1 : this.inTown || this.dungeon ? this.night * 0.4 : this.night;
     this.rainT = (this.rainT ?? 120) - dt;
     if (this.rainT <= 0) { this.rainT = 120 + Math.random() * 240; this.raining = Math.random() < 0.3; }
     const wet = ['field', 'forest', 'swamp', 'harbor', 'webwood'].includes(zoneAt(this.player.pos.x, this.player.pos.z)?.id);
@@ -533,6 +534,38 @@ export class World {
       }
     }
     for (const r of R) if (r.x != null && !G[r.id]) G[r.id] = addGateProps(this.stage, ALL_ZONES[r.zi], r.x, r.z);
+  }
+  // v0.47 던전 변이: 지금 던전에 그 변이가 있나
+  mut(id) { return !!this.dungeon?.muts?.includes(id); }
+  // 들어간 뒤 변이를 보고 [시작] (그전엔 몬스터가 움직이지 않는다) · 무너지는 던전 시간 · 화상 · 낙뢰 · 위쪽 띠
+  dungeonStep(dt) {
+    const dg = this.dungeon; let el = document.getElementById('dgMuts');
+    if (!dg || !dg.muts?.length || dg.cleared) { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement('div'); el.id = 'dgMuts'; document.body.appendChild(el); el.onclick = () => this.showMuts(true); }
+    if (!dg.started) { if (!dg.asked) { dg.asked = true; this.showMuts(false); } el.innerHTML = ''; return; }
+    const left = dg.muts.includes('collapse') ? Math.max(0, COLLAPSE_SEC - (this.time - dg.t0)) : null;
+    const key = dg.muts.join() + '|' + (left == null ? '' : Math.ceil(left));
+    if (el.dataset.k !== key) { el.dataset.k = key; el.innerHTML = (left != null ? `<b class="${left < 60 ? 'low' : ''}">${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}</b>` : '') + dg.muts.map((id) => `<span>${MUTS[id].name}</span>`).join(''); }
+    if (left === 0) { this.ui.toast('던전이 무너졌습니다', '#ff7060'); sfx('error'); this.leaveDungeon(); return; }
+    if (this.dead) return;
+    if (this.mut('burning') && (dg.burnT = (dg.burnT ?? 3) - dt) <= 0) { dg.burnT = 3; this.hurtPlayer(this.d.maxHp * 0.015, null, { sure: true }); this.fx.play?.('fire', this.player.pos.x, this.player.pos.z, { scale: 0.6, dur: 0.6 }); }
+    if (this.mut('storm') && (dg.stormT = (dg.stormT ?? 6) - dt) <= 0) {
+      dg.stormT = 6 + Math.random() * 3; const P = { x: this.player.pos.x, z: this.player.pos.z };
+      this.fx.telegraph?.(P.x, P.z, 2.2, 1.2, 0x80c0ff);
+      this.later(1.2, () => { if (!this.dungeon) return; this.fx.play?.('lightning', P.x, P.z, { scale: 1.2, dur: 0.5 }); if (Math.hypot(this.player.pos.x - P.x, this.player.pos.z - P.z) < 2.2) this.hurtPlayer(this.d.maxHp * 0.08, null, { sure: true }); });
+    }
+  }
+  // 변이 보기: 들어갔을 때는 [시작] (나가기도 고를 수 있다), 그 뒤엔 보기만
+  showMuts(again) {
+    const dg = this.dungeon; if (!dg?.muts?.length) return;
+    const b = mutBonus(dg.muts.length), html = dg.muts.map((id) => `<div style="margin:.35em 0"><b style="color:#ffb060">${MUTS[id].name}</b><br><small>${MUTS[id].text}</small></div>`).join('') + `<div style="margin-top:.6em;color:#7fe07a">보상: 장비 레벨 +${b.lv} · 전설 ×${b.legend.toFixed(2)} · 금화 · 보석 +${Math.round((b.gold - 1) * 100)}%</div>`;
+    if (again) { this.ui.ask('던전 변이', html, null, () => {}); return; }
+    this.toggleAuto(false);
+    this.ui.choose('던전 변이', html, [{ label: '시작' }, { label: '나가기' }], (i) => {
+      if (!this.dungeon) return;
+      if (i === 1) { this.leaveDungeon(); return; }
+      dg.started = true; dg.t0 = this.time; this.ui.toast('던전 시작', '#ffd84a');
+    });
   }
   rumorNear(rad = 3) {
     if (this.dungeon) return null;
@@ -627,6 +660,9 @@ export class World {
     this.dungeon = { zi, stage, zone: zn, diff, unknown: !!opt.unknown, until: opt.gate?.until || Date.now() + 86400e3 };
     const HP = opt.hidden ? PLUS[opt.hidden.plus || 0] : null; // v0.46 숨은 던전: 지역보다 세게 (지도 강화만큼 더)
     if (HP) Object.assign(this.dungeon, { hidden: opt.hidden.id, plus: opt.hidden.plus || 0 });
+    { const dg0 = this.dungeon; // v0.47 변이 (숨은 던전은 소문에 저장해 다시 들어가도 같다) · 기록(시간 · 피해 · 처치 · 주운 것)
+      dg0.muts = opt.unknown ? [] : opt.hidden ? (opt.hidden.muts ||= rollMuts(mutCount({ hidden: true, plus: opt.hidden.plus || 0 }))) : rollMuts(mutCount({ diff }));
+      dg0.started = !dg0.muts.length; dg0.t0 = this.time; dg0.dmg = 0; dg0.kills = 0; dg0.got = []; }
     this.toggleAuto(false);
     const Ld = dungeonLayout(zi), sp0 = cellPos(zi, Ld.start[0], Ld.start[1]);
     this.player.pos.set(sp0.x, 0, sp0.z); this.moveTo = null; this.target = null;
@@ -644,10 +680,12 @@ export class World {
       const m = this.spawn({ zone: zn, x: p.x, z: p.z, level: L, tier, timer: 0, mon: null, fixed });
       m.maxHp = m.hp = Math.round(m.maxHp * mod.hp * D.hp * (HP?.hp || 1)); m.dmg = m.dmg.map((v) => v * mod.dmg * D.dmg * (HP?.dmg || 1)); m.dungeon = true; m.exp *= 1.5 * D.loot;
       m.home = { x: p.x, z: p.z };
+      const MA = (this.dungeon.muts || []).filter((x) => MUT_AFFIX.includes(x)); // v0.47 몬스터 변이
+      if (MA.length) { m.affix = [...new Set([...(m.affix || []), ...MA])]; if (MA.includes('frenzy')) { m.speed *= 1.3; m.def = { ...m.def, interval: m.def.interval / 1.3 }; } }
     };
     for (let n = 0; n < (opt.unknown ? 30 : HP ? 16 : 14 + Math.min(8, stage)) && cells.length; n++) put(pick(), 'normal'); // 낮은 단계는 몬스터가 적다
     cells.sort((a, b) => Ld.dist[b] - Ld.dist[a]);
-    for (let n = 0; n < (opt.unknown ? 10 : HP ? 6 : 4) && cells.length; n++) put(cells.splice(Math.floor(Math.random() * Math.min(opt.unknown ? 30 : 12, cells.length)), 1)[0], 'elite');
+    for (let n = 0; n < (opt.unknown ? 10 : HP ? 6 : 4) * (this.mut('elite') ? 2 : 1) && cells.length; n++) put(cells.splice(Math.floor(Math.random() * Math.min(opt.unknown ? 30 : 12, cells.length)), 1)[0], 'elite');
     put(Ld.boss[1] * N + Ld.boss[0], 'boss', { type: opt.unknown ? zn.named.type : zn.boss.type, name: opt.unknown ? '유물 수호자' : HP ? `${zn.name}의 숨은 주인` : `${zn.name} 던전 우두머리` });
     { const bm = this.monsters[this.monsters.length - 1]; if (bm?.tier === 'boss') { const k = HP ? 1.6 : 0.55 + 0.09 * stage; bm.maxHp = bm.hp = Math.round(bm.maxHp * k); } } // 우두머리: 1단계 0.64배 → 10단계 1.45배
     if (opt.unknown) { for (const m of this.monsters) if (m.dungeon) m.noLoot = true; this.trapT = 3; this.ui.toast('미지의 땅 — 끝에 유물이 있습니다', '#ffd060'); }
@@ -701,12 +739,13 @@ export class World {
     this.checkTierUnlock();
     this.dailyDone(dailyProgress(st, { kind: 'dungeon', zone: zn.id }));
     // 보상: 영웅 이상 2개 (단계가 높을수록 전설), 상급 스킬북 하나, 금화
-    const lv = dungeonLevel(zn, dg.stage) + this.tierOffset;
+    const MB = mutBonus(dg.muts?.length || 0), gMark = this.ground.length; // v0.47 변이 보상 · 결과 창에 보일 보상
+    const lv = dungeonLevel(zn, dg.stage) + this.tierOffset + MB.lv;
     const D = DUNGEON_DIFFS[(dg.diff || 1) - 1];
     // 신화: 강화 · 극한 던전 우두머리에서만, 한 번 돌파에 한 번 굴린다 (극한 10단계도 3%) · 못 나오면 신화의 흔적이 쌓인다
     // v0.44.18 좋은 아이템 발견: 신화 100%마다 +0.1%p (최대 3%), 전설 100%마다 +0.3%p (최대 +5%p)
     const mf = Math.max(0, this.d.magicFind + researchK(st, 'luck'));
-    const mythP = Math.min(0.03, D.myth(dg.stage) + (mf / 100) * 0.001), legendP = D.legend(dg.stage) + Math.min(0.05, (mf / 100) * 0.003);
+    const mythP = Math.min(0.03, D.myth(dg.stage) + (mf / 100) * 0.001), legendP = (D.legend(dg.stage) + Math.min(0.05, (mf / 100) * 0.003)) * MB.legend;
     let myth = dg.diff > 1 && Math.random() < mythP ? 1 : 0;
     // v0.44.16 신화의 흔적은 내 수준에 맞는 던전에서만 (던전 레벨이 각성보다 20 넘게 낮으면 없음)
     if (dg.diff > 1) { if (lv >= (st.awakenings || 0) - 20) { resAdd(st, 'myth_mark', 1); this.ui.log(`신화의 흔적 +1 (${resCount(st, 'myth_mark')})`, '#ff7aa8'); } else this.ui.log('너무 쉬운 던전이라 신화의 흔적이 나오지 않았습니다', '#a09080'); }
@@ -721,26 +760,42 @@ export class World {
     }
     const tier = dg.stage >= 7 ? 5 : dg.stage >= 4 ? 4 : 3, pool = Object.keys(SKILLS).filter((id) => SKILLS[id].tier === tier && !SKILLS[id].awaken); // 각성 등급이 정해진 스킬은 몬스터 레벨로만
     this.dropGround({ kind: 'item', item: makeBook(pool[Math.floor(Math.random() * pool.length)], st) }, m.pos.x - 1.2, m.pos.z + 1);
-    this.dropGround({ kind: 'gold', amount: Math.round(lv * 60 * (1 + dg.stage * 0.2) * D.loot) }, m.pos.x, m.pos.z - 1);
+    this.dropGround({ kind: 'gold', amount: Math.round(lv * 60 * (1 + dg.stage * 0.2) * D.loot * MB.gold) }, m.pos.x, m.pos.z - 1);
     if (dg.diff > 1) { const e = dropEss(st, lv, 'boss', D.loot); if (e) this.ui.log(`${BASES[e.id].name} +${e.n}`, '#c8b0ff'); }
     if (myth) { this.fx.shake(0.6); this.fx.pillar(m.pos.x, m.pos.z, 0xff4a8a, 3, 8, 2.5); sfx('rare'); this.ui.toast('신화 장비!', '#ff4a8a'); (st.rec ||= {}).myths = (st.rec.myths || 0) + myth; }
     this.ui.toast(`던전 ${dg.stage}단계 · ${D.name} 돌파!`, '#ffd84a');
     sfx('awaken');
+    this.showClear(`${zn.name} 던전 ${dg.stage}단계 · ${D.name} 돌파`, dg, this.ground.slice(gMark));
     dg.cleared = true; // 공격 버튼이 「나가기」로 바뀐다 (input.js). 전리품을 다 줍고 나간다
   }
 
+  // v0.47 돌파 결과 창: 걸린 시간 · 준 피해 · 초당 피해 · 처치 · 보상(바닥에 떨어진 것 + 재료) · 주운 장비
+  showClear(title, run, drops = [], mats = []) {
+    const sec = Math.max(1, this.time - (run.t0 ?? this.time)), dmg = run.dmg || 0;
+    const fmtT = `${Math.floor(sec / 60)}분 ${Math.floor(sec % 60)}초`, big = (v) => (v >= 1e8 ? `${(v / 1e8).toFixed(1)}억` : v >= 1e4 ? `${(v / 1e4).toFixed(1)}만` : Math.round(v).toLocaleString());
+    const rows = [];
+    for (const g of drops) { if (g.kind === 'gold') rows.push({ img: coinIcon(), name: `금화 ${g.amount.toLocaleString()}`, color: '#ffd84a' }); else if (g.item) rows.push({ img: itemIcon(g.item), name: itemName(g.item) + (g.item.qty > 1 ? ` ×${g.item.qty}` : ''), color: itemColor(g.item) }); }
+    for (const [n, q] of mats) rows.push({ name: `${n} ×${q}`, color: '#c8c0b0' });
+    const got = (run.got || []).filter((it) => it.rarity && ['rare', 'hero', 'legend', 'myth'].includes(it.rarity));
+    const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    const row = (r) => `<div class="ntcRow">${r.img ? `<img src="${r.img}" alt="" />` : ''}<span style="color:${r.color}">${esc(r.name)}</span></div>`;
+    const html = `<div class="clearBox"><div class="clearStats"><div class="kv tight"><span>걸린 시간</span><b>${fmtT}</b><span>준 피해</span><b>${big(dmg)}</b><span>초당 피해</span><b>${big(dmg / sec)}</b><span>처치</span><b>${run.kills || 0}</b>${run.muts?.length ? `<span>변이</span><b>${run.muts.length}개</b>` : ''}</div>${run.muts?.length ? `<div class="note" style="margin-top:6px">${run.muts.map((id) => MUTS[id].name).join(' · ')}</div>` : ''}</div>`
+      + `<div class="clearLoot"><h3>보상</h3><div class="ntcRows">${rows.map(row).join('') || '<div class="note">없음</div>'}</div>${got.length ? `<h3>주운 장비 ${got.length}</h3><div class="ntcRows">${got.slice(0, 12).map((it) => row({ img: itemIcon(it), name: itemName(it), color: itemColor(it) })).join('')}</div>` : ''}</div></div>`;
+    globalThis.__game?.windows?.popup?.(title, html, true);
+  }
   // v0.46 숨은 던전 돌파: 소문이 사라지고, 보물 상자 셋(부위) 중 하나를 고른다. 지역보다 한 단계 높은 장비 · 희귀 이상
   hiddenCleared(m) {
     const st = this.st, dg = this.dungeon, zn = dg.zone, pl = PLUS[dg.plus || 0];
     dg.cleared = true;
     const R = rumorsOf(st), i = R.findIndex((r) => r.id === dg.hidden); if (i >= 0) R.splice(i, 1);
-    const lv = zn.levels[1] + 6 + pl.lv + this.tierOffset, mf = Math.max(0, this.d.magicFind + researchK(st, 'luck'));
-    const myth = Math.random() < Math.min(0.05, pl.myth + (pl.myth ? (mf / 100) * 0.001 : 0)), legend = !myth && Math.random() < pl.legend + Math.min(0.05, (mf / 100) * 0.003);
+    const MB = mutBonus(dg.muts?.length || 0), gMark = this.ground.length;
+    const lv = zn.levels[1] + 6 + pl.lv + this.tierOffset + MB.lv, mf = Math.max(0, this.d.magicFind + researchK(st, 'luck'));
+    const myth = Math.random() < Math.min(0.05, pl.myth + (pl.myth ? (mf / 100) * 0.001 : 0)), legend = !myth && Math.random() < (pl.legend + Math.min(0.05, (mf / 100) * 0.003)) * MB.legend;
     const rarity = myth ? 'myth' : legend ? 'legend' : Math.random() < 0.4 ? 'hero' : 'rare';
     if (dg.plus >= 2 && lv >= (st.awakenings || 0) - 20) { resAdd(st, 'myth_mark', 1); this.ui.log(`신화의 흔적 +1 (${resCount(st, 'myth_mark')})`, '#ff7aa8'); }
     // 금화 · 보석 둘 · 능력치 파편 하나는 바로 떨어진다
-    this.dropGround({ kind: 'gold', amount: Math.round(lv * 120 * (1 + dg.plus * 0.5)) }, m.pos.x, m.pos.z - 1);
-    for (let k = 0; k < 2 + Math.floor(dg.plus / 2); k++) this.dropGround({ kind: 'item', item: makeItem(`gem_${['ruby', 'emerald', 'sapphire', 'amethyst', 'diamond'][Math.floor(Math.random() * 5)]}_${gemGradeFor(lv)}`, { qty: 1 }, st) }, m.pos.x - 1.2 + k * 0.6, m.pos.z - 0.4);
+    this.dropGround({ kind: 'gold', amount: Math.round(lv * 120 * (1 + dg.plus * 0.5) * MB.gold) }, m.pos.x, m.pos.z - 1);
+    for (let k = 0; k < Math.round((2 + Math.floor(dg.plus / 2)) * MB.gold); k++) this.dropGround({ kind: 'item', item: makeItem(`gem_${['ruby', 'emerald', 'sapphire', 'amethyst', 'diamond'][Math.floor(Math.random() * 5)]}_${gemGradeFor(lv)}`, { qty: 1 }, st) }, m.pos.x - 1.2 + k * 0.6, m.pos.z - 0.4);
     this.dropGround({ kind: 'item', item: rollShard(lv, st) }, m.pos.x + 1.2, m.pos.z - 0.4);
     // 상자 셋 = 부위 셋
     const groups = [['무기', ['weapon']], ['보조 장비', ['offhand']], ['투구', ['helm']], ['갑옷', ['armor']], ['장갑', ['gloves']], ['허리띠', ['belt']], ['신발', ['boots']], ['목걸이', ['amulet']], ['반지', ['ring']]];
@@ -750,6 +805,7 @@ export class World {
       if (!base) { const ids = Object.keys(BASES).filter((id) => slots.includes(BASES[id].slot) && !BASES[id].noDrop && (BASES[id].minLvl ?? 1) <= lv); base = ids.sort((a, b) => (BASES[b].minLvl ?? 1) - (BASES[a].minLvl ?? 1))[0] || rollBase(lv); }
       this.dropGround({ kind: 'item', item: makeItem(base, { rarity, ilvl: lv }, st) }, m.pos.x, m.pos.z + 1);
       if (myth) { this.fx.shake(0.6); this.fx.pillar(m.pos.x, m.pos.z, 0xff4a8a, 3, 8, 2.5); sfx('rare'); this.ui.toast('신화 장비!', '#ff4a8a'); (st.rec ||= {}).myths = (st.rec.myths || 0) + 1; }
+      this.showClear(`${rumorName({ zi: dg.zi, plus: dg.plus })} 돌파`, dg, this.ground.slice(gMark));
       this.ui.dirty();
     };
     sfx('awaken'); this.ui.toast('숨은 던전 돌파! 보물 상자 하나를 고르세요', '#ffd060');
@@ -1313,6 +1369,7 @@ export class World {
       if (A.includes('shield') && !m.shieldUsed && m.hp < m.maxHp * 0.5) { m.shieldUsed = true; m.fshield = m.maxHp * 0.2; this.fx.text(m.pos.clone().setY(2.4), '보호막', 'miss'); }
       if (m.fshield > 0) { const ab = Math.min(m.fshield, raw); m.fshield -= ab; raw -= ab; }
       if (A.includes('reflect') && src !== 'dot' && raw > 0 && !(m.reflT > this.time)) { m.reflT = this.time + 0.5; this.hurtPlayer(Math.min(raw * 0.1, this.d.maxHp * 0.04), m, { sure: true }); } } // 반사: 받은 피해의 10%, 한 번에 최대 HP 4%까지 · 0.5초에 한 번 (강한 캐릭터가 한 방에 죽던 것)
+    if (m.dungeon && this.dungeon?.muts && ctx?.id) { const sc = SKILLS[ctx.id]?.school; if (Object.entries(MUT_RESIST).some(([k, v]) => v === sc && this.mut(k))) raw *= 0.5; } // v0.47 원소 변이
     if (m.vulnT > 0) raw *= this.art('soulmark') ? 1.25 : 1.15;
     if (this.art('sniper') && (src === 'ranged' || ctx) && Math.hypot(m.pos.x - this.player.pos.x, m.pos.z - this.player.pos.z) > 8) raw *= 1.15;
     if (this.art('huntertrap') && m.rootT > 0) raw *= 1.1;
@@ -1334,7 +1391,8 @@ export class World {
       else if (f.id === 'slow') m.slowT = Math.max(m.slowT || 0, 2);
       else if (f.id === 'shield') { const sh = this.buffs.shield; const add = dmg * 0.06 * (this.art('brand') ? 1.5 : 1) * (this.art('shieldsmith') ? 1.25 : 1), cap = this.d.maxHp * 0.3, dur = 6 + (this.art('unbreak') ? 3 : 0); this.artEv('shieldGain', add); if (sh && sh.t > 0) sh.v = Math.min(cap, sh.v + add); else this.buffs.shield = { v: Math.min(cap, add), t: dur, max: dur }; }
     }
-    (this.dealtLog ||= []).push([this.time, dmg]); // v0.44.26 최근 준 피해 (체력 · 주 스탯 나누기)
+    (this.dealtLog ||= []).push([this.time, dmg]);
+    if (m.dungeon && this.dungeon) this.dungeon.dmg = (this.dungeon.dmg || 0) + dmg; else if (m.flood) { if (this.floodRun && this.time - this.floodRun.last > 300) this.floodRun = null; const fr = (this.floodRun ||= { t0: this.time, dmg: 0, kills: 0 }); fr.dmg += dmg; fr.last = this.time; } // 5분 넘게 범람과 안 싸우면 새로 잰다 // v0.44.26 최근 준 피해 (체력 · 주 스탯 나누기)
     m.showHp = 6;
     this.lastHit = m;
     if (m.state !== 'return') m.state = 'chase';
@@ -1401,6 +1459,7 @@ export class World {
 
   killMonster(m, src, ctx, rf) {
     m.dead = true;
+    if (m.dungeon && this.dungeon) this.dungeon.kills = (this.dungeon.kills || 0) + 1; else if (m.flood) { const fr = (this.floodRun ||= { t0: this.time, dmg: 0, kills: 0 }); fr.kills++; }
     if (m.sp?.zone) (this.st.zoneHunt ||= {})[m.sp.zone.id] = Date.now(); // v0.44.43 범람지: 지역별 마지막 사냥
     if (m.tier === 'boss' && !m.flood && !this.dungeon?.unknown) this.st.bossTop = Math.max(this.st.bossTop || 0, m.level); // v0.44.62 이번 패치 뒤 잡은 가장 높은 보스 (범람 · 미지의 땅 기준)
     if (m.flood) this.floodDeath(m);
@@ -1510,6 +1569,7 @@ export class World {
   healPlayer(v, show = true) {
     const st = this.st;
     const before = st.hp;
+    if (this.mut('wound')) v *= 0.5; // v0.47 상처 입는 던전
     st.hp = Math.min(this.d.maxHp, st.hp + v);
     if (show && st.hp - before >= 1) this.fx.text(this.player.pos.clone().setY(2.6), `+${Math.round(st.hp - before)}`, 'heal');
   }
@@ -1561,6 +1621,7 @@ export class World {
   }
 
   pickup(g) {
+    if (this.dungeon && !this.dungeon.cleared && g.kind === 'item' && g.item) (this.dungeon.got ||= []).push(g.item); // v0.47 결과 창
     const st = this.st;
     if (g.kind === 'gold') {
       st.gold += g.amount;
@@ -1775,6 +1836,7 @@ export class World {
     if (this.floodOn) delete this.floodOn[zid];
     if (this.floodLock?.zone === zid) this.floodLock = null;
     this.stage.flooded = F.list.map((x) => x.zone);
+    const gMark = this.ground.length, fr = this.floodRun || { t0: this.time, dmg: 0, kills: 0 }; this.floodRun = null;
     this.dropGround({ kind: 'gold', amount: lv * 400 }, P.x, P.z);
     this.dropGround({ kind: 'item', item: makeItem(rollBase(lv), { rarity: Math.random() < 0.15 ? 'legend' : 'hero', ilvl: lv }, this.st) }, P.x + 1, P.z);
     resAdd(this.st, 'ore2', 2 + Math.floor(lv / 40));
@@ -1783,6 +1845,7 @@ export class World {
     const zn = ALL_ZONES.find((z) => z.id === zid);
     this.ui.banner?.(`${zn?.name || ''} 정화 완료`, '#7fe07a'); this.ui.toast(`범람이 정화되었습니다 · 금화 · 장비 · 상급 강화석 · 알 수 없는 지도 조각`, '#7fe07a'); sfx('rankup');
     this.fx.play('sparkle', P.x, P.z, { scale: 2, dur: 1.2 });
+    this.showClear(`${zn?.name || ''} 범람 정화`, fr, this.ground.slice(gMark), [['상급 강화석', 2 + Math.floor(lv / 40)], ['알 수 없는 지도 조각', 1]]);
     this.ui.dirty();
   }
   // 결계 불꽃: 갇힌 동안 지역 경계를 따라 가까운 곳에 불꽃이 탄다 (벽 대신 효과 그림)
@@ -1876,7 +1939,7 @@ export class World {
     const r = BASES[id].restore;
     const rk = 1 + researchK(st, 'potion');
     if (r.hp) this.healPlayer(r.hp * rk);
-    if (r.mp) { this.gainMp(r.mp * rk); this.fx.text(this.player.pos.clone().setY(2.6), `+${r.mp}`, 'mana'); }
+    if (r.mp) { this.gainMp(r.mp * rk * (this.mut('drain') ? 0.5 : 1)); this.fx.text(this.player.pos.clone().setY(2.6), `+${r.mp}`, 'mana'); }
     this.fx.burst(this.player.pos.x, 1.2, this.player.pos.z, r.hp ? 0xff4050 : 0x4080ff, 8, 2);
     sfx('potion');
     this.potionCd = 0.8;
@@ -2006,7 +2069,7 @@ export class World {
     this.actCd = RECOVER.skill;
     st.mp -= v.mp;
     this.perk(sk.type === 'buff' ? 'buff' : sk.ap === 'int' ? 'spell' : 'skill', this.target?.pos);
-    this.cds[id] = v.cd * (1 - (this.d.cdr || 0) / 100) * (this.art('vanguard') && sk.type === 'dash' ? 0.7 : 1);
+    this.cds[id] = v.cd * (1 - (this.d.cdr || 0) / 100) * (this.art('vanguard') && sk.type === 'dash' ? 0.7 : 1) * (this.mut('slowcd') ? 1.3 : 1);
     if (!v.echoed) {
       if (v.mp > 0) { this.artEv('mpSpent', v.mp); if (this.art('manaflow')) st.mp = Math.min(this.d.maxMp, st.mp + v.mp * 0.05); }
       if (st.mp < this.d.maxMp * 0.2) this.artEv('lowMpSkill');
@@ -2518,6 +2581,7 @@ export class World {
     this.raidStep(dt);
     this.merchantStep(dt);
     this.rumorStep(dt);
+    this.dungeonStep(dt);
     this.petStep(dt);
     this.skyStep(dt);
     this.campStep(dt);
@@ -2579,8 +2643,8 @@ export class World {
     for (const k in this.cds) if (this.cds[k] > 0) this.cds[k] -= dt;
     this.potionCd -= dt; this.atkCd -= dt; this.swing -= dt; this.actCd -= dt;
     if (!this.dead) {
-      st.hp = Math.min(this.d.maxHp, st.hp + this.d.hpRegen * dt * (this.inTown ? 6 : 1));
-      this.gainMp(this.d.mpRegen * dt * (this.inTown ? 6 : 1));
+      st.hp = Math.min(this.d.maxHp, st.hp + this.d.hpRegen * dt * (this.inTown ? 6 : 1) * (this.mut('wound') ? 0.5 : 1));
+      this.gainMp(this.d.mpRegen * dt * (this.inTown ? 6 : 1) * (this.mut('drain') ? 0.5 : 1));
     }
     this.updatePlayer(dt);
     this.player.update(dt);
@@ -2608,6 +2672,7 @@ export class World {
         if (!m.owner && !m.flood && dist2(m.pos, P) > DESPAWN_FAR) { m.actor.dispose(); this.monsters.splice(i, 1); m.sp.mon = null; m.sp.timer = 0; if (this.target === m) this.target = null; }
         continue;
       }
+      if (m.dungeon && this.dungeon && !this.dungeon.started) { m.actor.update(dt); continue; } // v0.47 변이를 보고 시작하기 전
       this.monsterAI(m, dt);
       m.actor.update(dt);
     }
@@ -2722,7 +2787,7 @@ export class World {
       if (this.autoThink <= 0) { this.autoThink = 0.2; this.autoBrain(); }
     }
     let moving = false;
-    const speed = d.moveSpeed * ((this.chainSpdT || 0) > 0 ? 1.15 : 1);
+    const speed = d.moveSpeed * ((this.chainSpdT || 0) > 0 ? 1.15 : 1) * (this.mut('frozen') ? 0.8 : 1);
     if (this.chainSpdT > 0) this.chainSpdT -= dt;
     const aq = this.atkQueue;
     if (aq && (aq.m.dead || this.time > aq.until)) this.atkQueue = null;
