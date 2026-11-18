@@ -268,7 +268,8 @@ export const staMax = (m) => 50 + m.lv * 2 + (m.aw || 0) * 8 + (m.vit || 0);
 export const VETERAN = 0.05;
 export const isVet = (m) => (m.lv || 1) >= MERC.lvMax;
 export const workEff = (m, type) => (m[SKILL_OF[type]] || 0) / 10 * (isVet(m) ? 1 + VETERAN : 1);  // 솜씨 10 = 한 자리 몫
-const growSkill = (m, k, h) => { m[k] ??= 1; const cap = 30 + (m.aw || 0) * 6; m[k] = Math.min(cap, m[k] + 0.12 * h * (1 - m[k] / (cap + 5))); };
+// v0.49.9 상한보다 이미 높은 솜씨(등급 · 각성으로 받은 값)는 깎지 않는다 (예전엔 일하면 상한 30으로 깎였다)
+const growSkill = (m, k, h) => { m[k] ??= 1; const cap = 30 + (m.aw || 0) * 6; if (m[k] >= cap) return; m[k] = Math.min(cap, m[k] + 0.12 * h * (1 - m[k] / (cap + 5))); };
 function gainExp(m, n) {
   if (m.lv >= MERC.lvMax) { m.exp = 0; return; }
   m.exp += n;

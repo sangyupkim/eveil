@@ -571,4 +571,10 @@ test('소문 지도: 두 단계 아래 지역까지 · 분석 · 강화', () => 
   assert.ok(!RM.rumorUpgrade(p, p.rumors[0].id).ok); // 재료 모자람
 });
 
+test('일하는 용병의 솜씨가 상한보다 높으면 깎이지 않는다', () => {
+  const p = { gold: 1e9, inv: [], town: { plots: { a: { type: 'mine', lv: 5 } }, mercs: [], last: Date.now() - 3600e3 }, nextUid: 1 };
+  const T = townOf(p); const m = { id: 'x', name: 'x', grade: 4, lv: 5, exp: 0, sta: 999, mine: 55, herb: 52, craft: 3, lore: 3, care: 3, hunt: 10, work: 'a' }; T.mercs.push(m);
+  tick(p, Date.now()); assert.ok(m.mine >= 55, String(m.mine));
+});
+
 console.log(`\n${n}개 통과`);
