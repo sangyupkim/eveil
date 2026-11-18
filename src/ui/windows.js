@@ -1390,6 +1390,15 @@ export class Windows {
     on('[data-uiedit]', () => { this.close(); editUi(st, () => w.ui.toast('UI 위치를 저장했습니다')); });
     on('[data-uireset]', () => { st.settings.ui = undefined; applyUi(st); this.render(); });
     on('[data-plot]', (el) => { this.townSel = el.dataset.plot; audio.play('click'); this.render(); });
+    // v0.49.13 분해 결과 팝업: 분해한 수 · 강화석 · 지역 재료 · 능력치 파편 (한 개든 여러 개든)
+    const salvReport = (rs) => {
+      const ok = rs.filter((r) => r?.ok); if (!ok.length) return;
+      const ore = ok.reduce((a, r) => a + (r.ore || 0), 0), mats = {}; for (const r of ok) mats[r.mat] = (mats[r.mat] || 0) + (r.matN || 0);
+      const shards = ok.filter((r) => r.shard).map((r) => r.shard);
+      const html = `<div class="kv tight" style="margin:6px 0"><span>분해한 장비</span><b>${ok.length}개</b><span>강화석</span><b>${ore.toLocaleString()}</b>${Object.entries(mats).map(([k, n]) => `<span>${esc(MATERIALS[k]?.name || k)}</span><b>${n.toLocaleString()}</b>`).join('')}</div>`
+        + (shards.length ? `<div class="note" style="margin-top:6px">능력치 파편 ${shards.length}개</div>` + shards.map((x) => `<div class="aff" style="color:#c58cff">${esc(affixText(x.shard))}</div>`).join('') : '');
+      this.popup('분해 결과', html, false);
+    };
     const townDone = (r, okMsg) => { if (!r?.ok) { if (r?.why) w.ui.toast(r.why); audio.play('error'); } else { if (okMsg) w.ui.toast(okMsg, '#ffd84a'); w.refreshTown(); w.ui.dirty(); } this.render(); };
     ask('[data-build]', (el) => ['건물 짓기', `${BUILDINGS[el.dataset.build].name}을(를) 짓습니다`, '짓기'], (el) => { const r = build(st, this.townSel || PLOTS[0].id, el.dataset.build); if (r.ok) audio.play('rankup'); townDone(r, `${BUILDINGS[el.dataset.build].name}을(를) 지었습니다`); });
     ask('[data-upgrade]', () => ['건물 강화', '다음 단계로 올립니다', '올리기'], () => { const r = upgrade(st, this.townSel); if (r.ok) audio.play('rankup'); townDone(r, '단계를 올렸습니다'); });
@@ -1418,7 +1427,7 @@ export class Windows {
     on('[data-travel]', (el) => { this.portalAt = null; this.mapZoom = null; this.close(); w.travel(el.dataset.travel); });
     on('[data-mzoom]', (el) => { const Z = [1, 1.6, 2.4, 3.2], i = Math.max(0, Math.min(Z.length - 1, Z.indexOf(this.mapZoom || 1) + Number(el.dataset.mzoom))); this.mapZoom = Z[i]; this.mapCenter = true; audio.play('click'); this.render(); });
     on('[data-camp]', (el) => { const [z, what] = el.dataset.camp.split('|'); const r = w.buildCamp(z, what); if (!r.ok && r.why) w.ui.toast(r.why); w.ui.dirty(); this.render(); });
-    ask('[data-salvage]', (el) => { const raw = String(el.dataset.salvage), it = gearAt(st, raw.startsWith('v:') ? raw : 'b:' + raw); return it && !cheap(it) ? ['분해', '되돌릴 수 없습니다', '분해', itemHtml(it)] : null; }, (el) => { const raw = el.dataset.salvage, r = salvage(st, Number(String(raw).replace('v:', '')), String(raw).startsWith('v:')); if (r.ok) { audio.play('coin'); w.ui.toast(`분해: 강화석 ${r.ore} · ${MATERIALS[r.mat].name} ${r.matN}`, '#ffd84a'); if (r.shard) w.ui.toast(`능력치 파편: ${affixText(r.shard.shard)}`, '#c58cff'); } townDone(r); });
+    ask('[data-salvage]', (el) => { const raw = String(el.dataset.salvage), it = gearAt(st, raw.startsWith('v:') ? raw : 'b:' + raw); return it && !cheap(it) ? ['분해', '되돌릴 수 없습니다', '분해', itemHtml(it)] : null; }, (el) => { const raw = el.dataset.salvage, r = salvage(st, Number(String(raw).replace('v:', '')), String(raw).startsWith('v:')); if (r.ok) { audio.play('coin'); salvReport([r]); } townDone(r); });
     // v0.45.5 등급을 골라 한꺼번에 분해 (가방, 잠근 장비 제외)
     on('[data-salvageall]', async () => {
       const can = (x) => !x.book && !x.lock && BASES[x.base]?.slot;
@@ -1427,8 +1436,8 @@ export class Windows {
       if (!opts.some((o) => !o.off)) { w.ui.toast('분해할 장비가 없습니다'); audio.play('error'); return; }
       audio.play('click');
       const pick = await gamePick('등급별 분해', opts, '분해', '가방의 고른 등급 장비를 모두 분해합니다'); if (!pick?.length) return;
-      let n = 0, sh = 0; for (const x of [...st.inv]) if (can(x) && pick.includes(x.rarity)) { const r = salvage(st, x.uid); if (r.ok) { n++; if (r.shard) sh++; } }
-      if (sh) w.ui.toast(`능력치 파편 ${sh}개`, '#c58cff'); audio.play('coin'); w.ui.toast(`장비 ${n}개 분해`, '#ffd84a'); townDone({ ok: true }); });
+      const rs = []; for (const x of [...st.inv]) if (can(x) && pick.includes(x.rarity)) rs.push(salvage(st, x.uid));
+      audio.play('coin'); salvReport(rs); townDone({ ok: true }); });
     on('[data-stab]', (el) => { const [k, v] = el.dataset.stab.split('|'); (this.bTab ||= {})[k] = v; audio.play('click'); this.render(); });
     on('[data-labsel]', (el) => { this.labSel = el.dataset.labsel; audio.play('click'); this.render(); });
     on('[data-innsel]', (el) => { this.innSel = el.dataset.innsel; audio.play('click'); this.render(); });
