@@ -178,7 +178,9 @@ export class Windows {
     const on = tabs.querySelector('.tab.on'); if (on) { const l = on.offsetLeft - tabs.offsetLeft; if (l < tabs.scrollLeft || l + on.offsetWidth > tabs.scrollLeft + tabs.clientWidth) tabs.scrollLeft = l - 8; }
     const body = $('.body', this.el);
     // 다시 그려도 스크롤 위치는 지킨다
-    const keep = [...body.querySelectorAll('.frame')].map((f) => f.scrollTop);
+    // v0.49.1 다시 그려도 스크롤 위치는 지킨다: 창 칸(.frame)만이 아니라 팝업(.itemPop) 등 스크롤되는 모든 칸을 (클래스 + 순서)로 기억
+    const scKey = (el, i) => `${el.className}#${i}${el.classList.contains('itemPop') ? '|' + (el.querySelector('.nm')?.textContent || '') : ''}`, SC = '.frame, .itemPop, .fPage, .shList, .gemGrid, .grid, .herbList, .ntcList, .detail, .destList, .mapFrame, .stabs';
+    const keep = {}; { const n = {}; body.querySelectorAll(SC).forEach((el) => { const c = el.className, i = (n[c] = (n[c] || 0) + 1); if (el.scrollTop || el.scrollLeft) keep[scKey(el, i)] = [el.scrollTop, el.scrollLeft]; }); }
     // 창 내용을 만들다 오류가 나도 빈 창이 되지 않게: 알리고 기록을 보낸다
     let html;
     try { html = this[this.kind](); } catch (e) { console.error(e); cloud.reportError(`[win:${this.kind}] ${e?.message}`, e?.stack, GAME_VERSION); html = `<div class="frame" style="flex:1"><div class="note">창을 여는 중 오류가 났습니다 · ${esc(e?.message || '')}</div></div>`; }
@@ -186,7 +188,7 @@ export class Windows {
     const wc = body.querySelector('.wmc');
     if (wc && this.kind === 'map') { const mf = body.querySelector('.mapFrame'), me = body.querySelector('.pin.me'); if (mf && me && (this.mapCenter !== false)) { requestAnimationFrame(() => { mf.scrollLeft = me.offsetLeft - mf.clientWidth / 2; mf.scrollTop = me.offsetTop - mf.clientHeight / 2; }); this.mapCenter = false; } }
     if (wc) { const g = wc.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(terrain, 0, 0, wc.width, wc.height); g.imageSmoothingEnabled = true; g.drawImage(fogCan, 0, 0, wc.width, wc.height); }
-    body.querySelectorAll('.frame').forEach((f, i) => { f.scrollTop = keep[i] || 0; });
+    { const n = {}; body.querySelectorAll(SC).forEach((el) => { const c = el.className, i = (n[c] = (n[c] || 0) + 1), k = keep[scKey(el, i)]; if (k) { el.scrollTop = k[0]; el.scrollLeft = k[1]; } }); }
     this.bind(body);
     body.querySelectorAll('[data-keyedit]').forEach((b) => { b.onclick = () => { this.keyEdit = !this.keyEdit; this.waitKey = null; this.render(); }; });
     body.querySelectorAll('[data-bind]').forEach((b) => { b.onclick = () => { this.waitKey = b.dataset.bind; this.render(); }; });
@@ -928,8 +930,10 @@ export class Windows {
     const html = `<div class="ntc">${'<div class="ntcList">' + all.map((sec) => `<h3>${esc(sec.title)}</h3><div class="ntcRows">${(sec.rows || []).map((r) => {
       const k = r.item ? items.push(r.item) - 1 : -1;
       return `<div class="ntcRow ${k >= 0 ? 'pick' : ''}" ${k >= 0 ? `data-ntc="${k}"` : ''}>${r.img ? `<img src="${r.img}" alt="" />` : ''}<span style="${r.color ? `color:${r.color}` : ''}">${esc(r.name)}</span>${r.qty != null ? `<b>${typeof r.qty === 'number' ? r.qty.toLocaleString() : esc(String(r.qty))}</b>` : ''}</div>`; }).join('') || '<div class="note">없음</div>'}</div>`).join('') + '</div>'}<div class="ntcInfo">${items.length ? '<div class="note">아이템을 누르면 설명</div>' : ''}</div></div>`;
+    const prevSc = cur?.querySelector('.ntcList')?.scrollTop || 0; // v0.49.1 알림이 더해져도 보던 자리 그대로
     this.popup('완료 알림', html, true);
     const el = document.getElementById('winAlert');
+    { const nl = el.querySelector('.ntcList'); if (nl) nl.scrollTop = prevSc; }
     el.dataset.notice = '1';
     el.querySelectorAll('[data-ntc]').forEach((r) => { r.onclick = () => { el.querySelectorAll('.ntcRow.on').forEach((x) => x.classList.remove('on')); r.classList.add('on'); el.querySelector('.ntcInfo').innerHTML = this.describe(items[+r.dataset.ntc], 'notice'); audio.play('click'); }; });
     // 닫히면 기다리던 알림을 띄운다
