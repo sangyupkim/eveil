@@ -20,6 +20,7 @@ import { audio } from './engine/audio.js';
 import { portrait, iconsReady } from './ui/icons.js';
 import { Tutorial } from './ui/tutorial.js';
 import { applyUi } from './ui/layout.js';
+import { packShards } from './game/shards.js';
 import { cloud, cloudError } from './net/cloud.js';
 import { charIds, loadChar, saveChar, deleteChar, keyOf, newCid, CHAR_MAX, NICK_RE } from './game/chars.js';
 
@@ -179,7 +180,14 @@ globalThis.__stage = stage;
     tabCh.postMessage({ type: 'claim', cid });
   });
   window.__tabCh = tabCh;
+  // v0.49.11 시작을 기다리는 동안(다른 탭 · 서버 확인, 최대 몇 초) 다시 눌러도 두 번 시작하지 않게 (캐릭터가 둘로 보이고 화면이 떨렸다)
+  let starting = false;
   const start = async (st, fresh = false) => {
+    if (starting) return;
+    starting = true; $('#btnPlay').disabled = true;
+    try { await start0(st, fresh); } finally { if (titleOn) { starting = false; $('#btnPlay').disabled = !sel; } }
+  };
+  const start0 = async (st, fresh = false) => {
     if (!fresh && await tabClaim(st?.cid || sel)) { const L = fixSave(loadChar(st?.cid || sel)); if (L) st = L; } // 다른 탭이 방금 저장한 진행
     // 계정이면 이 기기를 '지금 하는 기기'로 정하고, 그 순간 서버의 최신 저장으로 이어 한다
     // (다른 기기에서 방금까지 하던 진행). 새 캐릭터는 서버 저장을 덮어쓴다
@@ -232,7 +240,9 @@ export function showNotices(list) {
 }
 
 function startGame(stage, st) {
-  syncVault().then(() => { const fixed = capAll(vault().items); if (moveRetiredSkills({ skills: {}, inv: [] }, vault().items) || fixed) vaultSave(); }); // v0.44.62 예전 옵션 상한 정리 // 계정 공용 창고: 서버와 맞춘다 (v0.44.38 빠진 스킬북 옮기기)
+  if (window.__started) return; window.__started = true; // 한 번만
+  packShards(st.inv); // v0.49.11 흩어진 파편을 옵션마다 한 칸으로
+  syncVault().then(() => { const fixed = capAll(vault().items) | packShards(vault().items); if (moveRetiredSkills({ skills: {}, inv: [] }, vault().items) || fixed) vaultSave(); }); // v0.44.62 예전 옵션 상한 정리 // 계정 공용 창고: 서버와 맞춘다 (v0.44.38 빠진 스킬북 옮기기)
   // 접속할 때마다 새 세상: 씨앗으로 지역 자리 · 지형 · 던전을 새로 만든다.
   // 지도 안개 · 바닥 아이템은 지우고 마을에서 시작. 야영지 투자(상인 · 모닥불)는 지역별로 남긴다
   // 맵이 새로 만들어져도 죽으며 떨어뜨린 아이템은 잃지 않는다: 마을 입구 앞으로 옮기고 다시 15분을 준다 (업데이트 · 새로고침으로 사라지던 문제)

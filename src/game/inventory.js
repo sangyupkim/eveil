@@ -4,10 +4,11 @@ import { BASES, isTwoHandedBase } from '../data/items.js';
 import { isStack } from './items.js';
 import { meetsReq } from './skills.js';
 import { totalStats } from './player.js';
-import { SHARD, shardFrom } from './shards.js';
+import { SHARD, shardFrom, mergeShard } from './shards.js';
 
 export const bagSize = (st) => CONFIG.inventorySize + 8 * (st?.town?.research?.bag || 0);
 export function addItem(st, it) {
+  if (it?.shard && mergeShard(st.inv, it)) return true; // v0.49.11 같은 옵션 파편은 한 칸에
   if (isStack(it)) {
     const same = st.inv.find((x) => x.base === it.base);
     if (same) { same.qty += it.qty; return true; }
@@ -70,7 +71,7 @@ export function equip(st, uid, rng = Math.random) {
   for (const b of back) st.inv.push(b); // 꺼낸 장비는 칸 수와 상관없이 가방으로
   // 갈아 끼운 장비에서 낮은 확률로 능력치 파편
   const shards = [];
-  for (const b of back) if (rng() < SHARD.swapChance * (1 + 0.2 * (st.town?.research?.shard || 0))) { const sh = shardFrom(b, st, rng); if (sh) { st.inv.push(sh); shards.push(sh); } }
+  for (const b of back) if (rng() < SHARD.swapChance * (1 + 0.2 * (st.town?.research?.shard || 0))) { const sh = shardFrom(b, st, rng); if (sh) { if (!mergeShard(st.inv, sh)) st.inv.push(sh); shards.push(sh); } }
   return { ok: true, slot, base, shards };
 }
 

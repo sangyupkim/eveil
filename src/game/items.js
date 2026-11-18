@@ -110,7 +110,7 @@ export function itemColor(it) {
 }
 
 export function itemValue(it) {
-  if (it.shard) return 120;
+  if (it.shard) return 120 * (it.vals?.length || 1);
   if (it.book) return 40 * SKILLS[it.book].tier ** 2;
   const base = BASES[it.base];
   if (base.type === 'potion' || base.stack) return Math.max(1, Math.floor((base.price || 0) / 4)) * (it.qty || 1);

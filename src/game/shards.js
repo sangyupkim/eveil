@@ -15,6 +15,28 @@ export const SHARD_COLOR = '#c58cff';
 export const lockMax = (smithLv) => Math.max(0, Math.min(3, (smithLv || 0) - 2));
 export const shardCost = (it) => ({ gold: Math.round(300 * (1 + (it.ilvl || 1) / 5)), ore: 3 + Math.round((it.ilvl || 1) / 6) });
 
+// v0.49.11 같은 옵션 파편은 한 칸에 묶는다: it.vals = 값 목록(큰 순), it.shard.v = 가장 큰 값
+export const shardVals = (it) => (it?.vals?.length ? it.vals : it?.shard ? [it.shard.v] : []);
+const setVals = (it, vs) => { vs.sort((a, b) => b - a); if (vs.length > 1) it.vals = vs; else delete it.vals; it.shard.v = vs[0]; };
+// list 안에 같은 옵션 묶음이 있으면 거기에 더한다 (더했으면 true)
+export function mergeShard(list, it) {
+  if (!it?.shard) return false;
+  const same = list.find((x) => x && x !== it && x.shard && x.shard.id === it.shard.id);
+  if (!same) return false;
+  setVals(same, [...shardVals(same), ...shardVals(it)]);
+  return true;
+}
+// 예전 저장: 흩어진 파편을 옵션마다 한 칸으로 (바뀌었으면 true)
+export function packShards(list) {
+  let ch = false;
+  for (let i = list.length - 1; i >= 0; i--) { const it = list[i]; if (it?.shard && list.slice(0, i).some((x) => x?.shard?.id === it.shard.id)) { mergeShard(list.slice(0, i), it); list.splice(i, 1); ch = true; } }
+  return ch;
+}
+// 묶음에서 값 하나 빼기 (vi번째) · 다 쓰면 칸을 비운다
+export function takeShardVal(list, it, vi = 0) {
+  const vs = [...shardVals(it)]; vs.splice(vi, 1);
+  if (!vs.length) { const i = list.indexOf(it); if (i >= 0) list.splice(i, 1); } else setVals(it, vs);
+}
 export const makeShard = (a, st = null) => ({ uid: st ? st.nextUid++ : Math.floor(Math.random() * 1e9), base: 'shard', shard: { id: a.id, v: a.v } });
 export const isShard = (it) => !!it?.shard;
 
@@ -46,11 +68,11 @@ export function canApply(it, sh, locks = []) {
 }
 
 // 파편 쓰기: 잠그지 않은 옵션 하나를 무작위로 파편 옵션과 바꾼다 (같은 옵션이 있으면 그것을 바꾼다)
-export function applyShard(st, it, shardUid, locks = [], smithLv = 0, rng = R) {
+export function applyShard(st, it, shardUid, locks = [], smithLv = 0, rng = R, vi = 0) {
   // 가방 · 창고 어디의 파편이든 (v0.41.3)
   const V = vault().items, inInv = st.inv.some((x) => x.uid === shardUid), list = inInv ? st.inv : V;
   const i = list.findIndex((x) => x?.uid === shardUid);
-  const sh = list[i]?.shard;
+  const item = list[i], vals = shardVals(item), sh = item?.shard && vals[vi] != null ? { id: item.shard.id, v: vals[vi] } : null;
   if (!sh) return { ok: false, why: '파편이 없습니다' };
   if (locks.length > lockMax(smithLv)) return { ok: false, why: '대장간 단계를 올려야 더 잠글 수 있습니다' };
   const c = canApply(it, sh, locks);
@@ -64,6 +86,6 @@ export function applyShard(st, it, shardUid, locks = [], smithLv = 0, rng = R) {
   const old = it.affixes[k];
   it.affixes[k] = { id: sh.id, v: sh.v };
   capAffixes(it); // v0.44.62 예전 파편도 지금 상한까지
-  list.splice(i, 1); if (!inInv) vaultSave();
+  takeShardVal(list, item, vi); if (!inInv) vaultSave();
   return { ok: true, old, now: it.affixes[k] };
 }

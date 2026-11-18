@@ -11,7 +11,7 @@ import { MATERIALS, MAT_DROP, SETS, SET_SLOTS, craftCost, upgradeMats } from '..
 import { BASES } from '../data/items.js';
 import { vault, vaultAdd, vaultSave, vaultSize } from './vault.js';
 import { lifeProgress } from './daily.js';
-import { shardFrom, rollShard } from './shards.js';
+import { shardFrom, rollShard, mergeShard } from './shards.js';
 
 export function townOf(st, now = Date.now()) {
   st.town ||= { plots: {}, mercs: [], last: now };
@@ -198,7 +198,7 @@ export function salvage(st, uid, fromVault = false) {
   L.splice(i, 1); if (fromVault) vaultSave(); t.ore += v.ore; t.mats[v.mat] = (t.mats[v.mat] || 0) + v.matN;
   // 분해하면 그 장비의 옵션 하나가 능력치 파편으로 나올 수 있다 (등급이 높을수록 자주)
   let shard = null;
-  if (it.affixes?.length && Math.random() < SALVAGE_SHARD[it.rarity] * (1 + 0.2 * (t.research?.shard || 0))) { shard = shardFrom(it, st); if (shard) st.inv.push(shard); }
+  if (it.affixes?.length && Math.random() < SALVAGE_SHARD[it.rarity] * (1 + 0.2 * (t.research?.shard || 0))) { shard = shardFrom(it, st); if (shard && !mergeShard(st.inv, shard)) st.inv.push(shard); }
   return { ok: true, ...v, shard };
 }
 // 재련: 옵션 하나(가장 약한 것)를 다시 굴린다

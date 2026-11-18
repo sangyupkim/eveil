@@ -3,6 +3,7 @@
 import { BASES } from '../data/items.js';
 import { addItem, bagSize } from './inventory.js';
 import { cloud } from '../net/cloud.js';
+import { mergeShard } from './shards.js';
 
 export const VAULT_BASE = 100;
 export const VAULT_PER = 20; // 연구 단계마다
@@ -56,10 +57,10 @@ export function vaultPut(st, uid) {
   if (i < 0) return { ok: false };
   const it = st.inv[i];
   if (it.rarity === 'myth') it.owner ||= st.cid; // v0.44.18 신화 장비는 넣은 캐릭터만 다시 꺼낼 수 있다
-  const same = stack(it) && V.items.find((x) => x.base === it.base);
-  if (!same && V.items.length >= vaultSize(st)) return { ok: false, why: '창고가 가득 찼습니다' };
+  const same = stack(it) && V.items.find((x) => x.base === it.base), shSame = it.shard && V.items.some((x) => x?.shard?.id === it.shard.id);
+  if (!same && !shSame && V.items.length >= vaultSize(st)) return { ok: false, why: '창고가 가득 찼습니다' };
   st.inv.splice(i, 1);
-  if (same) same.qty += it.qty; else V.items.push(it);
+  if (shSame) mergeShard(V.items, it); else if (same) same.qty += it.qty; else V.items.push(it);
   save();
   return { ok: true };
 }
@@ -67,6 +68,7 @@ export function vaultPut(st, uid) {
 export function vaultAdd(st, it) {
   if (!vaultReady()) return false;
   if (it?.rarity === 'myth') it.owner ||= st.cid;
+  if (it?.shard && mergeShard(V.items, it)) { save(); return true; } // 같은 옵션 파편은 한 칸에
   const same = stack(it) && V.items.find((x) => x.base === it.base);
   if (!same && V.items.length >= vaultSize(st)) return false;
   if (same) same.qty += it.qty; else V.items.push(it);
@@ -81,7 +83,7 @@ export function vaultTake(st, idx) {
   if (it.rarity === 'myth' && it.owner && it.owner !== st.cid) return { ok: false, why: '다른 캐릭터의 신화 장비는 꺼낼 수 없습니다' };
   const copy = { ...it, uid: st.nextUid++ };
   delete copy.loot; // 창고에서 꺼낸 것은 자동 판매하지 않는다
-  if (!stack(it) && st.inv.length >= bagSize(st)) return { ok: false, why: '가방이 가득 찼습니다' };
+  if (!stack(it) && !(it.shard && st.inv.some((x) => x.shard?.id === it.shard.id)) && st.inv.length >= bagSize(st)) return { ok: false, why: '가방이 가득 찼습니다' };
   if (!addItem(st, copy)) return { ok: false, why: '가방이 가득 찼습니다' };
   V.items.splice(idx, 1);
   save();

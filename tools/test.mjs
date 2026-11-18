@@ -8,6 +8,7 @@ import { rollLoot, rollDeathDrop } from '../src/game/loot.js';
 import { makeItem, itemName, rollBase } from '../src/game/items.js';
 import * as await_fs from 'node:fs';
 import * as RM from '../src/game/rumor.js';
+import * as RMSH from '../src/game/shards.js';
 import { craftOre, enhanceCost, resAdd, resCount, essGrade, craftKey } from '../src/game/town.js';
 import { MATERIALS } from '../src/data/crafting.js';
 import { finishBuilds, brew, brewCollect, dispatchParty, shelterUp, deathChance, rollMerc, researchStart } from '../src/game/town.js';
@@ -575,6 +576,15 @@ test('일하는 용병의 솜씨가 상한보다 높으면 깎이지 않는다',
   const p = { gold: 1e9, inv: [], town: { plots: { a: { type: 'mine', lv: 5 } }, mercs: [], last: Date.now() - 3600e3 }, nextUid: 1 };
   const T = townOf(p); const m = { id: 'x', name: 'x', grade: 4, lv: 5, exp: 0, sta: 999, mine: 55, herb: 52, craft: 3, lore: 3, care: 3, hunt: 10, work: 'a' }; T.mercs.push(m);
   tick(p, Date.now()); assert.ok(m.mine >= 55, String(m.mine));
+});
+
+test('같은 옵션 능력치 파편은 한 칸에 묶이고, 제련하면 고른 값 하나만 빠진다', () => {
+  const p = newPlayer('t', { g: 'm' }, 'sword'); p.gold = 1e9; p.town = { plots: {}, mercs: [], last: Date.now(), ore: 0 }; p.inv = [];
+  const SH = (id, v) => ({ uid: p.nextUid++, base: 'shard', shard: { id, v } });
+  assert.ok(addItem(p, SH('str', 5)) && addItem(p, SH('str', 9)) && addItem(p, SH('dex', 3)));
+  assert.equal(p.inv.length, 2); const b = p.inv.find((x) => x.shard.id === 'str'); assert.deepEqual(b.vals, [9, 5]); assert.equal(b.shard.v, 9);
+  const L = [SH('int', 1), SH('int', 4), SH('vit', 2)]; RMSH.packShards(L); assert.equal(L.length, 2);
+  RMSH.takeShardVal(p.inv, b, 0); assert.equal(b.shard.v, 5); assert.ok(!b.vals); RMSH.takeShardVal(p.inv, b, 0); assert.equal(p.inv.length, 1);
 });
 
 console.log(`\n${n}개 통과`);

@@ -759,3 +759,6 @@ html.force-land #rotate { display: none !important; }
 /* v0.49.8 문양 아이콘 단추: 단추 판 위에 문양만 */
 .ibtn img[data-ico^="g_"] { width: 74%; height: 74%; margin: 13%; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9)); }
 .act img[data-ico^="g_"] { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9)); }
+/* v0.49.11 오른쪽으로 옮긴 메인 퀘스트 줄: 다른 줄처럼 오른쪽에 맞춘다 (왼쪽으로 튀어나오던 것) */
+#trBoxes #tutBox { justify-content: flex-end; text-align: right; }
+#trBoxes #tutBox span { min-width: 0; }
