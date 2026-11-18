@@ -615,9 +615,8 @@ html.force-land #rotate { display: none !important; }
 .smithWrap { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 6px; }
 .smithWrap > .cols { flex: 1; min-height: 0; }
 .fPage { flex: 1 1 0; min-width: 0; overflow: auto; }
-.stabs { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid rgba(217, 182, 106, 0.3); padding: 0 2px; }
-.stab { font: inherit; font-size: calc(var(--u) * 0.95); color: var(--dim); background: linear-gradient(#2a2230, #17121c); border: 1px solid rgba(217, 182, 106, 0.3); border-bottom: none; border-radius: 6px 6px 0 0; padding: 4px 16px; cursor: pointer; }
-.stab.on { color: #ffe7a0; background: linear-gradient(#4a3a26, #2a2016); border-color: rgba(255, 216, 120, 0.7); }
+.stabs { display: flex; align-items: center; gap: 8px; }
+.stabs .tab { height: calc(var(--u) * 2.8); }
 .stabInfo { margin-left: auto; font-size: calc(var(--u) * 0.85); color: var(--dim); }
 .fGrid { grid-template-columns: repeat(auto-fill, minmax(calc(var(--u) * 3.6), 1fr)); }
 .forgeTop { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }

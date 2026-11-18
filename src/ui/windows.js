@@ -305,7 +305,7 @@ export class Windows {
   smithyView(b, sel) {
     const st = this.w.st, tab = (this.smithTab ||= 'enh');
     const tabs = [['enh', '강화'], ['ref', '제련'], ['salv', '분해 · 용병']];
-    const head = `<div class="stabs">${tabs.map(([k, n]) => `<button class="stab${k === tab ? ' on' : ''}" data-stab="${k}">${n}</button>`).join('')}<span class="stabInfo">대장간 ${b.lv}단계 · <span class="goldTxt">${st.gold.toLocaleString()} G</span></span></div>`;
+    const head = `<div class="stabs">${tabs.map(([k, n]) => `<button class="tab txt${k === tab ? ' on' : ''}" data-stab="${k}"><span>${n}</span></button>`).join('')}<span class="stabInfo">대장간 ${b.lv}단계 · <span class="goldTxt">${st.gold.toLocaleString()} G</span></span></div>`;
     const [L, R] = tab === 'enh' ? this.smithEnh(st) : tab === 'ref' ? this.smithRef(st, b) : this.smithSalv(st, b, sel);
     return `<div class="smithWrap">${head}<div class="cols"><div class="frame detail fPage">${L}</div><div class="frame detail fPage">${R}</div></div></div>`;
   }
