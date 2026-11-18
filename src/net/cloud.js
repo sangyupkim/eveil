@@ -144,11 +144,14 @@ export const cloud = {
     this.moved = false;
     clearInterval(this.pingT);
     // 다른 기기가 가져갔는지 5초마다 확인 (가져가면 이 기기의 마지막 진행을 올리고 멈춘다)
-    this.pingT = setInterval(async () => {
-      if (!account || this.moved || document.hidden) return;
+    // v0.45.4 화면이 꺼져 있어도 확인하고, 다시 보이면 바로 확인한다 (뒤에서 계속 진행되던 것)
+    const ping = async () => {
+      if (!account || this.moved) return;
       const p = await post({ type: 'ash_ping', token: account.token });
       if (p.ok && p.moved) this.kick();
-    }, 5000);
+    };
+    this.pingT = setInterval(ping, 5000);
+    if (!this.pingOn) { this.pingOn = true; document.addEventListener('visibilitychange', () => { if (!document.hidden) ping(); }); addEventListener('focus', () => ping()); addEventListener('pageshow', () => ping()); }
     let data = null;
     // 예전 기기가 방금까지 하고 있었으면: 그 기기가 마지막 저장을 올릴 때까지 기다렸다가(최대 12초) 최신 저장을 받는다
     if (r.handoff) {

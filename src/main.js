@@ -335,9 +335,14 @@ function startGame(stage, st) {
     if (!tab) try { const L = loadChar(st.cid); if (L) { L.savedAt = 0; localStorage.setItem(keyOf(st.cid), JSON.stringify(L)); } } catch { /* 무시 */ }
     const el = document.createElement('div');
     el.id = 'movedBox';
-    el.innerHTML = tab ? '<div><b>다른 탭에서 이 캐릭터를 열었습니다</b><p>이 탭의 게임은 멈췄습니다. 진행은 새로 연 탭에서 이어집니다.</p><button class="plate gold">처음 화면으로</button></div>' : '<div><b>다른 기기에서 접속했습니다</b><p>이 기기의 게임은 멈췄습니다. 진행은 새로 접속한 기기에서 이어집니다.</p><button class="plate gold">처음 화면으로</button></div>';
+    el.style.background = '#0b0912'; el.style.zIndex = '999'; // 뒤 화면을 모두 가린다
+    el.innerHTML = tab ? '<div><b>다른 탭에서 이 캐릭터를 열었습니다</b><p>이 탭의 게임을 껐습니다. 진행은 새로 연 탭에서 이어집니다.</p><button class="plate gold">처음 화면으로</button></div>' : '<div><b>다른 기기에서 접속했습니다</b><p>이 기기의 게임을 껐습니다. 진행은 새로 접속한 기기에서 이어집니다.</p><button class="plate gold">처음 화면으로</button></div>';
     el.querySelector('button').onclick = () => location.reload();
     document.body.appendChild(el);
+    // v0.45.4 이 창의 게임을 아예 끈다: 화면 · 소리 · 창을 치우고, 남은 타이머가 진행하지 못하게 세계를 떼어 낸다
+    try { audio.setVolumes(0, 0); audio.cur?.el?.pause(); } catch { /* 무시 */ }
+    try { windows.close(); } catch { /* 무시 */ }
+    document.querySelectorAll('canvas, #hud, #window, #winAlert, #gameAsk, #askBox').forEach((x) => { x.style.display = 'none'; });
   };
   window.addEventListener('beforeunload', () => save(true));
   document.addEventListener('visibilitychange', () => { if (document.hidden) save(true); });
