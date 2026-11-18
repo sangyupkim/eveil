@@ -86,7 +86,7 @@ const pullCost = (g) => 100 * ((BASES[g]?.grade || 0) + 1) ** 2;
 // 건물 창 칸 나눔 표시 (town()의 'one' 모드에서 칸으로 나눈다)
 const COL = '<!--COL-->';
 // 칸 위 작은 글: 능력치 파편은 옵션을 보여 준다
-const cellTag = (it) => (it?.shard ? `<span class="ctag">${affixText(it.shard).replace(/\s+/g, '')}</span>` : '');
+const cellTag = (it) => { if (!it?.shard) return ''; const t = affixText(it.shard), v = t.match(/[+-]?[\d.]+%?/); return `<span class="ctag">${t.split(' ')[0].slice(0, 2)}<br>${v ? v[0] : ''}</span>`; }; // v0.45 칸 안에 들어가게 짧게 (골드 획득 +367% → 골드+367%)
 const NPC_ONLY = ['shop', 'town', 'vault', 'gems'];
 const TAB_ORDER = ['gems', 'map', 'inv', 'vault', 'skills', 'char', 'arts', 'quest', 'dex', 'town', 'shop', 'guide', 'news', 'menu'];
 const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '');
@@ -194,7 +194,7 @@ export class Windows {
   // ───── 아이템 설명 ─────
   describe(it, where) {
     const st = this.w.st;
-    if (!it) return '<div class="note">고른 아이템이 없습니다</div>';
+    if (!it) return '<h3>고른 아이템</h3><div class="forgeSlot empty"></div>';
     const b = BASES[it.base];
     let h = `<img class="bigico" src="${isBook(it) ? skillIcon(it.book) : itemIcon(it)}" alt="" /><div class="nm" style="color:${itemColor(it)}">${esc(itemName(it))}</div>`;
     if (isBook(it)) {
@@ -265,7 +265,8 @@ export class Windows {
   }
 
   // 파견소: 용병 여럿 · 지역 · 기간 · 챙길 물약/영약을 골라 보낸다
-  guildPanel(gb) {
+  guildParts(gb) {
+    const Q = {};
     const st = this.w.st, t = townOf(st), P = (this.party ||= { ids: [], pack: {} });
     const zones = ZONES.filter((z) => isLiberated(st, z.id));
     if (!zones.some((z) => z.id === P.zone)) P.zone = zones[0]?.id;
@@ -274,28 +275,36 @@ export class Windows {
     const zn = ZONES.find((z) => z.id === P.zone), sh = zn ? shelterLv(st, zn.id) : 0;
     const pack = Object.entries(P.pack).filter(([, q]) => q > 0).map(([base, qty]) => ({ base, qty })), boost = packBoost(pack);
     const back = t.mercs.filter((m) => m.job && Date.now() >= m.job.until).length;
-    let h = `<div class="kv"><span>한 번에</span><b>${partyMax(st)}명</b><span>챙길 물건</span><b>${packMax(st)}개</b></div>`;
-    if (back) h += `<div class="btns"><button class="btn gold" data-claimall="1">돌아온 용병 ${back}명 전리품 받기</button></div>`;
+    let h = '';
+    Q.info = `<div class="kv"><span>한 번에</span><b>${partyMax(st)}명</b><span>챙길 물건</span><b>${packMax(st)}개</b></div>`;
+    Q.back = '';
+    if (back) Q.back = `<div class="btns"><button class="btn gold" data-claimall="1">돌아온 용병 ${back}명 전리품 받기</button></div>`;
     const away = t.mercs.filter((m) => m.job && Date.now() < m.job.until);
-    if (away.length) h += `<h3 style="margin-top:8px">파견 중</h3>` + away.map((m) => `<div class="row"><div class="grow"><b>${esc(m.name)}</b> <small class="note">${ZONES.find((z) => z.id === m.job.zone)?.name || ''} · ${Math.ceil((m.job.until - Date.now()) / 60000)}분</small>${gauge(m.job.from, m.job.until, 1800000, '#ffc860')}</div></div>`).join('');
-    if (!zones.length) return h + '<div class="note">해방한 지역 없음</div>';
-    h += `<h3 style="margin-top:8px">지역</h3><div class="btns" style="flex-wrap:wrap;margin:0">${zones.map((z) => `<button class="btn ${z.id === P.zone ? 'on' : ''}" data-pzone="${z.id}">${z.name}${shelterLv(st, z.id) ? ` · 쉼터 ${shelterLv(st, z.id)}` : ''}</button>`).join('')}</div>
+    Q.away = `<h3>파견 중 <span class="cnt">${away.length}</span></h3>` + (away.length ? '' : '<div class="note">없음</div>');
+    if (away.length) Q.away += `` + away.map((m) => `<div class="row"><div class="grow"><b>${esc(m.name)}</b> <small class="note">${ZONES.find((z) => z.id === m.job.zone)?.name || ''} · ${Math.ceil((m.job.until - Date.now()) / 60000)}분</small>${gauge(m.job.from, m.job.until, 1800000, '#ffc860')}</div></div>`).join('');
+    if (!zones.length) { Q.none = '<div class="note">해방한 지역 없음</div>'; return Q; }
+    Q.zone = `<h3>지역</h3><div class="btns" style="flex-wrap:wrap;margin:0">${zones.map((z) => `<button class="btn ${z.id === P.zone ? 'on' : ''}" data-pzone="${z.id}">${z.name}${shelterLv(st, z.id) ? ` · 쉼터 ${shelterLv(st, z.id)}` : ''}</button>`).join('')}</div>
       <div class="note">쉼터 ${sh}단계 · ${SHELTER.text(sh)}</div>`;
-    h += `<h3 style="margin-top:8px">기간</h3><div class="btns" style="flex-wrap:wrap;margin:0">${EXPEDITIONS.map((e) => `<button class="btn ${e.id === P.exp ? 'on' : ''}" data-pexp="${e.id}" ${e.rest && sh < e.rest ? 'disabled' : ''}>${e.name} ${e.min >= 60 ? e.min / 60 + '시간' : e.min + '분'}${e.rest && sh < e.rest ? ` · 쉼터 ${e.rest}` : ''}</button>`).join('')}</div>`;
+    Q.zone += `<h3 style="margin-top:8px">기간</h3><div class="btns" style="flex-wrap:wrap;margin:0">${EXPEDITIONS.map((e) => `<button class="btn ${e.id === P.exp ? 'on' : ''}" data-pexp="${e.id}" ${e.rest && sh < e.rest ? 'disabled' : ''}>${e.name} ${e.min >= 60 ? e.min / 60 + '시간' : e.min + '분'}${e.rest && sh < e.rest ? ` · 쉼터 ${e.rest}` : ''}</button>`).join('')}</div>`;
     const staNeed = Math.round(EXP_STA[P.exp] * (1 - SHELTER.sta * sh));
-    h += COL + `<h3 style="margin-top:8px">용병 <small>${P.ids.length} / ${partyMax(st)} · 체력 ${staNeed}</small></h3>`;
-    h += t.mercs.filter((m) => !m.job && !m.work).map((m) => { const on = P.ids.includes(m.id), weak = Math.max(0, 1 - m.sta / Math.max(1, staNeed)), dc = zn ? Math.min(0.75, deathChance(m, zn, P.exp, st, boost) * (1 + 2 * weak)) : 0;
+    Q.mercs = `<h3>용병 <small>${P.ids.length} / ${partyMax(st)} · 체력 ${staNeed}</small></h3>`;
+    Q.mercs += t.mercs.filter((m) => !m.job && !m.work).map((m) => { const on = P.ids.includes(m.id), weak = Math.max(0, 1 - m.sta / Math.max(1, staNeed)), dc = zn ? Math.min(0.75, deathChance(m, zn, P.exp, st, boost) * (1 + 2 * weak)) : 0;
       return `<div class="row mrow pick ${on ? 'on' : ''}" data-pm="${m.id}">${this.mercLine(m, 'hunt')}<div class="note" style="min-width:5.5em;color:${dc > 0.15 ? '#ff7060' : ''}">사망 ${Math.round(dc * 100)}%${m.sta < staNeed ? ` · <b style="color:#ff7060">지침 ${Math.floor(m.sta)} / ${staNeed}</b>` : ''}${m.rest ? ' · 여관' : ''}${freshK(m) ? ` · <b style="color:#7fe07a">기운 +${Math.round(freshK(m) * 100)}%</b>` : ''}</div></div>`; }).join('') || '<div class="note">쉬는 용병 없음</div>';
     const goods = [...new Set([...st.inv, ...vault().items].filter((x) => ['potion', 'elixir'].includes(BASES[x?.base]?.type)).map((x) => x.base))].map((base) => ({ base, qty: resCount(st, base) })); // 가방 + 창고
     const tot = pack.reduce((a, p) => a + p.qty, 0);
-    h += COL + `<h3 style="margin-top:8px">챙길 물건 <small>${tot} / ${packMax(st)} · 안전 +${Math.round(boost.safe * 100)}% · 힘 +${Math.round(boost.pow * 100)}%</small></h3>`;
-    h += goods.map((x) => `<div class="row packrow"><div class="cell shopIco">${ico(x)}</div><div class="grow">${BASES[x.base].name} <small class="note">${x.qty}</small></div><button class="btn" data-ppack="${x.base}|-1">-</button><b style="min-width:1.6em;text-align:center">${P.pack[x.base] || 0}</b><button class="btn" data-ppack="${x.base}|1">+</button></div>`).join('') || '<div class="note">물약 · 영약 없음</div>';
-    h += `<div class="btns"><button class="btn gold" data-psend="1" ${P.ids.length ? '' : 'disabled'}>파견 보내기</button><button class="btn" data-psend="rep" ${P.ids.length ? '' : 'disabled'}>반복 파견</button></div>`;
+    Q.pack = `<h3>챙길 물건 <small>${tot} / ${packMax(st)} · 안전 +${Math.round(boost.safe * 100)}% · 힘 +${Math.round(boost.pow * 100)}%</small></h3>`;
+    Q.pack += goods.map((x) => `<div class="row packrow"><div class="cell shopIco">${ico(x)}</div><div class="grow">${BASES[x.base].name} <small class="note">${x.qty}</small></div><button class="btn" data-ppack="${x.base}|-1">-</button><b style="min-width:1.6em;text-align:center">${P.pack[x.base] || 0}</b><button class="btn" data-ppack="${x.base}|1">+</button></div>`).join('') || '<div class="note">물약 · 영약 없음</div>';
+    { const zn0 = ZONES.find((z) => z.id === P.zone), ex = EXPEDITIONS.find((e) => e.id === P.exp);
+      Q.go = `<div class="goBar"><div class="grow"><b>${zn0?.name || ''}</b> <small>${ex?.name || ''}</small><div class="note">용병 ${P.ids.length} / ${partyMax(st)} · 물건 ${tot} / ${packMax(st)} · 안전 +${Math.round(boost.safe * 100)}% · 힘 +${Math.round(boost.pow * 100)}%</div></div><button class="btn gold" data-psend="1" ${P.ids.length ? '' : 'disabled'}>파견 보내기</button><button class="btn" data-psend="rep" ${P.ids.length ? '' : 'disabled'}>반복</button></div>`; }
+    Q.send = `<div class="btns"><button class="btn gold" data-psend="1" ${P.ids.length ? '' : 'disabled'}>파견 보내기</button><button class="btn" data-psend="rep" ${P.ids.length ? '' : 'disabled'}>반복 파견</button></div>`;
     // v0.44.15 반복 중인 무리
     const reps = [...new Map(t.mercs.filter((m) => m.repeat).map((m) => [m.repeat.key, m.repeat])).values()];
-    if (reps.length) h += `<h3 style="margin-top:8px">반복 파견</h3>` + reps.map((r) => `<div class="row"><div class="grow">${r.key.split(',').map((id) => esc(mercById(st, id)?.name || '')).join(' · ')} <small class="note">${ZONES.find((z) => z.id === r.zone)?.name || ''} · ${EXPEDITIONS.find((e) => e.id === r.exp)?.name || ''}</small></div><button class="btn" data-prepstop="${r.key}">멈추기</button></div>`).join('');
-    return h;
+    Q.reps = `<h3>반복 파견 <span class="cnt">${reps.length}</span></h3>` + (reps.length ? '' : '<div class="note">없음</div>');
+    if (reps.length) Q.reps += `` + reps.map((r) => `<div class="row"><div class="grow">${r.key.split(',').map((id) => esc(mercById(st, id)?.name || '')).join(' · ')} <small class="note">${ZONES.find((z) => z.id === r.zone)?.name || ''} · ${EXPEDITIONS.find((e) => e.id === r.exp)?.name || ''}</small></div><button class="btn" data-prepstop="${r.key}">멈추기</button></div>`).join('');
+    return Q;
   }
+  guildPanel(gb) { const Q = this.guildParts(gb); return Q.info + Q.back + Q.away + (Q.none || Q.zone + COL + Q.mercs + COL + Q.pack + Q.send + Q.reps); }
+
 
   // 제작소 내용 조각 (예전 한 화면 · v0.45 탭 화면이 함께 쓴다)
   workshopParts(st, b, t) {
@@ -324,10 +333,75 @@ export class Windows {
     if (!list.length) return '<div class="note">없음</div>';
     return `<div class="grid fGrid">${list.map(([k, it, where]) => `<div class="cell${rar(it)}${k === selKey ? ' sel' : ''}" data-${attr}="${k}">${ico(it)}${it.plus ? `<span class="q">+${it.plus}</span>` : ''}${where === '착용' ? '<span class="lab">E</span>' : where === '창고' ? '<span class="lab">창고</span>' : ''}</div>`).join('')}</div>`;
   }
+  // v0.45 건물별 탭 화면 (대장간 · 제작소는 따로)
+  buildingView(b, sel) {
+    const st = this.w.st, t = townOf(st), def = BUILDINGS[b.type], MT = ['merc', '용병'], now = Date.now();
+    const mercRow = (m, btn = '') => `<div class="row mrow">${this.mercLine(m)}${btn}</div>`;
+    const prod = () => { const eff = Math.min(1, t.mercs.filter((m) => m.work === sel && !m.tired).reduce((a, m) => a + (m[b.type] || 0) / 10, 0) / b.lv);
+      return `<h3>${def.name} · ${b.lv}단계</h3><div class="kv"><span>생산</span><b>시간당 ${Math.round(def.rate(b.lv) * eff)}</b><span>쌓인 양</span><b>${Math.floor(b.stock)} / ${def.store(b.lv)}</b></div><div class="mini" style="margin:6px 0"><i style="width:${(b.stock / def.store(b.lv)) * 100}%;background:linear-gradient(#ffe7a0,#c99a3a)"></i></div><div class="btns forgeGo"><button class="btn gold big" data-collect="1" ${b.stock < 1 ? 'disabled' : ''}>거두기</button></div>`; };
+    switch (b.type) {
+      case 'smithy': return this.smithyView(b, sel);
+      case 'workshop': return this.workshopView(b, sel);
+      case 'herb': return this.tabView(b, 'herb', [['main', '약초'], MT], (k) => k === 'merc' ? this.mercTab(b, sel) : [prod(), `<h3>자라는 약초</h3><div class="herbList">${herbsAt(5).map((h) => { const on = HERBS[h].lv <= b.lv; return `<span class="hb" style="${on ? '' : 'opacity:.4'}"><img src="${herbIcon(h)}" alt="" />${HERBS[h].name} <b>${on ? (t.herbs[h] || 0) : `${HERBS[h].lv}단계`}</b></span>`; }).join('')}</div>`]);
+      case 'mine': return this.tabView(b, 'mine', [['main', '광산'], MT], (k) => k === 'merc' ? this.mercTab(b, sel) : [prod(), `<h3>가진 강화석</h3><div class="herbList">${['ore', 'ore2', 'ore3'].filter((id) => BASES[id]).map((id) => `<span class="hb">${ico({ base: id })}${BASES[id].name} <b>${resCount(st, id).toLocaleString()}</b></span>`).join('')}</div>`]);
+      case 'house': return this.tabView(b, 'house', [['main', '숙소'], MT], (k) => {
+        if (k === 'merc') return this.mercTab(b, sel);
+        const low = [...t.mercs].sort((a, c) => a.sta / staMax(a) - c.sta / staMax(c));
+        return [`<h3>숙소 · ${b.lv}단계</h3><div class="kv"><span>고용 한도</span><b>${mercSlots(st)}명</b><span>지금</span><b>${t.mercs.length}명</b><span>쉬고 난 기운</span><b>힘 +${Math.round(FRESH.k * b.lv * 100)}% · 2시간</b><span>하루 품삯</span><b class="goldTxt">${wageTotal(st).toLocaleString()} G</b></div>`,
+          `<h3>용병 체력 <span class="cnt">${t.mercs.length}</span></h3>` + low.map((m) => mercRow(m, `<div class="note" style="min-width:5.5em">${m.rest ? '여관' : m.tired ? '지침' : m.job ? '파견' : ''} ${Math.floor(m.sta)} / ${staMax(m)}</div>`)).join('')]; });
+      case 'lab': return this.tabView(b, 'lab', [['main', '연구'], MT], (k) => {
+        if (k === 'merc') return this.mercTab(b, sel);
+        const ids = Object.keys(RESEARCH); if (!ids.includes(this.labSel)) this.labSel = ids[0];
+        const R = ids.map((id) => { const r = RESEARCH[id], lv = researchLv(st, id), open = b.lv >= r.lab; return `<div class="row pick${id === this.labSel ? ' on' : ''}" data-labsel="${id}" style="${open ? '' : 'opacity:.45'}"><div class="grow"><b>${r.name}</b> <small>${lv} / ${RESEARCH_MAX}</small><div class="note">${open ? (lv ? r.text(lv) : '없음') : `연구소 ${r.lab}단계`}</div></div></div>`; }).join('');
+        const id = this.labSel, r = RESEARCH[id], lv = researchLv(st, id), c = researchCost(lv, id), max = lv >= RESEARCH_MAX, open = b.lv >= r.lab;
+        let L = t.lab ? `<h3>연구 중</h3><div class="row"><div class="grow"><b>${RESEARCH[t.lab.id].name}</b> <small class="note">${Math.max(1, Math.ceil((t.lab.until - now) / 60000))}분</small>${gauge(t.lab.from, t.lab.until)}</div></div>` : `<h3>연구 중</h3><div class="note">없음</div>`;
+        L += `<h3 style="margin-top:10px">${r.name} <small>${lv} / ${RESEARCH_MAX}</small></h3><div class="kv"><span>지금</span><b>${lv ? r.text(lv) : '없음'}</b>${max ? '' : `<span>다음</span><b><em>${r.text(lv + 1)}</em></b><span>금화</span><b style="${st.gold < c.gold ? 'color:#ff7060' : ''}">${c.gold.toLocaleString()} G</b><span>재료</span><b>${c.mats}${c.ess ? ` · ${BASES[c.ess.id].name} ${c.ess.n}` : ''}</b><span>시간</span><b>${c.min}분</b>`}</div>`;
+        L += open ? `<div class="btns forgeGo"><button class="btn gold big" data-research="${id}" ${max || t.lab || st.gold < c.gold ? 'disabled' : ''}>${max ? '완료' : '연구'}</button></div>` : `<div class="note">연구소 ${r.lab}단계</div>`;
+        return [L, `<h3>연구</h3>` + R]; });
+      case 'inn': return this.tabView(b, 'inn', [['hire', '고용'], ['mine', '내 용병'], ['rest', '휴식'], MT], (k) => {
+        if (k === 'merc') return this.mercTab(b, sel);
+        const slots = mercSlots(st);
+        if (k === 'hire') {
+          const rec = recruits(st), nextH = Math.ceil((3600000 - (now % 3600000)) / 60000);
+          const eLv = Math.min(10, b.lv + Math.round(relicBonus(st, 'inn'))), my = MYTH_CHANCE(eLv), gw0 = BUILDINGS.inn.grades(Math.max(1, Math.min(5, eLv))), gs = gw0.reduce((a, v) => a + v, 0), gw = [...gw0.map((v) => v * (1 - my)), gs * my];
+          return [`<h3>고용</h3><div class="kv"><span>고용</span><b>${t.mercs.length} / ${slots}</b><span>새 용병</span><b>${nextH}분 뒤</b><span>하루 품삯</span><b class="goldTxt">${wageTotal(st).toLocaleString()} G</b></div><h3 style="margin-top:8px">등급 확률</h3><div class="kv">${GRADES.map((g, i) => `<span style="color:${g.color}">${g.name}</span><b style="color:${g.color}">${Math.round((gw[i] / gs) * 100)}%</b>`).join('')}</div>`,
+            `<h3>찾아온 용병 <span class="cnt">${rec.length}</span></h3>` + (rec.map((m) => mercRow(m, `<button class="btn gold" data-hirem="${m.id}" ${t.mercs.length >= slots || st.gold < m.cost ? 'disabled' : ''}>${m.cost.toLocaleString()} G</button>`)).join('') || '<div class="note">없음</div>')];
+        }
+        if (k === 'rest') {
+          const beds = INN_BEDS(b.lv), resting = t.mercs.filter((m) => m.rest), tired = t.mercs.filter((m) => !m.rest && (m.tired || m.sta < staMax(m) * 0.5) && !m.job);
+          const sta = (m) => `<div class="note" style="min-width:5.5em">체력 ${Math.floor(m.sta)} / ${staMax(m)}</div>`;
+          return [`<h3>침대 <span class="cnt">${resting.length} / ${beds}</span> <small>회복 ×${innRestK(st).toFixed(1)}</small></h3>` + (resting.map((m) => mercRow(m, sta(m))).join('') || '<div class="note">없음</div>'),
+            `<h3>지친 용병 <span class="cnt">${tired.length}</span></h3>` + (tired.map((m) => mercRow(m, sta(m))).join('') || '<div class="note">없음</div>')];
+        }
+        // 내 용병: 오른쪽 목록에서 고르면 왼쪽에 상태 · 장비 · 각성 · 내보내기
+        if (!t.mercs.some((m) => m.id === this.innSel)) this.innSel = t.mercs[0]?.id;
+        const stateOf = (m) => { const lf = m.job ? Math.max(0, m.job.until - now) : 0, where = m.work && t.plots[m.work] ? BUILDINGS[t.plots[m.work].type].name : ''; return m.job ? (lf > 0 ? `${ZONES.find((z) => z.id === m.job.zone)?.name || ''} 파견 · ${Math.ceil(lf / 60000)}분` : '돌아옴') : m.rest ? '여관에서 쉬는 중' : m.tired ? '지쳐서 쉬는 중' : where ? `${where}에서 일함` : '쉬는 중'; };
+        const R = `<h3>내 용병 <span class="cnt">${t.mercs.length} / ${slots}</span></h3>` + t.mercs.map((m) => `<div class="row mrow pick${m.id === this.innSel ? ' on' : ''}" data-innsel="${m.id}">${this.mercLine(m)}<div class="note" style="min-width:6.5em">${stateOf(m)}</div></div>`).join('');
+        const m = t.mercs.find((x) => x.id === this.innSel);
+        if (!m) return ['<h3>내 용병</h3><div class="note">없음</div>', R];
+        const lf = m.job ? Math.max(0, m.job.until - now) : 0;
+        let L = `<h3>${esc(m.name)}</h3><div class="row mrow">${this.mercLine(m)}</div><div class="kv"><span>상태</span><b>${stateOf(m)}</b><span>체력</span><b>${Math.floor(m.sta)} / ${staMax(m)}</b><span>하루 품삯</span><b class="goldTxt">${mercWage(m).toLocaleString()} G</b>${m.gear ? `<span>장비</span><b>${m.gear.ilvl}</b>` : ''}</div>${m.job && lf > 0 ? gauge(m.job.from, m.job.until, 1800000, '#ffc860') : ''}`;
+        L += `<div class="btns forgeGo">${m.job && lf <= 0 ? `<button class="btn gold" data-claim="${m.id}">전리품</button>` : ''}${m.lv >= MERC.lvMax && (m.aw || 0) < MERC.awMax ? `<button class="btn gold" data-mawk="${m.id}" ${st.gold < awakenCost(m) ? 'disabled' : ''}>각성 ${awakenCost(m).toLocaleString()}G</button>` : ''}${!m.job ? `<button class="btn" data-mgear="${m.id}">장비</button><button class="btn danger" data-mfire="${m.id}">내보내기</button>` : ''}</div>`;
+        return [L, R]; });
+      case 'guild': return this.tabView(b, 'guild', [['send', '파견'], ['pack', '물건'], ['now', '현황'], MT], (k) => {
+        if (k === 'merc') return this.mercTab(b, sel);
+        const Q = this.guildParts(b);
+        if (k === 'now') return [Q.info + Q.back + Q.away, Q.reps || '<h3>반복 파견</h3><div class="note">없음</div>'];
+        if (Q.none) return [Q.none, ''];
+        return [Q.go + Q.zone, k === 'pack' ? Q.pack : Q.mercs]; });
+      case 'altar': return this.tabView(b, 'altar', [['main', '유물']], () => {
+        const R = (st.relics ||= { bag: [], on: [] }), slots = altarSlots(b.lv); R.on = (R.on || []).filter((r) => r.until > now);
+        const lf = (r) => { const m = Math.ceil((r.until - now) / 60000), h = Math.floor(m / 60); return h >= 24 ? `${Math.floor(h / 24)}일 ${h % 24}시간` : `${h}시간 ${m % 60}분`; };
+        const G = (r) => RELIC_GRADES[r.g] || RELIC_GRADES[0];
+        return [`<h3>올린 유물 <span class="cnt">${R.on.length} / ${slots}</span></h3>` + (R.on.map((r, i) => `<div class="row"><div class="grow"><b style="color:${G(r).color}">${RELIC[r.id].name}</b> <small>${G(r).name}</small><div class="note">${RELIC[r.id].text(relicV(r))} · ${lf(r)}</div></div><button class="btn" data-reloff="${i}">내리기</button></div>`).join('') || '<div class="note">없음</div>'),
+          `<h3>가진 유물 <span class="cnt">${(R.bag || []).length}</span></h3>` + ((R.bag || []).map((r, i) => `<div class="row"><div class="grow"><b style="color:${G(r).color}">${RELIC[r.id].name}</b> <small>${G(r).name} · ${Math.round(G(r).days * altarDur(b.lv) * 10) / 10}일</small><div class="note">${RELIC[r.id].kind} · ${RELIC[r.id].text(relicV(r))}</div></div><button class="btn gold" data-relon="${i}" ${R.on.length >= slots ? 'disabled' : ''}>올리기</button></div>`).join('') || '<div class="note">없음</div>')]; });
+    }
+    return null;
+  }
   // 건물 탭 화면: 맨 위 탭 줄 + 두 쪽 [왼쪽, 오른쪽]
   tabView(b, key, tabs, pages) {
     const st = this.w.st, cur = this.bTab?.[key] && tabs.some((x) => x[0] === this.bTab[key]) ? this.bTab[key] : tabs[0][0];
-    const head = `<div class="stabs">${tabs.map(([k, n]) => `<button class="tab txt${k === cur ? ' on' : ''}" data-stab="${key}|${k}"><span>${n}</span></button>`).join('')}<span class="stabInfo">${BUILDINGS[b.type].name} ${b.lv}단계 · <span class="goldTxt">${st.gold.toLocaleString()} G</span></span></div>`;
+    const head = `<div class="stabs">${tabs.map(([k, n]) => `<button class="tab txt${k === cur ? ' on' : ''}" data-stab="${key}|${k}"><span>${n}</span></button>`).join('')}<span class="stabInfo">${typeof b === 'string' ? b : `${BUILDINGS[b.type].name} ${b.lv}단계`} · <span class="goldTxt">${st.gold.toLocaleString()} G</span></span></div>`;
     const [L, R] = pages(cur);
     return `<div class="smithWrap">${head}<div class="cols"><div class="frame detail fPage">${L}</div><div class="frame detail fPage">${R}</div></div></div>`;
   }
@@ -504,7 +578,12 @@ export class Windows {
       const btn = `<div class="btns"><button class="plate gold" data-vmove="1">${sel.from === 'v' ? `가방으로${items.length > 1 ? ` · ${items.length}개` : ''}` : `창고에 넣기${items.length > 1 ? ` · ${items.length}개` : ''}`}</button><button class="btn" data-vclear="1">고르기 풀기</button></div>`;
       mid = items.length === 1 ? `<div class="detail">${this.describe(items[0], 'vault')}</div>${btn}` : `<h3>${items.length}개 고름</h3>${btn}<div class="vlist">${items.map((it) => `<div class="row"><div class="cell shopIco${rar(it)}">${ico(it)}</div><div class="grow" style="color:${itemColor(it)}">${esc(itemName(it))}${it.qty > 1 ? ` ×${it.qty}` : ''}</div></div>`).join('')}</div>`;
     }
-    return `<div class="cols"><div class="frame" style="flex:1;overflow:auto">${left}</div><div class="frame" style="flex:0 0 28%;overflow:auto">${mid}</div><div class="frame" style="flex:1;overflow:auto">${right}</div></div>`;
+    // v0.45 창고: 꺼내기 (오른쪽 창고 칸 → 왼쪽 정보 · 가방으로) | 넣기 (오른쪽 가방 칸 → 왼쪽 정보 · 창고에 넣기)
+    return this.tabView(`창고 ${V.items.length}/${n} · 가방 ${st.inv.length}/${bagSize(st)}`, 'vault', [['take', '꺼내기'], ['put', '넣기']], (k) => {
+      const f = k === 'take' ? 'v' : 'b';
+      if (sel && sel.from !== f) { sel = this.vsel = null; mid = ''; }
+      return [sel ? mid : '<h3>고른 아이템</h3><div class="forgeSlot empty"></div>', k === 'take' ? left : right];
+    });
   }
 
   bagHead() {
@@ -525,10 +604,9 @@ export class Windows {
 
   inv() {
     const cur = this.cur();
-    return `<div class="cols">
-      <div class="frame" style="flex:0 0 30%"><h3>장비</h3>${this.equipGrid()}</div>
-      <div class="frame" style="flex:0 0 30%"><div class="detail">${this.describe(cur, this.sel?.from)}</div>${this.statDiff(cur)}${this.worn(cur)}</div>
-      <div class="frame" style="flex:1">${this.bagHead()}${this.bagGrid()}</div></div>`;
+    // v0.45 가방: 두 쪽 — 왼쪽 고른 아이템 정보 · 비교, 오른쪽 가방 칸 | 장비 탭은 오른쪽이 착용 칸
+    const L = `<div class="detail">${this.describe(cur, this.sel?.from)}</div>${this.statDiff(cur)}${this.worn(cur)}`;
+    return this.tabView(`가방 ${this.w.st.inv.length}/${bagSize(this.w.st)}`, 'inv', [['bag', '가방'], ['eq', '장비']], (k) => [L, k === 'eq' ? `<h3>장비</h3>${this.equipGrid()}` : this.bagHead() + this.bagGrid()]);
   }
 
   skills() {
@@ -700,9 +778,9 @@ export class Windows {
     ];
     const [t, img, nums, more = []] = S[Math.min(k, S.length - 1)];
     const li = nums.map((l, i) => `<li><b class="gnum">${i + 1}</b>${l}</li>`).join('') + more.map((l) => `<li>${l}</li>`).join('');
-    return `<div class="cols"><div class="frame" style="flex:0 0 18%">${S.map((x, i) => `<button class="btn gsec${i === k ? ' on' : ''}" data-gsec="${i}">${x[0]}</button>`).join('')}</div>
-      ${img ? `<div class="frame gshot" style="flex:0 0 52%"><img src="assets/guide/${img}.webp" alt="" /></div>` : ''}
-      <div class="frame" style="flex:1"><h3>${t}</h3><ul class="glist">${li}</ul></div></div>`;
+    // v0.45 두 쪽: 왼쪽 그림 · 설명 | 오른쪽 목차
+    return `<div class="cols"><div class="frame" style="flex:1;overflow:auto"><h3>${t}</h3>${img ? `<div class="gshot"><img src="assets/guide/${img}.webp" alt="" /></div>` : ''}<ul class="glist">${li}</ul></div>
+      <div class="frame" style="flex:0 0 22%;overflow:auto">${S.map((x, i) => `<button class="btn gsec${i === k ? ' on' : ''}" data-gsec="${i}">${x[0]}</button>`).join('')}</div></div>`;
   }
 
   // 용병 한 줄: 이름 · 등급 · 레벨 · 각성 · 솜씨 · 체력
@@ -792,13 +870,19 @@ export class Windows {
 
   map() {
     const w = this.w, st = w.st, P = w.player.pos, here = this.portalAt;
-    const zoom = (this.mapZoom ||= here ? 2 : 1), V0 = Math.max(240, Math.min(560, window.innerHeight - 110, window.innerWidth * 0.44)) /* 세로로 긴 화면(폴드)에서도 칸 안에 */, V = Math.round(V0 * zoom), k = V / MAP_W, X = (x) => ((x + MAP_R) * k).toFixed(1), Y = (z) => ((z + MAP_R) * k).toFixed(1);
+    const zoom = (this.mapZoom ||= here ? 2 : 1.6), V0 = Math.max(240, Math.min(560, window.innerHeight - 110, window.innerWidth * 0.44)) /* 세로로 긴 화면(폴드)에서도 칸 안에 */, V = Math.round(V0 * zoom), k = V / MAP_W, X = (x) => ((x + MAP_R) * k).toFixed(1), Y = (z) => ((z + MAP_R) * k).toFixed(1);
     const pins = [];
-    pins.push(`<div class="pin town${here ? ' go' : ''}" style="left:${X(0)}px;top:${Y(-2)}px" ${here ? 'data-travel="town"' : ''}>여명 초소</div>`);
+    // v0.45 지명이 겹치지 않게: 아래 → 위 → 오른쪽 → 왼쪽 순으로 빈 자리에 둔다
+    const boxes = [], fs = zoom >= 1.6 ? 13 : 11, place = (x, y, name) => {
+      const w = name.length * fs * 0.95 + 4, h = fs + 3, opts = [['', 0, 10], ['up', 0, -10 - h], ['rt', 8 + w / 2, -h / 2], ['lt', -8 - w / 2, -h / 2]];
+      for (const [c, dx, dy] of opts) { const b = { x0: x + dx - w / 2, x1: x + dx + w / 2, y0: y + dy, y1: y + dy + h }; if (!boxes.some((o) => b.x0 < o.x1 && b.x1 > o.x0 && b.y0 < o.y1 && b.y1 > o.y0)) { boxes.push(b); return c; } }
+      boxes.push({ x0: x - w / 2, x1: x + w / 2, y0: y + 10, y1: y + 10 + h }); return '';
+    };
+    pins.push(`<div class="pin town ${place(+X(0), +Y(-2), '여명 초소')}${here ? ' go' : ''}" style="left:${X(0)}px;top:${Y(-2)}px" ${here ? 'data-travel="town"' : ''}><span>여명 초소</span></div>`);
     for (const c of CAMPS) {
       const zn = ZONES.find((z) => z.id === c.zone), got = st.camps?.[c.zone];
       if (!got && !seenAt(c.x, c.z)) continue;
-      pins.push(`<div class="pin camp${got ? '' : ' off'}${here && got && here !== c.zone ? ' go' : ''}${st.flood?.list?.some((f) => f.zone === c.zone) ? ' flood' : ''}" style="left:${X(c.x)}px;top:${Y(c.z)}px" ${here && got ? `data-travel="${c.zone}"` : ''}>${zn.name}</div>`);
+      pins.push(`<div class="pin camp ${place(+X(c.x), +Y(c.z), zn.name)}${got ? '' : ' off'}${here && got && here !== c.zone ? ' go' : ''}${st.flood?.list?.some((f) => f.zone === c.zone) ? ' flood' : ''}" style="left:${X(c.x)}px;top:${Y(c.z)}px" ${here && got ? `data-travel="${c.zone}"` : ''}><span>${zn.name}</span></div>`);
     }
     for (const zn of ZONES) { const e = entranceOf(zn); if (seenAt(e.x, e.z)) pins.push(`<div class="pin gate" style="left:${X(e.x)}px;top:${Y(e.z)}px" title="던전"></div>`); }
     pins.push(`<div class="pin me" style="left:${X(P.x)}px;top:${Y(P.z)}px"></div>`);
@@ -814,7 +898,7 @@ export class Windows {
     const dests = [{ id: 'town', name: '여명 초소', lv: '마을' }, ...CAMPS.filter((c) => st.camps?.[c.zone]).map((c) => { const zn = ZONES.find((z) => z.id === c.zone); return { id: c.zone, name: zn.name, lv: `${zn.levels[0]}~${zn.levels[1]}`, l0: zn.levels[0] }; }).sort((a, b) => a.l0 - b.l0)];
     const list = `<h3>${here ? '포탈 목적지' : '발견한 포탈'}</h3>` + dests.map((d) => `<button class="btn dest${d.id === here ? ' on' : ''}" ${here && d.id !== here ? `data-travel="${d.id}"` : 'disabled'}><b>${d.name}</b><small>${d.id === here ? '지금 여기' : d.lv}</small></button>`).join('');
     const zb = `<div class="mapZoom"><button class="btn" data-mzoom="-1">−</button><span>×${zoom}</span><button class="btn" data-mzoom="1">+</button></div>`;
-    return `<div class="cols"><div class="frame destList" style="flex:0 0 15em;overflow:auto">${list}</div><div class="frame mapFrame" style="flex:1;overflow:auto;position:relative">${zb}<div class="wmap${zoom >= 1.6 ? ' big' : ''}" style="width:${V}px;height:${V}px"><canvas class="wmc" width="${V}" height="${V}"></canvas>${pins.join('')}</div></div><div class="frame" style="flex:0 0 15em;overflow:auto">${side}</div></div>`;
+    return `<div class="cols"><div class="frame destList" style="flex:0 0 15em;overflow:auto">${list}${side}</div><div class="frame mapFrame" style="flex:1;overflow:auto;position:relative">${zb}<div class="wmap${zoom >= 1.6 ? ' big' : ''}" style="width:${V}px;height:${V}px"><canvas class="wmc" width="${V}" height="${V}"></canvas>${pins.join('')}</div></div></div>`; // v0.45 두 쪽: 왼쪽 포탈 · 야영지 | 오른쪽 지도
   }
 
   // 몬스터 도감 (잡은 수 50 · 200 · 500마다 그 몬스터에게 피해 +2 · 4 · 6%) · 보스 기록
@@ -832,7 +916,7 @@ export class Windows {
         ${open ? '' : `<div class="note">${a.cond} ${p.toLocaleString()} / ${a.n.toLocaleString()}</div><div class="mini" style="height:5px"><i style="width:${(p / a.n) * 100}%;background:#b080ff"></i></div>`}</div>${btn}</div>`; }).join('');
     const right = `<h3>장착 <span class="cnt">${eq.length} / ${slots}</span></h3>` + (slots ? Array.from({ length: slots }, (_, i) => { const a = ART[eq[i]];
       return `<div class="row"><div class="grow">${a ? `<b style="color:#e0b0ff">${a.name}</b><div class="note">${a.text}</div>` : '<span class="note">빈 칸</span>'}</div>${a ? `<button class="btn" data-arteq="${a.id}">빼기</button>` : ''}</div>`; }).join('') : '<div class="note">1차 각성부터</div>');
-    return `<div class="cols"><div class="frame" style="flex:0 0 24%"><h3>갈래</h3>${left}</div><div class="frame" style="flex:1"><h3>${lname(cur)} 비전</h3>${mid}</div><div class="frame" style="flex:0 0 30%">${right}</div></div>`;
+    return `<div class="cols"><div class="frame" style="flex:1">${right}<h3 style="margin-top:10px">${lname(cur)} 비전</h3>${mid}</div><div class="frame" style="flex:0 0 32%"><h3>갈래</h3>${left}</div></div>`; // v0.45 두 쪽: 왼쪽 장착 · 비전 | 오른쪽 갈래
   }
 
   // v0.44.41 몬스터 도감: 책처럼. 왼쪽 = 지역 · 몬스터 목록, 오른쪽 = 펼친 책 (초상 | 정보). 많이 잡을수록 정보가 열린다
@@ -906,7 +990,7 @@ export class Windows {
       if (b.bld) right = `<h3>${def.name} · ${b.bld.to === 1 ? '짓는 중' : `${b.bld.to}단계로 올리는 중`} <small class="note">${fmtT(Math.max(60000, b.bld.until - Date.now()))}</small></h3>${gauge(b.bld.from, b.bld.until, 60000, '#ffd84a')}` + (bmode ? costTable : '');
       else right = `<h3>${def.name} · ${b.lv}단계</h3>` + (one ? '' : `<div class="btns" style="margin:0 0 8px"><button class="btn" data-upgrade="1" ${up == null || st.gold < up || !umOk || !anOk ? 'disabled' : ''}>${up == null ? '최고 단계' : !anOk ? `각성 ${an} 필요` : `단계 올리기 ${up.toLocaleString()} G${um ? ` · ${BASES[um.base].name} ${um.n}` : ''}`}</button></div><div class="note">${def.desc}</div>`);
       if (bmode && !b.bld) right += costTable;
-      if (one && b.type === 'smithy' && !b.bld) return this.smithyView(b, sel); // v0.45 대장간: 탭으로 나눈 두 쪽 화면
+      if (one && !b.bld) { const v = this.buildingView(b, sel); if (v) return v; } // v0.45 건물 창: 기능별 탭 · 두 쪽
       if (!bmode && !(b.bld?.to === 1)) {
       if (b.type === 'workshop') {
         if (one) return this.workshopView(b, sel);
@@ -997,34 +1081,41 @@ export class Windows {
     const left = `<h3>착용 장비</h3><div class="grid">${eqCells || '<div class="note">구멍 있는 착용 장비 없음</div>'}</div><h3 style="margin-top:8px">가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span></h3><div class="grid">${bag}</div>`;
     const leftV = vCells ? `<h3 style="margin-top:8px">창고</h3><div class="grid">${vCells}</div>` : '';
     // 가운데: 고른 장비의 구멍
-    let mid = '<div class="note">구멍이 있는 장비를 고르세요</div>';
+    let mid = '<h3>구멍</h3><div class="forgeSlot empty"></div>';
     if (sel) {
       mid = `<div class="nm" style="color:${itemColor(sel)}">${esc(itemName(sel))}</div><div class="note">구멍 ${sel.gems.length} / ${sel.sockets}</div>`;
       mid += sel.gems.map((g, k) => row(ico({ base: g }), BASES[g].name, `${STAT_NAMES[GEMS[BASES[g].gem].stat]} +${GEM_GRADES[BASES[g].grade].v}`, `<button class="btn" data-gpull="${this.gemSel}|${k}">빼기 · ${pullCost(g).toLocaleString()}G</button>`)).join('');
       if (sel.gems.length < sel.sockets) mid += `<div class="note" style="margin-top:6px">박을 보석</div><div class="grid gemGrid">${have.map((x) => `<div class="cell" data-gput="${this.gemSel}|${x.base}" title="${esc(BASES[x.base].name)}">${ico(x)}<span class="q">${x.qty}</span></div>`).join('') || '<div class="note">가진 보석이 없습니다</div>'}</div>`;
     }
-    // 오른쪽: 합치기 (높은 등급은 실패할 수 있다)
-    const merge = have.map((x) => { const b = BASES[x.base], up = b.grade + 1 < GEM_GRADES.length, cost = mergeCost(b.grade), ch = mergeChance(b.grade);
-      return row(`${ico(x)}<span class="q">${x.qty}</span>`, b.name, `${STAT_NAMES[GEMS[b.gem].stat]} +${GEM_GRADES[b.grade].v}`, up ? `<button class="btn" data-gmerge="${x.base}" ${x.qty < 3 || st.gold < cost ? 'disabled' : ''}>3개 합치기 · ${cost.toLocaleString()}G · ${Math.round(ch * 100)}%</button>` : ''); }).join('') || '<div class="note">가진 보석이 없습니다</div>';
-    return `<div class="cols gemsWin"><div class="frame" style="flex:1.1;overflow:auto">${left}${leftV}</div><div class="frame" style="flex:1;overflow:auto">${mid}</div><div class="frame" style="flex:1;overflow:auto"><h3>보석 합치기</h3>${merge}</div></div>`;
+    // v0.45 보석상: 박기 (오른쪽 장비 → 왼쪽 구멍 · 박을 보석) | 합치기 (오른쪽 보석 → 왼쪽 합치기)
+    return this.tabView('보석상', 'gems', [['put', '박기'], ['merge', '합치기']], (k) => {
+      if (k === 'put') return [mid, left + leftV];
+      if (!have.some((x) => x.base === this.gemMerge)) this.gemMerge = have[0]?.base;
+      const R = `<h3>가진 보석 <span class="cnt">${have.length}</span></h3><div class="grid fGrid">${have.map((x) => `<div class="cell${x.base === this.gemMerge ? ' sel' : ''}" data-gmsel="${x.base}" title="${esc(BASES[x.base].name)}">${ico(x)}<span class="q">${x.qty}</span></div>`).join('') || '<div class="note">없음</div>'}</div>`;
+      const x = have.find((y) => y.base === this.gemMerge);
+      if (!x) return ['<h3>합치기</h3><div class="forgeSlot empty"></div>', R];
+      const b = BASES[x.base], up = b.grade + 1 < GEM_GRADES.length, cost = mergeCost(b.grade), ch = mergeChance(b.grade), nx = up ? gemId(b.gem, b.grade + 1) : null;
+      let L = `<div class="forgeTop"><div class="cell forgeSlot">${ico(x)}</div><div><div class="nm">${b.name}</div><div class="note">${STAT_NAMES[GEMS[b.gem].stat]} +${GEM_GRADES[b.grade].v} · ${x.qty}개</div></div></div>`;
+      if (up) L += `<div class="kv"><span>결과</span><b>${BASES[nx]?.name || ''} <em>${STAT_NAMES[GEMS[b.gem].stat]} +${GEM_GRADES[b.grade + 1].v}</em></b><span>필요</span><b style="${x.qty < 3 ? 'color:#ff7060' : ''}">3개 <small class="note">/ ${x.qty}</small></b><span>금화</span><b style="${st.gold < cost ? 'color:#ff7060' : ''}">${cost.toLocaleString()} G</b><span>성공 확률</span><b>${Math.round(ch * 100)}%</b></div><div class="btns forgeGo"><button class="btn gold big" data-gmerge="${x.base}" ${x.qty < 3 || st.gold < cost ? 'disabled' : ''}>합치기</button></div>`;
+      else L += '<div class="note">최고 등급</div>';
+      return [L, R];
+    });
   }
 
   shop() {
     const st = this.w.st;
     if (this.sel?.from === 'equip') this.sel = null;
     const goods = Object.keys(BASES).filter((id) => BASES[id].shop && BASES[id].type !== 'gem'); // 보석은 보석상에서
-    let list = '';
-    for (const id of goods) {
-      const b = BASES[id];
-      const desc = b.dmg ? `피해 ${b.dmg[0]}~${b.dmg[1]} · ${WEAPON_CLASSES[b.cls].name}` : b.armor ? `방어력 ${b.armor}${b.block ? ` · 막기 ${b.block * 100}%` : ''}` : b.restore ? (b.restore.hp ? `HP ${b.restore.hp}` : `MP ${b.restore.mp}`) : '';
-      const qty = b.stack && b.type !== 'pet' ? [1, 5, 20] : [1]; // 펫은 하나씩
-      list += `<div class="row shopRow"><div class="cell shopIco">${ico({ base: id, rarity: 'common' })}</div><div class="grow"><b>${b.name}</b><div class="note">${desc}</div></div>
-        <div class="buys">${qty.map((q) => `<button class="btn" data-buy="${id}" data-q="${q}" ${st.gold < b.price * q ? 'disabled' : ''}>${q > 1 ? `×${q} ` : ''}${(b.price * q).toLocaleString()}G</button>`).join('')}</div></div>`;
-    }
-    const cur = this.cur();
-    return `<div class="cols"><div class="frame" style="flex:1"><h3>상인 오르텐</h3>${list}</div>
-      <div class="frame" style="flex:1">${this.bagHead()}${this.bagGrid()}</div>
-      <div class="frame detail" style="flex:0 0 26%">${this.describe(cur, cur ? 'inv' : null)}</div></div>`;
+    // v0.45 상점: 구매 (오른쪽 물건 → 왼쪽 정보 · 사기) | 판매 (오른쪽 가방 → 왼쪽 정보 · 팔기)
+    return this.tabView('상인 오르텐', 'shop', [['buy', '구매'], ['sell', '판매']], (k) => {
+      if (k === 'sell') { const cur = this.cur(); return [this.describe(cur, cur ? 'inv' : null), this.bagHead() + this.bagGrid()]; }
+      if (!goods.includes(this.shopSel)) this.shopSel = goods[0];
+      const R = `<h3>물건 <span class="cnt">${goods.length}</span></h3>` + goods.map((id) => { const b = BASES[id], desc = b.dmg ? `피해 ${b.dmg[0]}~${b.dmg[1]} · ${WEAPON_CLASSES[b.cls].name}` : b.armor ? `방어력 ${b.armor}${b.block ? ` · 막기 ${b.block * 100}%` : ''}` : b.restore ? (b.restore.hp ? `HP ${b.restore.hp}` : `MP ${b.restore.mp}`) : '';
+        return `<div class="row shopRow pick${id === this.shopSel ? ' on' : ''}" data-shopsel="${id}"><div class="cell shopIco">${ico({ base: id, rarity: 'common' })}</div><div class="grow"><b>${b.name}</b><div class="note">${desc}</div></div><b class="goldTxt">${b.price.toLocaleString()}G</b></div>`; }).join('');
+      const id = this.shopSel, b = BASES[id], qty = b.stack && b.type !== 'pet' ? [1, 5, 20] : [1];
+      const L = this.describe(makeItem(id, { rarity: 'common', ilvl: 1 }), null) + `<div class="btns forgeGo">${qty.map((q) => `<button class="btn gold" data-buy="${id}" data-q="${q}" ${st.gold < b.price * q ? 'disabled' : ''}>${q > 1 ? `×${q} ` : ''}${(b.price * q).toLocaleString()}G</button>`).join('')}</div>`;
+      return [L, R];
+    });
   }
 
   menu() {
@@ -1204,6 +1295,10 @@ export class Windows {
     on('[data-salvage]', (el) => { const r = salvage(st, Number(el.dataset.salvage)); if (r.ok) { audio.play('coin'); w.ui.toast(`분해: 강화석 ${r.ore} · ${MATERIALS[r.mat].name} ${r.matN}`, '#ffd84a'); if (r.shard) w.ui.toast(`능력치 파편: ${affixText(r.shard.shard)}`, '#c58cff'); } townDone(r); });
     on('[data-salvageall]', () => { let n = 0, sh = 0; for (const x of [...st.inv]) if (!x.book && BASES[x.base]?.slot && ['common', 'magic'].includes(x.rarity)) { const r = salvage(st, x.uid); if (r.ok) { n++; if (r.shard) sh++; } } if (sh) w.ui.toast(`능력치 파편 ${sh}개`, '#c58cff'); audio.play('coin'); w.ui.toast(`장비 ${n}개 분해`, '#ffd84a'); townDone({ ok: true }); });
     on('[data-stab]', (el) => { const [k, v] = el.dataset.stab.split('|'); (this.bTab ||= {})[k] = v; audio.play('click'); this.render(); });
+    on('[data-labsel]', (el) => { this.labSel = el.dataset.labsel; audio.play('click'); this.render(); });
+    on('[data-innsel]', (el) => { this.innSel = el.dataset.innsel; audio.play('click'); this.render(); });
+    on('[data-shopsel]', (el) => { this.shopSel = el.dataset.shopsel; audio.play('click'); this.render(); });
+    on('[data-gmsel]', (el) => { this.gemMerge = el.dataset.gmsel; audio.play('click'); this.render(); });
     on('[data-esel]', (el) => { this.enhSel = el.dataset.esel; audio.play('click'); this.render(); });
     on('[data-vsalv]', (el) => { this.salvSel = el.dataset.vsalv; audio.play('click'); this.render(); });
     on('[data-shard]', (el) => { const u = Number(el.dataset.shard); this.shardSel = this.shardSel === u ? null : u; this.shardLocks = []; audio.play('click'); this.render(); });
