@@ -756,3 +756,6 @@ html.force-land #rotate { display: none !important; }
 #trBoxes #qPanel, #trBoxes #questBox { margin-top: 0; width: 100%; max-width: none; text-align: right; pointer-events: auto; }
 #trBoxes .qbody { cursor: pointer; }
 .logRow { gap: 10px; padding: 3px 4px; } .logRow small { min-width: 3em; }
+/* v0.49.8 문양 아이콘 단추: 단추 판 위에 문양만 */
+.ibtn img[data-ico^="g_"] { width: 74%; height: 74%; margin: 13%; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9)); }
+.act img[data-ico^="g_"] { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9)); }

@@ -14,7 +14,7 @@ import { expNeeded, powerLevel, recAwaken } from '../game/growth.js';
 import { countOf } from '../game/inventory.js';
 import { skillValues, modsOf } from '../game/skills.js';
 import { ELIXIRS } from '../data/potions.js';
-import { portrait, chestIcon, bookIcon, coinIcon, swordIcon, itemIcon, skillIcon, homeIcon, duelIcon, scrollIcon, townIcon, oreIcon, itemIconCut } from './icons.js';
+import { portrait, chestIcon, bookIcon, coinIcon, swordIcon, itemIcon, skillIcon, homeIcon, duelIcon, scrollIcon, townIcon, oreIcon, itemIconCut, glyphIcon } from './icons.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 
@@ -36,7 +36,9 @@ export class HUD {
     const face = portrait(world.st.look);
     $('#face').src = face;
     const icons = { chest: chestIcon(), book: bookIcon(), coin: coinIcon(), face, sword: swordIcon(), home: homeIcon(), duel: duelIcon(),
-      hpot: itemIconCut('hp_potion'), mpot: itemIconCut('mp_potion'), scroll: scrollIcon(), town: townIcon(), boots: itemIcon({ base: 'leather_boots' }), rank: itemIconCut('great_helm') };
+      hpot: itemIconCut('hp_potion'), mpot: itemIconCut('mp_potion'), scroll: scrollIcon(), town: townIcon(), boots: itemIcon({ base: 'leather_boots' }), rank: itemIconCut('great_helm'),
+      // v0.49.8 HUD 단추는 모두 같은 문양 아이콘 (단추 안에 또 네모가 보이지 않게)
+      g_gear: glyphIcon(15), g_chest: glyphIcon(30), g_book: glyphIcon(28), g_face: glyphIcon(29), g_quest: glyphIcon(16), g_rank: glyphIcon(14), g_shop: glyphIcon(42), g_home: glyphIcon(19), g_auto: glyphIcon(46), g_sword: glyphIcon(1) };
     document.querySelectorAll('img[data-ico]').forEach((im) => { im.src = icons[im.dataset.ico] || ''; });
     $('#menuToggle').onclick = () => $('.menuCol').classList.toggle('closed');
     $('#qToggle').onclick = () => $('#questBox').classList.toggle('min');

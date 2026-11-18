@@ -106,6 +106,20 @@ export function iconCut(index) {
   g.putImageData(im, 0, 0);
   const url = c.toDataURL(); cache.set(key, url); return url;
 }
+// v0.49.8 문양 아이콘: 돌판 위 흰 문양(0~46번)에서 문양만 뽑아 한 색으로 (HUD 단추를 같은 모양으로 맞춘다)
+export function glyphIcon(index, color = '#f2dc9a') {
+  const key = 'glyph|' + index + '|' + color;
+  if (cache.has(key)) return cache.get(key);
+  const [sheet, at] = sheetOf(index), src = image(sheet);
+  if (!src.ok) return '';
+  const c = document.createElement('canvas'); c.width = c.height = S;
+  const g = c.getContext('2d');
+  g.drawImage(src.im, (at % 8) * S, Math.floor(at / 8) * S, S, S, 0, 0, S, S);
+  const im = g.getImageData(0, 0, S, S), d = im.data, r = parseInt(color.slice(1, 3), 16), gg = parseInt(color.slice(3, 5), 16), b = parseInt(color.slice(5, 7), 16);
+  for (let k = 0; k < d.length; k += 4) { const lum = (d[k] + d[k + 1] + d[k + 2]) / 3, a = Math.max(0, Math.min(1, (lum - 168) / 52)); d[k] = r; d[k + 1] = gg; d[k + 2] = b; d[k + 3] = Math.round(a * d[k + 3]); }
+  g.putImageData(im, 0, 0);
+  const url = c.toDataURL(); cache.set(key, url); return url;
+}
 export const itemIconCut = (base) => iconCut(ITEM_LOOK[base]?.icon ?? 64);
 
 // v0.44.41 도감 초상: 몬스터 서 있는 모습(정면) 한 장. 그림이 아직 없으면 받는 중에 '' (onReady로 다시 그린다)
