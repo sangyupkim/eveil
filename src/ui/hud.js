@@ -171,7 +171,7 @@ export class HUD {
     $('.bar.mp span').textContent = `${Math.floor(st.mp)} / ${d.maxMp}`;
     const need = expNeeded(st.awakenings);
     $('#expBar i').style.transform = `scaleX(${st.exp / need})`;
-    $('#expBar span').textContent = `각성 EXP ${((st.exp / need) * 100).toFixed(2)}%${w.auto ? ' · 자동 -20%' : ''}`;
+    $('#expBar span').textContent = `각성 EXP ${((st.exp / need) * 100).toFixed(2)}%${w.auto ? ` · 자동 -${Math.round((1 - (CONFIG.autoExpPenalty ?? CONFIG.autoPenalty)) * 100)}%` : ''}`;
 
     // 퀵슬롯 쿨타임
     const slots = $('#quick').children;
