@@ -3,6 +3,7 @@
 // 영겁의 틈새 테스트 서버(dev 브랜치). 같은 D1을 쓴다. 영겁의 틈새가 출시(main)되면 본 주소로 바꿔도 된다
 // 서버는 게임과 같은 Worker(eveil)의 /api. 다른 곳(로컬 등)에서 열면 Cloudflare 게임 주소의 서버를 쓴다
 const API = typeof location !== 'undefined' && /\.workers\.dev$|\.pages\.dev$/.test(location.hostname) ? '/api' : 'https://eveil.weak0416.workers.dev/api';
+import { GAME_VERSION } from '../data/patchnotes.js';
 const KEY = 'ashen-account';
 const GAP = 20; // 서버 저장 사이 최소 간격(초)
 
@@ -117,6 +118,7 @@ export const cloud = {
     if (!account || this.moved || !(await this.available())) return false;
     const r = await post({ type: 'ash_vault_put', token: account.token, data, at });
     if (r.error === 'moved') this.kick();
+    if (r.error === 'old') this.onOld?.(); // 예전 버전 창: 새 버전으로 다시 연다
     return !!r.ok;
   },
 
@@ -133,6 +135,7 @@ export const cloud = {
   // 그 뒤 다른 기기가 접속하면 이 기기의 저장은 서버가 거절하고(moved) onMoved가 불린다
   moved: false,
   onMoved: null,
+  onOld: null,
   async claim(cid) {
     if (!account || !(await this.available())) return { ok: false };
     const r = await post({ type: 'ash_claim', token: account.token, cid });
@@ -181,6 +184,7 @@ export const cloud = {
     if (!force && (pending || now - lastPut < GAP * 1000)) return;
     if (!(await this.available())) return;
     lastPut = now; lastAt = st.savedAt;
+    st.gver = GAME_VERSION; // v0.44.69 저장한 게임 버전: 서버는 더 새 버전이 쓴 저장을 예전 버전이 덮지 못하게 한다
     pending = post({ type: 'ash_save', token: account.token, cid: st.cid, data: JSON.stringify(st), at: st.savedAt }, force);
     const r = await pending;
     pending = null;

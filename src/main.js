@@ -309,6 +309,8 @@ function startGame(stage, st) {
   loop();
   // 다른 기기에서 같은 계정으로 들어오면 여기는 멈춘다 (저장도 더 하지 않는다 — 두 기기가 서로 덮어쓰지 않게)
   cloud.finalState = () => (window.__noSave ? null : st); // 넘겨줄 때 올릴 마지막 진행
+  // v0.44.69 오래 켜 둔 예전 버전 창: 서버가 저장을 거절하면 새 버전으로 다시 연다 (더 새 진행을 덮지 않게)
+  cloud.onOld = () => { if (window.__oldReload) return; window.__oldReload = 1; window.__noSave = true; try { const L = loadChar(st.cid); if (L) { L.savedAt = 0; localStorage.setItem(keyOf(st.cid), JSON.stringify(L)); } } catch { /* 무시 */ } hud.toast('새 버전이 있어 다시 엽니다', '#ffd84a'); setTimeout(() => location.reload(), 1500); };
   cloud.onMoved = () => {
     window.__noSave = true; window.__stop = true;
     // 이 기기의 저장은 낡은 것으로 표시: 다음에 켜면 서버(새 기기) 저장을 받는다

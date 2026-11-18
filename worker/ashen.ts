@@ -312,6 +312,13 @@ export async function ashen(db: DB, d: Record<string, unknown>, ip: string, admi
     const data = String(d.data ?? '');
     if (data.length < 2 || data.length > SAVE_MAX || data[0] !== '{') return { ok: false, error: 'bad_save' };
     const at = Math.floor(Number(d.at)) || 0;
+    // v0.44.69 예전 버전 창(패치 전부터 켜 둔 창)이 더 새 버전이 쓴 저장을 덮지 못하게
+    {
+      const vnum = (v: unknown) => String(v || '0').split('.').reduce((a, x) => a * 1000 + (parseInt(x, 10) || 0), 0);
+      let inV = 0; try { inV = vnum(JSON.parse(data).gver); } catch { /* 깨진 저장은 아래에서 */ }
+      const cur = await db.prepare("SELECT json_extract(data, '$.gver') AS v FROM ash_saves WHERE id = ?").bind(key).first<{ v: string | null }>();
+      if (cur?.v && vnum(cur.v) > inV) return { ok: false, error: 'old' };
+    }
     // 덮어쓰기 전 저장을 하나 남긴다 (한 시간 넘게 지난 것만 — 잦은 저장마다 덮지 않게)
     await db.prepare('INSERT INTO ash_saves_prev (id, data, at) SELECT id, data, at FROM ash_saves WHERE id = ? AND at < ? ON CONFLICT(id) DO UPDATE SET data = excluded.data, at = excluded.at')
       .bind(key, at - 3600e3).run();
