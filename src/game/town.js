@@ -11,7 +11,7 @@ import { MATERIALS, MAT_DROP, SETS, SET_SLOTS, craftCost, upgradeMats } from '..
 import { BASES } from '../data/items.js';
 import { vault, vaultAdd, vaultSave, vaultSize } from './vault.js';
 import { lifeProgress } from './daily.js';
-import { shardFrom } from './shards.js';
+import { shardFrom, rollShard } from './shards.js';
 
 export function townOf(st, now = Date.now()) {
   st.town ||= { plots: {}, mercs: [], last: now };
@@ -429,6 +429,16 @@ export function dispatch(st, id, zoneId, expId, now = Date.now()) {
   return { ok: true };
 }
 // 돌아온 용병의 전리품을 받는다 (죽었으면 dead: true, 전리품 없음)
+// v0.45 쌓인 물건 정리: 가방 · 창고에서 고른 등급의 장비(잠금 · 이름 있는 전설 · 착용 제외)와 물약을 버린다
+export const RARITY_IDS = ['common', 'magic', 'rare', 'hero', 'legend', 'myth'];
+export function junkCount(st, list, rarity) { return list.filter((x) => x && !x.lock && !x.named && !x.book && BASES[x.base]?.slot && x.rarity === rarity).length; }
+export function discardJunk(st, rarity, where = 'both') {
+  let n = 0; const ok = (x) => !(x && !x.lock && !x.named && !x.book && (rarity === 'potion' ? BASES[x.base]?.type === 'potion' : BASES[x.base]?.slot && x.rarity === rarity));
+  if (where !== 'vault') { const a = st.inv.length; st.inv = st.inv.filter(ok); n += a - st.inv.length; }
+  if (where !== 'bag') { const V = vault().items, a = V.length; const keep = V.filter(ok); V.length = 0; V.push(...keep); n += a - keep.length; if (n) vaultSave(); }
+  for (const m of townOf(st).mercs) if (m.held?.length) { const a = m.held.length; m.held = m.held.filter(ok); n += a - m.held.length; }
+  return n;
+}
 // v0.44.66 가방 · 창고가 모두 꽉 차 있으면 돌아온 용병의 전리품을 받지 않고 기다린다 (자리가 나면 받는다)
 export const lootRoomFull = (st) => st.inv.length >= bagSize(st) && vault().items.length >= vaultSize(st);
 export function claim(st, id, now = Date.now(), rng = Math.random, put = null) {
@@ -445,7 +455,15 @@ export function claim(st, id, now = Date.now(), rng = Math.random, put = null) {
   }
   const out = { gold: Math.round(lvl * 25 * ex.mult * eff * lootK), ore: Math.round(0.8 * ex.mult * eff * lootK), items: [] };
   const rolls = Math.round(ex.mult * eff * 1.5 * (1 + SHELTER.loot * sh) * lootK);
-  for (let k = 0; k < rolls; k++) for (const d of rollLoot({ tier: k % 6 === 5 ? 'elite' : 'normal', level: lvl }, {}, st, rng)) if (d.kind === 'item' && d.item.base && !d.item.book) out.items.push(d.item);
+  // v0.45 파견 전리품: 장비 · 보석 · 능력치 파편 · 열쇠만 (물약은 나오지 않는다). 버리기로 한 등급의 장비는 받지 않는다
+  const drop = t.expDrop || {};
+  for (let k = 0; k < rolls; k++) for (const d of rollLoot({ tier: k % 6 === 5 ? 'elite' : 'normal', level: lvl }, {}, st, rng)) {
+    if (d.kind !== 'item' || !d.item.base || d.item.book) continue;
+    const b = BASES[d.item.base];
+    if (b?.slot) { if (!drop[d.item.rarity] || d.item.named) out.items.push(d.item); } else if (b?.type === 'gem') out.items.push(d.item);
+  }
+  { const nSh = Math.min(4, Math.floor(rolls * 0.0004 + rng())); for (let k = 0; k < nSh; k++) out.items.push(rollShard(lvl, st, rng)); }
+  { const nKey = Math.min(3, Math.floor(rolls * 0.0003 + rng())); if (nKey > 0) out.items.push(makeItem('dungeon_key', { qty: nKey }, st)); }
   out.mats = Math.round(ex.mult * 3 * eff * (1 + SHELTER.mats * sh));
   t.mats[zn.id] = (t.mats[zn.id] || 0) + out.mats;
   st.gold += out.gold;

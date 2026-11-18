@@ -41,6 +41,7 @@ import { awakenOk, skillGrade, QUALITY, gradeName } from '../data/awaken_skills.
 import { GEMS, GEM_GRADES, gemId } from '../data/legends.js';
 import { applyShard, canApply, lockMax, shardCost } from '../game/shards.js';
 import { HERBS, HERB_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
+import { RARITY_IDS, junkCount, discardJunk } from '../game/town.js';
 import { MYTH_CHANCE, wageTotal, mercWage, buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
 import { RESEARCH_MAX, SHELTER } from '../data/buildings.js';
 import { herbIcon, homeIcon } from './icons.js';
@@ -385,8 +386,17 @@ export class Windows {
         let L = `<h3>${esc(m.name)}</h3><div class="row mrow">${this.mercLine(m)}</div><div class="kv"><span>상태</span><b>${stateOf(m)}</b><span>체력</span><b>${Math.floor(m.sta)} / ${staMax(m)}</b><span>하루 품삯</span><b class="goldTxt">${mercWage(m).toLocaleString()} G</b>${m.gear ? `<span>장비</span><b>${m.gear.ilvl}</b>` : ''}</div>${m.job && lf > 0 ? gauge(m.job.from, m.job.until, 1800000, '#ffc860') : ''}`;
         L += `<div class="btns forgeGo">${m.job && lf <= 0 ? `<button class="btn gold" data-claim="${m.id}">전리품</button>` : ''}${m.lv >= MERC.lvMax && (m.aw || 0) < MERC.awMax ? `<button class="btn gold" data-mawk="${m.id}" ${st.gold < awakenCost(m) ? 'disabled' : ''}>각성 ${awakenCost(m).toLocaleString()}G</button>` : ''}${!m.job ? `<button class="btn" data-mgear="${m.id}">장비</button><button class="btn danger" data-mfire="${m.id}">내보내기</button>` : ''}</div>`;
         return [L, R]; });
-      case 'guild': return this.tabView(b, 'guild', [['send', '파견'], ['pack', '물건'], ['now', '현황'], MT], (k) => {
+      case 'guild': return this.tabView(b, 'guild', [['send', '파견'], ['pack', '물건'], ['now', '현황'], ['loot', '받을 물건'], MT], (k) => {
         if (k === 'merc') return this.mercTab(b, sel);
+        if (k === 'loot') {
+          const drop = t.expDrop || {}, RN = { common: '일반', magic: '마법', rare: '희귀', hero: '영웅', legend: '전설', myth: '신화' }, V = vault().items;
+          const L = `<h3>받을 장비</h3>` + RARITY_IDS.map((r) => `<div class="row"><div class="grow"><b style="color:${RARITY[r]?.color || ''}">${RN[r]}</b></div><button class="btn${drop[r] ? '' : ' on'}" data-expdrop="${r}|0">받기</button><button class="btn${drop[r] ? ' on' : ''}" data-expdrop="${r}|1">버리기</button></div>`).join('')
+            + `<h3 style="margin-top:8px">받는 물건</h3><div class="kv"><span>장비</span><b>받기로 한 등급만</b><span>보석 · 능력치 파편</span><b>모두</b><span>던전 열쇠 · 지도 조각</span><b>모두</b><span>물약</span><b>없음</b></div>`;
+          const potN = [...st.inv, ...V].filter((x) => x && !x.lock && BASES[x.base]?.type === 'potion').length;
+          const R = `<h3>쌓인 물건 정리 <small>잠금 · 이름 있는 전설 · 착용 제외</small></h3>` + RARITY_IDS.map((r) => { const nb = junkCount(st, st.inv, r), nv = junkCount(st, V, r); return `<div class="row"><div class="grow"><b style="color:${RARITY[r]?.color || ''}">${RN[r]} 장비</b><div class="note">가방 ${nb} · 창고 ${nv}</div></div><button class="btn danger" data-junk="${r}" ${nb + nv ? '' : 'disabled'}>버리기</button></div>`; }).join('')
+            + `<div class="row"><div class="grow"><b>물약</b><div class="note">가방 · 창고 ${potN}칸</div></div><button class="btn danger" data-junk="potion" ${potN ? '' : 'disabled'}>버리기</button></div>`;
+          return [L, R];
+        }
         const Q = this.guildParts(b);
         if (k === 'now') return [Q.info + Q.back + Q.away, Q.reps || '<h3>반복 파견</h3><div class="note">없음</div>'];
         if (Q.none) return [Q.none, ''];
@@ -1328,6 +1338,9 @@ export class Windows {
       this.popup('일괄 합치기', `<div class="kv"><span>성공</span><b>${ok}번</b><span>실패</span><b>${fail}번 · ${lost}개 잃음</b><span>금화</span><b>${gold.toLocaleString()} G</b></div>` + Object.entries(made).map(([id, n]) => `<div class="aff" style="color:#c0b0ff">${BASES[id].name} +${n}</div>`).join(''));
       w.ui.dirty(); this.render();
     });
+    on('[data-expdrop]', (el) => { const [r, v] = el.dataset.expdrop.split('|'), t = townOf(st); (t.expDrop ||= {})[r] = v === '1'; audio.play('click'); this.render(); });
+    on('[data-junk]', (el) => { const r = el.dataset.junk, nm = { potion: '물약', common: '일반 장비', magic: '마법 장비', rare: '희귀 장비', hero: '영웅 장비', legend: '전설 장비', myth: '신화 장비' }[r];
+      if (!confirm(`가방 · 창고의 ${nm}을(를) 모두 버립니다. 되돌릴 수 없습니다.`)) return; const n = discardJunk(st, r); audio.play('click'); w.ui.toast(`${nm} ${n}개를 버렸습니다`); w.ui.dirty(); this.render(); });
     on('[data-esel]', (el) => { this.enhSel = el.dataset.esel; audio.play('click'); this.render(); });
     on('[data-vsalv]', (el) => { this.salvSel = el.dataset.vsalv; audio.play('click'); this.render(); });
     on('[data-shard]', (el) => { const u = Number(el.dataset.shard); this.shardSel = this.shardSel === u ? null : u; this.shardLocks = []; audio.play('click'); this.render(); });
