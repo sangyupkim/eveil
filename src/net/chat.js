@@ -13,6 +13,7 @@ export const chat = {
   ws: null,
   cid: null,
   listeners: new Set(),
+  since: Date.now(), // 이 게임을 켠 때 (그 전 말은 보이지 않는다)
   wait: 2000,
   emit(ev, data) { for (const f of this.listeners) { try { f(ev, data); } catch { /* 화면 쪽 오류는 무시 */ } } },
   // 캐릭터를 고른 뒤(그 캐릭터 이름으로 말한다) 한 번 부른다. 캐릭터를 바꾸면 다시 부른다
@@ -32,7 +33,14 @@ export const chat = {
     ws.onmessage = (e) => {
       if (e.data === 'pong') return;
       let d; try { d = JSON.parse(e.data); } catch { return; }
-      if (d.t === 'hi') { this.me = d.me || null; this.on = d.on || 0; this.list = (d.log || []).slice(-KEEP); this.emit('hi'); }
+      // v0.49.37 게임을 켠 뒤에 오간 말만 보인다: 처음 붙을 때는 서버의 지난 기록을 버리고, 끊겼다 다시 붙으면 그사이 놓친 말만 더한다
+      if (d.t === 'hi') {
+        this.me = d.me || null; this.on = d.on || 0;
+        const seen = new Set(this.list.map((m) => m.at + m.n + m.x));
+        for (const m of d.log || []) if (m.at >= this.since && !seen.has(m.at + m.n + m.x)) this.list.push(m);
+        this.list.sort((a, b) => a.at - b.at); if (this.list.length > KEEP) this.list.splice(0, this.list.length - KEEP);
+        this.emit('hi');
+      }
       else if (d.t === 'msg') { this.on = d.on || this.on; this.list.push(d.m); if (this.list.length > KEEP) this.list.splice(0, this.list.length - KEEP); this.emit('msg', d.m); }
       else if (d.t === 'err') this.emit('err', d); // { e: login · slow · same · mute · ban, wait(초) }
     };
