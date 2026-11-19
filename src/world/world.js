@@ -223,7 +223,7 @@ export class World {
   // ───────── 일하는 용병 ─────────
   // 일을 맡은 용병을 그 건물 앞에 세우고 일하는 몸짓(연장 휘두르기 · 주문)을 되풀이한다
   // v0.49.24 용병 그림: 여자 얼굴 용병은 「여성 모험가」(드라이브 에셋) — 통짜 그림이라 연장은 들지 않는다
-  mercActor(m) { return m.face?.startsWith('f') ? new Actor(this.scene, { enemy: 'x_adventurer' }, { size: 1.3 }) : new Actor(this.scene, makeHero({ face: m.face })); }
+  mercActor(m) { return new Actor(this.scene, makeHero({ face: m.face })); }
   syncWorkers() {
     const t = townOf(this.st), want = t.mercs.filter((m) => m.work && t.plots[m.work] && !m.job && !m.rest);
     // v0.44.15 여관에서 쉬는 용병: 있던 자리에서 여관 앞까지 걸어가 눕는다
@@ -252,7 +252,7 @@ export class World {
       const [dx, dz] = (SPOT[b.type] || ((k) => [-2.4 + k * 1.6, 5.6]))(i);
       const a = this.mercActor(m);
       const tool = TOOL[b.type];
-      if (a.setLook && !m.face?.startsWith('f')) a.setLook({ layers: { ...(tool ? { main: tool } : {}), ...(b.type === 'lab' ? { chest: 'mage_vest', legs: 'mage_skirt' } : b.type === 'smithy' || b.type === 'mine' ? { chest: 'leather_chest' } : {}) } });
+      if (a.setLook) a.setLook({ layers: { ...(tool ? { main: tool } : {}), ...(b.type === 'lab' ? { chest: 'mage_vest', legs: 'mage_skirt' } : b.type === 'smithy' || b.type === 'mine' ? { chest: 'leather_chest' } : {}) } });
       a.pos.set(pl.x + dx, 0, pl.z + dz);
       a.facing = b.type === 'herb' ? Math.PI * (0.25 + (i % 2) * 0.5) : Math.PI; // 밭은 이리저리, 나머지는 건물 쪽
       a.name = m.name;

@@ -247,7 +247,7 @@ for (const [id, size] of Object.entries(SHARP_SIZE)) if (MONSTER_LOOK[id]) MONST
 // v0.44.4 그래도 흐리던 보스 · 네임드는 큰 원본으로 만든 몬스터로 바꾼다 [그림, 크기, 색]
 const SHARP_SWAP = {
   spider_queen: ['x_spider_horror', 3.9, 0xd0a0ff], crystal_king: ['x_spider_horror', 3.9, 0xe8b8ff], brood_mother: ['x_spider_horror', 3.7, 0xa0ffa0],
-  ghost_captain: ['x_fishman_blade', 3.0, 0xb0f0e0], bog_witch: ['x_fishman_blade', 2.9, 0x90e090], blood_lord: ['x_fishman_blade', 2.9, 0xff7070],
+  ghost_captain: ['x_fishman_blade', 3.0, 0xb0f0e0], bog_witch: ['x_adventurer', 2.6, undefined], blood_lord: ['x_adventurer', 2.6, 0xff9a9a], // v0.49.24 마녀 둘은 여성 모험가 그림
   crypt_king: ['x_ice_mummy', 1.8, 0xc8e8ff], high_mage: ['x_ice_mummy', 1.75, 0xd0d0e0], crypt_lord: ['x_ice_mummy', 1.75, 0x80b0ff],
   flame_lord: ['x_spearman', 3.3, 0xff9060], abyss_king: ['x_spearman', 3.3, 0xa070e0], temple_lord: ['x_knight', 2.5, 0xf0d080],
   temple_king: ['x_tusk_beast', 3.2, 0xd8d0b0], doom_king: ['x_tusk_beast', 3.2, 0x904050],
