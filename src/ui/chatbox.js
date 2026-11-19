@@ -6,7 +6,7 @@ import { chat } from '../net/chat.js';
 import { cloud } from '../net/cloud.js';
 import { audio } from '../engine/audio.js';
 
-const SHOW = 6;
+const SHOW = 6, SHOW_TYPING = 14; // 평소 6줄, 휴대폰 자판이 올라와 있을 때는 보이는 칸을 채운다
 // v0.49.30 서버가 막은 까닭 (도배 · 금지)
 const time = (s) => (s >= 60 ? `${Math.ceil(s / 60)}분` : `${s}초`);
 const errText = (d) => ({
@@ -30,7 +30,7 @@ export function setupChatBox(world) {
   const folded = () => st.settings?.chatHud === false;
   const draw = () => {
     box.classList.toggle('folded', folded());
-    lines.innerHTML = chat.list.slice(-SHOW).map((m) => `<div class="cl${m.n === chat.me ? ' me' : ''}"><b>${esc(m.n)}</b> ${esc(m.x)}</div>`).join('');
+    lines.innerHTML = chat.list.slice(-(document.body.classList.contains('chatKb') ? SHOW_TYPING : SHOW)).map((m) => `<div class="cl${m.n === chat.me ? ' me' : ''}"><b>${esc(m.n)}</b> ${esc(m.x)}</div>`).join('');
     badge.hidden = !(folded() && unread); badge.textContent = unread > 99 ? '99+' : String(unread);
   };
   const open = () => {
@@ -38,7 +38,23 @@ export function setupChatBox(world) {
     if (folded()) { st.settings.chatHud = true; unread = 0; }
     inRow.hidden = false; box.classList.add('typing'); draw(); txt.focus();
   };
-  const close = () => { inRow.hidden = true; box.classList.remove('typing'); txt.blur(); };
+  const close = () => { inRow.hidden = true; box.classList.remove('typing'); txt.blur(); kb(); };
+  // v0.49.36 휴대폰 자판: 화면에 보이는 영역(visualViewport)이 줄어들면 채팅창을 그 영역에 꽉 차게 띄운다 (자판 바로 위에 입력 칸, 그 위로 대화)
+  const vv = window.visualViewport;
+  // 자판 없을 때의 높이를 기억해 둔다 (아이폰은 자판이 뜨면 innerHeight도 같이 줄어서 견줄 수 없다)
+  let fullH = Math.max(vv ? vv.height : 0, innerHeight);
+  addEventListener('orientationchange', () => { fullH = 0; });
+  const kb = () => {
+    const h = vv ? vv.height : innerHeight;
+    if (document.activeElement !== txt || h > fullH) fullH = Math.max(h, document.activeElement === txt ? fullH : 0);
+    const on = !inRow.hidden && document.activeElement === txt && h < fullH * 0.82;
+    const was = document.body.classList.contains('chatKb');
+    document.body.classList.toggle('chatKb', on);
+    if (on) { box.style.setProperty('--kbTop', `${vv?.offsetTop || 0}px`); box.style.setProperty('--kbH', `${h}px`); window.scrollTo(0, 0); }
+    if (on !== was) { draw(); lines.scrollTop = lines.scrollHeight; }
+  };
+  vv?.addEventListener('resize', kb); vv?.addEventListener('scroll', kb);
+  txt.addEventListener('focus', () => setTimeout(kb, 50)); txt.addEventListener('blur', () => setTimeout(kb, 50));
   const send = () => {
     if (!txt.value.trim()) { close(); return; }
     const r = chat.say(txt.value);
