@@ -193,7 +193,10 @@ export function setupInput(world, stage, windows) {
   // ── 키보드 ──
   const keys = new Set();
   window.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT') return;
+    // v0.49.18 글자를 쓰는 칸일 때만 단축키를 막는다 (슬라이더 · 체크 칸에 포커스가 남아 I · N · Esc가 안 먹던 것)
+    const T = e.target, typing = T?.tagName === 'TEXTAREA' || T?.isContentEditable || (T?.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button', 'submit', 'color'].includes(T.type));
+    if (typing) return;
+    if (T?.tagName === 'INPUT') T.blur();
     // 메뉴에서 단축키를 바꾸는 중이면 이 키를 지정
     if (windows.waitKey) { e.preventDefault(); if (e.code !== 'Escape') bindKey(world.st, windows.waitKey, e.code); windows.waitKey = null; windows.refresh(); return; }
     keys.add(e.code);
