@@ -3,7 +3,7 @@
 import { ZONES, TOWN, WORLD_SIZE } from '../data/world.js';
 import { setDungeonSeed, dungeonAt, dungeonBox, DUNGEON_X, entranceOf, layout, cellPos, N, T } from '../data/dungeons.js';
 const farSide = (x) => x > DUNGEON_X - 80;
-import { ZONE_LOOK, ZONE_PROPS, FLAT } from '../data/flareWorld.js';
+import { ZONE_LOOK, ZONE_PROPS, FLAT, DRIVE_TREES } from '../data/flareWorld.js';
 import { DATA, image, drawRect } from './sprites.js';
 import { seeded } from '../game/rng.js';
 
@@ -291,6 +291,9 @@ function addProp(stage, set, id, x, z, r, lift = 0) {
 
 export function buildWorldProps(stage) {
   const rng = seeded(1234);
+  // v0.49.24 드라이브 나무: 나무마다 그림 한 장 (칸 = [그림 번호, 0, 0, 가로, 세로, 기준 x, 기준 y, 배율])
+  DATA.tiles.dtrees ||= { imgs: Object.keys(DRIVE_TREES).map((k) => `../drive/trees/tree${String(k).padStart(2, '0')}_0.webp`),
+    tiles: Object.fromEntries(Object.entries(DRIVE_TREES).map(([k, [w, ax, ay]], i) => [k, [i, 0, 0, w, 360, ax, ay, 1.35]])) };
   const roadClear = (x, z) => {
     if (Math.hypot(x, z) < TOWN.r + 3) return false;
     for (const zn of ZONES) if (distToSeg(x, z, 0, 0, zn.x * 0.72, zn.z * 0.72) < 4.5) return false;
@@ -473,7 +476,7 @@ function drawTile(stage, ctx, set, id, sx, sy, s) {
   if (!t) return;
   const src = image(def.imgs[t[0]]);
   if (!src.ok) return;
-  drawRect(ctx, src.im, t.slice(1), sx, sy, s);
+  drawRect(ctx, src.im, t.slice(1), sx, sy, s * (t[7] || 1)); // t[7]: 그림 배율 (드라이브 나무)
 }
 
 // 물 타일: Flare 물은 거의 검어서 푸르게 물들인 사본을 한 번 만들어 쓴다

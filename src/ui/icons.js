@@ -10,9 +10,9 @@ export const herbIcon = (id) => iconUrl(40, HERBS[id].color); // v0.40.1 약초�
 const SHEET = 'icons.webp', S = 64;
 export const ESS_COLOR = { 2: '#8ab0ff', 3: '#c58cff', 4: '#ff9a4a', 5: '#ff4a6a' };
 const cache = new Map();
-export const iconsReady = () => Promise.all([image(SHEET).p, image('icons2.webp').p, image('icons3.webp').p]); // 둘째 묶음 (256번부터, v0.41) · 셋째 (1000번부터, v0.44.8)
+export const iconsReady = () => Promise.all([image(SHEET).p, image('icons2.webp').p, image('icons3.webp').p, image('icons4.webp').p]); // 넷째 (2000번부터, v0.49.24) · 둘째 묶음 (256번부터, v0.41) · 셋째 (1000번부터, v0.44.8)
 // 번호 → [묶음 그림, 그 안 번호]
-const sheetOf = (i) => (i >= 1000 ? ['icons3.webp', i - 1000] : i >= 256 ? ['icons2.webp', i - 256] : [SHEET, i]);
+const sheetOf = (i) => (i >= 2000 ? ['icons4.webp', i - 2000] : i >= 1000 ? ['icons3.webp', i - 1000] : i >= 256 ? ['icons2.webp', i - 256] : [SHEET, i]);
 
 // 아이콘 번호 → 그림 주소 (frame: 테두리 색, 없으면 테두리 없음)
 export function iconUrl(index, frame = null, filter = '') {
@@ -35,7 +35,7 @@ export function iconUrl(index, frame = null, filter = '') {
 
 export function itemIcon(it) {
   if (it.book) return iconUrl(SKILL_ICON[it.book] ?? SCHOOL_ICON[SKILLS[it.book]?.school] ?? 225, BOOK_TIERS[SKILLS[it.book].tier].color); // v0.41 책은 그 스킬 아이콘 + 단계 색 테두리
-  if (it.shard) return iconUrl(46, '#c58cff'); // 능력치 파편: 모두 같은 그림 + 칸 아래 옵션 글 (cellTag)
+  if (it.shard) return iconUrl(2285, '#c58cff'); // 능력치 파편: 보랏빛 수정 (v0.49.24, 예전엔 문양) · 모두 같은 그림 + 칸 아래 옵션 글 (cellTag)
   if (BASES[it.base]?.type === 'pet') return petIcon(BASES[it.base].pet);
   if (ELIXIRS[it.base]) return iconUrl(ITEM_LOOK[it.base]?.icon ?? 84, ELIXIRS[it.base].color);
   if (it.base === 'myth_mark') return iconUrl(1011, '#ff4a8a'); // 신화의 흔적: 분홍 테두리

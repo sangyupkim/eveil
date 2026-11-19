@@ -98,7 +98,7 @@
 - 무기(v0.44.10): "3D Fantasy Weapons Pack" (low) GLB를 직접 찍은 그림 (README · LICENSE 묶음 안, 사용자가 사용 조건 확인) — tools/glb-icons
 - 변환: `node tools/prep-icons3.mjs <푼 폴더>`
 
-## 구글 드라이브 「에베이에셋」 (assets/drive/, 2026-11-19 — 아직 게임에서 쓰지 않음, docs/드라이브에셋.md)
+## 구글 드라이브 「에베이에셋」 (assets/drive/, 2026-11-19, docs/드라이브에셋.md) — v0.49.24부터 나무 · 아이콘(`assets/flare/icons4.webp`로 합침)을 게임에서 쓴다, 건물은 아직
 - `buildings/tavern_*` — "Medieval Tavern", Bleed (http://remusprites.carbonmade.com/). 출처 표기 · 수정 · 상업 이용 가능, 재판매 · 재라이선스 금지
 - `trees/tree*` (`_tree_01~14`) · `spell_icons.webp` (`00 Spell Icons.png`) — 사용자가 모은 묶음. 묶음 안에 라이선스가 없어 출처 페이지를 받으면 여기에 적는다
 - `loot_icons.webp` — "Dark Fantasy Currency and Chests vol.05", M-Xing Studio. 상업 이용 · 수정 가능, 원본 재배포 · AI 학습 금지 (출처 표기 권장)
@@ -106,4 +106,6 @@
 - `warlock_icons.webp` — "Free Warlock Skills", craftpix.net (https://craftpix.net/file-licenses/)
 - `fire_icons*.webp` — "Skill Icon Pack 4.0", Wenrexa (무료 묶음)
 - `scroll_icons.webp` (`scrolls_part_2`) · `buildings/cottage_*` (`Timbered House_16`, Bleed 작품으로 보임) — 사용자가 모은 묶음, 출처 페이지를 받으면 적는다
-- 변환: `python3 tools/prep-drive.py <받아 푼 폴더>`
+- `assets/flare/enemies/x_adventurer.webp` (여성 용병) — `UPDATE_x320p_Spritesheets` 여성 모험가 · `x_armored.webp` (폭풍의 왕 토르간) — `Separated_Shadow_Uncompressed_Frames` 갑옷 전사. 사용자가 모은 묶음, 출처 페이지를 받으면 적는다
+- `quiver_icon.webp` — Flare 화살 그림(`powers/arrows.webp`, CC-BY-SA) + Flare 허리띠 아이콘을 합친 것
+- 변환: `python3 tools/prep-drive.py <받아 푼 폴더>` · 아이콘 묶음 `node tools/prep-icons4.mjs` · 캐릭터 `node tools/prep-dir-chars.mjs <폴더> x_adventurer,x_armored`

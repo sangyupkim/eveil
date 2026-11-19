@@ -251,6 +251,7 @@ const SHARP_SWAP = {
   crypt_king: ['x_ice_mummy', 1.8, 0xc8e8ff], high_mage: ['x_ice_mummy', 1.75, 0xd0d0e0], crypt_lord: ['x_ice_mummy', 1.75, 0x80b0ff],
   flame_lord: ['x_spearman', 3.3, 0xff9060], abyss_king: ['x_spearman', 3.3, 0xa070e0], temple_lord: ['x_knight', 2.5, 0xf0d080],
   temple_king: ['x_tusk_beast', 3.2, 0xd8d0b0], doom_king: ['x_tusk_beast', 3.2, 0x904050],
+  storm_king: ['x_armored', 2.7, undefined], // v0.49.24 짐승 그림을 보스 넷이 돌려쓰던 것 → 천둥 고원 보스는 갑옷 전사(드라이브 에셋)
 };
 for (const [id, [sprite, size, tint]] of Object.entries(SHARP_SWAP)) if (MONSTER_LOOK[id]) MONSTER_LOOK[id] = { ...MONSTER_LOOK[id], sprite, size, tint };
 
@@ -279,3 +280,56 @@ for (const [id, sk] of Object.entries(_SK)) {
     || Object.keys(_SK).find((k) => k !== id && Number.isInteger(SKILL_ICON[k]) && _SK[k].type === sk.type);
   if (same) SKILL_ICON[id] = SKILL_ICON[same];
 }
+// v0.49.24 같은 그림을 빌려 쓰던 스킬: 넷째 아이콘 묶음(icons4, 2000번부터)에서 스킬마다 다른 그림
+Object.assign(SKILL_ICON, {
+  m_strdex4: 2214, m_strvit4: 2017, m_strdexint4: 2165, m_strdexwis4: 2038, m_strdexvit4: 2213, m_strintwis4: 2071, m_strintvit4: 2047, m_strwisvit4: 2040, m_strvit4b: 2255,
+  m_strdexint5: 2215, m_strdexwis5: 2077, m_strdexvit5: 2083, m_strintwis5: 2076, m_strintvit5: 2002, m_strwisvit5: 2042,
+  dg_0_0: 2221, dg_1_0: 2222, dg_2_0: 2059, dg_4_0: 2063, dg_5_0: 2054,
+  dg_0_2: 2048, dg_1_2: 2068, dg_2_2: 2069, dg_3_2: 2178, dg_4_2: 2055, dg_5_2: 2184,
+  dg_0_1: 2247, dg_1_1: 2186, dg_2_1: 2253, dg_3_1: 2179,
+  m_dexint3: 2153, m_dexwis3: 2148, m_dexvit3: 2229, m_dexwis3b: 2163, m_dexvit3b: 2189,
+  m_strdex1: 2212, m_strint1: 2037, m_strwis1: 2070, m_strvit1: 2260,
+  m_dexvit4: 2128, m_dexintwis4: 2074, m_dexintvit4: 2232, m_dexwisvit4: 2096,
+  m_intwis1: 2105, m_intvit2: 2154, m_intvit4b: 2106,
+  m_intwis3: 2001, m_intvit4: 2004, m_intwisvit4: 2036,
+  m_dexwis2: 2150, m_dexvit2: 2067, m_dexint3b: 2121,
+  m_dexintwis5: 2075, m_dexintvit5: 2223, m_dexwisvit5: 2092,
+  m_strdex2: 2019, m_strint2b: 2202, m_strwis2b: 2079,
+  m_strdex4b: 2216, m_strint4b: 2103, m_strwis4b: 2078,
+  m_dexint2: 2018, m_dexwis2b: 2167, m_dexvit2b: 2127,
+  m_dexint4: 2050, m_dexwis4: 2166, m_dexint4b: 2034,
+  m_strint2: 2210, m_strwis2: 2082, m_strvit2b: 2261,
+  m_strdex3: 2217, m_strint3b: 2006, m_strwis3b: 2072,
+  m_strint3: 2211, m_strvit3: 2089, m_strdex3b: 2225,
+  m_intwis2: 2110, m_intvit3b: 2124,
+  m_intwis2b: 2122, m_intvit2b: 2011,
+  m_intvit3: 2003, m_intwis3b: 2108,
+  m_strint4: 2090, m_strwis4: 2025,
+  m_dexint1: 2145, m_dexwis1: 2162,
+  m_dexwis4b: 2151, m_dexvit4b: 2126,
+  m_strvit2: 2094, m_strdex2b: 2016,
+  m_strwis3: 2084, m_strvit3b: 2091,
+  m_wisvit2: 2085, m_wisvit2b: 2093,
+  m_intvit1: 2043, m_intwis4: 2113, m_intwis4b: 2026, m_wisvit1: 2039, m_dexvit1: 2129, m_dexint2b: 2206, m_intwisvit5: 2080,
+  dg_3_0: 2065, dg_4_1: 2263, dg_5_1: 2218, m_wisvit3b: 2237, m_wisvit3: 2109, m_wisvit4: 2107, m_wisvit4b: 2238,
+});
+// v0.49.24 아이템 아이콘: 문양(UI 그림)을 쓰던 것 · 같은 그림을 나눠 쓰던 것을 아이템 그림으로
+Object.assign(ITEM_LOOK.map_piece, { icon: 2322 }); Object.assign(ITEM_LOOK.odd_map, { icon: 2300 }); Object.assign(ITEM_LOOK.unknown_gate, { icon: 2339 }); Object.assign(ITEM_LOOK.unknown_map, { icon: 2328 });
+for (const [k, n] of Object.entries({ apprentice_tome: 2298, rune_tome: 2308, storm_tome: 2316, arcane_tome: 2309, flame_tome: 2310, abyss_tome: 2324 })) if (ITEM_LOOK[k]) ITEM_LOOK[k] = { ...ITEM_LOOK[k], icon: n, tint: undefined };
+for (let i = 1; i <= 4; i++) ITEM_LOOK['l_dex_off' + i] = { icon: 2351 }; // 화살통: 화살 묶음
+for (const [k, n] of Object.entries({ dagger: 1049, stiletto: 1033, kris: 1041, shadow_dagger: 1049, frost_dagger: 1033, void_fang: 1041, dragon_fang: 1049 })) if (ITEM_LOOK[k]) ITEM_LOOK[k] = { ...ITEM_LOOK[k], icon: n };
+Object.assign(ITEM_LOOK, { el_armor2: { icon: 2332 }, el_might2: { icon: 2349 }, el_swift2: { icon: 2347 }, el_haste2: { icon: 2344 }, el_focus2: { icon: 2341 }, el_luck2: { icon: 2345 } }); // 2단계 주문서는 1단계와 다른 두루마리
+{ const books = [2298, 2308, 2316, 2309, 2310, 2324, 2299]; let n = 0;
+  for (const k of Object.keys(ITEM_LOOK)) { if (/^h\d+_tome$/.test(k)) ITEM_LOOK[k].icon = books[n++ % books.length]; if (/^h\d+_l_dex_off$/.test(k)) ITEM_LOOK[k].icon = 2351; } }
+ITEM_LOOK.shard.icon = 2285; for (const k of ['ess2', 'ess3', 'ess4', 'ess5']) ITEM_LOOK[k].icon = 1010;
+// v0.49.24 드라이브 나무 14종 (assets/drive/trees, 3D 렌더 · 그림자 포함): 한 방향(0)만 써서 그림자 방향을 맞춘다
+// [가로, 기준점 x, 기준점 y] — 기준점은 줄기 밑동. 그림 높이 360이라 Flare 나무 크기에 맞춰 1.35배
+export const DRIVE_TREES = { 1: [327, 159, 330], 2: [174, 78, 330], 3: [231, 94, 352], 4: [271, 119, 334], 5: [357, 182, 300], 6: [266, 159, 320], 7: [174, 81, 341],
+  8: [213, 87, 336], 9: [254, 111, 330], 10: [221, 96, 341], 11: [388, 171, 285], 12: [392, 204, 293], 13: [177, 81, 340], 14: [239, 113, 329] };
+// 1 활엽 · 2 전나무 · 3 · 4 야자 · 5 버드나무 · 6 금빛 버드나무 · 7 단풍 침엽 · 8 · 9 · 13 푸른 나무 · 10 고목 · 11 · 12 넓은 덤불나무 · 14 붉은 단풍
+const _DT = (ids, n, r = 0.8) => ['dtrees', ids, n, r];
+for (const [z, list] of Object.entries({
+  field: [_DT([1, 8, 11, 12, 13], 22)], forest: [_DT([1, 2, 8, 9, 11, 12, 13, 14], 40)], webwood: [_DT([2, 9, 10, 13], 30)],
+  grave: [_DT([10, 6], 18)], swamp: [_DT([5, 6, 10], 30)], bloodmire: [_DT([5, 10, 14], 24)], harbor: [_DT([3, 4, 5], 22)],
+  valley: [_DT([3, 4, 10], 14)], ashland: [_DT([10], 12)], frost: [_DT([2, 7], 14)], wild: [_DT([1, 8, 9, 13, 2, 11], 1)],
+})) if (ZONE_PROPS[z]) ZONE_PROPS[z] = [...ZONE_PROPS[z], ...list];

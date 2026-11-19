@@ -35,6 +35,11 @@ const SPECS = [
   // 2D HD Character Knight: 동작마다 한 장, 줄 = Flare 방향 그대로 (0 서 · 2 북 · 4 동 · 6 남), 칸 128
   { name: 'x_knight', k: 1, rows: { dir: 'knight/2D HD Character Knight/Spritesheets/With shadows', cell: 128 },
     anims: { stance: ['Idle', 1000, 'looped'], run: ['Run', 600, 'looped'], swing: ['Melee', 650, 'play_once'], cast: ['MeleeSpin', 800, 'play_once'], hit: ['TakeDamage', 300, 'play_once'], die: ['Die', 900, 'play_once'], block: ['ShieldBlockMid', 600, 'looped'] } },
+  // v0.49.24 구글 드라이브 「에베이에셋」: 여성 모험가(용병) · 갑옷 전사(몬스터)
+  { name: 'x_adventurer', k: 1, px: 0.45, sheet: { dir: 'x320p_update/x320p_Spritesheets', cell: 320 },
+    anims: { stance: ['Idle_Sword', 1000, 'looped'], run: ['Run_Sword', 600, 'looped'], swing: ['Attack_Sword', 650, 'play_once'], cast: ['Draw_Sword', 800, 'play_once'], hit: ['Hit_Sword', 300, 'play_once'], die: ['Death_Sword', 900, 'play_once'] } },
+  { name: 'x_armored', k: 1, px: 0.5, frames: { dir: 'shadow_frames/Frames_320x320', cell: 320 },
+    anims: { stance: ['Idle_Stand', 1000, 'looped'], run: ['Run_Forward', 600, 'looped'], swing: ['Attack_01', 650, 'play_once'], cast: ['Shout', 1000, 'play_once'], hit: ['Hit_01', 300, 'play_once'], die: ['Death_01', 900, 'play_once'] } },
 ].filter((S) => !process.argv[3] || process.argv[3].split(',').includes(S.name));
 // 각도 이름이 0 · 000 · 'Body 0' 등 묶음마다 달라 숫자로 맞춘다
 const angNum = (d) => ((6 - d + 8) % 8) * 45;
@@ -54,7 +59,7 @@ async function sheetFrames(file, cell) {
   return out;
 }
 const enemies = JSON.parse(fs.readFileSync(J, 'utf8'));
-const FLIP_SET = new Set(['x_snake', 'x_fishman', 'x_fishman_mace', 'x_fishman_blade', 'x_ice_mummy', 'x_tusk_beast', 'x_centipede', 'x_spider_horror', 'x_orc_brute']), MIRROR_SET = new Set(['x_spearman']);
+const FLIP_SET = new Set(['x_adventurer', 'x_armored', 'x_snake', 'x_fishman', 'x_fishman_mace', 'x_fishman_blade', 'x_ice_mummy', 'x_tusk_beast', 'x_centipede', 'x_spider_horror', 'x_orc_brute']), MIRROR_SET = new Set(['x_spearman']);
 for (const S of SPECS) {
   FLIPV = FLIP_SET.has(S.name); MIRROR = MIRROR_SET.has(S.name);
   const cell = (S.sheet || S.frames || S.rows).cell, cellH = (S.sheet || S.frames || S.rows).h || cell, cs = Math.round(cell * S.k), csH = Math.round(cellH * S.k), pieces = [];
