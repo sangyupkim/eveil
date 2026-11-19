@@ -101,4 +101,6 @@
 ## 구글 드라이브 「에베이에셋」 (assets/drive/, 2026-11-19 — 아직 게임에서 쓰지 않음, docs/드라이브에셋.md)
 - `buildings/tavern_*` — "Medieval Tavern", Bleed (http://remusprites.carbonmade.com/). 출처 표기 · 수정 · 상업 이용 가능, 재판매 · 재라이선스 금지
 - `trees/tree*` (`_tree_01~14`) · `spell_icons.webp` (`00 Spell Icons.png`) — 사용자가 모은 묶음. 묶음 안에 라이선스가 없어 출처 페이지를 받으면 여기에 적는다
+- `loot_icons.webp` — "Dark Fantasy Currency and Chests vol.05", M-Xing Studio. 상업 이용 · 수정 가능, 원본 재배포 · AI 학습 금지 (출처 표기 권장)
+- `fx/bell*` — "PIPOYA FREE VFX Bell", PIPOYA (무료 소재, 출처 표기)
 - 변환: `python3 tools/prep-drive.py <받아 푼 폴더>`

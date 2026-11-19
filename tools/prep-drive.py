@@ -34,3 +34,16 @@ for (y0, y1) in R:
         c = c.crop(((c.width - w) // 2, (c.height - w) // 2, (c.width - w) // 2 + w, (c.height - w) // 2 + w)).resize((64, 64), Image.LANCZOS)
         sheet.paste(c, ((k % 8) * 64, (k // 8) * 64)); k += 1
 sheet.save('assets/drive/spell_icons.webp', 'WEBP', quality=90, method=6)
+
+# 금화 · 상자 · 열쇠 · 보석 아이콘 (dark_fantasy_currency_and_chests) → 64px, 한 줄 8칸, 파일 이름 순서
+fs = sorted(glob.glob(X + '/chests/**/*.png', recursive=True))
+if fs:
+    sheet = Image.new('RGBA', (64 * 8, 64 * ((len(fs) + 7) // 8)))
+    for k, f in enumerate(fs):
+        im = Image.open(f).convert('RGBA'); im = im.crop(im.getbbox()); w = max(im.size); c = Image.new('RGBA', (w, w)); c.paste(im, ((w - im.width) // 2, (w - im.height) // 2))
+        sheet.paste(c.resize((60, 60), Image.LANCZOS), ((k % 8) * 64 + 2, (k // 8) * 64 + 2))
+    sheet.save('assets/drive/loot_icons.webp', 'WEBP', quality=90, method=6)
+# 종 효과 (PIPOYA, 192px 칸)
+os.makedirs('assets/drive/fx', exist_ok=True)
+for f in sorted(glob.glob(X + '/pipoya/*/192x192/*.png')):
+    Image.open(f).save('assets/drive/fx/' + os.path.basename(f).split('_')[0].replace('pipo-btleffect', 'bell') + '.webp', 'WEBP', quality=88, method=6)
