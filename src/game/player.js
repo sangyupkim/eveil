@@ -63,7 +63,7 @@ export function gearSum(st) {
     const base = BASES[it.base];
     if (base.armor) g.armor += scaledArmor(it);
     if (base.block) g.block += base.block;
-    if (base.mods) for (const k in base.mods) g[k] = (g[k] || 0) + base.mods[k];
+    for (const [k, v] of Object.entries(baseMods(it))) { if (k === 'spellPct') g.matk = (g.matk || 0) + spellToMatk(v, it.ilvl); else g[k] = (g[k] || 0) + v; } // v0.49.34 기본 효과는 강화만큼
     for (const a of it.affixes || []) { if (a.id === 'spellPct') g.matk = (g.matk || 0) + spellToMatk(a.v, it.ilvl); else g[a.id] = (g[a.id] || 0) + a.v; } // v0.44.37 주문 피해 % → 마법 공격력
     for (const gm of it.gems || []) { const b = BASES[gm]; if (b) g[GEMS[b.gem].stat] = (g[GEMS[b.gem].stat] || 0) + GEM_GRADES[b.grade].v; }
   }
@@ -72,8 +72,29 @@ export function gearSum(st) {
   return g;
 }
 
-// 강화(+n)는 단계마다 +8%
-const plusK = (it) => 1 + 0.08 * (it.plus || 0);
+// 강화(+n)는 기본 효과(공격력 · 방어력 · 기본 옵션 · 장신구 기본 효과)를 단계마다 +8%, +5 · +10 · +15 · +20을 넘을 때마다 +5% 더 (v0.49.34)
+export const plusK = (it) => 1 + 0.08 * (it.plus || 0) + 0.05 * Math.floor((it.plus || 0) / 5);
+// v0.49.34 기본 옵션이 없던 반지 · 목걸이의 기본 효과 (아이템 레벨만큼). 구리 · 은 반지와 그냥 반지는 장비마다 다섯 스탯 중 하나
+const STAT5 = ['str', 'dex', 'int', 'wis', 'vit'], FLAT = new Set([...STAT5, 'allStats', 'maxHp', 'maxMp', 'matk', 'patk']);
+const JEWEL = {
+  ruby_ring: 'str', jade_ring: 'dex', sapphire_ring: 'int', ring2: 'wis', ring: null, copper_ring: null, silver_ring: null,
+  amulet: 'allStats', amulet2: 'allStats', bone_amulet: 'maxHp', jade_amulet: 'maxMp', sun_amulet: 'dmgPct', star_amulet: 'spellPct',
+};
+export function jewelImplicit(it) {
+  const b = BASES[it.base], id = b?.tpl && JEWEL[b.tpl] !== undefined ? b.tpl : it.base;
+  if (!b || b.mods || !(id in JEWEL)) return null;
+  const L = it.ilvl || 1, k = JEWEL[id] ?? STAT5[(Number(it.uid) || 0) % 5];
+  const v = k === 'allStats' ? Math.max(1, Math.round(L * 0.04)) : k === 'maxHp' ? Math.round(10 + L * 1.2) : k === 'maxMp' ? Math.round(10 + L) : k === 'dmgPct' || k === 'spellPct' ? Math.round(3 + L * 0.02) : Math.max(2, Math.round(L * 0.09));
+  return { [k]: v };
+}
+// 장비의 기본 효과 (기본 옵션 · 장신구 기본 효과) — 강화 배율을 곱한 값
+export function baseMods(it) {
+  const m = BASES[it.base]?.mods || jewelImplicit(it), out = {};
+  if (!m) return out;
+  const k = plusK(it);
+  for (const [s, v] of Object.entries(m)) out[s] = FLAT.has(s) ? Math.round(v * k) : Math.round(v * k * 10) / 10; // 능력치 · HP · MP는 정수, % · 회복은 소수 한 자리
+  return out;
+}
 export const scaledArmor = (it) => Math.round(BASES[it.base].armor * (1 + 0.1 * (it.ilvl - 1)) * plusK(it) * (it.q || 1));
 export const scaledDmg = (it) => {
   const b = BASES[it.base];

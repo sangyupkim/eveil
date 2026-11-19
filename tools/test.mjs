@@ -16,6 +16,7 @@ import { HERBS } from '../src/data/potions.js';
 import { countOf } from '../src/game/inventory.js';
 import * as INV from '../src/game/inventory.js';
 import * as NR from '../src/data/nickrules.js';
+import * as PL from '../src/game/player.js';
 import * as IT from '../src/game/items.js';
 import { townOf, build as build0, tick, collect, enhance, hire, dispatch, claim, buildingAt, dropMats, craft, craftZones, upgrade, setBase, liberateAdd, assignMerc, recruits, mercSlots, awakenMerc, MERC } from '../src/game/town.js';
 // 테스트에서는 공사를 바로 끝낸다
@@ -603,6 +604,13 @@ test('닉네임 규칙: 2~8자 · 욕설 · 운영진 이름 · 숫자만은 안
   assert.equal(NR.nickError('가'), 'bad_nick'); assert.equal(NR.nickError('아주긴닉네임이에요'), 'bad_nick'); assert.equal(NR.nickError('ㅋㅋㅋ'), 'bad_nick');
   assert.equal(NR.nickError('1234'), 'nick_digits'); assert.equal(NR.nickError('씨1발맨'), 'nick_bad'); assert.equal(NR.nickError('FUCKer'), 'nick_bad');
   assert.equal(NR.nickError('운영자'), 'nick_reserved'); assert.equal(NR.nickError('GM_Kim'), 'nick_reserved');
+});
+
+test('강화는 기본 효과(기본 옵션 · 장신구 기본 효과)도 올린다', () => {
+  assert.equal(PL.plusK({ plus: 0 }), 1); assert.equal(+PL.plusK({ plus: 5 }).toFixed(2), 1.45); assert.equal(+PL.plusK({ plus: 10 }).toFixed(2), 1.9);
+  const r = { base: 'ruby_ring', ilvl: 60, uid: 7, plus: 0 }; assert.deepEqual(PL.baseMods(r), { str: 5 }); assert.deepEqual(PL.baseMods({ ...r, plus: 10 }), { str: 10 });
+  const c1 = PL.baseMods({ base: 'copper_ring', ilvl: 10, uid: 1 }), c2 = PL.baseMods({ base: 'copper_ring', ilvl: 10, uid: 2 }); assert.notDeepEqual(Object.keys(c1), Object.keys(c2));
+  assert.ok(PL.baseMods({ base: 'novice_staff', ilvl: 1, plus: 10 }).maxMp > 5);
 });
 
 console.log(`\n${n}개 통과`);

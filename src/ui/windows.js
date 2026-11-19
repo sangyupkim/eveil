@@ -7,7 +7,7 @@ import { STATS, STAT_NAMES, STAT_COLORS, STAT_DESC, CONFIG } from '../data/confi
 import { SKILLS, BOOK_TIERS } from '../data/skills.js';
 import { BASES, SLOTS, SLOT_NAMES, RARITY, WEAPON_CLASSES, isTwoHandedBase } from '../data/items.js';
 import { itemName, itemColor, itemValue, affixText, isBook, makeItem } from '../game/items.js';
-import { scaledArmor, scaledDmg, totalStats, derive } from '../game/player.js';
+import { scaledArmor, scaledDmg, totalStats, derive, baseMods } from '../game/player.js';
 import { addItem } from '../game/inventory.js';
 import { skillExpNeeded, skillValues, meetsReq, learn } from '../game/skills.js';
 import { expNeeded } from '../game/growth.js';
@@ -243,7 +243,7 @@ export class Windows {
       if (b.dmg) { const d = scaledDmg(it); h += `<div>${WEAPON_CLASSES[b.cls].name}${isTwoHandedBase(b) ? ' · <b class="twoTxt">양손 무기</b>' : ''} · ${WEAPON_CLASSES[b.cls].kind === 'magic' ? '마법 공격력' : '물리 공격력'} ${d[0]}~${d[1]} · 속도 ${b.speed}</div><div class="sub">주 스탯 ${STAT_NAMES[WEAPON_CLASSES[b.cls].ap]}</div>`; }
       if (b.armor) h += `<div>방어력 ${scaledArmor(it)}</div>`;
       if (b.block) h += `<div>막기 확률 ${Math.round(b.block * 100)}%</div>`;
-      if (b.mods) for (const k in b.mods) h += `<div>${modText(k, b.mods[k])}</div>`; // v0.44.18 영어 키가 그대로 보이던 것 (dex +40 등)
+      { const bm = baseMods(it); for (const k in bm) h += `<div class="baseMod">${modText(k, bm[k])}${it.plus ? ' <small class="note">강화</small>' : ''}</div>`; } // v0.49.34 기본 효과는 강화만큼 오른 값 // v0.44.18 영어 키가 그대로 보이던 것 (dex +40 등)
       if (it.q) h += `<div class="sub">품질 <b style="color:${it.q >= 1.1 ? '#ffd84a' : it.q <= 0.9 ? '#a09a8a' : '#e8e2d4'}">${Math.round(it.q * 100)}%</b> · ${it.rarity === 'myth' ? '115~130' : '85~115'}%</div>`;
       // 옵션마다 이 아이템 레벨 · 등급에서 나올 수 있는 범위
       for (const a of it.affixes) { const A = AFFIXES[a.id], mx = A ? Math.round(Math.max(A.min, A.max(it.ilvl) * (RARITY[it.rarity]?.mult || 1))) : null; h += `<div class="aff"${a.great ? ' style="color:#ffb84a"' : ''}>${affixText(a)}${a.great ? ' <b style="color:#ffb84a">탁월</b>' : ''}${A ? ` <small class="note">${A.min}~${mx}</small>` : ''}</div>`; }
@@ -463,12 +463,14 @@ export class Windows {
     if (!cur) return [`<h3>강화</h3><div class="forgeSlot empty"></div>`, right];
     const [key, it, where] = cur, cap = enhanceCap(st), n = it.plus || 0, max = n >= cap, c = enhanceCost(it, st), b = BASES[it.base];
     const nx = { ...it, plus: n + 1 };
-    const stat = b.dmg ? (() => { const a = scaledDmg(it), z = scaledDmg(nx); return `<span>${WEAPON_CLASSES[b.cls]?.kind === 'magic' ? '마법 공격력' : '물리 공격력'}</span><b>${a[0]}~${a[1]}${max ? '' : ` <i class="arw">▶</i> <em>${z[0]}~${z[1]}</em>`}</b>`; })() : b.armor ? `<span>방어력</span><b>${scaledArmor(it)}${max ? '' : ` <i class="arw">▶</i> <em>${scaledArmor(nx)}</em>`}</b>` : '';
+    const stat = b.dmg ? (() => { const a = scaledDmg(it), z = scaledDmg(nx); return `<span>${WEAPON_CLASSES[b.cls]?.kind === 'magic' ? '마법 공격력' : '물리 공격력'}</span><b>${a[0]}~${a[1]}${max ? '' : ` <i class="arw">▶</i> <em>${z[0]}~${z[1]}</em>`}</b>`; })() : b.armor ? `<span>방어력</span><b>${scaledArmor(it)}${max ? '' : ` <i class="arw">▶</i> <em>${scaledArmor(nx)}</em>`}</b>` : ''
+    // v0.49.34 기본 옵션 · 장신구 기본 효과도 강화만큼
+    const bmA = baseMods(it), bmB = baseMods(nx), bmRows = Object.keys(bmA).map((k) => `<span>${modName(k)}</span><b>${bmA[k]}${pct(k)}${max ? '' : ` <i class="arw">▶</i> <em>${bmB[k]}${pct(k)}</em>`}</b>`).join('');
     const have = resCount(st, c.oreId), okGold = st.gold >= c.gold, okOre = have >= c.ore;
     let L = `<div class="forgeTop"><div class="cell forgeSlot${rar(it)}">${ico(it)}</div><div><div class="nm" style="color:${itemColor(it)}">${esc(itemName(it))}</div><div class="note">${where} · Lv ${it.ilvl}</div><div class="plusBig">+${n}${max ? ' <small>상한</small>' : ` <i class="arw">▶</i> <em>+${n + 1}</em>`}</div></div></div>`;
-    if (!max) L += `<div class="kv">${stat}<span>성공 확률</span><b class="${c.jang >= 1 ? 'goldTxt' : ''}">${c.jang >= 1 ? '100%' : `${+(c.chance * 100).toFixed(1)}%`}</b><span>장인의 기운</span><b>${+(c.jang * 100).toFixed(1)}%</b><span>금화</span><b style="${okGold ? '' : 'color:#ff7060'}">${c.gold.toLocaleString()} G</b><span>${c.oreName}</span><b style="${okOre ? '' : 'color:#ff7060'}">${c.ore} <small class="note">/ ${have}</small></b></div>
+    if (!max) L += `<div class="kv">${stat}${bmRows}<span>성공 확률</span><b class="${c.jang >= 1 ? 'goldTxt' : ''}">${c.jang >= 1 ? '100%' : `${+(c.chance * 100).toFixed(1)}%`}</b><span>장인의 기운</span><b>${+(c.jang * 100).toFixed(1)}%</b><span>금화</span><b style="${okGold ? '' : 'color:#ff7060'}">${c.gold.toLocaleString()} G</b><span>${c.oreName}</span><b style="${okOre ? '' : 'color:#ff7060'}">${c.ore} <small class="note">/ ${have}</small></b></div>
       <div class="btns forgeGo"><button class="btn gold big" data-enh="${key}" ${okGold && okOre ? '' : 'disabled'}>강화</button></div>`;
-    else L += `<div class="kv">${stat}</div>`;
+    else L += `<div class="kv">${stat}${bmRows}</div>`;
     return [L, right];
   }
   smithRef(st, smith) {
@@ -1659,6 +1661,9 @@ export class Windows {
   }
 }
 
+// v0.49.34 기본 효과 이름 · % 표시 (강화 창)
+const modName = (k) => (AFFIXES[k]?.text ? AFFIXES[k].text.replace(/\s*[+-]?\{v\}%?/, '') : STAT_NAMES[k] || k);
+const pct = (k) => (/\{v\}%/.test(AFFIXES[k]?.text || '') ? '%' : '');
 // 장비 기본 능력(b.mods) 한 줄: 옵션 글이 있으면 그것, 아니면 능력치 이름
 function modText(k, v) {
   if (AFFIXES[k]?.text) return AFFIXES[k].text.replace('{v}', v);
