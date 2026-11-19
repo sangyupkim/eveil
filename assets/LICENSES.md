@@ -97,3 +97,8 @@
 - 강화 주문서(v0.44.9): "Scrolls" 묶음 part 1 (사용자가 사용 조건 확인)
 - 무기(v0.44.10): "3D Fantasy Weapons Pack" (low) GLB를 직접 찍은 그림 (README · LICENSE 묶음 안, 사용자가 사용 조건 확인) — tools/glb-icons
 - 변환: `node tools/prep-icons3.mjs <푼 폴더>`
+
+## 구글 드라이브 「에베이에셋」 (assets/drive/, 2026-11-19 — 아직 게임에서 쓰지 않음, docs/드라이브에셋.md)
+- `buildings/tavern_*` — "Medieval Tavern", Bleed (http://remusprites.carbonmade.com/). 출처 표기 · 수정 · 상업 이용 가능, 재판매 · 재라이선스 금지
+- `trees/tree*` (`_tree_01~14`) · `spell_icons.webp` (`00 Spell Icons.png`) — 사용자가 모은 묶음. 묶음 안에 라이선스가 없어 출처 페이지를 받으면 여기에 적는다
+- 변환: `python3 tools/prep-drive.py <받아 푼 폴더>`
