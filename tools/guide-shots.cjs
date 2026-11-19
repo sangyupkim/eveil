@@ -24,7 +24,7 @@ const OUT = process.argv[2];
     Inv.addItem(st, I.makeItem('hp_potion', { qty: 24 }, st)); Inv.addItem(st, I.makeItem('mp_potion', { qty: 18 }, st)); Inv.addItem(st, I.makeItem('dungeon_key', { qty: 2 }, st));
     for (const it of [...st.inv].filter((x) => I.makeItem && x.rarity === 'hero').slice(0, 2)) Inv.equip(st, it.uid);
     const t = T.townOf(st); t.ore = 140; t.mats = { field: 64, forest: 38, grave: 12 }; t.herbs = { red: 22, blue: 18, iron: 6 };
-    const plan = [['p1', 'smithy'], ['p2', 'workshop'], ['p3', 'guild'], ['p4', 'house'], ['p5', 'inn'], ['p6', 'lab'], ['p7', 'herb'], ['p8', 'mine']];
+    const plan = [['p1', 'smithy'], ['p2', 'workshop'], ['p3', 'guild'], ['p4', 'house'], ['p5', 'inn'], ['p6', 'lab'], ['p7', 'herb'], ['p8', 'mine'], ['p9', 'altar']];
     for (const [pl, ty] of plan) { t.plots[pl] = { type: ty, lv: 3, stock: ty === 'mine' ? 9 : 0, since: Date.now() }; }
     for (const m of T.recruits(st)) { st.gold += 99999; T.hire(st, m.id); }
     st.liberate = { field: 9999, forest: 9999 };
@@ -32,6 +32,10 @@ const OUT = process.argv[2];
     t.lab = { id: 'bag', from: Date.now() - 600000, until: Date.now() + 900000 };
     const dl = D.dailyOf(st); dl.list[0].have = 31; dl.list[1].have = dl.list[1].need; dl.list[1].done = true;
     st.camps = { field: { fire: true, merchant: true } };
+    // v0.49.27 새 항목용: 겹친 스킬북 · 보석 · 유물
+    for (let i = 0; i < 3; i++) Inv.addItem(st, I.makeBook('meteor', st));
+    for (const g of ['gem_ruby_1', 'gem_ruby_1', 'gem_ruby_1', 'gem_sapphire_2']) Inv.addItem(st, I.makeItem(g, {}, st));
+    st.relics = { bag: [{ id: 'r_exp', g: 1 }, { id: 'r_dmg', g: 0 }], on: [] };
     w.refreshTown(); w.refreshGear?.(); w.ui.dirty(); G.windows.close();
   });
   await p.waitForTimeout(800);
@@ -54,16 +58,17 @@ const OUT = process.argv[2];
   }, items);
   const shot = async (name) => { await p.waitForTimeout(250); await p.screenshot({ path: `${OUT}/${name}.png` }); await p.evaluate(() => document.getElementById('ghl')?.remove()); };
   const W = (fn, arg) => p.evaluate(fn, arg);
+  const union = (sel) => W((sel) => { const rs = [...document.querySelectorAll(sel)].map((e) => e.getBoundingClientRect()).filter((r) => r.width); if (!rs.length) return null; const x = Math.min(...rs.map((r) => r.x)), y = Math.min(...rs.map((r) => r.y)); return { x, y, width: Math.max(...rs.map((r) => r.right)) - x, height: Math.max(...rs.map((r) => r.bottom)) - y }; }, sel);
   const world = (x, z, y = 0) => W(([x, z, y]) => { const s = window.__game.stage.toScreen(x, z, y); return s; }, [x, z, y]);
 
   // 1. 화면 보기 (사냥터, 몬스터 몇)
   await W(async () => { const { world: w } = window.__game; window.__game.windows.close(); const Z = (await import('/src/data/world.js')).ZONES[0]; w.player.pos.set(Z.x - 6, 0, Z.z); w.stage.cam.x = Z.x - 6; w.stage.cam.z = Z.z; for (let i = 0; i < 4; i++) { const m = w.spawn({ zone: Z, x: Z.x - 2 + i * 1.5, z: Z.z - 2 + (i % 2) * 2, level: 3, tier: i === 3 ? 'elite' : 'normal', timer: 0, mon: null }); m.state = 'idle'; m.showHp = 9; } w.st.hp = w.d.maxHp * 0.8; });
   await p.waitForTimeout(1500);
-  await hl([['#tl .who', 1], ['.lbl.me', 2], ['#qPanel', 3], ['#questBox', 4], ['#mapWrap', 5], ['.menuCol', 6], ['#quick', 7], ['#btnAttack', 8, true], ['#joy', 9, true]]);
+  await hl([['#tl .who', 1], ['.lbl.me', 2], ['#qPanel', 3], ['#questBox', 4], ['#mapWrap', 5], ['.menuCol', 6], [await union('#quick .slot'), 7], ['#btnAttack', 8, true], ['#joy', 9, true]]);
   await p.evaluate(() => { document.getElementById('joy').classList.add('active'); });
   await shot('hud');
   await p.evaluate(() => { document.getElementById('joy').classList.remove('active'); });
-  await hl([['#btnRecall', 1, true], ['#btnAuto', 2, true], ['#btnMp', 3, true], ['#btnHp', 4, true], ['#btnAttack', 5, true], ['#quick', 6]]);
+  await hl([['#btnRecall', 1, true], ['#btnAuto', 2, true], ['#btnMp', 3, true], ['#btnHp', 4, true], ['#btnAttack', 5, true], [await union('#quick .slot'), 6]]);
   await shot('buttons');
   await hl([['#mapWrap', 1]]);
   await shot('minimap');
@@ -94,11 +99,12 @@ const OUT = process.argv[2];
   await shot('portal');
 
   // 3. 창들
-  const win = async (fn) => { await W(fn); await p.waitForTimeout(500); };
+  const win = async (fn, arg) => { await W(fn, arg); await p.waitForTimeout(500); };
   const box = (sel, i = 0) => W(([sel, i]) => { const e = document.querySelectorAll(sel)[i]; if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; }, [sel, i]);
   // 가방
   await win(() => window.__game.windows.show('inv'));
-  await hl([[await box('#window .frame', 0), 1], [await box('#window .frame', 1), 2], ['.matRow', 3], ['.goldTxt', 4], ['#window .tabs', 5]]);
+  await p.evaluate(() => { const b = window.__game.world.st.inv.find((x) => x.book === 'meteor'); document.querySelector(`.cell[data-uid="${b.uid}"]`)?.click(); }); await p.waitForTimeout(400);
+  await hl([[await box('#window .frame', 0), 1], [await box('#window .frame', 1), 2], [await box('[data-bagsort]', 0), 3], ['.goldTxt', 4], ['#window .tabs', 5]]);
   await shot('inv');
   // 스킬
   await win(() => { const W = window.__game.windows; W.skillSel = 'fire_bolt'; W.show('skills'); });
@@ -118,11 +124,11 @@ const OUT = process.argv[2];
   await shot('build');
   // 대장간
   await win(() => { const W = window.__game.windows; W.close(); W.townSel = 'p1'; W.talkTo(['town'], 'town', 'one'); });
-  await hl([[await box('[data-enh]', 0), 1], [await box('[data-reforge]', 0), 2]]);
+  await hl([[await box('#window .stabs', 0), 1], [await box('[data-enh]', 0), 2]]);
   await shot('smithy');
   // 제작소
   await win(() => { const W = window.__game.windows; W.close(); W.townSel = 'p2'; W.talkTo(['town'], 'town', 'one'); });
-  await hl([[await box('.herbBar', 0), 1], [await box('#window .detail .row', 0), 2], [await box('[data-brewget]', 0), 3], [await box('[data-brew]', 0), 4]]);
+  await hl([[await box('#window .stabs', 0), 1], [await box('#window .detail .row', 0), 2], [await box('[data-brewget]', 0), 3], [await box('[data-brew]', 0), 4]]);
   await shot('workshop');
   // 파견소
   await win(() => { const W = window.__game.windows; W.close(); W.townSel = 'p3'; W.talkTo(['town'], 'town', 'one'); });
@@ -149,8 +155,28 @@ const OUT = process.argv[2];
   await shot('map');
   // 설정
   await win(() => { const W = window.__game.windows; W.close(); W.show('menu'); });
-  await hl([[await box('[data-ui="zoom"]', 0), 1], [await box('[data-uiedit]', 0), 2]]);
+  await p.evaluate(() => document.querySelector('[data-qlay]')?.scrollIntoView({ block: 'center' })); await p.waitForTimeout(300);
+  await hl([[await box('[data-ui="zoom"]', 0), 1], [await box('[data-qlay]', 0), 2], [await box('[data-uiedit]', 0), 3]]);
   await shot('menu');
+  await p.evaluate(() => document.querySelector('.pickRow')?.scrollIntoView({ block: 'center' })); await p.waitForTimeout(300);
+  await hl([[await box('.pickRow', 0), 1], [await box('.cards', 0), 2]]);
+  await shot('menu2');
+  // v0.49.27 새 항목: 광산 · 약초밭 거두기, 유물 제단, 보석상, 비전, 도감, 랭킹, 기록
+  const plotWin = async (ty) => { await win(async (ty) => { const G = window.__game, W = G.windows; W.close(); const T = await import('/src/game/town.js'); const e = Object.entries(T.townOf(G.world.st).plots).find(([, b]) => b.type === ty); W.townSel = e[0]; W.talkTo(['town'], 'town', 'one'); }, ty); };
+  await plotWin('herb');
+  await hl([[await box('#window .frame', 0), 1], [await box('#window .frame', 1), 2]]);
+  await shot('harvest');
+  await plotWin('altar');
+  await hl([[await box('#window .frame', 0), 1], [await box('#window .frame', 1), 2]]);
+  await shot('altar');
+  await win(() => { const W = window.__game.windows; W.close(); W.talkTo(['gems'], 'gems'); });
+  await hl([[await box('#window .stabs', 0), 1], [await box('#window .frame', 0), 2], [await box('#window .frame', 1), 3]]);
+  await shot('gems');
+  for (const k of ['arts', 'dex', 'rank', 'log']) {
+    await win((k) => { const W = window.__game.windows; W.close(); W.show(k); }, k);
+    await hl([[await box('#window .frame', 0), 1], [await box('#window .frame', 1), 2]]);
+    await shot(k);
+  }
   // 4. 던전
   await W(async () => { const G = window.__game; G.windows.close(); G.world.enterDungeon(0); });
   await p.waitForTimeout(1800);
