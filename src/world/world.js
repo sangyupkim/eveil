@@ -2804,23 +2804,19 @@ export class World {
       rows.unshift({ img: coinIcon(), name: '금화', qty: tot.gold }, { img: oreIcon(), name: '강화석', qty: tot.ore }, { img: iconUrl(1012), name: '지역 재료', qty: tot.mats });
       secs.push({ title: `파견 귀환 · ${back.map((m) => m.name).join(' · ')}`, rows });
     }
-    const ready = (t.brew || []).filter((b) => b.until <= now);
-    if (ready.length) {
-      const before = ready.map((b) => ({ id: b.id, n: b.n }));
-      const r = brewCollect(st, now, put);
-      const got = before.slice(0, before.length - ((t.brew || []).filter((b) => b.until <= now).length));
-      if (got.length) secs.push({ title: '제작 완료', rows: got.map((b) => { const it = makeItem(b.id, { qty: b.n }, st); return { img: itemIcon(it), name: itemName(it), qty: b.n, item: it }; }) });
-      if (!r.ok && r.why) this.ui.toast(r.why);
-    }
+    // v0.49.23 광산 · 약초밭 · 제작소는 직접 건물에서 거둔다 (자동으로 가방에 넣지 않는다). 다 찼거나 완성되면 기록에 한 줄만
+    const ntf = (this.townFullNote ||= {});
+    const readyN = (t.brew || []).filter((b) => b.until <= now).length;
+    if (readyN && !ntf.brew) this.ui.log(`제작소 · 완성품 ${readyN}개를 받을 수 있습니다`, '#7fe07a');
+    ntf.brew = readyN > 0;
     autoBrewTick(st, now);
     for (const names of repeatTick(st, now)) this.ui.toast(`반복 파견 출발: ${names}`, '#ffc860');
     for (const [pid, b] of Object.entries(t.plots)) {
       const def = BUILDINGS[b.type];
-      if (!def?.store || b.bld?.to === 1 || (b.stock || 0) < def.store(b.lv)) continue;
-      const r = collectPlot(st, pid);
-      if (!r?.n) continue;
-      if (b.type === 'mine') secs.push({ title: '광산 수확', rows: [{ img: oreIcon(), name: '강화석', qty: r.n }] });
-      else if (r.got) secs.push({ title: '약초밭 수확', rows: Object.entries(r.got).map(([h, q]) => ({ img: herbIcon(h), name: HERBS[h].name, qty: q })) });
+      if (!def?.store || b.bld?.to === 1) continue;
+      const full = (b.stock || 0) >= def.store(b.lv);
+      if (full && !ntf[pid]) this.ui.log(`${def.name}이 가득 찼습니다 · 거두어야 다시 쌓입니다`, '#ffc860');
+      ntf[pid] = full;
     }
     return secs;
   }
