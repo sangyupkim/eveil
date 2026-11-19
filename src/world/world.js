@@ -327,7 +327,7 @@ export class World {
     for (const t of list) {
       const k = t.perk;
       if (k.trig !== trig || Math.random() >= k.p) continue;
-      const P = this.player.pos, d = this.d, wd = (d.dmg[0] + d.dmg[1]) / 2;
+      const P = this.player.pos, d = this.d, wd = (d.dmg[0] + d.dmg[1]) / 2, sb = Math.max(d.spellBase || 0, wd); // v0.49.22 원소 폭발 · 파동 · 번개: 주문 기준 · 무기 피해 중 큰 쪽의 % (예전 고정 숫자는 레벨이 오르면 거의 안 들어갔다)
       const near = (r) => this.monsters.filter((m) => !m.dead && dist2(m.pos, P) < r * r);
       const tag = (txt) => this.fx.text(P.clone().setY(3), txt, 'heal');
       const timed = (key, v) => { (this.pbuffs ||= {})[key] = { v, t: 3 }; this.d = derive(this.st, this.buffValues()); };
@@ -342,14 +342,14 @@ export class World {
       } else if (k.eff === 'blast') {
         const c = at || P;
         this.fx.burst(c.x, 1, c.z, 0xff8040, 14, 5, 0.4); this.fx.decal(0, c.x, c.z, 2.5, 0xff8040, 0.35);
-        for (const m of this.monsters) if (!m.dead && dist2(m.pos, c) < 6.25) this.hitMonster(m, k.v * d.spellMult, { src: 'perk' });
+        for (const m of this.monsters) if (!m.dead && dist2(m.pos, c) < 6.25) this.hitMonster(m, sb * k.v / 100, { src: 'perk' });
       } else if (k.eff === 'chill') {
         for (const m of near(4)) m.slowT = k.v / 10;
         this.fx.decal(0, P.x, P.z, 4, 0x9fd8ff, 0.4);
       } else if (k.eff === 'crit') { timed('focus', k.v); tag(t.name); } // v0.49.21 새 특성 효과
       else if (k.eff === 'swift') { timed('swift', k.v); tag(t.name); }
-      else if (k.eff === 'nova') { this.fx.play?.('sparkle', P.x, P.z, { scale: 1.6, dur: 0.6 }); for (const m of near(4)) this.hitMonster(m, k.v * d.spellMult, { src: 'perk' }); }
-      else if (k.eff === 'chain') { near(9).sort((a, b) => dist2(a.pos, P) - dist2(b.pos, P)).slice(0, 3).forEach((m, i) => this.later(i * 0.12, () => { if (m.dead) return; this.fx.projectile({ from: { x: P.x, y: 1.3, z: P.z }, target: m.actor, color: 0xa0c8ff, size: 0.6, speed: 30, bolt: true, onHit: () => this.hitMonster(m, k.v * d.spellMult, { src: 'perk' }) }); })); }
+      else if (k.eff === 'nova') { this.fx.play?.('sparkle', P.x, P.z, { scale: 1.6, dur: 0.6 }); for (const m of near(4)) this.hitMonster(m, sb * k.v / 100, { src: 'perk' }); }
+      else if (k.eff === 'chain') { near(9).sort((a, b) => dist2(a.pos, P) - dist2(b.pos, P)).slice(0, 3).forEach((m, i) => this.later(i * 0.12, () => { if (m.dead) return; this.fx.projectile({ from: { x: P.x, y: 1.3, z: P.z }, target: m.actor, color: 0xa0c8ff, size: 0.6, speed: 30, bolt: true, onHit: () => this.hitMonster(m, sb * k.v / 100, { src: 'perk' }) }); })); }
       else if (k.eff === 'mark') { for (const m of near(4)) { m.markT = this.time + 4; m.markV = k.v; } tag(t.name); }
       else if (k.eff === 'barrier') { const add = d.maxHp * k.v / 100, cap = d.maxHp * 0.3, sh = this.buffs.shield; if (sh && sh.t > 0) sh.v = Math.min(cap, sh.v + add); else this.buffs.shield = { v: Math.min(cap, add), t: 4, max: 4 }; tag(t.name); }
       else if (k.eff === 'arrow') {

@@ -53,14 +53,14 @@ export const MIX_ITEM = {
 // 조합 고유 효과 (titles.js UNIQUES 뒤에 붙는다 — MIX_UNIQUE_BASE + u)
 export const MIX_UNIQUES = [
   { trig: 'meleeHit', p: 0.25, eff: 'arrow', v: 80, text: '근접 공격이 맞으면 25% 확률로 칼바람 (무기 피해 80%)' },
-  { trig: 'meleeHit', p: 0.25, eff: 'blast', v: 60, text: '근접 공격이 맞으면 25% 확률로 주문 피해 60 원소 폭발' },
+  { trig: 'meleeHit', p: 0.25, eff: 'blast', v: 60, text: '근접 공격이 맞으면 25% 확률로 피해 60% 원소 폭발' },
   { trig: 'meleeHit', p: 0.2, eff: 'ward', v: 20, text: '근접 공격이 맞으면 20% 확률로 3초 동안 받는 피해 -20%' },
   { trig: 'hurt', p: 0.3, eff: 'shock', v: 80, text: '맞으면 30% 확률로 주변에 무기 피해 80% 충격파' },
-  { trig: 'rangedHit', p: 0.25, eff: 'blast', v: 50, text: '화살이 맞으면 25% 확률로 주문 피해 50 원소 폭발' },
+  { trig: 'rangedHit', p: 0.25, eff: 'blast', v: 50, text: '화살이 맞으면 25% 확률로 피해 50% 원소 폭발' },
   { trig: 'rangedHit', p: 0.25, eff: 'mp', v: 8, text: '화살이 맞으면 25% 확률로 MP 8 회복' },
   { trig: 'hurt', p: 0.3, eff: 'arrow', v: 90, text: '맞으면 30% 확률로 가까운 적에게 무기 피해 90% 화살' },
   { trig: 'spell', p: 0.35, eff: 'shock', v: 60, text: '주문을 쓰면 35% 확률로 주변에 무기 피해 60% 충격파' },
-  { trig: 'hurt', p: 0.3, eff: 'blast', v: 60, text: '맞으면 30% 확률로 주문 피해 60 원소 폭발' },
+  { trig: 'hurt', p: 0.3, eff: 'blast', v: 60, text: '맞으면 30% 확률로 피해 60% 원소 폭발' },
   { trig: 'buff', p: 1, eff: 'ward', v: 25, text: '보조 주문을 쓰면 3초 동안 받는 피해 -25%' },
 ];
 
