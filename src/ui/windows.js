@@ -265,7 +265,8 @@ export class Windows {
     h += '<div class="btns">';
     if (it.shard && it.vals?.length > 1 && !it.lock) h += `<button class="btn" data-shkeep="${it.uid}">가장 높은 값만 남기기</button>`; // v0.49.11 파편 묶음
     if (where === 'inv') {
-      if (!it.shard && b?.type !== 'mat') h += `<button class="btn gold" data-act="use">${isBook(it) ? '배우기' : b.type === 'potion' ? '사용' : b.type === 'elixir' ? '읽기' : b.type === 'pet' ? '부르기' : b.type === 'map' ? '펼치기' : '장착'}</button>`;
+      if (isBook(it) && (it.qty || 1) > 1) h += `<button class="btn gold" data-act="useall">모두 사용 ×${it.qty}</button>`; // v0.49.25 같은 스킬북은 겹친다: 하나만 · 모두
+      if (!it.shard && b?.type !== 'mat') h += `<button class="btn gold" data-act="use">${isBook(it) ? (st.skills[it.book] ? '하나 흡수' : '배우기') : b.type === 'potion' ? '사용' : b.type === 'elixir' ? '읽기' : b.type === 'pet' ? '부르기' : b.type === 'map' ? '펼치기' : '장착'}</button>`;
       if (b?.type === 'elixir') { const on = !!st.settings?.autoScroll?.[it.base]; h += `<button class="btn${on ? ' on' : ''}" data-ascroll="${it.base}">${on ? '자동 사용 끄기' : '자동 사용'}</button>`; }
       // 물약 퀵슬롯: 이 물약을 체력 · 마나 칸에 두거나 뺀다
       if (b?.type === 'potion') for (const [k, nm] of [['hp', '체력 칸'], ['mp', '마나 칸']]) {
@@ -1259,7 +1260,7 @@ export class Windows {
         <div class="setRow"><span>화면 흔들림</span><div class="opts">${onoff('shake', set.shake !== false)}</div></div>
         <div class="setRow"><span>자동 물약</span><div class="opts">${[0.3, 0.4, 0.5, 0.6].map((v) => `<button class="btn${set.autoPotion === v ? ' on' : ''}" data-pot="${v}">${v * 100}%</button>`).join('')}</div></div>
         <div class="setRow"><span>자동 사냥 필드 보스</span><div class="opts"><button class="btn${set.autoBoss ? ' on' : ''}" data-autoboss="1">잡기</button><button class="btn${!set.autoBoss ? ' on' : ''}" data-autoboss="0">피하기</button></div></div>
-        <div class="setRow pickRow"><span>자동 사냥 줍기</span><div class="pickGrid">${[['common', '일반'], ['magic', '마법'], ['rare', '희귀'], ['hero', '영웅'], ['legend', '전설'], ['potion', '물약'], ['gem', '보석'], ['book', '스킬북'], ['mat', '재료 · 파편']].map(([k, n]) => `<label class="pickChk"><input type="checkbox" data-apick="${k}" ${(set.autoPick || {})[k] !== false ? 'checked' : ''} /><span>${n}</span></label>`).join('')}</div></div>
+        <div class="setRow pickRow"><span>자동 사냥 줍기</span><div class="pickGrid">${[['common', '일반'], ['magic', '마법'], ['rare', '희귀'], ['hero', '영웅'], ['legend', '전설'], ['potion', '물약'], ['gem', '보석'], ['mat', '재료 · 파편'], ...Object.entries(BOOK_TIERS).map(([t, b]) => ['book' + t, `${b.name} 스킬북`])].map(([k, n]) => `<label class="pickChk"><input type="checkbox" data-apick="${k}" ${((set.autoPick || {})[k] ?? (k.startsWith('book') ? (set.autoPick || {}).book : true)) !== false ? 'checked' : ''} /><span>${n}</span></label>`).join('')}</div></div>
         <div class="setRow"><span>물약 자동 구매</span><div class="opts">${onoff('autoBuy', set.autoBuy !== false)}</div></div>
         <div class="setRow"><span>자동 판매 등급</span><div class="opts">${[['off', '끔'], ['common', '일반'], ['magic', '마법'], ['rare', '희귀']].map(([k, n]) => `<button class="btn${(set.autoSell === false ? 'off' : set.autoSellTo || 'rare') === k ? ' on' : ''}" data-sellto="${k}">${n}</button>`).join('')}</div></div>
         <div class="setRow"><span>단축키 (PC)</span><div class="opts"><button class="btn${this.keyEdit ? ' on' : ''}" data-keyedit="1">단축키 지정</button></div></div>
@@ -1309,6 +1310,7 @@ export class Windows {
           if (!(await gameConfirm(a === 'drop' ? '버리기' : '판매', a === 'drop' ? '바닥에 버립니다' : `${n0 > 1 ? `${n0}개 · ` : ''}${itemValue({ ...it0, qty: n0 }).toLocaleString()} G`, a === 'drop' ? '버리기' : '판매', itemHtml(it0)))) return;
           nPick = n0; } }
       if (a === 'use') w.useItem(this.sel.uid);
+      if (a === 'useall') w.useItem(this.sel.uid, { all: true });
       if (a === 'unequip') w.unequip(this.sel.slot);
       const selIt = st.inv.find((x) => x.uid === this.sel?.uid);
       if (selIt?.lock && ['drop', 'sell', 'sellall'].includes(a)) { w.ui.toast('잠근 아이템입니다'); audio.play('error'); return; }
@@ -1325,7 +1327,7 @@ export class Windows {
         w.ui.dirty();
       }
       // 물약처럼 남아 있으면 계속 골라 둔다
-      if (!(a === 'use' && st.inv.some((x) => x.uid === this.sel?.uid))) this.sel = null;
+      if (!((a === 'use' || a === 'useall') && st.inv.some((x) => x.uid === this.sel?.uid))) this.sel = null;
       this.render();
     });
     on('[data-skill]', (el) => { this.skillSel = el.dataset.skill; audio.play('click'); this.render(); });

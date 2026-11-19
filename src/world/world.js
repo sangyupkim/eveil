@@ -1390,6 +1390,7 @@ export class World {
     if (g.kind !== 'item' || !g.item) return true;
     const f = this.st.settings.autoPick || {}, it = g.item, b = BASES[it.base] || {};
     const cat = it.book ? 'book' : b.type === 'potion' || b.type === 'elixir' ? 'potion' : b.type === 'gem' ? 'gem' : b.type === 'mat' || it.shard ? 'mat' : b.slot ? (it.rarity || 'common') : 'etc';
+    if (cat === 'book') return f['book' + (SKILLS[it.book]?.tier || 1)] ?? f.book !== false; // v0.49.25 스킬북은 등급마다
     return f[cat] !== false;
   }
   get autoMult() { return this.auto ? CONFIG.autoPenalty : 1; }
@@ -2978,7 +2979,7 @@ export class World {
 
   // ───────── 가방 조작 (UI에서 호출) ─────────
 
-  useItem(uid) {
+  useItem(uid, { all = false } = {}) {
     const st = this.st;
     const it = st.inv.find((x) => x.uid === uid);
     if (!it) return;
@@ -2987,17 +2988,22 @@ export class World {
     this.d = derive(st, this.buffValues());
     if (BASES[it.base]?.type === 'pet') { takeOne(st, it.base); const cat = BASES[it.base].pet === 'pet_cat'; st.pet = { kind: cat ? 'pet_cat' : 'pet_dog', name: cat ? '고양이' : '강아지' }; this.makePet(); this.ui.toast(`${st.pet.name}가 함께합니다! 물건을 주워 오고 함께 싸웁니다`, '#7fe07a'); sfx('learn'); this.ui.dirty(); return; }
     if (isBook(it)) {
-      const c = canLearn(st, it.book, this.d.stats);
+      // v0.49.25 같은 스킬북은 겹쳐 쌓인다: 하나만 쓰거나(all=false) 모두 쓴다 — 이미 아는 스킬이면 권마다 숙련 EXP
+      const c = canLearn(st, it.book, this.d.stats), have = it.qty || 1;
+      const use = (n) => { it.qty = have - n; if (it.qty <= 0) st.inv.splice(st.inv.indexOf(it), 1); };
       if (c.ok) {
         learn(st, it.book);
-        st.inv.splice(st.inv.indexOf(it), 1);
-        this.ui.toast(`새 스킬을 배웠습니다: ${SKILLS[it.book].name}`, '#ffd84a');
+        const n = all ? have : 1, rest = n - 1;
+        use(n);
+        if (rest > 0) this.skillExp(it.book, (rest * bookAbsorbExp(it.book)) / this.d.skillExp / this.autoMult);
+        this.ui.toast(`새 스킬을 배웠습니다: ${SKILLS[it.book].name}${rest > 0 ? ` (+${rest}권 흡수)` : ''}`, '#ffd84a');
         sfx('learn');
         this.fx.pillar(this.player.pos.x, this.player.pos.z, 0x80c0ff, 1.2);
       } else if (c.known) {
-        st.inv.splice(st.inv.indexOf(it), 1);
-        this.skillExp(it.book, bookAbsorbExp(it.book) / this.d.skillExp / this.autoMult);
-        this.ui.toast(`${SKILLS[it.book].name} 숙련도를 흡수했습니다`);
+        const n = all ? have : 1;
+        use(n);
+        this.skillExp(it.book, (n * bookAbsorbExp(it.book)) / this.d.skillExp / this.autoMult);
+        this.ui.toast(`${SKILLS[it.book].name} 숙련도를 흡수했습니다${n > 1 ? ` (${n}권)` : ''}`);
       } else {
         const req = Object.entries(SKILLS[it.book].req).map(([k, v]) => `${STAT_NAMES[k] || k} ${v}`).join(', ');
         this.ui.toast(`스탯이 부족합니다 (${req})`);

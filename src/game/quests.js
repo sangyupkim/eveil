@@ -2,7 +2,7 @@
 import { QUESTS, QUEST_BOOKS } from '../data/quests.js';
 import { BASES } from '../data/items.js';
 import { MONSTERS, ZONES } from '../data/world.js';
-import { makeItem, makeBook } from './items.js';
+import { makeItem, makeBook, isStack, sameStack } from './items.js';
 import { meetsReq } from './skills.js';
 import { totalStats } from './player.js';
 import { addItem } from './inventory.js';
@@ -77,7 +77,7 @@ export function questTurnIn(st, size) {
   const q = currentQuest(st);
   if (!q || !questDone(st)) return { ok: false };
   const items = rewardItems(st, q);
-  const need = items.filter((it) => !(BASES[it.base]?.stack && st.inv.some((x) => x.base === it.base))).length;
+  const need = items.filter((it) => !(isStack(it) && st.inv.some((x) => sameStack(x, it)))).length;
   if (st.inv.length + need > size) return { ok: false, bagFull: true, need, why: '가방이 가득 찼습니다' };
   for (const it of items) addItem(st, it);
   st.gold += q.reward.gold || 0;

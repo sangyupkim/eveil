@@ -1,11 +1,14 @@
 // 아이콘: Flare 아이콘 묶음(icons.webp, 64×64 칸 8줄)에서 잘라 쓴다. 초상화는 Flare 초상화 그림
 import { BASES } from '../data/items.js';
 import { SKILLS, BOOK_TIERS } from '../data/skills.js';
-import { ITEM_LOOK, SKILL_ICON, faceOf } from '../data/flareWorld.js';
+import { ITEM_LOOK, SKILL_ICON, SKILL_FILTER, faceOf } from '../data/flareWorld.js';
 import { SCHOOL_ICON } from '../data/skills_more.js';
 import { image, DATA, animImage } from '../engine2d/sprites.js';
 import { ELIXIRS, HERBS } from '../data/potions.js';
-export const herbIcon = (id) => iconUrl(40, HERBS[id].color); // v0.40.1 약초는 모두 풀 그림 + 색 테두리 (보석과 구분)
+// v0.49.25 약초마다 다른 풀 · 꽃 그림 (예전엔 모두 같은 문양) + 색 테두리
+const HERB_ICON = { red: [2021, 'hue-rotate(240deg)'], blue: [2057, 'hue-rotate(100deg)'], iron: [2060, 'grayscale(1) brightness(1.15)'], sun: [2125, 'hue-rotate(90deg)'], wind: [2022], moon: [2147],
+  gold: [2012, 'hue-rotate(-60deg) saturate(1.3)'], frost: [2010], blood: [2118], star: [2139], dragon: [2241], world: [2013] };
+export const herbIcon = (id) => iconUrl(HERB_ICON[id]?.[0] ?? 2013, HERBS[id].color, HERB_ICON[id]?.[1] || '');
 
 const SHEET = 'icons.webp', S = 64;
 export const ESS_COLOR = { 2: '#8ab0ff', 3: '#c58cff', 4: '#ff9a4a', 5: '#ff4a6a' };
@@ -34,8 +37,8 @@ export function iconUrl(index, frame = null, filter = '') {
 }
 
 export function itemIcon(it) {
-  if (it.book) return iconUrl(SKILL_ICON[it.book] ?? SCHOOL_ICON[SKILLS[it.book]?.school] ?? 225, BOOK_TIERS[SKILLS[it.book].tier].color); // v0.41 책은 그 스킬 아이콘 + 단계 색 테두리
-  if (it.shard) return iconUrl(2285, '#c58cff'); // 능력치 파편: 보랏빛 수정 (v0.49.24, 예전엔 문양) · 모두 같은 그림 + 칸 아래 옵션 글 (cellTag)
+  if (it.book) return iconUrl(SKILL_ICON[it.book] ?? SCHOOL_ICON[SKILLS[it.book]?.school] ?? 225, BOOK_TIERS[SKILLS[it.book].tier].color, SKILL_FILTER[it.book] || ''); // v0.41 책은 그 스킬 아이콘 + 단계 색 테두리
+  if (it.shard) return iconUrl(2097, '#c58cff'); // 능력치 파편: 깨진 돌 조각 (v0.49.25, 보랏빛 수정은 자수정과 같은 그림이라 바꿈) · 모두 같은 그림 + 칸 아래 옵션 글 (cellTag)
   if (BASES[it.base]?.type === 'pet') return petIcon(BASES[it.base].pet);
   if (ELIXIRS[it.base]) return iconUrl(ITEM_LOOK[it.base]?.icon ?? 84, ELIXIRS[it.base].color);
   if (it.base === 'myth_mark') return iconUrl(1011, '#ff4a8a'); // 신화의 흔적: 분홍 테두리
@@ -51,15 +54,15 @@ export function itemIcon(it) {
   const b = BASES[it.base];
   return iconUrl(b?.type === 'potion' ? 64 : 0);
 }
-export const skillIcon = (id) => iconUrl(SKILL_ICON[id] ?? SCHOOL_ICON[SKILLS[id]?.school] ?? 0);
+export const skillIcon = (id) => iconUrl(SKILL_ICON[id] ?? SCHOOL_ICON[SKILLS[id]?.school] ?? 0, null, SKILL_FILTER[id] || ''); // v0.49.25 같은 그림은 빛깔을 바꿔서
 export const portrait = (look) => 'assets/flare/portraits/' + faceOf(look?.face)[1] + '.webp';
 export const chestIcon = () => iconUrl(1009);
-export const bookIcon = () => iconUrl(28);
+export const bookIcon = () => iconUrl(2296); // v0.49.25 문양(UI 그림) 대신 책 그림
 export const coinIcon = () => iconUrl(1008);
 export const scrollIcon = () => iconUrl(224);
-export const homeIcon = () => iconUrl(19);
-export const duelIcon = () => iconUrl(1);
-export const swordIcon = () => iconUrl(1);
+export const homeIcon = () => iconUrl(103);
+export const duelIcon = () => iconUrl(1043);
+export const swordIcon = () => iconUrl(1043);
 export const townIcon = () => iconUrl(103);
 // 강화석: 금강석(보석)과 헷갈리지 않게 잿빛 돌 + 주황 테두리
 export const oreIcon = () => iconUrl(71, '#e0903a', 'grayscale(1) sepia(.6) brightness(.62) contrast(1.3)');

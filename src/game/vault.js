@@ -4,6 +4,7 @@ import { BASES } from '../data/items.js';
 import { addItem, bagSize } from './inventory.js';
 import { cloud } from '../net/cloud.js';
 import { mergeShard } from './shards.js';
+import { isStack, sameStack } from './items.js';
 
 export const VAULT_BASE = 100;
 export const VAULT_PER = 20; // 연구 단계마다
@@ -23,7 +24,7 @@ export const oldVault = () => { try { return JSON.parse(localStorage.getItem(KEY
 export function restoreOldVault(st) {
   const old = oldVault(); if (!old || !synced) return { ok: false };
   const have = new Set(V.items.map((x) => JSON.stringify({ ...x, uid: 0, qty: 0 })));
-  let n = 0; for (const it of old) { if (V.items.length >= vaultSize(st)) break; const k = JSON.stringify({ ...it, uid: 0, qty: 0 }); if (have.has(k) && !BASES[it.base]?.stack) continue; const same = BASES[it.base]?.stack && V.items.find((x) => x.base === it.base); if (same) same.qty += it.qty; else V.items.push(it); n++; }
+  let n = 0; for (const it of old) { if (V.items.length >= vaultSize(st)) break; const k = JSON.stringify({ ...it, uid: 0, qty: 0 }); if (have.has(k) && !BASES[it.base]?.stack) continue; const same = stack(it) && V.items.find((x) => sameStack(x, it)); if (same) same.qty = (same.qty || 1) + (it.qty || 1); else V.items.push(it); n++; }
   try { localStorage.removeItem(KEY + '-old'); } catch { /* 무시 */ }
   save(); return { ok: true, n };
 }
@@ -49,7 +50,7 @@ export async function syncVault() {
     synced = true;
   }
 }
-const stack = (it) => !!BASES[it.base]?.stack;
+const stack = (it) => isStack(it); // 스킬북도 같은 스킬끼리 쌓인다 (v0.49.25)
 // 가방 → 창고
 export function vaultPut(st, uid) {
   if (!vaultReady()) return { ok: false, why: '창고를 불러오는 중입니다' };
@@ -57,10 +58,10 @@ export function vaultPut(st, uid) {
   if (i < 0) return { ok: false };
   const it = st.inv[i];
   if (it.rarity === 'myth') it.owner ||= st.cid; // v0.44.18 신화 장비는 넣은 캐릭터만 다시 꺼낼 수 있다
-  const same = stack(it) && V.items.find((x) => x.base === it.base), shSame = it.shard && V.items.some((x) => x?.shard?.id === it.shard.id);
+  const same = stack(it) && V.items.find((x) => sameStack(x, it)), shSame = it.shard && V.items.some((x) => x?.shard?.id === it.shard.id);
   if (!same && !shSame && V.items.length >= vaultSize(st)) return { ok: false, why: '창고가 가득 찼습니다' };
   st.inv.splice(i, 1);
-  if (shSame) mergeShard(V.items, it); else if (same) same.qty += it.qty; else V.items.push(it);
+  if (shSame) mergeShard(V.items, it); else if (same) same.qty = (same.qty || 1) + (it.qty || 1); else V.items.push(it);
   save();
   return { ok: true };
 }
@@ -69,9 +70,9 @@ export function vaultAdd(st, it) {
   if (!vaultReady()) return false;
   if (it?.rarity === 'myth') it.owner ||= st.cid;
   if (it?.shard && mergeShard(V.items, it)) { save(); return true; } // 같은 옵션 파편은 한 칸에
-  const same = stack(it) && V.items.find((x) => x.base === it.base);
+  const same = stack(it) && V.items.find((x) => sameStack(x, it));
   if (!same && V.items.length >= vaultSize(st)) return false;
-  if (same) same.qty += it.qty; else V.items.push(it);
+  if (same) same.qty = (same.qty || 1) + (it.qty || 1); else V.items.push(it);
   save();
   return true;
 }

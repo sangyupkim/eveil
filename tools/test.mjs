@@ -14,6 +14,8 @@ import { MATERIALS } from '../src/data/crafting.js';
 import { finishBuilds, brew, brewCollect, dispatchParty, shelterUp, deathChance, rollMerc, researchStart } from '../src/game/town.js';
 import { HERBS } from '../src/data/potions.js';
 import { countOf } from '../src/game/inventory.js';
+import * as INV from '../src/game/inventory.js';
+import * as IT from '../src/game/items.js';
 import { townOf, build as build0, tick, collect, enhance, hire, dispatch, claim, buildingAt, dropMats, craft, craftZones, upgrade, setBase, liberateAdd, assignMerc, recruits, mercSlots, awakenMerc, MERC } from '../src/game/town.js';
 // 테스트에서는 공사를 바로 끝낸다
 const build = (...a) => { const r = build0(...a); finishBuilds(a[0], Date.now() + 864e5); return r; };
@@ -585,6 +587,14 @@ test('같은 옵션 능력치 파편은 한 칸에 묶이고, 제련하면 고�
   assert.equal(p.inv.length, 2); const b = p.inv.find((x) => x.shard.id === 'str'); assert.deepEqual(b.vals, [9, 5]); assert.equal(b.shard.v, 9);
   const L = [SH('int', 1), SH('int', 4), SH('vit', 2)]; RMSH.packShards(L); assert.equal(L.length, 2);
   RMSH.takeShardVal(p.inv, b, 0); assert.equal(b.shard.v, 5); assert.ok(!b.vals); RMSH.takeShardVal(p.inv, b, 0); assert.equal(p.inv.length, 1);
+});
+
+test('같은 스킬북은 한 칸에 쌓이고, 예전 저장의 흩어진 책도 합쳐진다', () => {
+  const p = newPlayer('t', { g: 'm' }, 'sword'); p.inv = [];
+  assert.ok(INV.addItem(p, IT.makeBook('fire_bolt', p)) && INV.addItem(p, IT.makeBook('fire_bolt', p)) && INV.addItem(p, IT.makeBook('meteor', p)));
+  assert.equal(p.inv.length, 2); assert.equal(p.inv.find((x) => x.book === 'fire_bolt').qty, 2);
+  assert.equal(IT.itemValue({ book: 'fire_bolt', qty: 3 }), 3 * IT.itemValue({ book: 'fire_bolt' }));
+  const L = [{ uid: 1, book: 'meteor' }, { uid: 2, book: 'fire_bolt' }, { uid: 3, book: 'meteor' }]; INV.packBooks(L); assert.equal(L.length, 2); assert.equal(L[0].qty, 2);
 });
 
 console.log(`\n${n}개 통과`);

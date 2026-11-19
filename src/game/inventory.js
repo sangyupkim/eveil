@@ -1,7 +1,7 @@
 // 가방 · 장착
 import { CONFIG } from '../data/config.js';
 import { BASES, isTwoHandedBase } from '../data/items.js';
-import { isStack } from './items.js';
+import { isStack, sameStack } from './items.js';
 import { meetsReq } from './skills.js';
 import { totalStats } from './player.js';
 import { SHARD, shardFrom, mergeShard } from './shards.js';
@@ -10,8 +10,8 @@ export const bagSize = (st) => CONFIG.inventorySize + 8 * (st?.town?.research?.b
 export function addItem(st, it) {
   if (it?.shard && mergeShard(st.inv, it)) return true; // v0.49.11 같은 옵션 파편은 한 칸에
   if (isStack(it)) {
-    const same = st.inv.find((x) => x.base === it.base);
-    if (same) { same.qty += it.qty; return true; }
+    const same = st.inv.find((x) => sameStack(x, it));
+    if (same) { same.qty = (same.qty || 1) + (it.qty || 1); return true; }
   }
   if (st.inv.length >= bagSize(st)) return false;
   st.inv.push(it);
@@ -85,3 +85,13 @@ export function unequip(st, slot) {
 }
 
 export const isTwoHanded = (it) => isTwoHandedBase(BASES[it.base]);
+// v0.49.25 예전 저장: 같은 스킬의 스킬북을 한 칸으로 (바뀌었으면 true)
+export function packBooks(list) {
+  let ch = false;
+  for (let i = list.length - 1; i >= 0; i--) {
+    const it = list[i]; if (!it?.book) continue;
+    const j = list.findIndex((x) => x?.book === it.book);
+    if (j < i) { list[j].qty = (list[j].qty || 1) + (it.qty || 1); list.splice(i, 1); ch = true; }
+  }
+  return ch;
+}

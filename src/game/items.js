@@ -79,10 +79,12 @@ export function capAffixes(it) {
 export function capAll(list) { let n = 0; for (const it of list || []) if (it) n += capAffixes(it); return n; }
 
 export function makeBook(skillId, st = null) {
-  return { uid: uid(st), book: skillId };
+  return { uid: uid(st), book: skillId, qty: 1 };
 }
 
-export const isStack = (it) => !!BASES[it.base]?.stack;
+export const isStack = (it) => !!it?.book || !!BASES[it?.base]?.stack;
+// v0.49.25 같은 칸에 쌓이는 물건인지: 쌓는 물건은 같은 base, 스킬북은 같은 스킬끼리
+export const sameStack = (a, b) => !!a && !!b && (a.book ? a.book === b.book : !b.book && !!BASES[a.base]?.stack && a.base === b.base);
 export const isBook = (it) => !!it.book;
 export const isEquip = (it) => !it.book && !!BASES[it.base]?.slot;
 
@@ -111,7 +113,7 @@ export function itemColor(it) {
 
 export function itemValue(it) {
   if (it.shard) return 120 * (it.vals?.length || 1);
-  if (it.book) return 40 * SKILLS[it.book].tier ** 2;
+  if (it.book) return 40 * SKILLS[it.book].tier ** 2 * (it.qty || 1);
   const base = BASES[it.base];
   if (base.type === 'potion' || base.stack) return Math.max(1, Math.floor((base.price || 0) / 4)) * (it.qty || 1);
   const v = (base.price || 30) * (1 + 0.15 * (it.ilvl - 1)) * RARITY[it.rarity].value;
