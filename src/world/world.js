@@ -1842,16 +1842,18 @@ export class World {
     if (this.floodHere !== zn.id) { this.floodHere = zn.id; this.ui.banner?.(`범람지 · ${zn.name}`, '#ff6a5a') ?? this.ui.toast(`범람지 · ${zn.name}`, '#ff6a5a'); sfx('error'); }
     this.floodOn ||= {};
     const left = this.monsters.filter((m) => !m.dead && m.flood === zn.id).length;
-    { const el = document.querySelector('.zoneName'); if (el && this.floodOn[zn.id]) el.textContent = `범람지 · ${zn.name} · 남은 몬스터 ${left}`; }
+    { const el = document.querySelector('.zoneName'); if (el && this.floodOn[zn.id]) el.textContent = `범람지 · ${zn.name} · 남은 몬스터 ${f.left ? f.left.normal + f.left.elite + f.left.named + f.left.boss : left}`; } // v0.49.40 저장된 남은 수
     // 결계 밖으로 나간 범람 몬스터는 제자리로
     for (const m of this.monsters) if (!m.dead && m.flood === zn.id && zoneAt(m.pos.x, m.pos.z)?.id !== zn.id && m.home) { m.pos.x = m.home.x; m.pos.z = m.home.z; m.state = 'idle'; }
     { const L0 = f.left, sum = L0 ? L0.normal + L0.elite + L0.named + L0.boss : -1;
       if (sum === 0) { this.floodClear(zn.id, P, this.floodLevel(zn)); return; } // 다 잡았는데 남아 있던 범람 정리
-      if (this.floodOn[zn.id] && left === 0 && sum > 0) delete this.floodOn[zn.id]; // 몬스터가 사라졌으면 남은 수만큼 다시
     }
-    if (this.floodOn[zn.id]) return; // 한 번만 (다시 나지 않는다 · 나갔다 들어와도 남은 몬스터 그대로)
+    // v0.49.40 저장된 남은 수(f.left)와 실제로 살아 있는 범람 몬스터를 등급마다 견줘, 모자라면 그만큼 다시 띄운다
+    //  (예전: 살아 있는 수가 0일 때만 다시 띄워서, 보스 하나만 남고 나머지가 사라지면 「남은 몬스터 1」로 굳었다)
+    const first = !this.floodOn[zn.id];
+    if (!first && this.time - this.floodOn[zn.id] < 2) return;
     this.floodOn[zn.id] = this.time;
-    for (const m of this.monsters) if (!m.dead && !m.flood && m.sp?.zone?.id === zn.id) { m.dead = true; m.deadT = 0; if (m.sp) m.sp.mon = null; } // 원래 몬스터는 걷어낸다
+    if (first) for (const m of this.monsters) if (!m.dead && !m.flood && m.sp?.zone?.id === zn.id) { m.dead = true; m.deadT = 0; if (m.sp) m.sp.mon = null; } // 원래 몬스터는 걷어낸다
     const L = this.floodLevel(zn);
     const pick = () => FLOOD_AFFIX_IDS[Math.floor(Math.random() * FLOOD_AFFIX_IDS.length)];
     const mk = (tier, fixed, k) => {
@@ -1877,11 +1879,15 @@ export class World {
     };
     // v0.44.46 진행 저장: 남은 수(f.left)대로만 띄운다 (껐다 켜도 이어서)
     if (!f.left) { const n = Math.round((zn.count || 18) * FLOOD.mobK); f.left = { normal: n - Math.floor(n / 5), elite: Math.floor(n / 5), named: 1, boss: 1 }; }
-    for (let i = 0; i < f.left.normal; i++) mk('normal');
-    for (let i = 0; i < f.left.elite; i++) mk('elite');
-    if (f.left.named) mk('named', zn.named);
-    if (f.left.boss) { const b = mk('boss', zn.boss, FLOOD.bossHp); if (b) { b.floodBoss = true; const c = this.freeSpot(zn.x, zn.z, 1.2); b.pos.set(c.x, 0, c.z); b.home = { x: c.x, z: c.z }; } }
-    this.ui.toast(`범람한 ${zn.name}`, '#ff6a5a');
+    const alive = { normal: 0, elite: 0, named: 0, boss: 0 };
+    for (const m of this.monsters) if (!m.dead && m.flood === zn.id && !m.child) alive[m.floodTier || m.tier] = (alive[m.floodTier || m.tier] || 0) + 1;
+    const miss = (k) => Math.max(0, (f.left[k] || 0) - (alive[k] || 0));
+    if (!first && !miss('normal') && !miss('elite') && !miss('named') && !miss('boss')) return;
+    for (let i = miss('normal'); i > 0; i--) mk('normal');
+    for (let i = miss('elite'); i > 0; i--) mk('elite');
+    if (miss('named')) mk('named', zn.named);
+    if (miss('boss')) { const b = mk('boss', zn.boss, FLOOD.bossHp); if (b) { b.floodBoss = true; const c = this.freeSpot(zn.x, zn.z, 1.2); b.pos.set(c.x, 0, c.z); b.home = { x: c.x, z: c.z }; } }
+    if (first) this.ui.toast(`범람한 ${zn.name}`, '#ff6a5a');
   }
   // 범람 몬스터 레벨: 보스를 잡은 지역 · 깬 던전 단계 중 가장 높은 곳(세계 단계 포함) × 1.1
   // 범람 세기 기준 지역: 가장 높은 보스를 잡은 지역 (예전 저장은 보스를 잡은 지역 중 가장 높은 곳)
