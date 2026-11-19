@@ -189,6 +189,7 @@ export class HUD {
       const cd = Math.max(0, w.cds[id] || 0);
       el.querySelector('.cd').style.setProperty('--cd', (cd / v.cd).toFixed(3));
       el.classList.toggle('nomp', st.mp < v.mp);
+      el.classList.toggle('nogrip', !!w.gripWhy?.(SKILLS[id])); // v0.49.38 지금 무기로 못 쓰는 스킬
     }
 
     // 대상

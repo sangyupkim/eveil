@@ -4,7 +4,7 @@ import { powerParts } from '../game/power.js';
 import { rumorsOf, analyzeStart, analyzeTime, rumorUpgrade, rumorName, PLUS, PLUS_MAX, RUMOR_MAX, RUMOR_P } from '../game/rumor.js';
 // 창: 가방(장비) · 스킬 · 능력(스탯/성향) · 상점 · 메뉴
 import { STATS, STAT_NAMES, STAT_COLORS, STAT_DESC, CONFIG } from '../data/config.js';
-import { SKILLS, BOOK_TIERS } from '../data/skills.js';
+import { SKILLS, BOOK_TIERS, GRIP_NAMES } from '../data/skills.js';
 import { BASES, SLOTS, SLOT_NAMES, RARITY, WEAPON_CLASSES, isTwoHandedBase } from '../data/items.js';
 import { itemName, itemColor, itemValue, affixText, isBook, makeItem } from '../game/items.js';
 import { scaledArmor, scaledDmg, totalStats, derive, baseMods } from '../game/player.js';
@@ -224,6 +224,7 @@ export class Windows {
       const gr = skillGrade(sk), qn = QUALITY[sk.q || 2], awk = `${BOOK_TIERS[sk.tier].name} 스킬북 · ${gradeName(gr)} · <span style="color:${qn.color}">${qn.name}</span>`;
       h += `<div class="sub">${awk} · MP ${sk.mp} · 재사용 ${sk.cd}초</div><div>${sk.desc}</div>${mixFxOf(sk.lines || Object.keys(sk.req || {})).map((f) => `<div class="aff" style="color:#e0b0ff">혼합 효과 · ${f.name}: ${f.text}</div>`).join('')}`;
       if (gr) { const SN = { str: '힘', dex: '민첩', int: '지능', wis: '정신', vit: '체력' }; const a = awakenOk(st, sk); const lab = sk.awaken === 4 ? `4차 각성 · 갈래에 ${SN[sk.line]}` : `${gr}차 각성 필요`; h += `<div class="aff" style="color:${a.ok ? '#7fe07a' : '#ff8a7a'}">${lab}${a.ok || a.why === lab ? '' : ` — ${a.why}`}</div>`; } // v0.49.27 같은 말이 두 번 나오지 않게
+      if (sk.grip) { const g = this.w.gripWhy?.(sk); h += `<div class="aff"><b class="gripTag">${GRIP_NAMES[sk.grip]}</b>${g ? ` <span style="color:#ff8a7a">— ${g}</span>` : ''}</div>`; } // v0.49.38
       h += reqLine(sk.req, totalStats(st));
       if (st.skills[it.book]) h += `<div class="aff">아는 스킬 — 숙련 EXP로 흡수</div>`;
     } else if (it.shard) {
@@ -740,7 +741,8 @@ export class Windows {
       const kv = [];
       if (!isBuff) kv.push(['위력', pw(v.power)], ['다음 랭크', pw(nx.power)]);
       else kv.push(['효과', `${Math.round(v.power)}${/Pct$/.test(sk.buff || '') ? '%' : ''}`], ['다음 랭크', `${Math.round(nx.power)}${/Pct$/.test(sk.buff || '') ? '%' : ''}`]);
-      kv.push(['MP', v.mp], ['재사용', `${v.cd.toFixed(1)}초`]);
+      kv.push(['MP', this.w.manaGrip?.(sk) ? `${Math.ceil(v.mp * 1.5)} (대홀)` : v.mp], ['재사용', `${v.cd.toFixed(1)}초`]);
+      if (sk.grip) { const g = this.w.gripWhy?.(sk); kv.push(['무기', `<b class="gripTag">${GRIP_NAMES[sk.grip]}</b>${g ? ` <span style="color:#ff8a7a">${g}</span>` : ''}`]); } // v0.49.38
       if (e.range) kv.push(['사거리', e.range.toFixed(1)]);
       if (e.radius) kv.push(['범위', e.radius.toFixed(1)]);
       if (e.width) kv.push(['너비', e.width.toFixed(1)]);
@@ -864,7 +866,7 @@ export class Windows {
       ['공용 창고', 'vaultspot', ['상인 옆 공용 창고 상자', '상자 앞에서 버튼을 누르면 창고가 열립니다']],
       ['창고', 'vault', ['가방', '창고: 같은 계정의 캐릭터끼리 함께 씁니다. 100칸, 연구 「큰 창고」로 늘어납니다'], ['아이템을 누를 때마다 고르거나 풉니다. 여러 개를 골라 가운데 버튼으로 한꺼번에 옮깁니다', '쌓이는 물건 · 같은 스킬북 · 같은 옵션 파편은 한 칸에 모입니다']],
       ['가방 · 장비', 'inv', ['고른 아이템: 정보 · 능력치 변화 · 쓰기 · 팔기. 고르지 않으면 착용 장비가 보입니다', '가방: 강화석 · 지역 재료도 아이템으로 들어옵니다. 창고에 넣어도 강화 · 건물에 쓰입니다', '정렬 · 한꺼번에 팔기', '금화 · 강화석', '창 탭'], ['같은 스킬북은 한 칸에 겹칩니다. [하나 흡수]는 한 권, [모두 사용]은 겹친 책을 모두 써서 숙련도를 한 번에 올립니다. 모르는 스킬이면 한 권으로 배우고 나머지를 흡수합니다', '같은 옵션의 능력치 파편도 한 칸에 모입니다. 제련할 때 그중 쓸 값을 고릅니다']],
-      ['스킬', 'skills', ['배운 스킬. 쓸수록 랭크가 오릅니다. 랭크 제한은 없고 50부터 느려집니다', '위력 · 다음 랭크 · MP · 재사용 · 범위', '변형: 랭크 25 · 50에서 하나씩 고릅니다', '퀵슬롯 8칸: 칸을 누르면 넣습니다. 이미 있는 스킬은 자리가 바뀝니다']],
+      ['스킬', 'skills', ['배운 스킬. 쓸수록 랭크가 오릅니다. 랭크 제한은 없고 50부터 느려집니다', '위력 · 다음 랭크 · MP · 재사용 · 범위', '변형: 랭크 25 · 50에서 하나씩 고릅니다', '퀵슬롯 8칸: 칸을 누르면 넣습니다. 이미 있는 스킬은 자리가 바뀝니다'], ['상급 이상 스킬은 무기에 따라 나뉩니다. 한손 무기(+ 방패 · 보주 · 마도서)는 단일 · 돌진 · 창 같은 스킬, 양손 무기(대검 · 지팡이 · 대홀 · 대방패)는 휘두르기 · 광역 스킬을 씁니다. 하급 · 중급 · 버프 스킬은 어떤 무기로든 씁니다', '지금 무기로 못 쓰는 스킬은 퀵슬롯에서 어둡게 보입니다. 대홀을 들면 양손 정신 주문이 마나를 1.5배 쓰는 대신 위력과 범위가 커집니다']],
       ['능력 · 각성', 'char', ['능력치: 행동에 따라 오릅니다. 칼을 휘두르면 힘, 주문을 쓰면 지능, 맞으면 체력', '세부 능력치. 각성마다 성향에 맞는 칭호와 특성을 고릅니다. 단계가 오를수록 치명 · 질주 · 파동 · 연쇄 · 표식 · 보호막 같은 새 특성이 열립니다']],
       ['수련 비전', 'arts', ['장착한 비전: 1차 각성 1칸 · 3차 2칸 · 5차 3칸', '갈래별 비전'], ['직접 사냥하며 정해진 행동(근접 치명타 · 원거리 치명타 · 여럿 맞히기 등)을 정한 횟수만큼 하면 열립니다. 자동 사냥은 세지 않습니다', '두 스탯이 섞인 비전은 그 두 스탯이 든 칭호를 받은 적이 있어야 장착합니다']],
       ['퀘스트 · 의뢰 · 업적', 'quest', ['메인 퀘스트와 업적', '오늘의 의뢰 보상 받기: 경비대장 하겐 앞에서만', '오늘의 의뢰 3개 · 이번 주 의뢰'], ['업적을 이루면 금화와 업적 칭호를 받습니다']],

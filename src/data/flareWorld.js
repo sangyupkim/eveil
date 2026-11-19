@@ -208,6 +208,12 @@ const _TC = [0x8a8a96, 0xc0d8e8, 0xc8ccd8, 0xa8e0ff, 0xb08aff, 0x7fd08a, 0xffe08
 const _SC = { str: 0xff9a7a, dex: 0x9ae0a0, int: 0x9ac0ff, wis: 0xd0a8ff, vit: 0xf0d090 };
 for (const [id, b] of Object.entries(_B)) if (b.ltpl && !b.tpl && ITEM_LOOK[b.ltpl]) ITEM_LOOK[id] = { ...ITEM_LOOK[b.ltpl], tint: _SC[b.line] };
 for (let i = 1; i <= 4; i++) { ITEM_LOOK['l_dex_off' + i] = { icon: 8 }; ITEM_LOOK['l_int_off' + i] = { icon: 225 }; ITEM_LOOK['l_int_wand' + i] = { layers: { main: 'wand' }, icon: 104, tint: _SC.int }; ITEM_LOOK['l_str_hammer' + i] = { layers: { main: 'war_hammer' }, icon: ICONS2.warhammer, tint: _SC.str }; }
+// v0.49.38 새 무기: 완드(지팡이 그림) · 대홀(삼지창 모양 지팡이) · 대방패(연 방패를 두 손에)
+Object.assign(ITEM_LOOK, { novice_wand: { layers: { main: 'wand' }, icon: 104 }, oak_wand: { layers: { main: 'wand' }, icon: 104, tint: C.brown } });
+for (const [id, b] of Object.entries(_B)) {
+  if (/^g_/.test(id) && b.cls === 'gscepter') ITEM_LOOK[id] = { layers: { main: 'greatstaff' }, icon: 1051, tint: ITEM_LOOK[id.slice(2)]?.tint };
+  if (/^t_/.test(id) && b.cls === 'tshield') ITEM_LOOK[id] = { layers: { off: 'kite_shield' }, icon: 122, tint: ITEM_LOOK[id.slice(2)]?.tint };
+}
 for (const [id, b] of Object.entries(_B)) if (b.tpl && ITEM_LOOK[b.tpl]) { const i = _HT.findIndex((t) => t[0] === b.minLvl); ITEM_LOOK[id] = { ...ITEM_LOOK[b.tpl], tint: _TC[i % _TC.length] }; }
 
 // ── 지역 13~20 · 변종 몬스터 (v0.33): 기존 지역의 땅 · 물건을 바탕으로 색만 바꾼다 ──

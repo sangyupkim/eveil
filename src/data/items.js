@@ -17,6 +17,10 @@ export const WEAPON_CLASSES = {
   mace: { name: '둔기', kind: 'melee', ap: 'vit', side: 'str', range: 2.0 },        // 맞으면서 버티는 탱커 — 체력으로 피해
   scepter: { name: '홀', kind: 'magic', ap: 'wis', side: 'int', range: 6.5 },       // 마나로 버티고 마나로 때리는 딜탱 — 정신으로 피해
   dagger: { name: '단검', kind: 'melee', ap: 'dex', side: 'str', range: 1.9 },      // v0.44.37 민첩 한손 근접 (보조 칸과 함께)
+  // v0.49.38 한손 + 보조 ↔ 양손: 지능 한손 완드 · 정신 양손 대홀 · 체력 양손 대방패
+  wand: { name: '완드', kind: 'magic', ap: 'int', side: 'wis', range: 9 },                       // 빠른 단일 대상, 마도서 · 보주와 함께
+  gscepter: { name: '대홀', kind: 'magic', ap: 'wis', side: 'int', range: 7, two: true },       // 대량의 마나
+  tshield: { name: '대방패', kind: 'melee', ap: 'vit', side: 'str', range: 2.0, two: true },    // 방어력 · 막기를 크게
 };
 
 // minLvl: 이 아이템 레벨부터 드랍된다. shop: 상점 판매 여부
@@ -244,8 +248,8 @@ export const AFFIXES = {
   dmgPct: { text: '피해 +{v}%', min: 5, max: (l) => 15 + lk(l) * 2, slots: ['weapon'] },
   spellPct: { text: '주문 피해 +{v}%', min: 5, max: (l) => 12 + lk(l) * 1.5, slots: ['weapon', 'helm', ...JEWEL], retired: true }, // v0.44.37 폐지 → 마법 공격력으로 바뀐다 (spellToMatk)
   // v0.44.37 물리 · 마법 공격력 (지팡이 · 홀이 아닌 무기는 마법 공격력 0 → 이 옵션으로)
-  matk: { text: '마법 공격력 +{v}', min: 2, max: (l) => 3 + lk(l) * 1.1, slots: ['weapon', 'offhand', ...JEWEL], notCls: ['staff', 'scepter'] },
-  patk: { text: '물리 공격력 +{v}', min: 2, max: (l) => 3 + lk(l) * 0.9, slots: ['weapon'], onlyCls: ['staff', 'scepter'] },
+  matk: { text: '마법 공격력 +{v}', min: 2, max: (l) => 3 + lk(l) * 1.1, slots: ['weapon', 'offhand', ...JEWEL], notCls: ['staff', 'scepter', 'wand', 'gscepter'] },
+  patk: { text: '물리 공격력 +{v}', min: 2, max: (l) => 3 + lk(l) * 0.9, slots: ['weapon'], onlyCls: ['staff', 'scepter', 'wand', 'gscepter'] },
   atkSpd: { text: '공격 속도 +{v}%', min: 3, max: (l) => Math.min(30, 8 + l * 0.5), slots: ['weapon', 'gloves', ...JEWEL] },
   crit: { text: '치명타 확률 +{v}%', min: 1, max: (l) => Math.min(20, 3 + l * 0.25), slots: ['weapon', 'gloves', 'helm', ...JEWEL] },
   hpRegen: { text: '초당 HP 회복 +{v}', min: 1, max: (l) => 2 + l * 0.4, slots: ['armor', 'belt', 'helm', ...JEWEL] },
@@ -277,7 +281,7 @@ export const LEGEND_NAMES = ['잠든 왕의', '망자의', '서리 군주의', '
 export const STARTS = {
   sword: { base: 'rusty_sword', stat: 'str', book: 'power_strike', line: '가까이서 묵직하게' },
   bow: { base: 'old_bow', stat: 'dex', book: 'aimed_shot', line: '멀리서 정확하게' },
-  staff: { base: 'novice_staff', stat: 'int', book: 'fire_bolt', line: '주문으로 태운다' },
+  staff: { base: 'novice_wand', off: 'apprentice_tome', stat: 'int', book: 'fire_bolt', line: '주문으로 태운다' }, // v0.49.38 완드 + 마도서로 시작
   mace: { base: 'rusty_club', off: 'round_shield', stat: 'vit', book: 'shield_slam', line: '맞으면서 버틴다' },
   scepter: { base: 'novice_scepter', off: 'glass_orb', stat: 'wis', book: 'mana_shield', line: '마나로 막고 마나로 친다' },
 };
@@ -317,9 +321,23 @@ for (const [id, slot, stat, tpl, noun] of STAT_LINES) LINE_LV.forEach((lv, i) =>
   o.mods = { ...(b.mods ? Object.fromEntries(Object.entries(b.mods).map(([a, v]) => [a, Math.round(v * g)])) : {}), [stat]: 1 + Math.round(lv / 6) }; // 그 스탯이 조금 붙는다
   BASES[`${id}${i + 1}`] = o;
 });
+// v0.49.38 완드는 한손 지능 무기: 지팡이보다 공격력 0.75배 · 빠르게
+for (let i = 1; i <= 4; i++) { const b = BASES['l_int_wand' + i]; if (b) Object.assign(b, { cls: 'wand', dmg: b.dmg.map((v) => Math.max(1, Math.round(v * 0.75))), speed: 1.1 }); }
+Object.assign(BASES, {
+  novice_wand: { name: '견습 완드', slot: 'weapon', cls: 'wand', model: 'w_wand', dmg: [3, 5], speed: 1.1, price: 5, minLvl: 1, noDrop: true, mods: { maxMp: 5 } },
+  oak_wand: { name: '참나무 완드', slot: 'weapon', cls: 'wand', model: 'w_wand', dmg: [5, 8], speed: 1.1, price: 100, shop: true, mods: { maxMp: 10 } },
+});
+// 대홀: 홀마다 공격력 1.3배 · 최대 MP 2배 (양손) / 대방패: 둔기마다 공격력 0.8배 + 비슷한 단계 방패의 방어력 1.5배 · 막기
+{
+  const SH = [[1, 5, 0.12], [5, 11, 0.18], [11, 17, 0.22], [20, 26, 0.24], [32, 36, 0.27]], shAt = (lv) => [...SH].reverse().find((x) => (lv || 1) >= x[0]) || SH[0];
+  const GS = { oak_scepter: '참나무 대홀', moon_scepter: '달빛 대홀', sage_scepter: '현자의 대홀', rune_scepter: '룬 대홀', astral_scepter: '성좌의 대홀', void_scepter: '공허의 대홀' };
+  for (const [id, nm] of Object.entries(GS)) { const b = BASES[id]; BASES['g_' + id] = { ...b, name: nm, cls: 'gscepter', shop: false, dmg: b.dmg.map((v) => Math.round(v * 1.3)), speed: b.speed * 0.92, mods: Object.fromEntries(Object.entries(b.mods || {}).map(([k, v]) => [k, k === 'maxMp' ? v * 2 : v])), minLvl: b.minLvl ?? 2 }; delete BASES['g_' + id].price; }
+  const TS = { oak_club: '나무 대방패', iron_mace: '철 대방패', war_hammer: '강철 대방패', spiked_mace: '가시 대방패', knight_axe: '기사의 대방패', dragon_mace: '용비늘 대방패' };
+  for (const [id, nm] of Object.entries(TS)) { const b = BASES[id], s = shAt(b.minLvl); BASES['t_' + id] = { ...b, name: nm, cls: 'tshield', shop: false, dmg: b.dmg.map((v) => Math.max(1, Math.round(v * 0.8))), armor: Math.round(s[1] * 1.5), block: +(s[2] + 0.08).toFixed(2), minLvl: b.minLvl ?? 2 }; delete BASES['t_' + id].price; }
+}
 export const HIGH_TEMPLATES = {
   sword: ['inferno_sword', '검'], greatsword: ['rune_blade', '대검'], axe: ['dragon_cleaver', '도끼'], bow: ['dragon_bow', '활'], staff: ['archmage_staff', '지팡이'],
-  shield: ['dragon_shield', '방패'], mace: ['dragon_mace', '철퇴'], dagger: ['dragon_fang', '단검'], tome: ['abyss_tome', '마도서'], scepter: ['void_scepter', '홀'], orb: ['void_orb', '보주'], plate: ['dragon_plate', '판금'], leather: ['shadow_leather', '가죽 갑옷'], robe: ['inferno_robe', '로브'],
+  shield: ['dragon_shield', '방패'], mace: ['dragon_mace', '철퇴'], gscepter: ['g_void_scepter', '대홀'], tshield: ['t_dragon_mace', '대방패'], dagger: ['dragon_fang', '단검'], tome: ['abyss_tome', '마도서'], scepter: ['void_scepter', '홀'], orb: ['void_orb', '보주'], plate: ['dragon_plate', '판금'], leather: ['shadow_leather', '가죽 갑옷'], robe: ['inferno_robe', '로브'],
   helm: ['dragon_helm', '투구'], hood: ['shadow_hood', '두건'], hat: ['archmage_hat', '모자'],
   gaunt: ['dragon_gauntlets', '건틀릿'], lglove: ['shadow_gloves', '장갑'], sleeve: ['ember_sleeves', '소매'],
   boot: ['dragon_boots', '장화'], lboot: ['shadow_boots', '가죽 장화'], mboot: ['ember_boots', '신'],
@@ -349,7 +367,7 @@ for (const [k, m] of Object.entries(_MATS)) BASES['mat_' + k] = { name: m.name, 
     if (!b.slot || b.req || (b.minLvl ?? 1) < 3 || b.noDrop) continue;
     h = (h * 31 + id.length) % 997;
     const stat = b.slot === 'belt' ? 'vit' : b.slot === 'amulet' ? 'wis' : b.slot === 'ring' ? ringStat[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % 3]
-      : b.cls ? { sword: 'str', axe: 'str', bow: 'dex', staff: 'int' }[b.cls] || 'str' : 'vit';
+      : b.cls ? { sword: 'str', axe: 'str', bow: 'dex', staff: 'int', wand: 'int', gscepter: 'wis', tshield: 'vit', mace: 'vit', scepter: 'wis' }[b.cls] || 'str' : 'vit';
     b.req = { [stat]: need(b.minLvl ?? 1) };
   }
 }

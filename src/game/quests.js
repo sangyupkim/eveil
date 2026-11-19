@@ -43,12 +43,12 @@ export function goalText(q) {
 // 보상으로 줄 아이템 목록을 만든다 (가방에 넣지는 않는다)
 export function rewardItems(st, q) {
   const r = q.reward, out = [];
-  const cls = BASES[{ sword: 'short_sword', bow: 'short_bow', staff: 'oak_staff', mace: 'oak_club', scepter: 'oak_scepter' }[st.start] || 'short_sword'].cls;
+  const cls = BASES[{ sword: 'short_sword', bow: 'short_bow', staff: 'oak_wand', mace: 'oak_club', scepter: 'oak_scepter' }[st.start] || 'short_sword'].cls;
   for (const [id, n] of r.items || []) out.push(makeItem(id, { qty: n }, st));
   if (r.gear) {
     const [slot, rarity, ilvl] = r.gear;
     // v0.40.2: 지금 능력치로 낄 수 있는 것 중 고른다 — 요구 능력치를 채우고, 내 가장 높은 능력치를 요구하는 것(내 빌드)을 먼저, 그다음 높은 레벨
-    const CLS_STAT = { sword: 'str', bow: 'dex', staff: 'int', mace: 'vit', scepter: 'wis' }; // 요구 능력치가 없는 무기는 계열의 능력치로 본다
+    const CLS_STAT = { sword: 'str', bow: 'dex', staff: 'int', wand: 'int', mace: 'vit', scepter: 'wis', gscepter: 'wis', tshield: 'vit', dagger: 'dex' }; // 요구 능력치가 없는 무기는 계열의 능력치로 본다
     const S = totalStats(st), MAIN = ['str', 'dex', 'int', 'wis', 'vit'], smax = Math.max(1, ...MAIN.map((k) => S[k] || 0));
     // 요구 능력치 중 내 값이 가장 큰 것 (가장 높은 능력치를 요구하면 100). 비슷하면(1% 안) 시작 무기 계열이 이긴다
     // v0.49.2 복합 능력치: 상위 두 능력치(둘째가 첫째의 절반 이상일 때)를 내 빌드로 보고, 이번 보상이 노릴 능력치를 그 비율대로 고른다

@@ -715,6 +715,9 @@ html.force-land #rotate { display: none !important; }
 .eqStrip { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; margin: 0 0 8px; max-width: calc(100% - 4.5em); }
 .eqStrip .cell { border-radius: 5px; }
 .eqStrip .cell:not(.hit) { opacity: .45; }
+/* v0.49.38 지금 무기(한손 · 양손)로 못 쓰는 스킬 */
+#quick .slot.nogrip .ico { filter: grayscale(1) brightness(.45); }
+.gripTag { color: #ffd890; font-weight: 700; }
 /* v0.49.35 창고 종류별 옮기기 단추 줄 */
 .vcats { display: flex; flex-wrap: wrap; gap: 4px; margin: -2px 0 6px; } .vcats .btn { font-size: .85em; padding: 2px 9px; min-height: 0; }
 /* v0.49.33 반지 비교 칸 고르기 · 양손 무기 표시 */

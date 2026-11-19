@@ -183,6 +183,22 @@ for (const [id, name, type, desc, extra] of [
   ['g_dex4_2', '그림자 연격', 'spin', '그림자처럼 휘돌며 둘레를 벤다.', { radius: 5 }],
   ['g_dex5_1', '천 개의 칼날', 'spin', '칼날을 두 번 휘몰아 둘레를 찢는다.', { radius: 6, hits: 2 }],
 ]) if (SKILLS[id]) { const sk = SKILLS[id]; delete sk.count; delete sk.range; Object.assign(sk, { name, glyph: name[0], type, needs: 'melee', anim: type === 'spin' ? 'spin' : 'heavy', school: 'trick', desc: `${desc} (근접 무기)`, power: +(sk.power * (type === 'spin' ? 2 : 2.5)).toFixed(2), ...extra }); }
+// v0.49.38 한손 + 보조 ↔ 양손: 상급(tier 3) 이상 단일 갈래 스킬은 모양에 따라 무기 손이 정해진다. 하급 · 중급 · 버프 · 혼합 · 민첩은 공통
+//  지능: 한손(완드) = 대상을 노리는 주문 · 양손(지팡이) = 넓은 광역 / 정신: 한손(홀 + 보주) = 창 · 광선 · 양손(대홀) = 대량 마나 주문
+//  힘 · 체력: 한손(+ 방패) = 단일 · 돌진 · 내려치기 · 양손(대검 · 대방패) = 휘두르기 · 가르기 · 충격파
+export const GRIP_RULES = {
+  int: { one: ['bolt', 'chain', 'line', 'meteor'], two: ['nova', 'rain'] },
+  wis: { one: ['bolt', 'line'], two: ['nova', 'rain'] },
+  str: { one: ['melee', 'dash'], two: ['cleave', 'spin'] },
+  vit: { one: ['melee', 'dash'], two: ['cleave', 'spin'] },
+};
+export const GRIP_NAMES = { one: '한손 무기', two: '양손 무기' };
+for (const sk of Object.values(SKILLS)) {
+  const ls = sk.lines || Object.keys(sk.req || {});
+  if (ls.length !== 1 || (sk.tier || 1) < 3 || sk.type === 'buff' || sk.passive) continue;
+  const R = GRIP_RULES[ls[0]]; if (!R) continue;
+  sk.grip = R.one.includes(sk.type) ? 'one' : R.two.includes(sk.type) ? 'two' : undefined;
+}
 export const SKILL_IDS = Object.keys(SKILLS);
 export function skillsOfTier(t) {
   return SKILL_IDS.filter((id) => SKILLS[id].tier === t && !SKILLS[id].awaken); // 각성 등급이 정해진 스킬은 따로 (몬스터 레벨로, game/loot.js)

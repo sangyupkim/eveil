@@ -12,7 +12,7 @@ import { TITLE_AT, titleKey, titleName, perkChoices, UNIQUES } from '../data/tit
 import * as THREE from 'three';
 import { CONFIG, TIERS, AP_TABLE, STAT_NAMES } from '../data/config.js';
 import { SKILLS } from '../data/skills.js';
-import { BASES, WEAPON_CLASSES, RARITY_ORDER } from '../data/items.js';
+import { BASES, WEAPON_CLASSES, RARITY_ORDER, isTwoHandedBase } from '../data/items.js';
 import { MONSTERS, ZONES, TOWN, TIER_STEP, FINAL_ZONE } from '../data/world.js';
 import { derive, damageReduction, totalStats, skillScale } from '../game/player.js';
 import { monsterRes, mixFxOf } from '../data/resist.js';
@@ -2082,13 +2082,26 @@ export class World {
 
   // ───────── 스킬 ─────────
 
+  // v0.49.38 한손 + 보조 ↔ 양손 스킬: 지금 무기로 못 쓰면 까닭 (쓸 수 있으면 null)
+  gripWhy(sk) {
+    if (!sk?.grip) return null;
+    const w = this.st.equip.weapon, two = !!w && isTwoHandedBase(BASES[w.base]);
+    if (sk.grip === 'one' ? w && !two : two) return null;
+    const line = (sk.lines || Object.keys(sk.req || {}))[0];
+    const N = { int: ['완드', '지팡이'], wis: ['홀', '대홀'], str: ['한손 검 · 도끼', '대검 · 대도끼'], vit: ['둔기 · 망치', '대방패'] }[line] || ['한손 무기', '양손 무기'];
+    const n = N[sk.grip === 'one' ? 0 : 1], c = n.charCodeAt(n.length - 1) - 0xac00; // 받침에 따라 이 · 가
+    return `${n}${c >= 0 && c < 11172 && c % 28 ? '이' : '가'} 필요합니다`;
+  }
+  manaGrip(sk) { const w = this.st.equip.weapon; return sk?.grip === 'two' && (sk.lines || Object.keys(sk.req || {}))[0] === 'wis' && !!w && BASES[w.base]?.cls === 'gscepter'; }
   skillReady(id) {
     const s = this.st.skills[id];
     if (!s) return { ok: false, why: '배우지 않은 스킬' };
     const sk = SKILLS[id];
     const v = skillValues(id, s.rank, modsOf(s));
     if (sk.mpPct) v.mp = Math.max(v.mp, Math.ceil(this.d.maxMp * sk.mpPct * (modsOf(s).includes('frugal') ? 0.55 : 1))); // 비전: 최대 MP의 %
+    if (this.manaGrip(sk)) v.mp = Math.ceil(v.mp * 1.5); // v0.49.38 대홀: 양손 주문은 마나를 1.5배 쓰고 더 세게
     if ((this.cds[id] || 0) > 0) return { ok: false, why: '재사용 대기 중' };
+    { const g = this.gripWhy(sk); if (g) return { ok: false, why: g, grip: true }; } // v0.49.38 한손 · 양손 스킬
     if (this.st.mp < v.mp) return { ok: false, why: 'MP가 부족합니다' };
     const kind = this.d.cls.kind;
     if (sk.needs === 'melee' && kind !== 'melee') return { ok: false, why: '검이 필요합니다' };
@@ -2128,6 +2141,7 @@ export class World {
     const st = this.st, d = this.d, sk = { ...skillEff(id, modsOf(st.skills[id])) };
     // v0.44.42 비전: 범위 · 발 수
     if (this.art('quake') && (sk.type === 'spin' || sk.type === 'cleave') && sk.radius) sk.radius *= 1.2;
+    if (this.manaGrip(SKILLS[id]) && sk.radius) sk.radius *= 1.2; // v0.49.38 대홀: 범위 +20%
     if (sk.type === 'arrow' && sk.count) sk.count += (this.art('volley') ? 2 : 0) + (this.art('constellation') && this.time < (this.constT || 0) ? 1 : 0);
     const P = this.player;
     this.pendingSkill = null;
@@ -2172,7 +2186,7 @@ export class World {
     if (this.art('manarush') && lines.includes('wis') && st.mp < this.d.maxMp * 0.2) artK *= 1.3;
     if (this.art('judge') && lines.includes('str') && this.buffs.shield?.t > 0) artK *= 1.15;
     const sureCrit = this.art('shadowfoot') && this.time < (this.tumbleT || 0); if (sureCrit) this.tumbleT = 0;
-    const pw = v.power * comboK * artK;
+    const pw = v.power * comboK * artK * (this.manaGrip(sk) ? 1.35 : 1); // v0.49.38 대홀: 양손 주문 위력 +35%
     // v0.44.37 스킬 피해 = 공격력(물리 · 마법, 필요 스탯 비율대로) × 계수 × 스킬 스탯 배율(무기 무관) × 장비 보정 × 자원 보너스
     //  치명타는 평타와 같은 확률 · 배율. spell()과 weaponHit()은 같은 값 (spell 다음에 spellCrit()으로 치명 여부)
     const sc = skillScale(sk, d.stats), rk = sk.scale ? d.resK?.[sk.scale] || 1 : 1;

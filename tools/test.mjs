@@ -55,7 +55,7 @@ test('처음 무기 고르기: 무기 + 주 스탯 +2, 첫 스킬북을 바로 �
   for (const id in STARTS) {
     const p = newPlayer('방랑자', { face: 'knight' }, null);
     chooseStart(p, id);
-    assert.equal(BASES[p.equip.weapon.base].cls, id);
+    assert.equal(BASES[p.equip.weapon.base].cls, id === 'staff' ? 'wand' : id); // v0.49.38 지능은 완드로 시작
     assert.equal(p.stats[STARTS[id].stat], CONFIG.startStat + START_BONUS);
     assert.ok(canLearn(p, STARTS[id].book).ok, id);
   }
@@ -168,7 +168,7 @@ test('퀘스트: 처치 → 보고 → 보상 → 다음 퀘스트, 끝까지 �
       p.inv.length = 0;
       const r = questTurnIn(p, CONFIG.inventorySize);
       assert.ok(r.ok, q.id);
-      if (q.reward.gear?.[0] === 'weapon') assert.equal(BASES[r.items.find((it) => BASES[it.base]?.slot === 'weapon').base].cls, start);
+      if (q.reward.gear?.[0] === 'weapon') assert.equal(BASES[r.items.find((it) => BASES[it.base]?.slot === 'weapon').base].cls, start === 'staff' ? 'wand' : start);
       if (q.reward.book) assert.ok(SKILLS[r.items.find((it) => it.book).book], q.id);
       steps++;
     }
