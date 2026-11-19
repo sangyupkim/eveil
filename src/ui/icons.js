@@ -144,3 +144,6 @@ export function monPortrait(type, onReady) {
   g.drawImage(src, r[0], r[1], r[2], r[3], (S2 - r[2] * k) / 2, (S2 - r[3] * k) / 2, r[2] * k, r[3] * k);
   const url = c.toDataURL(); monCache.set(type, url); return url;
 }
+// v0.49.26 UI 단추 아이콘은 모두 같은 금빛 문양 (HUD 단추 · 설정 바로가기 · 상호작용 단추). 아이템 · 스킬에는 쓰지 않는다
+export const UI_GLYPH = { menu: 15, inv: 30, skills: 28, char: 29, quest: 16, rank: 14, shop: 42, home: 19, auto: 46, sword: 1, vault: 30, build: 44, talk: 17 };
+export const uiIcon = (k) => glyphIcon(UI_GLYPH[k]);

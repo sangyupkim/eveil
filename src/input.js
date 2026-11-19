@@ -1,7 +1,7 @@
 // 입력: PC(마우스 · 키보드) + 모바일(조이스틱 · 터치 · 버튼)
 import { isTouch, CAMPS } from './engine2d/stage.js';
 import { PLOTS, BUILDINGS, VAULT_SPOT } from './data/buildings.js';
-import { iconCut, glyphIcon } from './ui/icons.js';
+import { iconCut, uiIcon } from './ui/icons.js';
 import { actionOf, keyMap, bindKey } from './data/keys.js';
 
 const $ = (s) => document.querySelector(s);
@@ -70,7 +70,7 @@ export function setupInput(world, stage, windows) {
     atkLabel.textContent = t ? t.name : '공격';
     // 대상마다 그림: 사람 = 두루마리(대화), 건물 = 망치, 창고 = 상자, 포탈 = 귀환 그림
     if (!atkImg.dataset.sword) atkImg.dataset.sword = atkImg.src;
-    atkImg.src = !t ? atkImg.dataset.sword : glyphIcon(t.exit || t.name === '포탈' ? 19 : t.name === '창고' ? 30 : t.bld ? 44 : 17); // v0.49.8 문양 아이콘
+    atkImg.src = !t ? atkImg.dataset.sword : uiIcon(t.exit || t.name === '포탈' ? 'home' : t.name === '창고' ? 'vault' : t.bld ? 'build' : 'talk'); // v0.49.8 문양 아이콘
     atkImg.style.visibility = '';
   };
 

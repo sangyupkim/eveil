@@ -47,7 +47,7 @@ import { HERBS, HERB_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
 import { RARITY_IDS, junkCount, discardJunk } from '../game/town.js';
 import { MYTH_CHANCE, wageTotal, mercWage, buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
 import { RESEARCH_MAX, SHELTER } from '../data/buildings.js';
-import { herbIcon, homeIcon } from './icons.js';
+import { herbIcon, homeIcon, uiIcon } from './icons.js';
 import { vault, vaultSize, vaultPut, vaultTake, vaultAdd, vaultSave, vaultReady } from '../game/vault.js';
 import { GAME_VERSION, PATCH_NOTES } from '../data/patchnotes.js';
 import { KEY_ACTIONS, keyMap, keyName } from '../data/keys.js';
@@ -173,7 +173,6 @@ export class Windows {
 
   render() {
     $('h2', this.el).textContent = (this.kind === 'town' && this.townMode === 'one' && BUILDINGS[townOf(this.w.st).plots[this.townSel]?.type]?.name) || TITLES[this.kind];
-    const icons = { arts: bookIcon(), inv: chestIcon(), skills: bookIcon(), char: portrait(this.w.st.look), shop: coinIcon(), quest: scrollIcon(), town: townIcon(), dex: bookIcon(), map: scrollIcon(), guide: bookIcon(), vault: homeIcon() };
     const tabs = $('.tabs', this.el);
     // 탭은 그림 없이 같은 모양의 글자 단추로
     const TAB_TXT = { arts: '비전', gems: '보석', map: '지도', inv: '가방', skills: '스킬', char: '능력', quest: '퀘스트', dex: '도감', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '설정', news: '공지', rank: '랭킹', log: '기록' };
@@ -1269,10 +1268,7 @@ export class Windows {
         <div class="btns"><button class="btn" data-notes="1">패치 노트 ${GAME_VERSION}</button><button class="btn" data-save="1">지금 저장</button><button class="btn danger" data-reset="1">캐릭터 삭제</button></div>
       </div><div class="frame" style="flex:1">${this.keyEdit ? this.keysPanel() : ''}
         <div class="cards"${this.keyEdit ? ' hidden' : ''}>
-          ${card('inv', `<img src="${chestIcon()}" alt="" />`, '가방')}
-          ${card('skills', `<img src="${bookIcon()}" alt="" />`, '스킬')}
-          ${card('char', `<img src="${portrait(st.look)}" alt="" />`, '능력')}
-          ${card('quest', `<img src="${scrollIcon()}" alt="" />`, '퀘스트')}
+          ${['inv', 'skills', 'char', 'quest'].map((k) => card(k, `<img src="${uiIcon(k)}" alt="" />`, { inv: '가방', skills: '스킬', char: '능력', quest: '퀘스트' }[k])).join('')}
         </div>
         <div class="kv" style="margin-top:14px"><span>플레이 시간</span><b>${Math.floor(t / 60)}시간 ${t % 60}분</b><span>각성</span><b>${st.awakenings}회</b>
           <span>배운 스킬</span><b>${Object.keys(st.skills).length}개</b><span>자동 사냥 효율</span><b>드랍 ${Math.round((CONFIG.autoDrop ?? 0.3) * 100)}% · 경험치 ${Math.round((CONFIG.autoExpPenalty ?? 0.45) * 100)}%</b>
