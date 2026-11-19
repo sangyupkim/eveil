@@ -103,4 +103,7 @@
 - `trees/tree*` (`_tree_01~14`) · `spell_icons.webp` (`00 Spell Icons.png`) — 사용자가 모은 묶음. 묶음 안에 라이선스가 없어 출처 페이지를 받으면 여기에 적는다
 - `loot_icons.webp` — "Dark Fantasy Currency and Chests vol.05", M-Xing Studio. 상업 이용 · 수정 가능, 원본 재배포 · AI 학습 금지 (출처 표기 권장)
 - `fx/bell*` — "PIPOYA FREE VFX Bell", PIPOYA (무료 소재, 출처 표기)
+- `warlock_icons.webp` — "Free Warlock Skills", craftpix.net (https://craftpix.net/file-licenses/)
+- `fire_icons*.webp` — "Skill Icon Pack 4.0", Wenrexa (무료 묶음)
+- `scroll_icons.webp` (`scrolls_part_2`) · `buildings/cottage_*` (`Timbered House_16`, Bleed 작품으로 보임) — 사용자가 모은 묶음, 출처 페이지를 받으면 적는다
 - 변환: `python3 tools/prep-drive.py <받아 푼 폴더>`

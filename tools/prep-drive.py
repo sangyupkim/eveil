@@ -47,3 +47,26 @@ if fs:
 os.makedirs('assets/drive/fx', exist_ok=True)
 for f in sorted(glob.glob(X + '/pipoya/*/192x192/*.png')):
     Image.open(f).save('assets/drive/fx/' + os.path.basename(f).split('_')[0].replace('pipo-btleffect', 'bell') + '.webp', 'WEBP', quality=88, method=6)
+
+# ── 용량초과 폴더에서 받은 것 (2026-11-19) ──
+def icon_sheet(files, out, size=64):
+    files = list(files)
+    if not files: return
+    sh = Image.new('RGBA', (size * 8, size * ((len(files) + 7) // 8)))
+    for k, f in enumerate(files):
+        sh.paste(Image.open(f).convert('RGBA').resize((size, size), Image.LANCZOS), ((k % 8) * size, (k // 8) * size))
+    sh.save(out, 'WEBP', quality=90, method=6)
+num = lambda f: int(re.match(r'\d+', os.path.basename(f)).group())
+icon_sheet(sorted(glob.glob(X + '/warlock/PNG/*.png'), key=num), 'assets/drive/warlock_icons.webp')            # 흑마법 50
+icon_sheet(sorted(glob.glob(X + '/skill_wenrexa/256x256px/Normal/*.png'), key=num), 'assets/drive/fire_icons.webp')  # 불꽃 문양 70
+icon_sheet(sorted(glob.glob(X + '/skill_wenrexa/256x256px/Gray/*.png'), key=num), 'assets/drive/fire_icons_gray.webp')
+# 두루마리 55종: 도는 그림(512×256, 64칸 8 × 4)의 첫 칸
+sc = sorted(glob.glob(X + '/scrolls_part_2/sprite/64px_sun/*_nopalette.png'), key=num)
+if sc:
+    sh = Image.new('RGBA', (64 * 8, 64 * ((len(sc) + 7) // 8)))
+    for k, f in enumerate(sc): sh.paste(Image.open(f).convert('RGBA').crop((0, 0, 64, 64)), ((k % 8) * 64, (k // 8) * 64))
+    sh.save('assets/drive/scroll_icons.webp', 'WEBP', quality=90, method=6)
+# 오두막 16방향 (rem_0000 ~ 0015): 여백을 잘라 0.55배
+for f in sorted(glob.glob(X + '/timbered_house/rem_*.png')):
+    k = int(re.search(r'rem_(\d+)', f).group(1)); im = Image.open(f).convert('RGBA'); im = im.crop(im.getbbox())
+    im.resize((round(im.width * 0.55), round(im.height * 0.55)), Image.LANCZOS).save(f'assets/drive/buildings/cottage_{k}.webp', 'WEBP', quality=86, method=4)
