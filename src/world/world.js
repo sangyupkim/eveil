@@ -3013,7 +3013,7 @@ export class World {
     } else if (BASES[it.base].type === 'potion') {
       this.usePotion(BASES[it.base].restore.hp ? 'hp' : 'mp');
     } else {
-      const r = equipItem(st, uid);
+      const r = equipItem(st, uid, Math.random, globalThis.__game?.windows?.ringSlot?.(st) || null); // v0.49.33 반지는 비교 중인 칸에
       if (!r.ok) this.ui.toast(r.why);
       for (const sh of r.shards || []) { this.ui.toast(`벗은 장비에서 ${itemName(sh)}을(를) 얻었습니다`, '#c58cff'); sfx('rare'); }
       this.refreshGear();

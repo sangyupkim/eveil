@@ -240,7 +240,7 @@ export class Windows {
       h += `<div class="sub">${it.qty > 1 ? `×${it.qty}` : ''}</div>`;
     } else {
       h += `<div class="sub">${RARITY[it.rarity].name} ${SLOT_NAMES[b.slot]} · 아이템 레벨 ${it.ilvl}</div>`;
-      if (b.dmg) { const d = scaledDmg(it); h += `<div>${WEAPON_CLASSES[b.cls].name} · ${WEAPON_CLASSES[b.cls].kind === 'magic' ? '마법 공격력' : '물리 공격력'} ${d[0]}~${d[1]} · 속도 ${b.speed}</div><div class="sub">주 스탯 ${STAT_NAMES[WEAPON_CLASSES[b.cls].ap]}</div>`; }
+      if (b.dmg) { const d = scaledDmg(it); h += `<div>${WEAPON_CLASSES[b.cls].name}${isTwoHandedBase(b) ? ' · <b class="twoTxt">양손 무기</b>' : ''} · ${WEAPON_CLASSES[b.cls].kind === 'magic' ? '마법 공격력' : '물리 공격력'} ${d[0]}~${d[1]} · 속도 ${b.speed}</div><div class="sub">주 스탯 ${STAT_NAMES[WEAPON_CLASSES[b.cls].ap]}</div>`; }
       if (b.armor) h += `<div>방어력 ${scaledArmor(it)}</div>`;
       if (b.block) h += `<div>막기 확률 ${Math.round(b.block * 100)}%</div>`;
       if (b.mods) for (const k in b.mods) h += `<div>${modText(k, b.mods[k])}</div>`; // v0.44.18 영어 키가 그대로 보이던 것 (dex +40 등)
@@ -596,17 +596,27 @@ export class Windows {
 
   // 장비창: 가운데 캐릭터 초상화, 왼쪽 · 오른쪽 줄에 부위별 칸 (겹치지 않게 칸을 줄로)
   // v0.45.8 가방 아이템 팝업 위에 착용 장비를 작게 한 줄로 (팝업이 장비 칸을 덮어도 비교할 수 있게), 같은 부위는 빛낸다
+  // v0.49.33 반지를 고르면 비교할 칸(반지 1 · 2)을 고른다. 빈 칸이 있으면 빈 칸, 아니면 고른 칸 (기본 1)
+  ringSlot(st = this.w.st) {
+    if (this.ringCmp && (this.ringCmp === 'ring1' || this.ringCmp === 'ring2')) return this.ringCmp;
+    return !st.equip.ring1 ? 'ring1' : !st.equip.ring2 ? 'ring2' : 'ring1';
+  }
   eqStrip(cur) {
-    const st = this.w.st, sl = BASES[cur?.base]?.slot || '';
+    const st = this.w.st, sl = BASES[cur?.base]?.slot || '', ring = sl === 'ring' && this.sel?.from !== 'equip';
+    const w2 = st.equip.weapon && isTwoHandedBase(BASES[st.equip.weapon.base]) ? st.equip.weapon : null;
     const S = ['weapon', 'offhand', 'helm', 'armor', 'gloves', 'belt', 'boots', 'amulet', 'ring1', 'ring2'];
-    return `<div class="eqStrip">${S.map((s) => { const it = st.equip[s], hit = sl && s.startsWith(sl.replace(/\d$/, '')); return `<div class="cell${it ? rar(it) : ''}${hit ? ' hit' : ''}" data-eq="${s}" title="${SLOT_NAMES[s]}">${it ? ico(it) : ''}</div>`; }).join('')}</div>`;
+    return `<div class="eqStrip">${S.map((s) => {
+      const it = st.equip[s];
+      if (s === 'offhand' && !it && w2) return `<div class="cell twoGhost" title="양손 무기">${ico(w2)}<span class="twoTag">양손</span></div>`; // 양손 무기면 보조 칸에 그 무기를 연하게
+      if (ring && (s === 'ring1' || s === 'ring2')) { const on = this.ringSlot(st) === s; return `<div class="cell${it ? rar(it) : ''}${on ? ' hit' : ' dim'}" data-ringcmp="${s}" title="반지 ${s.slice(-1)}과 비교">${it ? ico(it) : ''}<span class="ringNo">${s.slice(-1)}</span></div>`; }
+      const hit = sl && s.startsWith(sl.replace(/\d$/, '')); return `<div class="cell${it ? rar(it) : ''}${hit ? ' hit' : ''}" data-eq="${s}" title="${SLOT_NAMES[s]}">${it ? ico(it) : ''}</div>`; }).join('')}</div>`;
   }
   equipGrid() {
     const st = this.w.st;
     // v0.44.39 양손 무기를 들면 보조 칸에 그 무기를 연하게 (보조 장비를 낄 수 없다는 표시)
     const w2 = st.equip.weapon && isTwoHandedBase(BASES[st.equip.weapon.base]) ? st.equip.weapon : null;
     const cell = (s) => { const it = st.equip[s], sel = this.sel?.from === 'equip' && this.sel.slot === s ? ' sel' : '';
-      if (s === 'offhand' && !it && w2) return `<div class="cell twoGhost" data-eq="weapon"><span class="lab">${SLOT_NAMES[s]}</span>${ico(w2)}</div>`;
+      if (s === 'offhand' && !it && w2) return `<div class="cell twoGhost" data-eq="weapon"><span class="lab">${SLOT_NAMES[s]}</span>${ico(w2)}<span class="twoTag">양손 무기</span></div>`;
       return `<div class="cell${sel}${it ? rar(it) : ''}" data-eq="${s}"><span class="lab">${SLOT_NAMES[s]}</span>${it ? ico(it) : ''}</div>`; };
     return `<div class="doll2"><div class="dcol">${['helm', 'amulet', 'armor', 'gloves', 'belt'].map(cell).join('')}</div>
       <div class="dmid"><img src="${portrait(st.look)}" alt="" /><div class="note">${esc(st.name)}</div></div>
@@ -620,7 +630,7 @@ export class Windows {
     let slot = BASES[cur.base].slot, eq = { ...st.equip };
     if (this.sel?.from === 'equip') { slot = this.sel.slot; eq[slot] = null; }
     else {
-      if (slot === 'ring') slot = !st.equip.ring1 ? 'ring1' : !st.equip.ring2 ? 'ring2' : 'ring1';
+      if (slot === 'ring') slot = this.ringSlot(st);
       eq[slot] = cur;
       if (slot === 'weapon' && isTwoHandedBase(BASES[cur.base])) eq.offhand = null;
     }
@@ -684,8 +694,8 @@ export class Windows {
   worn(cur) {
     const st = this.w.st;
     if (this.sel?.from !== 'inv' || !cur || !BASES[cur.base]?.slot) return '';
-    const slot = BASES[cur.base].slot === 'ring' ? 'ring1' : BASES[cur.base].slot;
-    return st.equip[slot] ? `<div class="detail worn"><h3>착용 중</h3>${this.describe(st.equip[slot], 'none')}</div>` : '';
+    const slot = BASES[cur.base].slot === 'ring' ? this.ringSlot(st) : BASES[cur.base].slot;
+    return st.equip[slot] ? `<div class="detail worn"><h3>착용 중${slot.startsWith('ring') ? ` · 반지 ${slot.slice(-1)}` : ''}</h3>${this.describe(st.equip[slot], 'none')}</div>` : '';
   }
 
   inv() {
@@ -1307,6 +1317,7 @@ export class Windows {
     });
     const sn = body.querySelector('#sellN');
     if (sn) sn.oninput = () => { const it = st.inv.find((x) => x.uid === this.sel?.uid); if (it) body.querySelector('#sellNv').textContent = `${sn.value}개 · ${itemValue({ ...it, qty: Number(sn.value) }).toLocaleString()}G`; };
+    on('[data-ringcmp]', (el) => { this.ringCmp = el.dataset.ringcmp; audio.play('click'); this.render(); });
     on('[data-eq]', (el) => { if (st.equip[el.dataset.eq]) { this.sel = { from: 'equip', slot: el.dataset.eq }; audio.play('click'); this.render(); } });
     on('[data-act]', async (el) => {
       const a = el.dataset.act;

@@ -46,19 +46,19 @@ export function canEquip(st, it) {
   return { ok: true };
 }
 
-export function slotFor(st, it) {
+export function slotFor(st, it, ring = null) {
   const s = BASES[it.base].slot;
-  if (s === 'ring') return !st.equip.ring1 ? 'ring1' : !st.equip.ring2 ? 'ring2' : 'ring1';
+  if (s === 'ring') return ring === 'ring1' || ring === 'ring2' ? ring : !st.equip.ring1 ? 'ring1' : !st.equip.ring2 ? 'ring2' : 'ring1'; // v0.49.33 고른 반지 칸에
   return s;
 }
 
 // 가방의 아이템을 장착. 기존 장비는 가방으로.
-export function equip(st, uid, rng = Math.random) {
+export function equip(st, uid, rng = Math.random, ring = null) {
   const it = st.inv.find((x) => x.uid === uid);
   if (!it) return { ok: false, why: '아이템이 없습니다' };
   const c = canEquip(st, it);
   if (!c.ok) return c;
-  const slot = slotFor(st, it);
+  const slot = slotFor(st, it, ring);
   removeItem(st, uid);
   const back = [];
   if (st.equip[slot]) back.push(st.equip[slot]);
