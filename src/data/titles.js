@@ -53,8 +53,8 @@ export const EFFECTS = {
 };
 const TIER_K = [1, 1.4, 1.8, 2.4, 3.2];
 // v0.49.17 한 갈래에 효과 · 발동이 둘씩뿐이라 세 선택지 중 둘이 같은 효과로 겹쳤다 → 갈래마다 하나씩 더 (어울리는 것을 빌려 온다, 회복 효과는 없음)
-const EXTRA_EFF = { str: EFFECTS.vit[0], dex: EFFECTS.str[0], int: EFFECTS.wis[0], wis: EFFECTS.int[1], vit: EFFECTS.str[1] };
-const EXTRA_TRIG = { str: { id: 'hurt', text: '맞으면', p: 0.2 }, int: { id: 'crit', text: '치명타가 나면', p: 0.3 }, wis: { id: 'kill', text: '적을 쓰러뜨리면', p: 0.3 }, vit: { id: 'kill', text: '적을 쓰러뜨리면', p: 0.35 } };
+const EXTRA_EFF = { str: EFFECTS.dex[0], dex: EFFECTS.str[0], int: EFFECTS.wis[0], wis: EFFECTS.int[1], vit: EFFECTS.int[1] }; // v0.49.20 힘 = 공격(공격 속도), 체력 = 방어(적 느리게)
+const EXTRA_TRIG = { str: { id: 'crit', text: '치명타가 나면', p: 0.3 }, int: { id: 'crit', text: '치명타가 나면', p: 0.3 }, wis: { id: 'kill', text: '적을 쓰러뜨리면', p: 0.3 }, vit: { id: 'kill', text: '적을 쓰러뜨리면', p: 0.35 } };
 const trigsOf = (a) => [...TRIGGERS[a], ...(EXTRA_TRIG[a] ? [EXTRA_TRIG[a]] : [])];
 const effsOf = (a) => [...EFFECTS[a], EXTRA_EFF[a]];
 
