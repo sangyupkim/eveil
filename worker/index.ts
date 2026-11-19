@@ -31,6 +31,12 @@ export default {
       }
       if (req.method === 'POST') {
         const d = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+        // v0.49.30 채팅 관리: 관리 키를 여기서 확인하고 채팅방에 넘긴다
+        if (d?.type === 'ash_admin_chat') {
+          if (!env.ADMIN_KEY || String(d.admin ?? '').trim() !== String(env.ADMIN_KEY).trim()) return json({ ok: false, error: 'admin' });
+          const r = await env.CHAT.get(env.CHAT.idFromName('lobby')).fetch(new Request('https://chat/admin', { method: 'POST', body: JSON.stringify(d) }));
+          return json(await r.json());
+        }
         if (d && typeof d.type === 'string' && d.type.startsWith('ash_')) return json(await ashen(env.DB, d, req.headers.get('CF-Connecting-IP') ?? 'x', env.ADMIN_KEY));
         return json({ ok: false, error: 'bad' }, 400);
       }

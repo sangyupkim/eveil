@@ -35,7 +35,7 @@
 <body>
   <header>
     <h1>에베이 관리</h1>
-    <button data-tab="balance" class="on">밸런스</button><button data-tab="mail">우편</button><button data-tab="notice">공지</button>
+    <button data-tab="balance" class="on">밸런스</button><button data-tab="mail">우편</button><button data-tab="notice">공지</button><button data-tab="chat">채팅</button>
     <input id="key" type="password" placeholder="관리 키 (ADMIN_KEY)" style="margin-left:auto" />
     <span id="status"></span>
   </header>
@@ -75,9 +75,20 @@
     <div class="card"><b>공지 목록</b> (게임 첫 화면 · 메뉴 → 공지사항에 보입니다)<div class="list" id="n-list"></div></div>
   </main>
 
+  <main data-pane="chat" hidden>
+    <div class="card">
+      <b>채팅 금지</b>
+      <label>닉네임</label><input id="c-nick" maxlength="10" placeholder="예: 용사" />
+      <label>기간</label><select id="c-min"><option value="60">1시간</option><option value="1440">1일</option><option value="10080">7일</option><option value="0">영구</option></select>
+      <div class="bar" style="margin-top:8px"><button id="c-ban" class="pri">금지</button> <button id="c-reload">새로 고침</button> <span class="muted" id="c-on"></span></div>
+    </div>
+    <div class="card"><b>금지 · 도배로 잠시 막힌 사람</b><div class="list" id="c-bans"></div></div>
+    <div class="card"><b>최근 대화 (50줄)</b><div class="list" id="c-log"></div></div>
+  </main>
+
   <script type="module">
     import { TABLES } from './src/data/overrides.js';
-    const API = /\.workers\.dev$|\.pages\.dev$/.test(location.hostname) ? '/api' : 'https://eveil.weak0416.workers.dev/api';
+    const API = (/\.workers\.dev$|\.pages\.dev$/.test(location.hostname) || location.port === '8787') ? '/api' : 'https://eveil.weak0416.workers.dev/api';
     const $ = (id) => document.getElementById(id);
     const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
     const status = (t, bad) => { $('status').textContent = t; $('status').style.color = bad ? 'var(--bad)' : ''; };
@@ -91,7 +102,7 @@
     document.querySelectorAll('[data-tab]').forEach((b) => b.onclick = () => {
       document.querySelectorAll('[data-tab]').forEach((x) => x.classList.toggle('on', x === b));
       document.querySelectorAll('[data-pane]').forEach((p) => p.hidden = p.dataset.pane !== b.dataset.tab);
-      if (b.dataset.tab === 'mail') loadMails(); if (b.dataset.tab === 'notice') loadNotices();
+      if (b.dataset.tab === 'chat') loadChat(); if (b.dataset.tab === 'mail') loadMails(); if (b.dataset.tab === 'notice') loadNotices();
     });
 
     // ───── 밸런스: 게임 표(기본값) 위에 바꾼 값만 저장한다 ─────
@@ -147,6 +158,26 @@
       $('m-list').innerHTML = r.list.map((m) => `<div class="row"><div class="g"><b>${esc(m.title)}</b> <span class="muted">→ ${m.uid === '*' ? '모두' : esc(m.uid)} · ${new Date(m.at).toLocaleString()} · 받은 계정 ${m.got}</span></div><b>${Number(m.gold).toLocaleString()} G</b><button data-mdel="${m.id}">지우기</button></div>`).join('') || '<p class="muted">없음</p>';
       $('m-list').querySelectorAll('[data-mdel]').forEach((b) => b.onclick = async () => { if (confirm('이 우편을 지울까요? (아직 안 받은 사람은 못 받습니다)')) { await admin({ type: 'ash_admin_mail_del', id: b.dataset.mdel }); loadMails(); } });
     }
+
+    // ───── 채팅 (v0.49.30): 금지 · 풀기 · 최근 대화 ─────
+    async function loadChat() {
+      const r = await admin({ type: 'ash_admin_chat', op: 'list' });
+      if (!r.ok) { $('c-log').innerHTML = `<p class="muted">${ERR[r.error] || '불러오지 못했습니다'}</p>`; $('c-bans').innerHTML = ''; return; }
+      $('c-on').textContent = `지금 연결 ${r.on}`;
+      const left = (u) => (u ? `${Math.max(1, Math.ceil((u - Date.now()) / 60000))}분 남음` : '영구');
+      $('c-bans').innerHTML = [...r.bans.map((b) => `<div class="row"><div class="g"><b>${esc(b.nick)}</b> <span class="muted">금지 · ${left(b.until)} · ${esc(b.k)}</span></div><button data-unban="${esc(b.k)}">풀기</button></div>`),
+        ...r.mutes.map((m) => `<div class="row"><div class="g"><span class="muted">도배로 잠시 막힘 · ${left(m.until)} · ${esc(m.k)}</span></div><button data-unban="${esc(m.k)}">풀기</button></div>`)].join('') || '<p class="muted">없음</p>';
+      $('c-log').innerHTML = [...r.log].reverse().map((m) => `<div class="row"><div class="g"><b>${esc(m.n)}</b> ${esc(m.x)} <span class="muted">${new Date(m.at).toLocaleString()} · ${esc(m.k || '')}</span></div><button data-bannick="${esc(m.n)}">금지</button></div>`).join('') || '<p class="muted">없음</p>';
+      $('c-bans').querySelectorAll('[data-unban]').forEach((b) => b.onclick = async () => { const x = await admin({ type: 'ash_admin_chat', op: 'unban', k: b.dataset.unban }); status(x.ok ? '풀었습니다' : ERR[x.error] || '실패', !x.ok); loadChat(); });
+      $('c-log').querySelectorAll('[data-bannick]').forEach((b) => b.onclick = () => { $('c-nick').value = b.dataset.bannick; $('c-nick').focus(); });
+    }
+    $('c-reload').onclick = () => loadChat();
+    $('c-ban').onclick = async () => {
+      const nick = $('c-nick').value.trim(), sel = $('c-min'); if (!nick) { status('닉네임을 적어 주세요', true); return; }
+      if (!confirm(`${nick}의 채팅을 ${sel.options[sel.selectedIndex].text} 금지할까요?`)) return;
+      const r = await admin({ type: 'ash_admin_chat', op: 'ban', nick, minutes: Number(sel.value) });
+      status(r.ok ? `${r.nick} 채팅 금지` : ERR[r.error] || '실패', !r.ok); if (r.ok) { $('c-nick').value = ''; loadChat(); }
+    };
 
     // ───── 공지 ─────
     $('n-add').onclick = async () => {

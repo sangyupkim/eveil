@@ -34,7 +34,7 @@ export const chat = {
       let d; try { d = JSON.parse(e.data); } catch { return; }
       if (d.t === 'hi') { this.me = d.me || null; this.on = d.on || 0; this.list = (d.log || []).slice(-KEEP); this.emit('hi'); }
       else if (d.t === 'msg') { this.on = d.on || this.on; this.list.push(d.m); if (this.list.length > KEEP) this.list.splice(0, this.list.length - KEEP); this.emit('msg', d.m); }
-      else if (d.t === 'err') this.emit('err', d.e);
+      else if (d.t === 'err') this.emit('err', d); // { e: login · slow · same · mute · ban, wait(초) }
     };
     ws.onclose = () => { if (this.ws !== ws) return; this.ws = null; this.ok = false; clearInterval(this.pingT); this.emit('close'); this.retry(); };
     ws.onerror = () => { /* onclose가 뒤따른다 */ };
@@ -43,7 +43,7 @@ export const chat = {
   // 화면이 다시 보이면 끊긴 연결을 바로 다시
   wake() { if (!this.ws && this.cid !== null) { this.wait = 2000; this.connect(); } },
   say(text) {
-    const x = String(text || '').trim().slice(0, 80);
+    const x = String(text || '').trim().slice(0, 60);
     if (!x) return { ok: false };
     if (!this.ok) return { ok: false, why: '채팅 서버에 연결 중입니다' };
     if (!this.me) { if (cloud.token) { this.stop(); this.connect(); return { ok: false, why: '채팅 서버에 다시 연결합니다' }; } return { ok: false, why: '로그인하고 닉네임을 정해야 말할 수 있습니다' }; } // 방금 로그인 · 닉네임을 정했으면 다시 붙어 이름을 받는다

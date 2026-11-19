@@ -7,6 +7,14 @@ import { cloud } from '../net/cloud.js';
 import { audio } from '../engine/audio.js';
 
 const SHOW = 6;
+// v0.49.30 서버가 막은 까닭 (도배 · 금지)
+const time = (s) => (s >= 60 ? `${Math.ceil(s / 60)}분` : `${s}초`);
+const errText = (d) => ({
+  slow: `잠시 뒤에 보내 주세요 (${time(d.wait || 1)})`,
+  same: '같은 말을 이어서 보낼 수 없습니다',
+  mute: `도배로 ${time(d.wait || 60)} 동안 말할 수 없습니다`,
+  ban: d.wait ? `채팅이 금지되었습니다 (${time(d.wait)} 남음)` : '채팅이 금지되었습니다',
+}[d.e] || '로그인하고 닉네임을 정해야 말할 수 있습니다');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
 export function setupChatBox(world) {
@@ -14,7 +22,7 @@ export function setupChatBox(world) {
   const box = document.createElement('div');
   box.id = 'chatBox';
   box.innerHTML = `<div class="chatLines"></div>
-    <div class="chatInput" hidden><input id="chatTxt" type="text" maxlength="80" enterkeyhint="send" autocomplete="off" /><button class="btn gold" id="chatSend">보내기</button></div>
+    <div class="chatInput" hidden><input id="chatTxt" type="text" maxlength="60" enterkeyhint="send" autocomplete="off" /><button class="btn gold" id="chatSend">보내기</button></div>
     <div class="chatBar"><button id="chatOpen" class="chatBtn">채팅<em class="chatNew" hidden></em></button><button id="chatFold" class="chatBtn fold"><small class="chev"></small></button></div>`;
   document.getElementById('hud').appendChild(box);
   const lines = box.querySelector('.chatLines'), inRow = box.querySelector('.chatInput'), txt = box.querySelector('#chatTxt'), badge = box.querySelector('.chatNew');
@@ -45,7 +53,7 @@ export function setupChatBox(world) {
   document.addEventListener('pointerdown', (e) => { if (!inRow.hidden && !box.contains(e.target) && !txt.value.trim()) close(); }, true);
   chat.listeners.add((ev, m) => {
     if (ev === 'msg' && folded() && m.n !== chat.me) unread++;
-    else if (ev === 'err') world.ui.toast(m === 'slow' ? '잠시 뒤에 보내 주세요' : '로그인하고 닉네임을 정해야 말할 수 있습니다');
+    else if (ev === 'err') { world.ui.toast(errText(m)); audio.play('error'); }
     draw();
   });
   draw();
