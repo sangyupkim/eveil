@@ -64,12 +64,12 @@ export class HUD {
     setTimeout(() => el.remove(), 2200);
   }
 
-  log(msg, color) {
+  log(msg, color, keep = true) {
     const el = document.createElement('div');
     el.textContent = msg;
     if (color) el.style.color = color;
     const box = $('#log');
-    (this.logHist ||= []).push({ t: Date.now(), msg, color }); if (this.logHist.length > 300) this.logHist.splice(0, this.logHist.length - 300); // v0.49.7 기록 창용
+    if (keep) (this.logHist ||= []).push({ t: Date.now(), msg, color }); if (this.logHist.length > 300) this.logHist.splice(0, this.logHist.length - 300); // v0.49.7 기록 창용
     box.appendChild(el);
     while (box.children.length > 5) box.firstChild.remove();
   }

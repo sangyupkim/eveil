@@ -2,10 +2,12 @@
 // /api 만 이 코드가 먼저 받고, 나머지는 게임 파일(ASSETS)로.
 // 데이터베이스는 영겁의 틈새와 같은 D1(eonrift)의 ash_* 표 — 예전 dev-eonrift 서버와 같은 데이터.
 import { ashen } from './ashen';
+export { ChatRoom } from './chat'; // v0.49.28 채팅 (Durable Object)
 
 interface Env {
   DB: Parameters<typeof ashen>[0];
   ASSETS: { fetch(r: Request): Promise<Response> };
+  CHAT: { idFromName(n: string): unknown; get(id: unknown): { fetch(r: Request): Promise<Response> } }; // v0.49.28 채팅방
   ADMIN_KEY?: string; // 관리 페이지 열쇠 (Cloudflare 대시보드 → Worker eveil → 설정 → 변수 및 비밀에 Secret으로)
 }
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' };
@@ -17,6 +19,7 @@ export default {
     const url = new URL(req.url);
     if (url.pathname !== '/api' && !url.pathname.startsWith('/api/')) return env.ASSETS.fetch(req);
     if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
+    if (url.pathname === '/api/chat') return env.CHAT.get(env.CHAT.idFromName('lobby')).fetch(req); // 웹소켓은 채팅방(Durable Object)이 받는다
     try {
       if (!ready) { // ashen이 쓰는 요청 제한 표 (영겁의 틈새 서버가 만들어 두지만 혹시 몰라)
         await (env.DB as any).prepare('CREATE TABLE IF NOT EXISTS throttle (k TEXT PRIMARY KEY, until INTEGER NOT NULL)').run();
