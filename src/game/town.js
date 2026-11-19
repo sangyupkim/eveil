@@ -193,7 +193,7 @@ export function salvage(st, uid, fromVault = false) {
   const L = fromVault ? vault().items : st.inv, i = L.findIndex((x) => x?.uid === uid);
   const it = L[i];
   if (it?.lock) return { ok: false, why: '잠근 아이템입니다' };
-  if (!it || it.book || !BASES[it.base]?.slot || it.named) return { ok: false, why: '분해할 수 없습니다' };
+  if (!it || it.book || !BASES[it.base]?.slot) return { ok: false, why: '분해할 수 없습니다' }; // v0.49.43 이름 있는 전설도 분해할 수 있다
   const v = salvageValue(it), t = townOf(st);
   L.splice(i, 1); if (fromVault) vaultSave(); t.ore += v.ore; t.mats[v.mat] = (t.mats[v.mat] || 0) + v.matN;
   // 분해하면 그 장비의 옵션 하나가 능력치 파편으로 나올 수 있다 (등급이 높을수록 자주)

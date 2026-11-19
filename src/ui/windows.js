@@ -557,7 +557,7 @@ export class Windows {
     return [L, R];
   }
   smithSalv(st) {
-    const fromV = this.salvSrc === 'v', ok = (x) => x && !x.book && BASES[x.base]?.slot && !x.named;
+    const fromV = this.salvSrc === 'v', ok = (x) => x && !x.book && BASES[x.base]?.slot; // v0.49.43 이름 있는 전설도
     const all = fromV ? vault().items.filter(ok).map((x) => ['v:' + x.uid, x, '창고']) : st.inv.filter(ok).map((x) => ['b:' + x.uid, x, '가방']);
     const junk = this.salvR ? all.filter((x) => x[1].rarity === this.salvR) : all;
     if (!junk.some((x) => x[0] === this.salvSel)) this.salvSel = junk[0]?.[0] ?? null;
@@ -1155,7 +1155,7 @@ export class Windows {
             <div class="note">${max ? '상한' : `+${(it.plus || 0) + 1} · ${c.jang >= 1 ? '<b style="color:#ffd84a">100%</b>' : `${+(c.chance * 100).toFixed(1)}%`} · 장인의 기운 ${+(c.jang * 100).toFixed(1)}% · ${c.gold.toLocaleString()} G · ${c.oreName} ${c.ore} (${resCount(st, c.oreId)})`}</div></div>
             <button class="btn" data-enh="${key}" ${max || st.gold < c.gold || resCount(st, c.oreId) < c.ore ? 'disabled' : ''}>강화</button></div>`;
         }
-        const junk = st.inv.filter((x) => !x.book && BASES[x.base]?.slot && !x.named);
+        const junk = st.inv.filter((x) => !x.book && BASES[x.base]?.slot);
         if (junk.length) right += `<h3 style="margin-top:8px">분해 <button class="btn" data-salvageall="1">등급별 분해</button></h3>` + junk.map((x) => { const v = salvageValue(x); return `<div class="row"><div class="cell shopIco${rar(x)}">${ico(x)}</div><div class="grow"><b style="color:${itemColor(x)}">${esc(itemName(x))}</b><div class="note">강화석 ${v.ore} · ${MATERIALS[v.mat].name} ${v.matN}</div></div><button class="btn" data-salvage="${x.uid}">분해</button></div>`; }).join('');
         right += COL + this.shardPanel(b);
       }
