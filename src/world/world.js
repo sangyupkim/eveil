@@ -1708,9 +1708,26 @@ export class World {
   }
 
   restoreGround() {
+    // v0.49.41 죽어서 떨어뜨린 장비는 다시 접속하면(패치 · 껐다 켜기) 바닥이 아니라 창고로 보낸다
+    //  접속할 때마다 세상(지역 자리)이 새로 만들어져 예전 자리에 떨어진 장비를 찾을 수 없었다. 기한이 지났어도 잃지 않는다
+    if (!this.groundRestored) {
+      this.groundRestored = true;
+      const back = (this.st.ground || []).map((g) => g.item).filter(Boolean);
+      if (back.length) { (this.st.deathBack ||= []).push(...back); this.st.ground = []; }
+      return;
+    }
     const now = Date.now();
     this.st.ground = (this.st.ground || []).filter((g) => g.expires > now);
     for (const g of this.st.ground) this.dropGround({ kind: 'item', item: g.item }, g.x, g.z, g.expires);
+  }
+  // 창고를 불러온 뒤(main.js): 돌려줄 장비를 창고로, 창고가 가득 차면 가방으로, 둘 다 가득이면 다음 접속까지 기다린다
+  returnDeathDrops() {
+    const st = this.st, L = st.deathBack || []; if (!L.length) return;
+    const keep = [], names = [];
+    for (const it of L) { if (vaultAdd(st, it)) names.push(`${itemName(it)} → 창고`); else if (addItem(st, it)) names.push(`${itemName(it)} → 가방`); else keep.push(it); }
+    st.deathBack = keep;
+    for (const n of names) this.ui.log(`잃었던 장비를 돌려받았습니다: ${n}`, '#ffd84a');
+    if (names.length) { this.ui.toast(`잃었던 장비 ${names.length}개를 창고로 돌려받았습니다`, '#ffd84a'); this.ui.dirty(); }
   }
 
   saveGround() {
