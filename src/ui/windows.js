@@ -521,7 +521,11 @@ export class Windows {
     const R = rumorsOf(st), odd = resCount(st, 'odd_map'), fmt = (ms) => { const m = Math.max(1, Math.ceil(ms / 60000)), h = Math.floor(m / 60); return h ? `${h}시간 ${m % 60}분` : `${m}분`; };
     let L = `<h3>지도 분석</h3><div class="kv tight"><span>알 수 없는 조각</span><b>${odd}</b><span>미지의 땅 조각</span><b>${resCount(st, 'map_piece')}</b><span>소문</span><b>${Math.round(RUMOR_P * 100)}%</b></div>`;
     if (t.mapLab) L += `<div class="row"><div class="grow"><b>${t.mapLab.n}장 분석 중</b> <small class="note">${fmt(t.mapLab.until - now)}</small>${gauge(t.mapLab.from, t.mapLab.until)}</div></div>`;
-    else L += `<div class="btns"><button class="btn" data-mapan="1" ${odd ? '' : 'disabled'}>1장 · ${fmt(analyzeTime(st, 1))}</button><button class="btn gold" data-mapan="all" ${odd ? '' : 'disabled'}>모두 ${odd}장 · ${fmt(analyzeTime(st, Math.max(1, odd)))}</button></div>`;
+    else { // v0.49.42 장 수를 고른다 (밀대 · 빠른 단추)
+      const n = Math.max(1, Math.min(odd, this.mapN || Math.min(odd, 10)));
+      L += odd ? `<div class="sellQty mapQty"><input type="range" min="1" max="${odd}" value="${n}" id="mapN" /><b id="mapNv">${n}장 · ${fmt(analyzeTime(st, n))}</b></div>
+        <div class="btns">${[1, 10, 50].filter((k) => k < odd).map((k) => `<button class="btn" data-mapq="${k}">${k}장</button>`).join('')}<button class="btn" data-mapq="${odd}">모두</button><button class="btn gold" data-mapan="n">${n}장 분석</button></div>` : '<div class="btns"><button class="btn gold" disabled>분석</button></div>';
+    }
     if (!R.some((r) => r.id === this.rumorSel)) this.rumorSel = R[0]?.id;
     const r = R.find((x) => x.id === this.rumorSel);
     if (r) {
@@ -1473,7 +1477,9 @@ export class Windows {
     on('[data-gmsel]', (el) => { this.gemMerge = el.dataset.gmsel; audio.play('click'); this.render(); });
     on('[data-mside]', (el) => { this.mercSide = el.dataset.mside; audio.play('click'); this.render(); });
     on('[data-rsel]', (el) => { this.rumorSel = el.dataset.rsel; audio.play('click'); this.render(); });
-    on('[data-mapan]', (el) => { const n = el.dataset.mapan === 'all' ? 1e9 : 1; const r = analyzeStart(st, n); if (!r.ok) { w.ui.toast(r.why); audio.play('error'); } else audio.play('click'); w.ui.dirty(); this.render(); });
+    { const mn = body.querySelector('#mapN'); if (mn) mn.oninput = () => { this.mapN = Number(mn.value); const lab = body.querySelector('#mapNv'); if (lab) { const ms = analyzeTime(st, this.mapN), m = Math.max(1, Math.ceil(ms / 60000)), h = Math.floor(m / 60); lab.textContent = `${this.mapN}장 · ${h ? `${h}시간 ${m % 60}분` : `${m}분`}`; } const g = body.querySelector('[data-mapan="n"]'); if (g) g.textContent = `${this.mapN}장 분석`; }; }
+    on('[data-mapq]', (el) => { this.mapN = Number(el.dataset.mapq); audio.play('click'); this.render(); });
+    on('[data-mapan]', (el) => { const n = el.dataset.mapan === 'all' ? 1e9 : el.dataset.mapan === 'n' ? Math.max(1, Number(body.querySelector('#mapN')?.value) || this.mapN || 1) : 1; const r = analyzeStart(st, n); if (!r.ok) { w.ui.toast(r.why); audio.play('error'); } else audio.play('click'); w.ui.dirty(); this.render(); });
     ask('[data-rup]', (el) => { const r = rumorsOf(st).find((x) => x.id === el.dataset.rup); return r ? ['지도 강화', `${rumorName(r)} → +${(r.plus || 0) + 1}\n입구 자리가 새로 정해집니다`, '강화'] : null; }, (el) => { const r = rumorUpgrade(st, el.dataset.rup); if (!r.ok) { w.ui.toast(r.why); audio.play('error'); } else { audio.play('rankup'); w.ui.toast(`지도 강화 +${r.plus}`, '#ffd060'); } w.ui.dirty(); this.render(); });
     // v0.49.11 파편 정리: 옵션 종류를 골라 가방 · 창고에서 모두 버린다 (잠근 것은 남김)
     on('[data-shardclean]', async () => {
