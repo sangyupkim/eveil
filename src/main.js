@@ -23,6 +23,7 @@ import { applyUi } from './ui/layout.js';
 import { packShards } from './game/shards.js';
 import { packBooks } from './game/inventory.js';
 import { chat } from './net/chat.js';
+import { setupChatBox } from './ui/chatbox.js';
 import { cloud, cloudError } from './net/cloud.js';
 import { charIds, loadChar, saveChar, deleteChar, keyOf, newCid, CHAR_MAX, NICK_RE } from './game/chars.js';
 
@@ -271,17 +272,9 @@ function startGame(stage, st) {
     cloud.save(st, force === true, json);
   };
   const windows = new Windows(world, save);
-  // v0.49.28 채팅: 이 캐릭터 이름으로 채팅방에 붙는다. 새 말은 화면 왼쪽 기록 줄에 (기록 창에는 남기지 않는다)
+  // v0.49.29 채팅: 이 캐릭터 이름으로 채팅방에 붙고, 왼쪽 아래 채팅창에 보인다
   chat.start(st.cid || '');
-  chat.listeners.add((ev, m) => {
-    const open = windows.open && windows.kind === 'chat';
-    if (ev === 'msg') {
-      if (st.settings?.chatHud !== false) world.ui.log(`${m.n}: ${m.x}`, m.n === chat.me ? '#ffe08a' : '#8fd0ff', false);
-      const list = open && document.querySelector('#window .chatList');
-      if (list) { const near = list.scrollHeight - list.scrollTop - list.clientHeight < 40; list.insertAdjacentHTML('beforeend', windows.chatRow(m)); while (list.children.length > 50) list.firstChild.remove(); if (near) list.scrollTop = list.scrollHeight; const c = document.querySelector('#window .frame.chatFrame .cnt'); if (c) c.textContent = `${chat.on}명`; }
-    } else if (ev === 'err') world.ui.toast(m === 'slow' ? '잠시 뒤에 보내 주세요' : '로그인하고 닉네임을 정해야 말할 수 있습니다');
-    else if (open && document.activeElement?.id !== 'chatTxt') windows.render(); // 연결 · 끊김: 입력 중이 아니면 다시 그린다
-  });
+  globalThis.__chatBox = setupChatBox(world);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) chat.wake(); });
   hud.onDirty = () => { clearTimeout(hud.winT); hud.winT = setTimeout(() => windows.refresh(), 0); };
   const input = setupInput(world, stage, windows);

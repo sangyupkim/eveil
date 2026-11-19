@@ -34,7 +34,6 @@ import { ZONES, MONSTERS } from '../data/world.js';
 import { nextQuest, questDone, questNeed, goalText, questTurnIn } from '../game/quests.js';
 import { audio } from '../engine/audio.js';
 import { cloud } from '../net/cloud.js';
-import { chat } from '../net/chat.js';
 import { takeOne, countOf, needAwaken } from '../game/inventory.js';
 import { uiSettings, applyUi, editUi } from './layout.js';
 
@@ -81,7 +80,7 @@ export function showNotes() {
 }
 const repickCost = (t) => 2000 * (t.tier + 1) ** 2;
 const nextTitle = (st) => { const i = TITLE_AT.findIndex((n) => st.awakenings < n); return i < 0 ? '' : ` · ${i + 1}차 각성 ${titleName(titleKey(st.stats, 10, i), i)}까지 ${TITLE_AT[i] - st.awakenings}`; };
-const TITLES = { chat: '채팅', arts: '수련 비전', gems: '보석상', map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', news: '공지 · 패치', menu: '메뉴', rank: '랭킹', log: '기록' };
+const TITLES = { arts: '수련 비전', gems: '보석상', map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', news: '공지 · 패치', menu: '메뉴', rank: '랭킹', log: '기록' };
 // 진행 게이지 (시작 ~ 끝 시각). 예전 저장은 시작 시각이 없어 dur로 어림
 const gauge = (from, until, dur = 3600000, color = '#7ad0ff') => { const f = from || until - dur, k = Math.max(0, Math.min(1, (Date.now() - f) / Math.max(1, until - f))); return `<div class="mini" style="margin-top:3px"><i style="width:${(k * 100).toFixed(1)}%;background:linear-gradient(#bfe8ff,${color})"></i></div>`; };
 // 보석 합치기 · 빼기 값
@@ -97,7 +96,7 @@ const COL = '<!--COL-->';
 const lk = (it) => (it?.lock ? '<span class="lk"></span>' : ''); // v0.45 잠근 아이템 표시
 const cellTag = (it) => { if (!it?.shard) return ''; const t = affixText(it.shard), v = t.match(/[+-]?[\d.]+%?/), n = it.vals?.length || 1; return `<span class="ctag">${t.split(' ')[0].slice(0, 2)}<br>${v ? v[0] : ''}</span>${n > 1 ? `<span class="q">${n}</span>` : ''}`; }; // v0.49.11 묶음이면 개수 // v0.45 칸 안에 들어가게 짧게 (골드 획득 +367% → 골드+367%)
 const NPC_ONLY = ['shop', 'town', 'vault', 'gems'];
-const TAB_ORDER = ['gems', 'map', 'inv', 'vault', 'skills', 'char', 'arts', 'quest', 'log', 'chat', 'dex', 'rank', 'town', 'shop', 'guide', 'news', 'menu'];
+const TAB_ORDER = ['gems', 'map', 'inv', 'vault', 'skills', 'char', 'arts', 'quest', 'log', 'dex', 'rank', 'town', 'shop', 'guide', 'news', 'menu'];
 const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '');
 // 장비 찾기 (v0.41.3): 'e:부위' 착용 · 'b:uid' 가방 · 'v:uid' 창고 — 대장간 · 보석상은 세 곳 모두에서 고른다
 const gearAt = (st, key) => { const [k, v] = String(key || '').split(':'); return k === 'e' ? st.equip[v] : k === 'v' ? vault().items.find((x) => x.uid === Number(v)) : st.inv.find((x) => x.uid === Number(v)); };
@@ -176,7 +175,7 @@ export class Windows {
     $('h2', this.el).textContent = (this.kind === 'town' && this.townMode === 'one' && BUILDINGS[townOf(this.w.st).plots[this.townSel]?.type]?.name) || TITLES[this.kind];
     const tabs = $('.tabs', this.el);
     // 탭은 그림 없이 같은 모양의 글자 단추로
-    const TAB_TXT = { chat: '채팅', arts: '비전', gems: '보석', map: '지도', inv: '가방', skills: '스킬', char: '능력', quest: '퀘스트', dex: '도감', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '설정', news: '공지', rank: '랭킹', log: '기록' };
+    const TAB_TXT = { arts: '비전', gems: '보석', map: '지도', inv: '가방', skills: '스킬', char: '능력', quest: '퀘스트', dex: '도감', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '설정', news: '공지', rank: '랭킹', log: '기록' };
     // 상인 · 건물 창은 그 상인의 탭만, 탭이 하나면 탭 줄을 숨긴다
     const list = this.talk ? TAB_ORDER.filter((k) => this.talk.includes(k) || k === this.talkFirst) : TAB_ORDER.filter((k) => !NPC_ONLY.includes(k) && (!['guide', 'news'].includes(k) || k === this.kind)); // 공지 · 가이드북은 설정 창에서 연다
     tabs.style.visibility = list.length < 2 ? 'hidden' : '';
@@ -197,7 +196,6 @@ export class Windows {
     if (wc) { const g = wc.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(terrain, 0, 0, wc.width, wc.height); g.imageSmoothingEnabled = true; g.drawImage(fogCan, 0, 0, wc.width, wc.height); }
     { const n = {}; body.querySelectorAll(SC).forEach((el) => { const c = el.className, i = (n[c] = (n[c] || 0) + 1), k = keep[scKey(el, i)]; if (k) { el.scrollTop = k[0]; el.scrollLeft = k[1]; } }); }
     this.bind(body);
-    if (this.kind === 'chat') this.bindChat(body);
     body.querySelectorAll('[data-keyedit]').forEach((b) => { b.onclick = () => { this.keyEdit = !this.keyEdit; this.waitKey = null; this.render(); }; });
     body.querySelectorAll('[data-bind]').forEach((b) => { b.onclick = () => { this.waitKey = b.dataset.bind; this.render(); }; });
     body.querySelectorAll('[data-keyreset]').forEach((b) => { b.onclick = () => { this.w.st.settings.keys = {}; this.waitKey = null; this.render(); }; });
@@ -490,22 +488,6 @@ export class Windows {
     return [L, right];
   }
   // v0.49.7 기록 창: 지난 기록 (최근 300줄, 새것이 위) — 왼쪽 오늘 기록 전부 | 오른쪽 종류별 개수
-  // v0.49.28 채팅: 한 칸(대화 목록) + 아래 입력 줄. 새 말은 창을 다시 그리지 않고 목록에만 붙인다 (입력 중인 글이 지워지지 않게)
-  chatRow(m) { const d = new Date(m.at), tm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; return `<div class="row logRow chatRow"><small class="note">${tm}</small><b class="chatNm${m.n === chat.me ? ' me' : ''}">${esc(m.n)}</b><div class="grow">${esc(m.x)}</div></div>`; }
-  bindChat(body) {
-    const list = body.querySelector('.chatList'), txt = body.querySelector('#chatTxt');
-    if (list) list.scrollTop = list.scrollHeight;
-    const send = () => { const r = chat.say(txt.value); if (r.ok) { txt.value = ''; audio.play('click'); } else if (r.why) { this.w.ui.toast(r.why); audio.play('error'); } };
-    body.querySelector('[data-chatsend]')?.addEventListener('click', send);
-    txt?.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); send(); } else if (e.key === 'Escape') this.close(); });
-    if (txt && !txt.disabled && !matchMedia('(pointer: coarse)').matches) txt.focus(); // 휴대폰은 자판이 갑자기 뜨지 않게
-  }
-  chat() {
-    const can = chat.ok && (chat.me || cloud.token); // 로그인했으면 닉네임을 막 정했어도 보낼 때 다시 붙어 이름을 받는다
-    const L = `<h3>채팅 <span class="cnt">${chat.ok ? `${chat.on}명` : '연결 중'}</span></h3><div class="chatList">${chat.list.map((m) => this.chatRow(m)).join('')}</div>`;
-    const inp = `<div class="chatIn"><input id="chatTxt" type="text" maxlength="80" enterkeyhint="send" autocomplete="off" ${can ? '' : 'disabled'} placeholder="${can ? '' : chat.ok ? '로그인 · 닉네임 필요' : ''}" /><button class="btn gold" data-chatsend="1" ${can ? '' : 'disabled'}>보내기</button></div>`;
-    return `<div class="cols"><div class="frame chatFrame" style="flex:1">${L}${inp}</div></div>`;
-  }
   log() {
     const H = [...(this.w.ui.logHist || [])].reverse(), tm = (t) => { const d = new Date(t); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
     const L = `<h3>기록 <span class="cnt">${H.length}</span></h3>` + (H.map((x) => `<div class="row logRow"><small class="note">${tm(x.t)}</small><div class="grow" style="${x.color ? `color:${x.color}` : ''}">${esc(x.msg)}</div></div>`).join('') || '<div class="note">없음</div>');
@@ -873,6 +855,7 @@ export class Windows {
       ['도감', 'dex', ['지역별 몬스터 도감', '몬스터 정보'], ['몬스터를 잡을수록 정보가 열리고, 잡은 수에 따라 피해 같은 보너스를 받습니다']],
       ['랭킹', 'rank', ['레벨 · 전투력 순위', '내 기록 · 전투력(공격 × 방어)'], ['로그인해서 서버에 저장하는 캐릭터만 순위에 오릅니다']],
       ['기록', 'log', ['완료 알림 · 얻은 것 · 지역 이동 같은 기록. 화면 왼쪽 기록 줄을 눌러도 열립니다']],
+      ['채팅', null, [], ['화면 왼쪽 아래 채팅창에 다른 모험가의 말이 올라옵니다. 로그인하고 닉네임을 정하면 [채팅]을 눌러(PC는 Enter) 말할 수 있습니다', '옆 단추로 채팅창을 접습니다. 접힌 동안 온 말은 수로 보입니다. 설정의 UI 위치 편집으로 자리를 옮길 수 있습니다', '한 번에 80자까지, 너무 빨리 보내면 잠시 기다려야 합니다']],
       ['건물 짓기', 'build', ['집터와 건물', '단계 올리기', '단계별 금화 · 재료 · 각성 · 걸리는 시간']],
       ['대장간', 'smithy', ['기능 탭: 강화 · 제련 · 분해 · 용병', '강화: 실패해도 단계는 그대로, 실패할수록 장인의 기운이 쌓입니다. 높은 레벨 장비일수록 성공률이 낮고 강화석이 많이 듭니다'], ['제련: 장비와 능력치 파편을 골라 옵션 하나를 파편 옵션으로 바꿉니다. 대장간 3 · 4 · 5단계에 옵션을 1 · 2 · 3개 잠급니다', '분해: 등급을 골라 보고 [등급별 분해]로 한꺼번에 분해합니다. 얻은 것은 결과 창에 나옵니다']],
       ['보석상', 'gems', ['끼우기 · 합치기 탭', '고른 장비의 구멍과 끼운 보석. 빼려면 금화가 듭니다', '착용 장비 · 가방'], ['합치기: 같은 보석 3개로 한 등급 위 보석. 등급별로 한꺼번에 합칠 수도 있습니다']],
@@ -1285,7 +1268,6 @@ export class Windows {
         <div class="setRow"><span>타겟 고정</span><div class="opts">${onoff('targetLock', set.targetLock !== false)}</div></div>
         <div class="setRow"><span>떠다니는 조이스틱</span><div class="opts">${onoff('joyFloat', set.joyFloat !== false)}</div></div>
         <div class="setRow"><span>화면 흔들림</span><div class="opts">${onoff('shake', set.shake !== false)}</div></div>
-        <div class="setRow"><span>채팅 표시</span><div class="opts">${onoff('chatHud', set.chatHud !== false)}</div></div>
         <div class="setRow"><span>자동 물약</span><div class="opts">${[0.3, 0.4, 0.5, 0.6].map((v) => `<button class="btn${set.autoPotion === v ? ' on' : ''}" data-pot="${v}">${v * 100}%</button>`).join('')}</div></div>
         <div class="setRow"><span>자동 사냥 필드 보스</span><div class="opts"><button class="btn${set.autoBoss ? ' on' : ''}" data-autoboss="1">잡기</button><button class="btn${!set.autoBoss ? ' on' : ''}" data-autoboss="0">피하기</button></div></div>
         <div class="setRow pickRow"><span>자동 사냥 줍기</span><div class="pickGrid">${[['common', '일반'], ['magic', '마법'], ['rare', '희귀'], ['hero', '영웅'], ['legend', '전설'], ['potion', '물약'], ['gem', '보석'], ['mat', '재료 · 파편'], ...Object.entries(BOOK_TIERS).map(([t, b]) => ['book' + t, `${b.name} 스킬북`])].map(([k, n]) => `<label class="pickChk"><input type="checkbox" data-apick="${k}" ${((set.autoPick || {})[k] ?? (k.startsWith('book') ? (set.autoPick || {}).book : true)) !== false ? 'checked' : ''} /><span>${n}</span></label>`).join('')}</div></div>

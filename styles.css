@@ -756,14 +756,23 @@ html.force-land #rotate { display: none !important; }
 #trBoxes #qPanel, #trBoxes #questBox { margin-top: 0; width: 100%; max-width: none; text-align: right; pointer-events: auto; }
 #trBoxes .qbody { cursor: pointer; }
 .logRow { gap: 10px; padding: 3px 4px; } .logRow small { min-width: 3em; }
-/* v0.49.28 채팅: 대화 목록이 칸을 채우고 입력 줄은 아래에 붙는다 */
-.chatFrame { display: flex; flex-direction: column; min-height: 0; }
-.chatList { flex: 1; min-height: 0; overflow: auto; }
-.chatRow .chatNm { color: #8fd0ff; white-space: nowrap; } .chatRow .chatNm.me { color: #ffe08a; }
-.chatRow .grow { word-break: break-all; }
-.chatIn { display: flex; gap: 8px; margin-top: 6px; }
-.chatIn input { flex: 1; min-width: 0; font: inherit; font-size: 15px; padding: 6px 10px; color: #f2e6c8; background: rgba(0,0,0,.45); border: 1px solid #6a5232; border-radius: 6px; }
-.chatIn input:disabled { opacity: .5; }
+/* v0.49.29 채팅창: 왼쪽 아래, 투명한 바탕에 글만. 글 줄은 눌리지 않고(조이스틱 · 사냥터로 통과) 단추 · 입력 칸만 눌린다 */
+#chatBox { position: absolute; left: calc(10px + env(safe-area-inset-left)); bottom: calc(var(--u) * 1.2 + env(safe-area-inset-bottom)); width: min(28vw, 340px); z-index: 6; pointer-events: none; display: flex; flex-direction: column; gap: 3px; }
+#chatBox .chatLines { display: flex; flex-direction: column; justify-content: flex-end; font-size: calc(var(--u) * 1.05); line-height: 1.35; color: #eef3ff; text-shadow: 0 1px 2px #000, 0 0 3px #000, 0 0 6px rgba(0,0,0,.8); }
+#chatBox .cl { overflow-wrap: anywhere; } #chatBox .cl b { color: #8fd0ff; font-weight: 700; } #chatBox .cl.me b { color: #ffe08a; }
+#chatBox.folded .chatLines { display: none; }
+#chatBox.typing .chatLines { background: linear-gradient(to top, rgba(0,0,0,.45), rgba(0,0,0,0)); border-radius: 6px; padding: 4px 6px 2px; }
+#chatBox .chatBar { display: flex; gap: 4px; }
+#chatBox .chatBtn, #chatBox .chatInput { pointer-events: auto; }
+#hud #chatBox .chatBtn { position: relative; font: inherit; font-size: calc(var(--u) * 0.95); color: #f2dc9a; background: rgba(0,0,0,.35); border: 1px solid rgba(201,168,106,.45); border-radius: 12px; padding: 2px 10px; line-height: 1.4; }
+#hud #chatBox .chatBtn.fold { padding: 2px 8px; }
+#chatBox .chatBtn.fold .chev { font-size: calc(var(--u) * 0.6); border-width: 0 0 2px 2px; transform: rotate(-45deg) translate(0.1em, -0.1em); } /* 펼침: 아래로(접기) */
+#chatBox.folded .chatBtn.fold .chev { transform: rotate(135deg) translate(-0.1em, 0.1em); } /* 접힘: 위로(펴기) */
+#chatBox .chatNew { position: absolute; top: -7px; right: -8px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: #d24a3a; color: #fff; font: 700 10px/16px sans-serif; font-style: normal; text-align: center; }
+#chatBox .chatInput { display: flex; gap: 6px; }
+#chatBox .chatInput[hidden] { display: none; }
+#chatBox .chatInput input { flex: 1; min-width: 0; font: inherit; font-size: 15px; padding: 5px 9px; color: #f2e6c8; background: rgba(0,0,0,.6); border: 1px solid #8a6a3a; border-radius: 6px; }
+body.ui-edit #chatBox { pointer-events: auto; outline: 2px dashed rgba(255,213,74,.6); min-height: 40px; }
 /* v0.49.8 문양 아이콘 단추: 단추 판 위에 문양만 */
 .ibtn img[data-ico^="g_"] { width: 74%; height: 74%; margin: 13%; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9)); }
 .act img[data-ico^="g_"] { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9)); }

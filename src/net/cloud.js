@@ -2,7 +2,7 @@
 // 이 게임은 GitHub Pages에서 돌므로 다른 주소로 부른다 (서버가 CORS를 연다).
 // 영겁의 틈새 테스트 서버(dev 브랜치). 같은 D1을 쓴다. 영겁의 틈새가 출시(main)되면 본 주소로 바꿔도 된다
 // 서버는 게임과 같은 Worker(eveil)의 /api. 다른 곳(로컬 등)에서 열면 Cloudflare 게임 주소의 서버를 쓴다
-const API = typeof location !== 'undefined' && /\.workers\.dev$|\.pages\.dev$/.test(location.hostname) ? '/api' : 'https://eveil.weak0416.workers.dev/api';
+const API = typeof location !== 'undefined' && (/\.workers\.dev$|\.pages\.dev$/.test(location.hostname) || location.port === '8787') ? '/api' : 'https://eveil.weak0416.workers.dev/api';
 import { GAME_VERSION } from '../data/patchnotes.js';
 const KEY = 'ashen-account';
 const GAP = 20; // 서버 저장 사이 최소 간격(초)

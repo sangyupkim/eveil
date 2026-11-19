@@ -2,7 +2,7 @@
 // 편집 모드에서는 조이스틱 · 행동 단추 · 퀵슬롯 · 위쪽 정보 · 미니맵을 손가락으로 끌어 옮긴다
 const $ = (s) => document.querySelector(s);
 // key: [요소, 크기 설정 이름, 기준점]
-const PARTS = { joy: ['#joy', 'joy', 'center'], br: ['#br', 'btn', 'bottom right'], quick: ['#quick', 'btn', 'bottom right'], tl: ['#tl', 'top', 'top left'], tr: ['#tr', 'top', 'top right'] };
+const PARTS = { joy: ['#joy', 'joy', 'center'], br: ['#br', 'btn', 'bottom right'], quick: ['#quick', 'btn', 'bottom right'], tl: ['#tl', 'top', 'top left'], tr: ['#tr', 'top', 'top right'], chat: ['#chatBox', 'top', 'bottom left'] }; // v0.49.29 채팅창도 옮길 수 있다
 export const UI_DEFAULT = { scale: 1, joy: 1, btn: 1, top: 1, alpha: 1, zoom: 1, pos: {} };
 
 export function uiSettings(st) {

@@ -202,7 +202,7 @@ export function setupInput(world, stage, windows) {
     keys.add(e.code);
     if (world.st.tut === 0) return;
     if (e.code === 'Escape') { if (windows.open) windows.close(); else if (!world.dead) windows.show('menu'); return; }
-    if ((e.code === 'Enter' || e.code === 'NumpadEnter') && !(windows.open && windows.kind === 'chat')) { e.preventDefault(); windows.show('chat'); return; } // v0.49.28 PC: Enter로 채팅
+    if ((e.code === 'Enter' || e.code === 'NumpadEnter') && !windows.open && globalThis.__chatBox) { e.preventDefault(); globalThis.__chatBox.open(); return; } // v0.49.29 PC: Enter로 채팅 입력
     // v0.49.19 한글 입력 상태에서 일부 브라우저는 e.code가 비어 오면: 두벌식 글자로 자판 위치를 찾는다 (ㅑ → I, ㅜ → N …)
     const KO = { 'ㅂ': 'KeyQ', 'ㅈ': 'KeyW', 'ㄷ': 'KeyE', 'ㄱ': 'KeyR', 'ㅅ': 'KeyT', 'ㅛ': 'KeyY', 'ㅕ': 'KeyU', 'ㅑ': 'KeyI', 'ㅐ': 'KeyO', 'ㅔ': 'KeyP', 'ㅁ': 'KeyA', 'ㄴ': 'KeyS', 'ㅇ': 'KeyD', 'ㄹ': 'KeyF', 'ㅎ': 'KeyG', 'ㅗ': 'KeyH', 'ㅓ': 'KeyJ', 'ㅏ': 'KeyK', 'ㅣ': 'KeyL', 'ㅋ': 'KeyZ', 'ㅌ': 'KeyX', 'ㅊ': 'KeyC', 'ㅍ': 'KeyV', 'ㅠ': 'KeyB', 'ㅜ': 'KeyN', 'ㅡ': 'KeyM' };
     const code = e.code || KO[e.key] || '';
