@@ -100,6 +100,10 @@ const TAB_ORDER = ['gems', 'map', 'inv', 'vault', 'skills', 'char', 'arts', 'que
 const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '');
 // 장비 찾기 (v0.41.3): 'e:부위' 착용 · 'b:uid' 가방 · 'v:uid' 창고 — 대장간 · 보석상은 세 곳 모두에서 고른다
 const gearAt = (st, key) => { const [k, v] = String(key || '').split(':'); return k === 'e' ? st.equip[v] : k === 'v' ? vault().items.find((x) => x.uid === Number(v)) : st.inv.find((x) => x.uid === Number(v)); };
+// v0.49.35 창고: 종류별로 한꺼번에 옮기기 (잠근 것은 빼고)
+const VCATS = [['mat', '재료'], ['gem', '보석'], ['book', '스킬북'], ['potion', '물약 · 주문서'], ['shard', '파편'], ['gear', '장비']];
+const vcatOf = (it) => { const b = BASES[it?.base] || {}; return !it ? null : it.book ? 'book' : it.shard ? 'shard' : b.type === 'gem' ? 'gem' : b.type === 'potion' || b.type === 'elixir' ? 'potion' : b.slot ? 'gear' : 'mat'; };
+const vcatRow = (from, list) => { const has = new Set(list.filter((x) => x && !x.lock).map(vcatOf)); return `<div class="vcats">${VCATS.filter(([k]) => has.has(k)).map(([k, n]) => `<button class="btn" data-vcat="${from}|${k}">${n}</button>`).join('')}</div>`; };
 const gearList = (st, ok) => [...SLOTS.filter((sl) => st.equip[sl] && ok(st.equip[sl])).map((sl) => ['e:' + sl, st.equip[sl], '착용']), ...st.inv.filter((x) => BASES[x.base]?.slot && ok(x)).map((x) => ['b:' + x.uid, x, '가방']), ...vault().items.filter((x) => x && BASES[x.base]?.slot && ok(x)).map((x) => ['v:' + x.uid, x, '창고'])];
 // 강화 · 극한 던전 열쇠 제작 (제작소 3 · 6단계, v0.42)
 const KEY_PANEL = (st, b) => { const mx = mythLvMax(st), lv = Math.max(10, Math.min(mx, globalThis.__mythLv ?? mx)), need = mythMarks(st, lv); return `<h3>신화 교환</h3><div class="row"><div class="cell shopIco r-myth">${ico({ base: 'myth_mark' })}</div><div class="grow"><b style="color:#ff4a8a">신화 장비 · 레벨 ${lv}</b><div class="note">신화의 흔적 ${need} (${resCount(st, 'myth_mark')}) · 최대 ${mx}</div></div><button class="btn" data-mythlv="-10">-10</button><button class="btn" data-mythlv="-1">-1</button><button class="btn" data-mythlv="1">+1</button><button class="btn" data-mythlv="10">+10</button><button class="btn gold" data-mythcraft="1" ${resCount(st, 'myth_mark') >= need ? '' : 'disabled'}>교환</button></div><h3>던전 열쇠 제작</h3>` + KEY_RECIPES.map((r) => { const ok = oreRecipeOk(st, r); const need = Object.entries(r.need).map(([id, q]) => `${BASES[id].name} ${q} (${resCount(st, id)})`).join(' · ');
@@ -667,10 +671,10 @@ export class Windows {
     let sel = this.vsel; // { from: 'v' | 'b', keys: [창고 칸 번호 | 가방 uid] }
     if (sel) { sel.keys = sel.keys.filter((k) => (sel.from === 'v' ? !!V.items[k] : st.inv.some((x) => x.uid === k))); if (!sel.keys.length) sel = this.vsel = null; }
     const on = (f, k) => (sel && sel.from === f && sel.keys.includes(k) ? ' sel' : '');
-    let left = `<h3>창고 <span class="cnt">${V.items.length}/${n}</span><button class="btn" data-vsort="1" style="margin-left:auto">정렬</button>${V.items.some((x) => x?.shard) ? '<button class="btn" data-shardclean="1">파편 정리</button>' : ''}<button class="btn" data-vall="v">모두 고르기</button></h3><div class="grid">`;
+    let left = `<h3>창고 <span class="cnt">${V.items.length}/${n}</span><button class="btn" data-vsort="1" style="margin-left:auto">정렬</button>${V.items.some((x) => x?.shard) ? '<button class="btn" data-shardclean="1">파편 정리</button>' : ''}<button class="btn" data-vall="v">모두 고르기</button></h3>${vcatRow('v', V.items)}<div class="grid">`;
     for (let i = 0; i < n; i++) { const it = V.items[i]; left += it ? `<div class="cell${rar(it)}${on('v', i)}" data-vsel="v|${i}">${ico(it)}${cellTag(it)}${lk(it)}${it.qty > 1 ? `<span class="q">${it.qty}</span>` : ''}</div>` : '<div class="cell"></div>'; }
     left += '</div>';
-    let right = `<h3>가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span><button class="btn" data-vall="b" style="margin-left:auto">모두 고르기</button></h3><div class="grid">`;
+    let right = `<h3>가방 <span class="cnt">${st.inv.length}/${bagSize(st)}</span><button class="btn" data-vall="b" style="margin-left:auto">모두 고르기</button></h3>${vcatRow('b', st.inv)}<div class="grid">`;
     for (let i = 0; i < bagSize(st); i++) { const it = st.inv[i]; right += it ? `<div class="cell${rar(it)}${on('b', it.uid)}" data-vsel="b|${it.uid}">${ico(it)}${cellTag(it)}${lk(it)}${it.qty > 1 ? `<span class="q">${it.qty}</span>` : ''}</div>` : '<div class="cell"></div>'; }
     right += '</div>';
     let mid = '<div class="note">고른 아이템이 없습니다</div>';
@@ -1537,6 +1541,13 @@ export class Windows {
     on('[data-vsel]', (el) => { const [f, k0] = el.dataset.vsel.split('|'), k = Number(k0); let v = this.vsel; if (!v || v.from !== f) v = this.vsel = { from: f, keys: [] }; const i = v.keys.indexOf(k); if (i >= 0) v.keys.splice(i, 1); else v.keys.push(k); if (!v.keys.length) this.vsel = null; audio.play('click'); this.render(); });
     on('[data-vall]', (el) => { const f = el.dataset.vall; this.vsel = { from: f, keys: f === 'v' ? vault().items.map((_, i) => i) : st.inv.map((x) => x.uid) }; if (!this.vsel.keys.length) this.vsel = null; audio.play('click'); this.render(); });
     on('[data-vclear]', () => { this.vsel = null; audio.play('click'); this.render(); });
+    on('[data-vcat]', (el) => { // 그 종류를 한꺼번에: 가방 → 창고 / 창고 → 가방
+      const [from, cat] = el.dataset.vcat.split('|'); let moved = 0, why = '';
+      if (from === 'b') { for (const it of st.inv.filter((x) => !x.lock && vcatOf(x) === cat)) { const r = vaultPut(st, it.uid); if (r.ok) moved++; else { why = r.why || why; break; } } }
+      else { const V = vault().items; for (let i = V.length - 1; i >= 0; i--) { if (V[i]?.lock || vcatOf(V[i]) !== cat) continue; const r = vaultTake(st, i); if (r.ok) moved++; else { why = r.why || why; break; } } }
+      this.vsel = null; audio.play(moved ? 'click' : 'error');
+      w.ui.toast(`${VCATS.find((x) => x[0] === cat)[1]} ${moved}칸을 ${from === 'b' ? '창고에 넣었습니다' : '가방으로 옮겼습니다'}${why ? ` · ${why}` : ''}`); w.ui.dirty(); this.render();
+    });
     on('[data-vmove]', () => {
       const v = this.vsel; if (!v) return; let moved = 0, why = '';
       if (v.from === 'v') for (const k of [...v.keys].sort((a, b) => b - a)) { const r = vaultTake(st, k); if (r.ok) moved++; else { why = r.why || why; } } // 뒤 칸부터 빼야 번호가 밀리지 않는다
