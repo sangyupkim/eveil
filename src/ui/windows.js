@@ -1542,7 +1542,7 @@ export class Windows {
     ask('[data-repick]', () => ['특성 다시 고르기', '금화를 내고 특성을 다시 고릅니다', '고르기'], (el) => {
       const t = st.titles[Number(el.dataset.repick)], cost = repickCost(t);
       if (st.gold < cost) return;
-      w.ui.titlePick({ tier: t.tier, key: t.key, name: t.name, choices: perkChoices(t.key, t.tier) }, (perk) => { st.gold -= cost; t.perk = perk; w.ui.toast(`${t.name}: ${perk.text}`, '#ffd860'); w.ui.dirty(); this.render(); });
+      w.ui.titlePick({ tier: t.tier, key: t.key, name: t.name, choices: perkChoices(t.key, t.tier, (st.titles || []).filter((x) => x !== t).map((x) => x.perk?.eff)) }, (perk) => { st.gold -= cost; t.perk = perk; w.ui.toast(`${t.name}: ${perk.text}`, '#ffd860'); w.ui.dirty(); this.render(); });
     });
     on('[data-lock]', (el) => {
       const u = Number(el.dataset.lock), it = st.inv.find((x) => x.uid === u) || Object.values(st.equip).find((x) => x?.uid === u) || vault().items.find((x) => x?.uid === u);

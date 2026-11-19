@@ -346,7 +346,13 @@ export class World {
       } else if (k.eff === 'chill') {
         for (const m of near(4)) m.slowT = k.v / 10;
         this.fx.decal(0, P.x, P.z, 4, 0x9fd8ff, 0.4);
-      } else if (k.eff === 'arrow') {
+      } else if (k.eff === 'crit') { timed('focus', k.v); tag(t.name); } // v0.49.21 새 특성 효과
+      else if (k.eff === 'swift') { timed('swift', k.v); tag(t.name); }
+      else if (k.eff === 'nova') { this.fx.play?.('sparkle', P.x, P.z, { scale: 1.6, dur: 0.6 }); for (const m of near(4)) this.hitMonster(m, k.v * d.spellMult, { src: 'perk' }); }
+      else if (k.eff === 'chain') { near(9).sort((a, b) => dist2(a.pos, P) - dist2(b.pos, P)).slice(0, 3).forEach((m, i) => this.later(i * 0.12, () => { if (m.dead) return; this.fx.projectile({ from: { x: P.x, y: 1.3, z: P.z }, target: m.actor, color: 0xa0c8ff, size: 0.6, speed: 30, bolt: true, onHit: () => this.hitMonster(m, k.v * d.spellMult, { src: 'perk' }) }); })); }
+      else if (k.eff === 'mark') { for (const m of near(4)) { m.markT = this.time + 4; m.markV = k.v; } tag(t.name); }
+      else if (k.eff === 'barrier') { const add = d.maxHp * k.v / 100, cap = d.maxHp * 0.3, sh = this.buffs.shield; if (sh && sh.t > 0) sh.v = Math.min(cap, sh.v + add); else this.buffs.shield = { v: Math.min(cap, add), t: 4, max: 4 }; tag(t.name); }
+      else if (k.eff === 'arrow') {
         const m = near(10).sort((a, b) => dist2(a.pos, P) - dist2(b.pos, P))[0];
         if (m) this.fx.projectile({ from: { x: P.x, y: 1.3, z: P.z }, target: m.actor, color: 0xd0e0ff, size: 0.6, speed: 26, bolt: true, onHit: () => this.hitMonster(m, wd * k.v / 100, { src: 'perk' }) });
       }
@@ -861,7 +867,7 @@ export class World {
     const st = this.st, key = titleKey(st.stats, CONFIG.startStat, tier);
     if ((st.titles ||= []).some((t) => t.tier === tier) || this.titleOpen) return;
     this.titleOpen = true;
-    this.ui.titlePick({ tier, key, name: titleName(key, tier), choices: perkChoices(key, tier) }, (perk) => {
+    this.ui.titlePick({ tier, key, name: titleName(key, tier), choices: perkChoices(key, tier, (st.titles || []).map((x) => x.perk?.eff)) }, (perk) => {
       this.titleOpen = false;
       st.titles.push({ tier, key, name: titleName(key, tier), perk });
       const seen = (st.titleSeen ||= []); if (!seen.includes(key + tier)) seen.push(key + tier);
@@ -1419,6 +1425,7 @@ export class World {
       if (A.includes('reflect') && src !== 'dot' && raw > 0 && !(m.reflT > this.time)) { m.reflT = this.time + 0.5; this.hurtPlayer(Math.min(raw * 0.1, this.d.maxHp * 0.04), m, { sure: true }); } } // 반사: 받은 피해의 10%, 한 번에 최대 HP 4%까지 · 0.5초에 한 번 (강한 캐릭터가 한 방에 죽던 것)
     if (m.dungeon && this.dungeon?.muts && ctx?.id) { const sc = SKILLS[ctx.id]?.school; if (Object.entries(MUT_RESIST).some(([k, v]) => v === sc && this.mut(k))) raw *= 0.5; } // v0.47 원소 변이
     if (m.vulnT > 0) raw *= this.art('soulmark') ? 1.25 : 1.15;
+    if (m.markT > this.time) raw *= 1 + (m.markV || 0) / 100; // v0.49.21 칭호 특성 「약점 표시」
     if (this.art('sniper') && (src === 'ranged' || ctx) && Math.hypot(m.pos.x - this.player.pos.x, m.pos.z - this.player.pos.z) > 8) raw *= 1.15;
     if (this.art('huntertrap') && m.rootT > 0) raw *= 1.1;
     if (this.art('frostarrow') && m.slowT > 0 && !crit && Math.random() < 0.2) { crit = true; raw *= d.critMult; }

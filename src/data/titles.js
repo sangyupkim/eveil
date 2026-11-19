@@ -52,11 +52,28 @@ export const EFFECTS = {
   vit: [{ id: 'ward', text: (v) => `3초 동안 받는 피해 -${v}%`, v: 20 }, { id: 'thorns', text: (v) => `가까운 적에게 무기 피해 ${v}% 반격`, v: 50 }],
 };
 const TIER_K = [1, 1.4, 1.8, 2.4, 3.2];
-// v0.49.17 한 갈래에 효과 · 발동이 둘씩뿐이라 세 선택지 중 둘이 같은 효과로 겹쳤다 → 갈래마다 하나씩 더 (어울리는 것을 빌려 온다, 회복 효과는 없음)
-const EXTRA_EFF = { str: EFFECTS.dex[0], dex: EFFECTS.str[0], int: EFFECTS.wis[0], wis: EFFECTS.int[1], vit: EFFECTS.int[1] }; // v0.49.20 힘 = 공격(공격 속도), 체력 = 방어(적 느리게)
+// v0.49.21 단계마다 새 효과가 하나씩 열린다 (같은 갈래면 단계가 올라도 같은 효과만 숫자가 커지던 것 → 단계마다 다른 선택지)
+const NEW_EFF = {
+  crit: { id: 'crit', text: (v) => `3초 동안 치명타 확률 +${v}%`, v: 6 },
+  swift: { id: 'swift', text: (v) => `3초 동안 이동 속도 +${v}%`, v: 15 },
+  nova: { id: 'nova', text: (v) => `주변 적에게 주문 피해 ${v} 파동`, v: 24 },
+  chain: { id: 'chain', text: (v) => `가까운 적 셋에게 주문 피해 ${v} 번개`, v: 20 },
+  mark: { id: 'mark', text: (v) => `주변 적이 4초 동안 받는 피해 +${v}%`, v: 6 },
+  barrier: { id: 'barrier', text: (v) => `4초 동안 최대 HP ${v}% 보호막`, v: 5 },
+};
+const EFF_BY_ID = Object.assign({}, ...Object.values(EFFECTS).flat().map((e) => ({ [e.id]: e })), NEW_EFF);
+// 갈래마다 단계(0 ~ 4)에 열리는 효과: 힘 = 공격, 민첩 = 속도 · 치명, 지능 = 주문, 정신 = 지원, 체력 = 방어
+const UNLOCK = {
+  str: [['might', 'shock', 'haste'], ['mark'], ['crit'], ['barrier'], ['swift']],
+  dex: [['haste', 'arrow', 'might'], ['crit'], ['swift'], ['chain'], ['mark']],
+  int: [['blast', 'chill', 'mp'], ['nova'], ['mark'], ['chain'], ['crit']],
+  wis: [['mp', 'ward', 'chill'], ['barrier'], ['nova'], ['swift'], ['mark']],
+  vit: [['ward', 'thorns', 'chill'], ['barrier'], ['shock'], ['mark'], ['might']],
+};
 const EXTRA_TRIG = { str: { id: 'crit', text: '치명타가 나면', p: 0.3 }, int: { id: 'crit', text: '치명타가 나면', p: 0.3 }, wis: { id: 'kill', text: '적을 쓰러뜨리면', p: 0.3 }, vit: { id: 'kill', text: '적을 쓰러뜨리면', p: 0.35 } };
 const trigsOf = (a) => [...TRIGGERS[a], ...(EXTRA_TRIG[a] ? [EXTRA_TRIG[a]] : [])];
-const effsOf = (a) => [...EFFECTS[a], EXTRA_EFF[a]];
+const effsOf = (a, tier) => UNLOCK[a].slice(0, tier + 1).flat().map((id) => EFF_BY_ID[id]);
+const newEffs = (a, tier) => (tier > 0 ? UNLOCK[a][tier] : []);
 
 // 스탯에서 갈래 키: 시작값(10)을 뺀 성장량으로 본다
 // 2등이 1등의 60% 이상이면 두 스탯, 4차 각성(tier 3)에서는 3등도 60% 이상이면 세 스탯 갈래
@@ -68,15 +85,18 @@ export function titleKey(stats, start = 10, tier = 0) {
 }
 
 // 갈래의 특성 후보 셋 (같은 갈래 · 단계면 늘 같은 셋)
-export function perkChoices(key, tier) {
+export function perkChoices(key, tier, owned = []) { // owned: 이미 가진 칭호 특성의 효과 (되도록 다시 내지 않는다)
   const parts = key.split('+'), pool = [];
   const pairs = parts.length === 1 ? [[parts[0], parts[0]]] : parts.flatMap((a) => parts.filter((b) => b !== a).map((b) => [a, b]));
   const mk = parts.length >= 3 ? 1.1 : parts.length === 2 ? 1.07 : 1; // v0.44.40 혼합 갈래 특성 +7% · 세 갈래 +10%
-  for (const [a, b] of pairs) for (const t of trigsOf(a)) for (const e of effsOf(b)) { const v = Math.round(e.v * TIER_K[tier] * mk); pool.push({ trig: t.id, p: t.p, eff: e.id, v, text: `${t.text} ${e.text(v)}` }); }
+  for (const [a, b] of pairs) for (const t of trigsOf(a)) for (const e of effsOf(b, tier)) { const v = Math.round(e.v * TIER_K[tier] * mk); pool.push({ trig: t.id, p: t.p, eff: e.id, v, text: `${t.text} ${e.text(v)}` }); }
   // 갈래 · 단계로 정해지는 순서로 섞어 셋
   let h = [...key].reduce((x, c) => (x * 31 + c.charCodeAt(0)) >>> 0, 7 + tier * 101);
   // 섞은 순서에서 효과 · 발동이 서로 다른 것 셋 (모자라면 발동만 겹쳐도, 그래도 모자라면 아무거나)
   const order = []; while (pool.length) { h = (h * 1103515245 + 12345) >>> 0; order.push(pool.splice(h % pool.length, 1)[0]); }
+  // 이 단계에서 새로 열린 효과가 앞, 이미 가진 효과는 뒤
+  const fresh = new Set(parts.flatMap((a) => newEffs(a, tier))), rank = (c) => (fresh.has(c.eff) ? 0 : owned.includes(c.eff) ? 2 : 1);
+  order.sort((x, y) => rank(x) - rank(y));
   const out = [], fits = [(c) => !out.some((o) => o.eff === c.eff || o.trig === c.trig), (c) => !out.some((o) => o.eff === c.eff), () => true];
   for (const ok of fits) for (const c of order) { if (out.length >= 3) break; if (!out.includes(c) && ok(c)) out.push(c); }
   return out;
