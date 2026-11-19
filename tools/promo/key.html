@@ -1,0 +1,30 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="fonts/fonts.css"><style>
+html,body{margin:0;background:#000}
+#k{position:relative;overflow:hidden;width:var(--w);height:var(--h);background:#0b0705}
+.bg{position:absolute;inset:0;background:var(--bg) center/cover no-repeat;filter:saturate(1.08) contrast(1.05) brightness(var(--br,.9))}
+.shade{position:absolute;inset:0;background:var(--shade)}
+.logo{position:absolute;left:var(--lx);top:var(--ly);width:var(--ls);height:var(--ls);transform:translate(-50%,-50%);
+  background:url(logo.webp) center/100% no-repeat;-webkit-mask:radial-gradient(closest-side,#000 72%,transparent 100%);mask:radial-gradient(closest-side,#000 72%,transparent 100%)}
+.t{position:absolute;left:var(--tx);top:var(--ty);transform:translate(-50%,0);text-align:center;white-space:nowrap}
+.t b{display:block;font-family:'Cinzel','Nanum Myeongjo',serif;font-weight:900;font-size:var(--fs);letter-spacing:.12em;line-height:1;
+  background:linear-gradient(180deg,#fff4cf 0%,#f0c977 45%,#a8702a 75%,#f3d58f 100%);-webkit-background-clip:text;color:transparent;filter:drop-shadow(0 4px 3px rgba(0,0,0,.9)) drop-shadow(0 0 18px rgba(0,0,0,.8))}
+.t i{display:block;font-style:normal;font-family:'Nanum Myeongjo',serif;font-weight:800;font-size:calc(var(--fs)*.62);color:#f2e3bd;letter-spacing:.45em;padding-left:.45em;text-shadow:0 2px 3px #000,0 0 14px #000}
+.t s{display:block;text-decoration:none;font-family:'Gowun Dodum',sans-serif;font-size:calc(var(--fs)*.3);color:#e6d6b2;margin-top:calc(var(--fs)*.22);letter-spacing:.06em;text-shadow:0 2px 3px #000,0 0 12px #000}
+</style></head><body><div id="k"><div class="bg"></div><div class="shade"></div><div class="logo"></div><div class="t"><i>에베이</i><s class="sub"></s></div></div>
+<script>
+const q=new URLSearchParams(location.search), w=+q.get('w'), h=+q.get('h'), L=q.get('lay')||'wide', R=document.documentElement.style;
+R.setProperty('--w',w+'px');R.setProperty('--h',h+'px');R.setProperty('--bg',`url(${q.get('bg')||'bg_boss.png'})`);
+const m=Math.min(w,h);
+const br=q.get('br'); if(br) R.setProperty('--br',br);
+if(L==='wide'){ // 왼쪽: 로고(이름이 들어 있다) + 에베이, 오른쪽: 게임 장면
+  R.setProperty('--shade','linear-gradient(90deg,rgba(9,6,4,1) 0%,rgba(9,6,4,.96) 26%,rgba(9,6,4,.55) 46%,rgba(9,6,4,0) 66%),radial-gradient(ellipse at 72% 50%,rgba(0,0,0,0) 30%,rgba(0,0,0,.55) 100%)');
+  const ban=w/h>2.5, ls=h*(ban?0.86:0.9), cx=Math.max(ls*0.55,w*0.2); R.setProperty('--ls',ls+'px'); R.setProperty('--lx',cx+'px'); R.setProperty('--ly',(ban?h*0.43:h*0.45)+'px');
+  R.setProperty('--tx',cx+'px'); R.setProperty('--ty',(ban?h*0.84:h*0.865)+'px'); R.setProperty('--fs',h*(ban?0.09:0.075)+'px');
+} else { // 세로 · 정사각: 위 로고, 아래 글자
+  R.setProperty('--shade','linear-gradient(180deg,rgba(9,6,4,.92) 0%,rgba(9,6,4,.6) 50%,rgba(9,6,4,.75) 75%,rgba(9,6,4,.97) 100%)');
+  const ls=m*(L==='tall'?1.08:0.9); R.setProperty('--ls',ls+'px'); R.setProperty('--lx',w*0.5+'px'); R.setProperty('--ly',(L==='tall'?h*0.38:h*0.44)+'px');
+  R.setProperty('--tx',w*0.5+'px'); R.setProperty('--ty',(L==='tall'?h*0.78:h*0.86)+'px'); R.setProperty('--fs',m*(L==='tall'?0.11:0.085)+'px');
+}
+if(q.get('sub')) document.querySelector('.sub').textContent=q.get('sub'); else document.querySelector('.sub').remove();
+if(q.get('notext')) document.querySelector('.t').remove();
+</script></body></html>

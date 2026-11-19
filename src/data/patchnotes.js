@@ -1,6 +1,11 @@
 // 패치 노트 (게임 안 [메뉴 → 패치 노트]에서 본다). 새 버전이 나오면 맨 위에 더한다.
-export const GAME_VERSION = '0.49.31';
+export const GAME_VERSION = '0.49.32';
 export const PATCH_NOTES = [
+  {
+    ver: '0.49.32', date: '2026-11-19',
+    head: '첫 화면 안내를 고쳤습니다.',
+    items: ['1. 첫 화면의 조작 안내가 지금 게임(스킬 1~8 · Enter 채팅)에 맞게 바뀌었습니다.'],
+  },
   {
     ver: '0.49.31', date: '2026-11-19',
     head: '닉네임 규칙이 바뀌었습니다.',
