@@ -28,5 +28,5 @@ export function deleteChar(cid) {
   write(LIST, charIds().filter((c) => c !== cid));
   try { localStorage.removeItem(keyOf(cid)); } catch { /* 무시 */ }
 }
-// 닉네임 규칙 (서버와 같다): 한글 · 영문 · 숫자 · _ 2~10자
-export const NICK_RE = /^[가-힣a-zA-Z0-9_]{2,10}$/;
+// 닉네임 규칙은 서버와 같은 파일 (v0.49.31: 2~8자 · 욕설 · 운영진 이름 금지)
+export { NICK_RE, nickError } from '../data/nickrules.js';

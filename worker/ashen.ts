@@ -20,6 +20,7 @@
  * 비밀번호는 PBKDF2(SHA-256, 소금)로, 토큰은 SHA-256 해시로만 둔다.
  */
 
+import { nickError } from '../src/data/nickrules.js';
 interface Stmt {
   bind(...v: unknown[]): Stmt;
   run(): Promise<unknown>;
@@ -250,10 +251,11 @@ export async function ashen(db: DB, d: Record<string, unknown>, ip: string, admi
   }
   if (type === 'ash_nick') {
     const nick = String(d.nick ?? '').trim();
-    if (!/^[가-힣a-zA-Z0-9_]{2,10}$/.test(nick)) return { ok: false, error: 'bad_nick' };
     if (key === id) return { ok: false, error: 'bad_cid' };
     const lname = nick.toLowerCase();
     const has = await db.prepare('SELECT k FROM ash_names WHERE lname = ?').bind(lname).first<{ k: string }>();
+    // v0.49.31 규칙(2~8자 · 욕설 · 운영진 이름): 이 캐릭터가 이미 가진 닉네임은 예전 규칙(2~10자) 그대로 둔다
+    { const why = nickError(nick); if (why && !(has?.k === key && why === 'bad_nick' && /^[가-힣a-zA-Z0-9_]{2,10}$/.test(nick))) return { ok: false, error: why }; }
     if (has && has.k !== key) return { ok: false, error: 'nick_taken' };
     await db.batch([
       db.prepare('DELETE FROM ash_names WHERE k = ?').bind(key),

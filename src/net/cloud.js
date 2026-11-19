@@ -17,7 +17,10 @@ const ERR = {
   offline: '서버에 닿지 않습니다',
   no_server: '서버 저장이 아직 열리지 않았습니다',
   nick_taken: '이미 쓰는 닉네임입니다',
-  bad_nick: '닉네임은 한글 · 영문 · 숫자 2~10자',
+  bad_nick: '닉네임은 한글 · 영문 · 숫자 2~8자',
+  nick_bad: '쓸 수 없는 말이 들어 있습니다',
+  nick_reserved: '쓸 수 없는 닉네임입니다',
+  nick_digits: '숫자로만 된 닉네임은 쓸 수 없습니다',
   moved: '다른 기기에서 접속했습니다',
 };
 export const cloudError = (code) => ERR[code] || '실패했습니다';

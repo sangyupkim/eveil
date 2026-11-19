@@ -25,7 +25,7 @@ import { packBooks } from './game/inventory.js';
 import { chat } from './net/chat.js';
 import { setupChatBox } from './ui/chatbox.js';
 import { cloud, cloudError } from './net/cloud.js';
-import { charIds, loadChar, saveChar, deleteChar, keyOf, newCid, CHAR_MAX, NICK_RE } from './game/chars.js';
+import { charIds, loadChar, saveChar, deleteChar, keyOf, newCid, CHAR_MAX, nickError } from './game/chars.js';
 
 const LAST_KEY = 'ashen-last'; // 마지막에 한 캐릭터
 const $ = (s) => document.querySelector(s);
@@ -218,7 +218,7 @@ globalThis.__stage = stage;
   $('#btnNew').onclick = async () => {
     const nick = $('#nameInput').value.trim();
     const msg = (t) => { $('#newMsg').textContent = t; };
-    if (nick && !NICK_RE.test(nick)) { msg(cloudError('bad_nick')); return; }
+    if (nick && nickError(nick)) { msg(cloudError(nickError(nick))); return; }
     const st = newPlayer(nick || '방랑자', { ...look }, null);
     st.cid = newCid();
     st.nick = '';
@@ -288,11 +288,11 @@ function startGame(stage, st) {
     document.getElementById('nickBox')?.remove();
     const el = document.createElement('div');
     el.id = 'nickBox';
-    el.innerHTML = `<div><b>닉네임</b><p class="msg">${why}</p><input maxlength="10" placeholder="한글 · 영문 · 숫자 2~10자" value="${st.nick || (st.name !== "방랑자" ? st.name : "")}" /><button class="plate gold">정하기</button></div>`;
+    el.innerHTML = `<div><b>닉네임</b><p class="msg">${why}</p><input maxlength="8" placeholder="한글 · 영문 · 숫자 2~8자" value="${st.nick || (st.name !== "방랑자" ? st.name : "")}" /><button class="plate gold">정하기</button></div>`;
     const inp = el.querySelector('input'), msg = el.querySelector('.msg');
     el.querySelector('button').onclick = async () => {
       const nick = inp.value.trim();
-      if (!NICK_RE.test(nick)) { msg.textContent = cloudError('bad_nick'); return; }
+      if (nickError(nick)) { msg.textContent = cloudError(nickError(nick)); return; }
       if (cloud.id) { msg.textContent = '…'; const r = await cloud.nick(st.cid, nick); if (!r.ok) { msg.textContent = cloudError(r.error); return; } st.nickOk = true; }
       st.nick = nick; st.name = nick;
       el.remove(); audio.play('rankup'); hud.toast?.(`닉네임: ${nick}`, '#ffd84a'); world.ui.dirty(); save(true);
@@ -303,7 +303,7 @@ function startGame(stage, st) {
   };
   // 첫 무기를 고르는 중이면 고른 뒤에 묻는다
   if (!st.nick) { const wait = setInterval(() => { if (st.tut !== 0) { clearInterval(wait); askNick(); } }, 300); }
-  else if (cloud.id && !st.nickOk) cloud.nick(st.cid, st.nick).then((r) => { if (r.ok) { st.nickOk = true; save(true); } else if (r.error === 'nick_taken' || r.error === 'bad_nick') askNick(cloudError(r.error)); });
+  else if (cloud.id && !st.nickOk) cloud.nick(st.cid, st.nick).then((r) => { if (r.ok) { st.nickOk = true; save(true); } else if (['nick_taken', 'bad_nick', 'nick_bad', 'nick_reserved', 'nick_digits'].includes(r.error)) askNick(cloudError(r.error)); });
   window.__askNick = askNick;
   // 우편이 와 있으면 알려 준다 (메뉴 → 우편함)
   if (cloud.id) cloud.mail().then((l) => { if (l.length) hud.toast?.(`우편 ${l.length}통이 와 있습니다 (메뉴 → 우편함)`, '#ffd84a'); });

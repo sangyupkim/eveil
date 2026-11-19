@@ -15,6 +15,7 @@ import { finishBuilds, brew, brewCollect, dispatchParty, shelterUp, deathChance,
 import { HERBS } from '../src/data/potions.js';
 import { countOf } from '../src/game/inventory.js';
 import * as INV from '../src/game/inventory.js';
+import * as NR from '../src/data/nickrules.js';
 import * as IT from '../src/game/items.js';
 import { townOf, build as build0, tick, collect, enhance, hire, dispatch, claim, buildingAt, dropMats, craft, craftZones, upgrade, setBase, liberateAdd, assignMerc, recruits, mercSlots, awakenMerc, MERC } from '../src/game/town.js';
 // 테스트에서는 공사를 바로 끝낸다
@@ -595,6 +596,13 @@ test('같은 스킬북은 한 칸에 쌓이고, 예전 저장의 흩어진 책�
   assert.equal(p.inv.length, 2); assert.equal(p.inv.find((x) => x.book === 'fire_bolt').qty, 2);
   assert.equal(IT.itemValue({ book: 'fire_bolt', qty: 3 }), 3 * IT.itemValue({ book: 'fire_bolt' }));
   const L = [{ uid: 1, book: 'meteor' }, { uid: 2, book: 'fire_bolt' }, { uid: 3, book: 'meteor' }]; INV.packBooks(L); assert.equal(L.length, 2); assert.equal(L[0].qty, 2);
+});
+
+test('닉네임 규칙: 2~8자 · 욕설 · 운영진 이름 · 숫자만은 안 된다', () => {
+  for (const ok of ['용사', 'Hero_12', '빛의검사', '바람']) assert.equal(NR.nickError(ok), null, ok);
+  assert.equal(NR.nickError('가'), 'bad_nick'); assert.equal(NR.nickError('아주긴닉네임이에요'), 'bad_nick'); assert.equal(NR.nickError('ㅋㅋㅋ'), 'bad_nick');
+  assert.equal(NR.nickError('1234'), 'nick_digits'); assert.equal(NR.nickError('씨1발맨'), 'nick_bad'); assert.equal(NR.nickError('FUCKer'), 'nick_bad');
+  assert.equal(NR.nickError('운영자'), 'nick_reserved'); assert.equal(NR.nickError('GM_Kim'), 'nick_reserved');
 });
 
 console.log(`\n${n}개 통과`);

@@ -7,6 +7,7 @@
 //   60자까지 · 10초에 3마디 · 30초 안에 직전 3마디와 같은 말 금지 · 1분에 세 번 걸리면 60초 입 막기(또 걸리면 5분) · 욕설은 *로 가린다
 //   운영자: 관리 페이지에서 닉네임으로 채팅 금지(기간 · 영구) · 풀기 · 최근 대화 보기 (/admin, index.ts가 관리 키를 확인한 뒤 넘긴다)
 import { DurableObject } from 'cloudflare:workers';
+import { BAD_WORDS } from '../src/data/nickrules.js';
 
 const KEEP = 50, MAX_LEN = 60;
 const BURST_N = 3, BURST_MS = 10_000; // 10초에 3마디
@@ -14,8 +15,8 @@ const SAME_N = 3, SAME_MS = 30_000; // 직전 3마디와 같은 말 (30초 안)
 const STRIKE_N = 3, STRIKE_MS = 60_000; // 1분에 세 번 걸리면
 const MUTE_MS = [60_000, 300_000]; // 60초, 그다음부터 5분
 const MUTE_RESET_MS = 30 * 60_000; // 30분 동안 조용하면 입 막기 단계를 처음으로
-// 욕설: 글자 사이에 띄어쓰기 · 기호를 끼워도 잡는다
-const BAD = ['시발', '씨발', '씨바', '씨팔', '시팔', 'ㅅㅂ', 'ㅆㅂ', '병신', 'ㅂㅅ', '븅신', '좆', '개새끼', '개새', '지랄', 'ㅈㄹ', '미친놈', '미친년', '닥쳐', '엿먹', '니애미', '느금', 'fuck', 'shit', 'bitch'];
+// 욕설: 글자 사이에 띄어쓰기 · 기호를 끼워도 잡는다 (목록은 src/data/nickrules.js — 닉네임과 같이 쓴다)
+const BAD = BAD_WORDS;
 const SEP = '[\\s\\p{P}\\p{S}_]'; // 띄어쓰기 · 문장 부호 · 기호 (한글은 글자로 친다 — \W는 한글까지 지워 버린다)
 const BAD_RE = new RegExp(BAD.map((w) => [...w].map((c) => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join(SEP + '*')).join('|'), 'giu');
 const clean = (x: string) => x.replace(BAD_RE, (m) => '*'.repeat([...m.replace(new RegExp(SEP, 'gu'), '')].length || 1));
@@ -54,7 +55,7 @@ export class ChatRoom extends DurableObject {
     if (token.length >= 20 && token.length <= 100 && /^[a-z0-9]{4,16}$/.test(cid)) {
       try {
         const t = await this.db.prepare('SELECT id FROM ash_tokens WHERE token_hash = ?').bind(await sha(token)).first();
-        if (t?.id) { k = `${t.id}/${cid}`; const r = await this.db.prepare('SELECT name FROM ash_names WHERE k = ?').bind(k).first(); name = r?.name || null; }
+        if (t?.id) { k = `${t.id}/${cid}`; const r = await this.db.prepare('SELECT name FROM ash_names WHERE k = ?').bind(k).first(); name = r?.name ? clean(r.name) : null; } // 예전에 정한 닉네임에 욕설이 있으면 가려서
       } catch { /* DB를 못 읽으면 읽기만 */ }
     }
     const pair = new (globalThis as any).WebSocketPair(), [client, server] = Object.values(pair) as any[];
