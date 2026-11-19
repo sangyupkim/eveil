@@ -183,6 +183,43 @@ for (const [id, name, type, desc, extra] of [
   ['g_dex4_2', '그림자 연격', 'spin', '그림자처럼 휘돌며 둘레를 벤다.', { radius: 5 }],
   ['g_dex5_1', '천 개의 칼날', 'spin', '칼날을 두 번 휘몰아 둘레를 찢는다.', { radius: 6, hits: 2 }],
 ]) if (SKILLS[id]) { const sk = SKILLS[id]; delete sk.count; delete sk.range; Object.assign(sk, { name, glyph: name[0], type, needs: 'melee', anim: type === 'spin' ? 'spin' : 'heavy', school: 'trick', desc: `${desc} (근접 무기)`, power: +(sk.power * (type === 'spin' ? 2 : 2.5)).toFixed(2), ...extra }); }
+// v0.49.39 한손 · 양손 스킬 수 맞추기: 등급(tier) · 각성 차수마다 두 쪽 수가 같게 모자란 쪽에 더한다.
+//  본보기(tpl) 스킬의 모양을 빌리고, 같은 칸(갈래 · 등급 · 차수) 스킬의 요구 능력치에 맞춰 위력 · MP를 키운다
+const NEW_GRIP_SKILLS = [
+  // [id, 이름, 본보기, 등급, 차수, 설명]
+  ['flame_lance', '화염 창', 'ice_lance', 3, null, '불타는 창이 일직선으로 꿰뚫는다.', { slow: undefined, school: 'fire', color: '#ff8a4a', fx: undefined }],
+  ['frost_shard', '서리 파편', 'frozen_orb', 3, null, '날카로운 얼음 조각을 날려 대상을 얼린다.', {}],
+  ['fireball_drop', '불덩이 낙하', 'meteor', 3, null, '작은 불덩이를 떨어뜨려 둘레를 태운다.', { radius: 3.6 }],
+  ['aw_int2b', '서리 폭풍', 'aw_int3', 3, 2, '얼음 비를 네 번 내린다.', { school: 'frost', color: '#a8e0ff', waves: 4 }],
+  ['thunder_lance', '번개 창', 'ice_lance', 4, null, '번개를 창처럼 뻗어 한 줄을 꿰뚫는다.', { slow: undefined, school: 'storm', color: '#a0c8ff' }],
+  ['aw_int3b', '원소 구체', 'frozen_orb', 4, 3, '세 원소를 뭉친 구체를 날려 터뜨린다.', { school: 'fire', color: '#ffc070' }],
+  ['aw_int4c', '종말의 운석', 'aw_int5', 5, 4, '거대한 운석 하나를 떨어뜨린다.', {}],
+  ['aw_int5d', '영겁의 눈보라', 'g_int4_0', 5, 5, '끝없는 눈보라를 여덟 번 퍼붓는다.', { school: 'frost', color: '#c0e8ff', waves: 8 }],
+  ['whirl_slash', '돌개 베기', 'whirlwind', 3, null, '두 번 휘돌며 둘레를 크게 벤다.', { hits: 2, radius: 4.4 }],
+  ['split_strike', '일도양단', 'execute', 4, null, '한 칼에 둘로 가를 듯 내려벤다.', {}],
+  ['sky_dash', '천검 돌격', 'g_str3_0', 5, null, '하늘을 가르듯 적 앞까지 달려들어 벤다.', {}],
+  ['aw_str4c', '파멸의 가르기', 'aw_str3', 5, 4, '앞의 땅을 통째로 갈라 버린다.', {}],
+  ['aw_str5d', '멸천 일섬', 'g_str5_1', 5, 5, '하늘마저 베어 낼 한 번의 일섬.', {}],
+  ['shield_hammer', '방패 내려치기', 'titan_crush', 3, null, '방패째로 적을 내려친다. 방어력이 높을수록 세다.', {}],
+  ['aw_vit2b', '철벽 돌진', 'shield_charge', 3, 2, '철벽 같은 몸으로 적에게 부딪친다. 방어력이 높을수록 세다.', {}],
+  ['aw_vit3b', '성채 돌격', 'shield_charge', 4, 3, '성채가 밀려오듯 달려들어 들이받는다. 방어력이 높을수록 세다.', {}],
+  ['aw_wis2b', '비전 화살', 'g_wis3_1', 3, 2, '모은 마력을 화살처럼 한 대상에게 날린다. 최대 MP가 클수록 강하다.', {}],
+  ['light_lance', '빛의 창', 'overload', 4, null, '빛의 창으로 한 줄을 꿰뚫는다. 최대 MP가 클수록 강하다.', { school: 'holy', color: '#ffe8a0' }],
+  ['aw_wis3b', '마력 폭풍우', 'arcane_storm', 4, 3, '마력의 폭풍우를 다섯 번 내린다.', { waves: 5 }],
+  ['aw_wis5d', '무한의 광선', 'aw_wis5b', 5, 5, '끝없는 마력을 한 줄로 쏟아낸다.', { color: '#d8c8ff' }],
+];
+for (const [id, name, tpl, tier, awaken, desc, extra] of NEW_GRIP_SKILLS) {
+  const T = SKILLS[tpl]; if (!T || SKILLS[id]) continue;
+  const line = Object.keys(T.req)[0];
+  const sibs = Object.values(SKILLS).filter((x) => x !== T && (x.lines || Object.keys(x.req || {})).length === 1 && x.req?.[line] && x.tier === tier && (x.awaken ?? null) === awaken && x.type !== 'buff');
+  const req = sibs.length ? Math.round(sibs.reduce((a, x) => a + x.req[line], 0) / sibs.length) : T.req[line], k = req / T.req[line];
+  const spell = T.ap === 'int'; // 지능 주문 위력은 큰 수, 무기 · 마나 배율 스킬은 배율
+  const o = { ...T, name, glyph: name[0], desc, tier, req: { [line]: req }, power: +(T.power * k ** (spell ? 0.6 : 0.3)).toFixed(2), perRank: +(T.perRank * k ** (spell ? 0.6 : 0.3)).toFixed(2), mp: Math.round(T.mp * k ** 0.35) };
+  if (awaken != null) { o.awaken = awaken; o.line = line; } else { delete o.awaken; delete o.line; }
+  delete o.grip; delete o.q;
+  for (const [x, v] of Object.entries(extra)) { if (v === undefined) delete o[x]; else o[x] = v; }
+  SKILLS[id] = o;
+}
 // v0.49.38 한손 + 보조 ↔ 양손: 상급(tier 3) 이상 단일 갈래 스킬은 모양에 따라 무기 손이 정해진다. 하급 · 중급 · 버프 · 혼합 · 민첩은 공통
 //  지능: 한손(완드) = 대상을 노리는 주문 · 양손(지팡이) = 넓은 광역 / 정신: 한손(홀 + 보주) = 창 · 광선 · 양손(대홀) = 대량 마나 주문
 //  힘 · 체력: 한손(+ 방패) = 단일 · 돌진 · 내려치기 · 양손(대검 · 대방패) = 휘두르기 · 가르기 · 충격파
