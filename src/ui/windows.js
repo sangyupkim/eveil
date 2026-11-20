@@ -1,3 +1,4 @@
+import { FACES } from '../data/flareWorld.js';
 import { bagSize } from '../game/inventory.js';
 import { gameConfirm, gamePick } from './ask.js';
 import { powerParts } from '../game/power.js';
@@ -15,7 +16,7 @@ import { expNeeded } from '../game/growth.js';
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
-import { itemIcon, skillIcon, portrait, chestIcon, bookIcon, coinIcon, scrollIcon, townIcon, oreIcon, monPortrait } from './icons.js';
+import { faceClose, itemIcon, skillIcon, portrait, chestIcon, bookIcon, coinIcon, scrollIcon, townIcon, oreIcon, monPortrait } from './icons.js';
 import { monsterRes, mixFxOf } from '../data/resist.js';
 import { ARTS, ART, ART_LINE_NAMES, artSlots, artUsable } from '../data/arts.js';
 import { floodPenalty, floodText } from '../data/flood.js';
@@ -1276,6 +1277,7 @@ export class Windows {
         <div class="btns" style="margin:0 0 6px"><button class="plate gold" data-close="1">계속하기</button><button class="plate" data-title="1">메인 화면으로</button></div>
         <div class="btns" style="margin:0 0 6px"><button class="btn" data-mailbox="1">우편함</button><button class="btn" data-notices="1">공지 · 패치</button><button class="btn" data-tab="guide">가이드북</button></div>
         <div class="setRow"><span>닉네임</span><div class="opts"><b>${esc(st.nick || '없음')}</b><button class="btn" data-nick="1">바꾸기</button></div></div>
+        <div class="setRow"><span>캐릭터 그림</span><div class="opts faceOpts">${FACES.map(([k]) => `<button class="faceBtn${(st.look?.face || FACES[0][0]) === k ? ' on' : ''}" data-face="${k}"><img src="${faceClose({ face: k })}" alt="" /></button>`).join('')}</div></div>
         <div class="setRow"><span>배경음</span><div class="opts">${vol('music')}</div></div>
         <div class="setRow"><span>효과음</span><div class="opts">${vol('sfx')}</div></div>
         <div class="setRow"><span>어둠 · 조명</span><div class="opts">${onoff('shadows', set.shadows)}</div></div>
@@ -1630,6 +1632,7 @@ export class Windows {
     this.el.querySelector('[data-dexzs]')?.addEventListener('change', (e) => { this.dexZone = e.target.value; this.dexMon = null; audio.play('click'); this.render(); });
     on('[data-relon]', (el) => { const R = st.relics, r = R.bag[+el.dataset.relon], al = Object.values(townOf(st).plots).find((x) => x.type === 'altar'); if (!r || !al || R.on.length >= altarSlots(al.lv)) return; R.bag.splice(+el.dataset.relon, 1); R.on.push({ ...r, until: Date.now() + RELIC_GRADES[r.g].days * 86400e3 * altarDur(al.lv) }); w.d = derive(st, w.buffValues()); audio.play('click'); w.ui.dirty(); this.render(); });
     on('[data-reloff]', (el) => { const R = st.relics; R.on.splice(+el.dataset.reloff, 1); w.d = derive(st, w.buffValues()); audio.play('click'); w.ui.dirty(); this.render(); });
+    on('[data-face]', (el) => { if (el.dataset.face === st.look?.face) return; w.changeLook(el.dataset.face); audio.play('click'); this.render(); }); // v0.49.47
     on('[data-artl]', (el) => { this.artLine = el.dataset.artl; audio.play('click'); this.render(); });
     on('[data-arteq]', (el) => { const A = (st.arts ||= { prog: {}, open: {}, equip: [] }), id = el.dataset.arteq; A.equip ||= []; if (A.equip.includes(id)) A.equip = A.equip.filter((x) => x !== id); else if (A.equip.length < artSlots(st) && A.open[id] && artUsable(st, ART[id])) A.equip.push(id); audio.play('click'); w.ui.dirty(); this.render(); });
     on('[data-dexm]', (el) => { this.dexMon = el.dataset.dexm; audio.play('click'); this.render(); });

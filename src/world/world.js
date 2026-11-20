@@ -1,3 +1,4 @@
+import { faceClose } from '../ui/icons.js';
 import '../data/skill_fx.js';
 import { bagSize } from '../game/inventory.js';
 import { ZONES as ALL_ZONES } from '../data/world.js';
@@ -294,6 +295,16 @@ export class World {
     this.player.pos.set(st.pos.x, 0, st.pos.z);
     this.player.play('idle');
     this.refreshGear();
+  }
+
+  // v0.49.47 설정에서 캐릭터 그림을 바꾸면 게임 속 모습(남 · 여 · 머리)도 새로 만든다
+  changeLook(face) {
+    const st = this.st, P = this.player, pos = { x: P.pos.x, z: P.pos.z }, facing = P.facing;
+    st.look = { ...(st.look || {}), face };
+    this.stage.remove?.(P); P.dispose?.();
+    st.pos = pos; this.makePlayer(); this.player.facing = facing;
+    const f = document.getElementById('face'); if (f) f.src = faceClose(st.look);
+    this.ui.dirty();
   }
 
   // 장비가 바뀌면 능력치와 손에 든 모델을 다시 계산
