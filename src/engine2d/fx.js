@@ -180,7 +180,6 @@ export class FX {
   // 충격파: 큰 것은 흙먼지 고리(quake), 불은 폭발(blast), 그 밖은 빛 알갱이 고리(shield)
   shock(x, z, r, color = 0xffaa40, dur = 0.45) {
     const kind = flavor(color);
-    if (r < 2.5) return this.play({ fire: 'spark_red', ice: 'spark_blue', arcane: 'spark_blue', nature: 'spark_green', light: 'spark_orange' }[kind], x, z, { y: 0.4, scale: 0.5 + r * 0.2 }); // v0.49.53 작은 충격파는 불티만 (폭발 · 방패 그림이 너무 컸다)
     if (r >= 2.5) { const q = this.ground('quake', x, z, { scale: Math.min(1.8, r / 3), dur: Math.max(0.35, dur) }); if (q) q.add = false; }
     if (kind === 'fire') return this.play('blast', x, z, { scale: Math.min(1.6, r / 3), dur: Math.max(0.35, dur) });
     return this.ground(kind === 'nature' ? 'shield' : 'shield', x, z, { scale: Math.min(2, r / 2.2), dur: Math.max(0.3, dur), tint: color, fade: true });
@@ -396,7 +395,7 @@ export class FX {
         if (d <= step || it.t > 3) {
           done = true;
           this.hit(it.x, it.y, it.z, it.color, false);
-          if (it.flavor === 'fire' && !it.bolt) this.play('blast', it.x, it.z, { scale: 0.35 }); // v0.49.53 0.7은 화면을 덮었다
+          if (it.flavor === 'fire' && !it.bolt) this.play('blast', it.x, it.z, { scale: 0.7 });
           it.onHit?.(it.target);
         } else {
           it.x += (tx / d) * step; it.y += (ty / d) * step; it.z += (tz / d) * step;

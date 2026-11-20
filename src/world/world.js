@@ -1475,7 +1475,7 @@ export class World {
     if (crit) sfx('crit', 0.8);
     const hc = ctx ? new THREE.Color(SKILLS[ctx.id].color).getHex() : crit ? 0xffd040 : 0xffa060;
     this.fx.hit(m.pos.x, 1.1 * m.actor.scale, m.pos.z, hc, crit);
-    if (ctx) this.fx.burst(m.pos.x, 1.1 * m.actor.scale, m.pos.z, hc, 10, 4, 0.45); // v0.49.53 맞을 때마다 찍던 충격파 그림(불 색이면 큰 폭발)은 뺐다 — 여럿이 맞으면 하얀 덩어리가 됐다
+    if (ctx) { this.fx.burst(m.pos.x, 1.1 * m.actor.scale, m.pos.z, hc, 10, 4, 0.45); this.fx.decal(0, m.pos.x, m.pos.z, 1.6 * m.actor.scale, hc, 0.3); }
     if (d.lifeSteal) this.healPlayer(dmg * d.lifeSteal, false);
     if (crit) addAP(st, 'dex', AP_TABLE.crit, apMult);
 
@@ -2182,6 +2182,10 @@ export class World {
     if (this.art('quake') && (sk.type === 'spin' || sk.type === 'cleave') && sk.radius) sk.radius *= 1.2;
     if (this.manaGrip(SKILLS[id]) && sk.radius) sk.radius *= 1.2; // v0.49.38 대홀: 범위 +20%
     if (sk.type === 'arrow' && sk.count) sk.count += (this.art('volley') ? 2 : 0) + (this.art('constellation') && this.time < (this.constT || 0) ? 1 : 0);
+    // v0.49.54 높은 단계일수록 범위 · 그림이 크다 (1차 1 → 5차 범위 +32% · 그림 1.5배). 단일 공격은 범위 그대로, 그림만
+    const tier = sk.tier || 1, tierK = [1, 0.9, 1, 1.15, 1.3, 1.5][Math.min(5, tier)], areaK = 1 + 0.08 * (Math.min(5, tier) - 1);
+    for (const k of ['radius', 'width', 'splash']) if (sk[k]) sk[k] *= areaK;
+    if (sk.type === 'line' && sk.range) sk.range *= 1 + 0.05 * (Math.min(5, tier) - 1);
     const P = this.player;
     this.pendingSkill = null;
     this.skillUsed = true;
@@ -2243,7 +2247,7 @@ export class World {
     const color = new THREE.Color(sk.color).getHex();
     if (sk.type !== 'buff') this.fx.circle(P.pos.x, P.pos.z, 1.8, color, 0.9); // 버프는 따로 (보호막 · 오라)
     // v0.41 스킬마다 고유 효과 그림 (sk.fx: powers.json 이름) — 맞은 자리 · 범위 안에 찍는다
-    const FX = (x, z, s = 1) => { if (sk.fx) this.fx.play(sk.fx, x, z, { scale: s * (sk.fxScale || 1) }); };
+    const FX = (x, z, s = 1) => { if (sk.fx) this.fx.play(sk.fx, x, z, { scale: s * tierK * (sk.fxScale || 1) }); };
     const FXarea = (x, z, r, n = 6) => { if (!sk.fx) return; FX(x, z, Math.min(1.6, r / 3)); for (let i = 0; i < n; i++) { const a = (i / n) * 6.28 + Math.random() * 0.5, q = r * (0.45 + Math.random() * 0.4); FX(x + Math.cos(a) * q, z + Math.sin(a) * q, 0.8); } };
     this.fx.castFlash(P.pos.x, P.pos.z, color);
 
@@ -2253,7 +2257,7 @@ export class World {
       const n = sk.type === 'rain' ? sk.waves || 1 : sk.type === 'spin' ? sk.hits || 1 : 1;
       sfx(user === 'melee' ? 'heavy' : user === 'bow' ? 'shoot' : 'cast', 0.8);
       const hit = (m, k) => { if (!m || m.dead) return; if (mag) this.hitMonster(m, spell() * k, { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 }); else { const w = weaponHit(); this.hitMonster(m, w.v * k, { crit: w.crit, src: 'skill', ctx }); } };
-      const ran = runForm({ w: this, sk, P, t, color, FX, hit, n, bow: user === 'bow', melee: user === 'melee', sfx: (a) => sfx(a, 0.6),
+      const ran = runForm({ w: this, sk, P, t, color, FX, hit, n, tier: Math.min(5, tier), tierK, bow: user === 'bow', melee: user === 'melee', sfx: (a) => sfx(a, 0.6),
         act: (a, s) => { const dur = P.act(a, s); this.swing = dur * 0.7; return dur; } });
       if (ran) { this.ui.dirty(); return; }
     }

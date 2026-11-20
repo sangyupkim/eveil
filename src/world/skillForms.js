@@ -26,7 +26,7 @@ export function runForm(c0) {
   // 한 자리에 떨어지는 것: 활은 화살, 주문 · 근접은 그 스킬 그림 + 불씨
   const strike = (x, z, s = 1) => {
     if (c.bow) fx.projectile({ elem: sk.elem, from: { x: x - 1, y: 9, z: z - 1 }, target: { x, z, pos: new THREE.Vector3(x, -1.1, z) }, color: c.color, size: 0.5, speed: 44, bolt: true, trail: true, onHit: () => {} });
-    if (sk.fx) c.FX(x, z, s); else fx.hit(x, 0.8, z, c.color, false);
+    c.FX(x, z, s);
     fx.burst(x, 0.6, z, c.color, 5, 2.5 * s, 0.3);
   };
   // 움직이는 그림 (부메랑 · 검기 · 회오리): 이름 그림을 path(q)로 옮긴다
@@ -38,14 +38,31 @@ export function runForm(c0) {
   };
   const dirOf = (a) => { const n = 8, k = Math.round(((Math.atan2(Math.sin(a), Math.cos(a)) + TAU) % TAU) / (TAU / n)) % n; return k; };
   const n = c.n || 1;
-  // 스킬 그림은 한 번에 5장까지 · 작게 (여러 장이 겹치면 더하기 합성으로 하얀 덩어리가 된다). 나머지는 작은 불티
-  let fxLeft = 5;
-  const FX0 = c.FX;
-  c = { ...c, FX: (x, z, s = 1) => { if (fxLeft-- > 0) FX0(x, z, s * 0.6); else fx.burst(x, 0.6, z, c.color, 3, 1.5, 0.25); } };
-  // 고리: 빛 알갱이만 (fx.ring은 큰 방패 · 폭발 그림이 붙어 하얀 덩어리가 된다)
+  // v0.49.54 단계가 높을수록 화려하게: 한 번에 찍는 스킬 그림 수 · 크기, 고리 빛, 첫 타격의 큰 터짐(big)
+  const tier = c.tier || 1, tk = c.tierK || 1;
+  let fxLeft = 3 + tier * 2;
+  const FX0 = c.FX, hit0 = c.hit;
+  const fxImg = sk.fx || { fire: 'v_fireburst', ice: 'c_icemultispike', lightning: 'c_lightningclaw', holy: 'p_dharma', arcane: 'p_mirror' }[sk.elem] || (c.melee ? 'v_dust' : 'spark_orange');
+  const FXi = (x, z, s2) => (sk.fx ? FX0(x, z, s2) : fx.play(fxImg, x, z, { scale: s2 * tk }));
   const ring = (x, z, r, col = c.color, dur = 0.4) => {
-    const k = Math.min(32, Math.round(r * 6));
-    for (let i = 0; i < k; i++) { const a = (i / k) * TAU; fx.add.add({ x: x + Math.cos(a) * r * 0.6, y: 0.25, z: z + Math.sin(a) * r * 0.6, vx: Math.cos(a) * r * 1.6, vy: 0.4, vz: Math.sin(a) * r * 1.6, color: col, size: 0.45, size1: 0.08, life: dur, cell: 'spark', drag: 3 }); }
+    if (tier >= 3) fx.ground('shield', x, z, { scale: Math.min(1.6, r / 2.6), dur: Math.max(0.3, dur), tint: col, fade: true, alpha: 0.75 });
+    const k = Math.min(40, Math.round(r * (4 + tier)));
+    for (let i = 0; i < k; i++) { const a = (i / k) * TAU; fx.add.add({ x: x + Math.cos(a) * r * 0.6, y: 0.25, z: z + Math.sin(a) * r * 0.6, vx: Math.cos(a) * r * 1.6, vy: 0.4 + tier * 0.2, vz: Math.sin(a) * r * 1.6, color: i % 3 ? col : 0xffffff, size: 0.4 + tier * 0.08, size1: 0.08, life: dur, cell: 'spark', drag: 3 }); }
+  };
+  // 첫 타격 자리에 단계만큼 큰 터짐 (2차 그림 · 3차 빛 고리 · 4차 빛기둥 · 5차 별 폭발)
+  const big = (x, z) => {
+    const rr = shp === 'one' ? 2.4 : Math.min(R, 6);
+    FXi(x, z, (0.7 + 0.15 * tier) / tk);
+    fx.burst(x, 1, z, c.color, 8 + tier * 6, 3 + tier, 0.35 + tier * 0.06);
+    if (tier >= 3) { ring(x, z, rr * 0.8, c.color, 0.5); fx.shake(0.15 + tier * 0.05); }
+    if (tier >= 4) { fx.pillar(x, z, c.color, 0.7, 7, 0.9 + (tier - 4) * 0.5); for (let i = 0; i < 4; i++) { const a = (i / 4) * TAU + 0.4; FXi(x + Math.cos(a) * rr * 0.6, z + Math.sin(a) * rr * 0.6, 0.75); } }
+    if (tier >= 5) { fx.play('sparkle', x, z, { y: 0.6, scale: 1.2 + rr * 0.12, tint: c.color }); for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU; FXi(x + Math.cos(a) * rr * 0.95, z + Math.sin(a) * rr * 0.95, 0.6); } fx.add.add({ x, y: 1.2, z, color: c.color, size: 4, size1: 7, life: 0.35, cell: 'glow', alpha: 0.6 }); }
+  };
+  let bigDone = false;
+  const center = shp === 'self' ? () => ({ x: P.pos.x, z: P.pos.z }) : shp === 'tgt' ? () => at : null;
+  c = { ...c,
+    FX: (x, z, s = 1) => { if (fxLeft-- > 0) FXi(x, z, s * (0.55 + 0.1 * tier) / tk); else fx.burst(x, 0.6, z, c.color, 3 + tier, 1.5 + tier * 0.3, 0.25); },
+    hit: (m, k) => { if (!bigDone && m && !m.dead) { bigDone = true; const p = center ? center() : m.pos; big(p.x, p.z); } hit0(m, k); },
   };
 
   switch (f) {
@@ -78,7 +95,7 @@ export function runForm(c0) {
         const reach = 4.2, o = (i % 2 ? 1 : -1) * 0.25;
         fx.play('spear', P.pos.x + ux * 2.2, P.pos.z + uz * 2.2, { dir: dirOf(ang), scale: 0.6, dur: 0.18 });
         fx.burst(P.pos.x + ux * reach + uz * o, 1, P.pos.z + uz * reach - ux * o, c.color, 5, 2, 0.3);
-        if (sk.fx && i === 3) c.FX(P.pos.x + ux * reach, P.pos.z + uz * reach, 0.8);
+        if (i === 3) c.FX(P.pos.x + ux * reach, P.pos.z + uz * reach, 0.8);
         for (const m of w.monsters) if (!m.dead && inLine(m, P.pos.x, P.pos.z, ux, uz, reach + 0.6, 1.8) != null) c.hit(m, 0.25 * n);
       });
       break;
@@ -92,7 +109,7 @@ export function runForm(c0) {
         fx.play('h_ghost_mist', P.pos.x, P.pos.z, { scale: 0.7, dur: 0.4 });
         const dx = m.pos.x - P.pos.x, dz = m.pos.z - P.pos.z, l = Math.hypot(dx, dz) || 1, to = w.freeSpot(m.pos.x - (dx / l) * 1.2, m.pos.z - (dz / l) * 1.2);
         P.pos.x = to.x; P.pos.z = to.z; P.face(m.pos.x, m.pos.z);
-        fx.slash(P.pos.x, P.pos.z, P.facing, c.color, 2.2, { dur: 0.2 }); if (sk.fx) c.FX(m.pos.x, m.pos.z, 0.7);
+        fx.slash(P.pos.x, P.pos.z, P.facing, c.color, 2.2, { dur: 0.2 }); c.FX(m.pos.x, m.pos.z, 0.7);
         c.hit(m, (i ? 0.6 : 1) * n);
       }));
       w.moveTo = null;
@@ -102,7 +119,7 @@ export function runForm(c0) {
       const from = { x: P.pos.x, z: P.pos.z }, len = Math.max(L, (c.t ? d2(c.t.pos, P.pos) : 0) + 3), to = w.freeSpot(from.x + ux * len, from.z + uz * len);
       const steps = 8;
       c.act('heavy', 1.6);
-      for (let i = 1; i <= steps; i++) later(i * 0.025, () => { P.pos.x = from.x + (to.x - from.x) * i / steps; P.pos.z = from.z + (to.z - from.z) * i / steps; fx.burst(P.pos.x, 0.7, P.pos.z, c.color, 3, 1.5, 0.35); if (sk.fx && i % 2 === 0) c.FX(P.pos.x, P.pos.z, 0.6); });
+      for (let i = 1; i <= steps; i++) later(i * 0.025, () => { P.pos.x = from.x + (to.x - from.x) * i / steps; P.pos.z = from.z + (to.z - from.z) * i / steps; fx.burst(P.pos.x, 0.7, P.pos.z, c.color, 3, 1.5, 0.35); if (i % 2 === 0) c.FX(P.pos.x, P.pos.z, 0.6); });
       later(0.22, () => { fx.slash(P.pos.x, P.pos.z, ang + Math.PI, c.color, 3, { dur: 0.3 }); fx.shake(0.25); });
       const ln = Math.hypot(to.x - from.x, to.z - from.z);
       for (const m of w.monsters) { if (m.dead) continue; const a = inLine(m, from.x, from.z, ux, uz, ln + 1, W); if (a != null) later(0.03 + (a / ln) * 0.2, () => hitOnce(m, n)); }
@@ -127,10 +144,10 @@ export function runForm(c0) {
       later(dur * 0.3, () => {
         const o = { x: P.pos.x, z: P.pos.z }, hitA = new Set(), hitB = new Set();
         const path = (q) => { const k = q < 0.5 ? q * 2 : 2 - q * 2; return { x: o.x + ux * len * k, z: o.z + uz * len * k }; };
-        mover('throw_axe', out * 2, path, { scale: 1.1, step: (p, q) => {
+        mover('throw_axe', out * 2, path, { scale: 0.9 + 0.12 * tier, step: (p, q) => {
           const set = q < 0.5 ? hitA : hitB;
           for (const m of near(p, W * 0.7)) if (!set.has(m)) { set.add(m); c.hit(m, 0.5 * n); fx.burst(m.pos.x, 1, m.pos.z, c.color, 4, 2, 0.3); }
-          if (sk.fx && Math.round(q * 20) % 5 === 0) c.FX(p.x, p.z, 0.5);
+          if (Math.round(q * 20) % 5 === 0) c.FX(p.x, p.z, 0.5);
         } });
       });
       break;
@@ -161,7 +178,7 @@ export function runForm(c0) {
         const o = { x: P.pos.x, z: P.pos.z };
         for (let i = 1; i <= 3; i++) later((i - 1) * 0.18, () => {
           const r = (R * i) / 3; ring(o.x, o.z, r, c.color, 0.35);
-          const k = 6 + i * 3; for (let j = 0; j < k; j++) { const a = (j / k) * TAU; if (sk.fx && j % 2 === 0) c.FX(o.x + Math.cos(a) * r, o.z + Math.sin(a) * r, 0.45); else fx.burst(o.x + Math.cos(a) * r, 0.4, o.z + Math.sin(a) * r, c.color, 2, 1, 0.25); }
+          const k = 6 + i * 3; for (let j = 0; j < k; j++) { const a = (j / k) * TAU; if (j % 2 === 0) c.FX(o.x + Math.cos(a) * r, o.z + Math.sin(a) * r, 0.45); else fx.burst(o.x + Math.cos(a) * r, 0.4, o.z + Math.sin(a) * r, c.color, 2, 1, 0.25); }
           for (const m of near(o, r)) hitOnce(m, n);
         });
       });
@@ -184,7 +201,7 @@ export function runForm(c0) {
       const dur = c.act(c.melee ? 'spin' : 'castUp', 1.3), o = c.melee || FORM_DEFS[f].shape === 'self' ? null : at;
       later(dur * 0.3, () => {
         const ctr = o || { x: P.pos.x, z: P.pos.z }, rr = Math.max(R, 3.5);
-        fx.play('c_tornado', ctr.x, ctr.z, { scale: Math.min(1.4, rr / 3.5), dur: 0.9 });
+        fx.play('c_tornado', ctr.x, ctr.z, { scale: Math.min(1.4, rr / 3.5) * tk, dur: 0.9 });
         const grabbed = near(ctr, rr + 1).filter((m) => m.tier !== 'boss');
         for (let i = 1; i <= 8; i++) later(i * 0.05, () => { for (const m of grabbed) { if (m.dead) continue; const dx = ctr.x - m.pos.x, dz = ctr.z - m.pos.z, l = Math.hypot(dx, dz); if (l > 1) { m.pos.x += dx * 0.12; m.pos.z += dz * 0.12; } } fx.burst(ctr.x + (Math.random() - 0.5) * rr, 0.5, ctr.z + (Math.random() - 0.5) * rr, c.color, 2, 1, 0.3); });
         later(0.48, () => { ring(ctr.x, ctr.z, rr * 0.7, c.color, 0.45); strike(ctr.x, ctr.z, 1.3); fx.shake(0.35); for (const m of near(ctr, rr)) c.hit(m, n); });
@@ -195,7 +212,7 @@ export function runForm(c0) {
       const from = { x: P.pos.x, z: P.pos.z }, len = Math.max(L, 7), to = w.freeSpot(from.x + ux * len, from.z + uz * len), steps = 9;
       c.act('run', 1.6);
       const spots = [];
-      for (let i = 1; i <= steps; i++) later(i * 0.03, () => { P.pos.x = from.x + (to.x - from.x) * i / steps; P.pos.z = from.z + (to.z - from.z) * i / steps; spots.push({ x: P.pos.x, z: P.pos.z }); fx.play(sk.fx || 'p_burning', P.pos.x, P.pos.z, { scale: 0.6, dur: 1.1 }); });
+      for (let i = 1; i <= steps; i++) later(i * 0.03, () => { P.pos.x = from.x + (to.x - from.x) * i / steps; P.pos.z = from.z + (to.z - from.z) * i / steps; spots.push({ x: P.pos.x, z: P.pos.z }); fx.play(fxImg, P.pos.x, P.pos.z, { scale: 0.4 + 0.1 * tier, dur: 1.1 }); });
       const ln = Math.hypot(to.x - from.x, to.z - from.z), A = new Set();
       for (const m of w.monsters) { if (m.dead) continue; const a = inLine(m, from.x, from.z, ux, uz, ln + 1, W); if (a != null) later(0.03 + (a / ln) * 0.27, () => { if (!A.has(m)) { A.add(m); c.hit(m, n * 0.5); } }); }
       later(0.9, () => { for (const p of spots.filter((_, i) => i % 3 === 1)) strike(p.x, p.z, 0.6); for (const m of w.monsters) if (!m.dead && inLine(m, from.x, from.z, ux, uz, ln + 1, W) != null) c.hit(m, n * 0.5); });
@@ -208,7 +225,7 @@ export function runForm(c0) {
         const o = { x: P.pos.x, z: P.pos.z }, sp = 0.5;
         fx.slash(o.x, o.z, ang, c.color, 3, { dur: 0.25 });
         for (let i = 0; i < 6; i++) later((i / 6) * sp, () => fx.slash(o.x + ux * len * (i / 6), o.z + uz * len * (i / 6), ang, c.color, 2.6 + i * 0.15, { dur: 0.22 }));
-        for (const m of w.monsters) { if (m.dead) continue; const a = inLine(m, o.x, o.z, ux, uz, len, W + 0.6); if (a != null) later((a / len) * sp, () => { hitOnce(m, n); if (sk.fx) c.FX(m.pos.x, m.pos.z, 0.6); }); }
+        for (const m of w.monsters) { if (m.dead) continue; const a = inLine(m, o.x, o.z, ux, uz, len, W + 0.6); if (a != null) later((a / len) * sp, () => { hitOnce(m, n); c.FX(m.pos.x, m.pos.z, 0.6); }); }
       });
       break;
     }
@@ -226,7 +243,7 @@ export function runForm(c0) {
       for (let i = 0; i < 3; i++) later(dur * 0.2 + i * 0.32, () => {
         const r = R * (0.55 + i * 0.225); c.sfx?.('slam');
         ring(P.pos.x, P.pos.z, r, c.color, 0.4); fx.play('v_dust', P.pos.x, P.pos.z, { scale: 0.5 + i * 0.25 }); fx.shake(0.15 + i * 0.1);
-        if (sk.fx && i === 2) for (let j = 0; j < 6; j++) { const a = (j / 6) * TAU; c.FX(P.pos.x + Math.cos(a) * r * 0.7, P.pos.z + Math.sin(a) * r * 0.7, 0.6); }
+        if (i === 2) for (let j = 0; j < 6; j++) { const a = (j / 6) * TAU; c.FX(P.pos.x + Math.cos(a) * r * 0.7, P.pos.z + Math.sin(a) * r * 0.7, 0.6); }
         for (const m of near(P.pos, r)) c.hit(m, n / 3);
       });
       break;
@@ -235,7 +252,7 @@ export function runForm(c0) {
     case 'split': {
       const dur = c.act(c.bow ? 'shoot' : 'cast', 1.5), tg = c.t; if (!tg) break;
       later(dur * 0.35, () => fx.projectile({ elem: sk.elem, from: w.muzzle(), target: tg, color: c.color, size: 0.9, speed: 30, bolt: c.bow, onHit: (x) => {
-        const p = x.pos || tg.pos; if (!x.dead) c.hit(x, n); if (sk.fx) c.FX(p.x, p.z, 0.8);
+        const p = x.pos || tg.pos; if (!x.dead) c.hit(x, n); c.FX(p.x, p.z, 0.8);
         const A = new Set([x]);
         for (let i = -2; i <= 2; i++) {
           const a = ang + i * 0.38, end = { x: p.x + Math.sin(a) * 7, z: p.z + Math.cos(a) * 7 };
@@ -250,7 +267,7 @@ export function runForm(c0) {
       const dur = c.act(c.bow ? 'shoot' : 'cast', 1.5), r = R || 7;
       later(dur * 0.35, () => {
         for (let i = 0; i < 9; i++) { const a = ang + (i / 8 - 0.5) * 1.5, x = P.pos.x + Math.sin(a) * r, z = P.pos.z + Math.cos(a) * r; fx.projectile({ elem: sk.elem, from: w.muzzle(), target: { x, z, pos: new THREE.Vector3(x, 0.4, z) }, color: c.color, size: 0.55, speed: 34, bolt: c.bow, trail: true, onHit: () => {} }); }
-        for (const m of w.monsters) if (!m.dead && inArc(m, r, 0.78)) later(d2(m.pos, P.pos) / 34, () => { hitOnce(m, n); if (sk.fx) c.FX(m.pos.x, m.pos.z, 0.6); });
+        for (const m of w.monsters) if (!m.dead && inArc(m, r, 0.78)) later(d2(m.pos, P.pos) / 34, () => { hitOnce(m, n); c.FX(m.pos.x, m.pos.z, 0.6); });
       });
       break;
     }
@@ -259,7 +276,7 @@ export function runForm(c0) {
       later(dur * 0.3, () => {
         const up = { x: P.pos.x, y: 7, z: P.pos.z };
         for (let i = 0; i < 6; i++) { const q = { x: P.pos.x + (Math.random() - 0.5) * 2, z: P.pos.z + (Math.random() - 0.5) * 2 }; fx.projectile({ elem: sk.elem, from: w.muzzle(), target: { x: q.x, z: q.z, pos: new THREE.Vector3(q.x, 5.5, q.z) }, color: c.color, size: 0.5, speed: 30, bolt: c.bow, onHit: () => {} }); }
-        list.forEach((m, i) => later(0.3 + i * 0.08, () => { if (m.dead) return; fx.projectile({ elem: sk.elem, from: { ...up, x: up.x + (Math.random() - 0.5) * 3 }, target: m, color: c.color, size: 0.6, speed: 26, bolt: c.bow, onHit: (x) => { if (!x.dead) { c.hit(x, n); if (sk.fx) c.FX(x.pos.x, x.pos.z, 0.6); } } }); }));
+        list.forEach((m, i) => later(0.3 + i * 0.08, () => { if (m.dead) return; fx.projectile({ elem: sk.elem, from: { ...up, x: up.x + (Math.random() - 0.5) * 3 }, target: m, color: c.color, size: 0.6, speed: 26, bolt: c.bow, onHit: (x) => { if (!x.dead) { c.hit(x, n); c.FX(x.pos.x, x.pos.z, 0.6); } } }); }));
       });
       break;
     }
@@ -269,7 +286,7 @@ export function runForm(c0) {
       later(dur * 0.35, () => {
         const done = new Set();
         const go = (from, m, i) => fx.projectile({ elem: sk.elem, from, target: m, color: c.color, size: 0.75, speed: 28, bolt: c.bow, onHit: (x) => {
-          if (x.dead) return; done.add(x); c.hit(x, n * Math.pow(0.85, i)); if (sk.fx) c.FX(x.pos.x, x.pos.z, 0.6);
+          if (x.dead) return; done.add(x); c.hit(x, n * Math.pow(0.85, i)); c.FX(x.pos.x, x.pos.z, 0.6);
           if (i + 1 >= jumps) return;
           const nx = w.monsters.filter((q) => !q.dead && !done.has(q) && d2(q.pos, x.pos) < 7).sort((a, b) => d2(a.pos, x.pos) - d2(b.pos, x.pos))[0];
           if (nx) later(0.05, () => go({ x: x.pos.x, y: 1.3, z: x.pos.z }, nx, i + 1));
@@ -291,7 +308,7 @@ export function runForm(c0) {
       const dur = c.act(c.bow ? 'shoot' : 'castUp', 1.3), r = Math.max(R, 4), k = 14;
       later(dur * 0.3, () => {
         const o = { x: P.pos.x, z: P.pos.z };
-        for (let i = 0; i < k; i++) later(i * 0.035, () => { const a = ang + (i / k) * TAU * 1.5, x = o.x + Math.sin(a) * r, z = o.z + Math.cos(a) * r; fx.projectile({ elem: sk.elem, from: { x: o.x, y: 1.3, z: o.z }, target: { x, z, pos: new THREE.Vector3(x, 0.3, z) }, color: c.color, size: 0.55, speed: 26, bolt: c.bow, onHit: () => { if (sk.fx && i % 3 === 0) c.FX(x, z, 0.5); } }); });
+        for (let i = 0; i < k; i++) later(i * 0.035, () => { const a = ang + (i / k) * TAU * 1.5, x = o.x + Math.sin(a) * r, z = o.z + Math.cos(a) * r; fx.projectile({ elem: sk.elem, from: { x: o.x, y: 1.3, z: o.z }, target: { x, z, pos: new THREE.Vector3(x, 0.3, z) }, color: c.color, size: 0.55, speed: 26, bolt: c.bow, onHit: () => { if (i % 3 === 0) c.FX(x, z, 0.5); } }); });
         for (const m of near(o, r)) later(0.15 + Math.random() * 0.3, () => hitOnce(m, n));
       });
       break;
@@ -344,7 +361,7 @@ export function runForm(c0) {
         fx.circle(at.x, at.z, r, c.color, 0.5);
         const grab = near(at, r + 0.5).filter((m) => m.tier !== 'boss');
         for (let i = 1; i <= 5; i++) later(i * 0.07, () => { for (const m of grab) { if (m.dead) continue; m.pos.x += (at.x - m.pos.x) * 0.1; m.pos.z += (at.z - m.pos.z) * 0.1; } });
-        later(0.45, () => { strike(at.x, at.z, 1.4); fx.play('b_star_explosion', at.x, at.z, { scale: Math.min(1.1, r / 4), tint: c.color }); fx.shake(0.35); for (const m of near(at, r)) c.hit(m, n); });
+        later(0.45, () => { strike(at.x, at.z, 1.4); FXi(at.x, at.z, Math.min(1.6, r / 3) * tk); fx.play('sparkle', at.x, at.z, { y: 0.5, scale: Math.min(1.6, r / 3) * tk, tint: c.color }); fx.shake(0.35); for (const m of near(at, r)) c.hit(m, n); });
       });
       break;
     }
@@ -352,7 +369,7 @@ export function runForm(c0) {
       const dur = c.act(c.bow ? 'shoot' : 'castUp', 1.3), r = Math.max(R, 3.5) * 0.7;
       later(dur * 0.3, () => {
         for (let i = 0; i < 5; i++) later(i * 0.12, () => { const a = -Math.PI / 2 + (i * 2 * TAU) / 5, x = at.x + Math.cos(a) * r, z = at.z + Math.sin(a) * r; strike(x, z, 0.9); for (const m of near({ x, z }, r * 0.55)) hitOnce(m, n); });
-        later(0.7, () => { strike(at.x, at.z, 1.3); fx.play('b_star_explosion', at.x, at.z, { scale: 0.8, tint: c.color }); fx.shake(0.3); for (const m of near(at, r * 1.3)) hitOnce(m, n); });
+        later(0.7, () => { strike(at.x, at.z, 1.3); FXi(at.x, at.z, 1.1 * tk); fx.play('sparkle', at.x, at.z, { y: 0.5, scale: 1.1 * tk, tint: c.color }); fx.shake(0.3); for (const m of near(at, r * 1.3)) hitOnce(m, n); });
       });
       break;
     }
@@ -360,9 +377,9 @@ export function runForm(c0) {
       const dur = c.act(c.bow ? 'shoot' : 'cast', 1.3), len = Math.max(L, 9), T = 1.6, ticks = Math.max(8, Math.round(n * 2));
       later(dur * 0.3, () => {
         const o = { x: P.pos.x, z: P.pos.z }, path = (q) => ({ x: o.x + ux * len * q, z: o.z + uz * len * q });
-        mover('c_tornado', T, path, { scale: Math.min(1.3, W / 2.4), tint: sk.elem && sk.elem !== 'lightning' ? c.color : null });
+        mover('c_tornado', T, path, { scale: Math.min(1.3, W / 2.4) * tk, tint: sk.elem && sk.elem !== 'lightning' ? c.color : null });
         const got = new Map();
-        for (let i = 0; i < ticks; i++) later(((i + 0.5) / ticks) * T, () => { const p = path((i + 0.5) / ticks); for (const m of near(p, W * 0.8 + 0.8)) { const g = got.get(m) || 0; if (g < 3) { got.set(m, g + 1); c.hit(m, n / 3); } } if (sk.fx) c.FX(p.x, p.z, 0.5); });
+        for (let i = 0; i < ticks; i++) later(((i + 0.5) / ticks) * T, () => { const p = path((i + 0.5) / ticks); for (const m of near(p, W * 0.8 + 0.8)) { const g = got.get(m) || 0; if (g < 3) { got.set(m, g + 1); c.hit(m, n / 3); } } c.FX(p.x, p.z, 0.5); });
       });
       break;
     }
@@ -371,7 +388,7 @@ export function runForm(c0) {
       later(dur * 0.3, () => {
         const o = { x: P.pos.x, z: P.pos.z };
         for (let i = 0; i < steps; i++) later(i * 0.06, () => { const a = ang - 0.75 + (i / (steps - 1)) * 1.5, vx = Math.sin(a), vz = Math.cos(a);
-          for (let k = 1.2; k < r; k += 1.4) { if (sk.fx && k > r * 0.6) c.FX(o.x + vx * k, o.z + vz * k, 0.45); else fx.burst(o.x + vx * k, 1, o.z + vz * k, c.color, 2, 0.6, 0.35); }
+          for (let k = 1.2; k < r; k += 1.4) { if (k > r * 0.6) c.FX(o.x + vx * k, o.z + vz * k, 0.45); else fx.burst(o.x + vx * k, 1, o.z + vz * k, c.color, 2, 0.6, 0.35); }
           for (const m of w.monsters) if (!m.dead && inLine(m, o.x, o.z, vx, vz, r, 1.6) != null) hitOnce(m, n); });
       });
       break;
@@ -380,7 +397,7 @@ export function runForm(c0) {
       const dur = c.act('castUp', 1.3), len = Math.max(L, 9), wid = Math.max(W, 4.5);
       later(dur * 0.3, () => {
         const o = { x: P.pos.x, z: P.pos.z }, px = uz, pz = -ux;
-        for (let k = 1; k < len; k += 1.5) later(k / 16, () => { for (const s of [-0.4, 0, 0.4]) { const x = o.x + ux * k + px * s * wid, z = o.z + uz * k + pz * s * wid; if (sk.fx) c.FX(x, z, 0.55); fx.burst(x, 0.4, z, c.color, 3, 1.6, 0.3); } });
+        for (let k = 1; k < len; k += 1.5) later(k / 16, () => { for (const s of [-0.4, 0, 0.4]) { const x = o.x + ux * k + px * s * wid, z = o.z + uz * k + pz * s * wid; c.FX(x, z, 0.55); fx.burst(x, 0.4, z, c.color, 3, 1.6, 0.3); } });
         for (const m of w.monsters) { if (m.dead) continue; const a = inLine(m, o.x, o.z, ux, uz, len, wid); if (a != null) later(a / 16, () => { hitOnce(m, n); if (m.tier !== 'boss') { m.pos.x += ux * 0.8; m.pos.z += uz * 0.8; } }); }
       });
       break;
