@@ -16,7 +16,11 @@ import { skillValues, modsOf } from '../game/skills.js';
 import { ELIXIRS } from '../data/potions.js';
 import { bust, faceClose, portrait, chestIcon, bookIcon, coinIcon, swordIcon, itemIcon, skillIcon, homeIcon, duelIcon, scrollIcon, townIcon, oreIcon, itemIconCut, glyphIcon, uiIcon } from './icons.js';
 
-const $ = (s, r = document) => r.querySelector(s);
+// v0.49.56 HUD는 매 프레임 같은 칸을 찾고 써서: 찾은 칸은 기억하고(문서에 붙어 있는 동안), 값이 바뀔 때만 쓴다
+const $cache = new Map();
+const $ = (s, r = document) => { if (r !== document) return r.querySelector(s); let el = $cache.get(s); if (!el || !el.isConnected) { el = r.querySelector(s); if (el) $cache.set(s, el); } return el; };
+const txt = (el, v) => { if (el && el._t !== v) { el._t = v; el.textContent = v; } };
+const tfm = (el, v) => { if (el && el._f !== v) { el._f = v; el.style.transform = v; } };
 
 export class HUD {
   constructor() {
@@ -75,13 +79,13 @@ export class HUD {
   }
 
   zone(z) {
-    $('.zoneName').textContent = z ? z.name + (z.levels ? `  ·  위험도 ${z.levels[0]}~${z.levels[1]}` : '') : '황야';
-    { const fl = z?.id && this.world.st.flood?.list?.some((f) => f.zone === z.id); if (fl) $('.zoneName').textContent = '범람지 · ' + $('.zoneName').textContent; $('.zoneName').style.color = fl ? '#ff6a5a' : ''; } // v0.44.44
+    txt($('.zoneName'), z ? z.name + (z.levels ? `  ·  위험도 ${z.levels[0]}~${z.levels[1]}` : '') : '황야');
+    { const fl = z?.id && this.world.st.flood?.list?.some((f) => f.zone === z.id); if (fl) txt($('.zoneName'), '범람지 · ' + $('.zoneName').textContent); $('.zoneName').style.color = fl ? '#ff6a5a' : ''; } // v0.44.44
     let info = '안전 지역 · 상점 이용 가능';
     const off = z?.id ? this.world.tierOffset : 0;
     if (z && z.levels) info = `위험도 ${z.levels[0] + off}~${z.levels[1] + off} · 권장 각성 ${recAwaken(z.levels[0] + off)}+${z.id ? ` · 해방 ${Math.floor(((this.world.st.liberate?.[z.id] || 0) / 400) * 100)}%` : ''}`;
     else if (!z) info = '지역 사이의 황야';
-    $('.zoneInfo').textContent = info;
+    txt($('.zoneInfo'), info);
     $('#shopBtn').hidden = true;
     this.log(`— ${z ? z.name : '황야'} —`, '#9a917f');
   }
@@ -169,15 +173,16 @@ export class HUD {
     if (!w) return;
     const st = w.st, d = w.d;
     // 퀘스트 칸: 오늘의 의뢰 진행 (바뀔 때만 다시 쓴다)
-    const dl = dailyOf(st), dk = dl.list.map((q) => q.have + (q.done ? 'd' : '') + (q.got ? 'g' : '')).join('|');
-    if (dk !== this.dailyKey) { this.dailyKey = dk; $('#dailyBox').innerHTML = dl.list.filter((q) => !q.got).map((q) => `<div class="dq${q.done ? ' fin' : ''}">${dailyText(q)} <b>${q.done ? '완료' : `${q.have} / ${q.need}`}</b></div>`).join(''); }
-    $('.bar.hp i').style.transform = `scaleX(${Math.max(0, st.hp / d.maxHp)})`;
-    $('.bar.hp span').textContent = `${Math.ceil(Math.max(0, st.hp))} / ${d.maxHp}`;
-    $('.bar.mp i').style.transform = `scaleX(${Math.max(0, st.mp / d.maxMp)})`;
-    $('.bar.mp span').textContent = `${Math.floor(st.mp)} / ${d.maxMp}`;
+    this.dailyT = (this.dailyT || 0) - dt; // v0.49.56 0.5초마다 (매 프레임 오늘 날짜 · 목록 문자열을 새로 만들었다)
+    const dl = this.dailyT <= 0 ? ((this.dailyT = 0.5), dailyOf(st)) : null, dk = dl ? dl.list.map((q) => q.have + (q.done ? 'd' : '') + (q.got ? 'g' : '')).join('|') : this.dailyKey;
+    if (dl && dk !== this.dailyKey) { this.dailyKey = dk; $('#dailyBox').innerHTML = dl.list.filter((q) => !q.got).map((q) => `<div class="dq${q.done ? ' fin' : ''}">${dailyText(q)} <b>${q.done ? '완료' : `${q.have} / ${q.need}`}</b></div>`).join(''); }
+    tfm($('.bar.hp i'), `scaleX(${Math.max(0, st.hp / d.maxHp)})`);
+    txt($('.bar.hp span'), `${Math.ceil(Math.max(0, st.hp))} / ${d.maxHp}`);
+    tfm($('.bar.mp i'), `scaleX(${Math.max(0, st.mp / d.maxMp)})`);
+    txt($('.bar.mp span'), `${Math.floor(st.mp)} / ${d.maxMp}`);
     const need = expNeeded(st.awakenings);
-    $('#expBar i').style.transform = `scaleX(${st.exp / need})`;
-    $('#expBar span').textContent = `각성 EXP ${((st.exp / need) * 100).toFixed(2)}%${w.auto ? ` · 자동 -${Math.round((1 - (CONFIG.autoExpPenalty ?? CONFIG.autoPenalty)) * 100)}%` : ''}`;
+    tfm($('#expBar i'), `scaleX(${st.exp / need})`);
+    txt($('#expBar span'), `각성 EXP ${((st.exp / need) * 100).toFixed(2)}%${w.auto ? ` · 자동 -${Math.round((1 - (CONFIG.autoExpPenalty ?? CONFIG.autoPenalty)) * 100)}%` : ''}`);
 
     // 퀵슬롯 쿨타임
     const slots = $('#quick').children;
@@ -224,11 +229,11 @@ export class HUD {
 
     if (this.isDirty) {
       this.isDirty = false;
-      $('#gold').textContent = st.gold.toLocaleString();
-      $('#oreN').textContent = townOf(st).ore.toLocaleString();
+      txt($('#gold'), st.gold.toLocaleString());
+      txt($('#oreN'), townOf(st).ore.toLocaleString());
       if (!$('#oreIco').src) $('#oreIco').src = oreIcon();
-      $('#awakeBadge').textContent = `각성 ${st.awakenings}`;
-      $('#bagCnt').textContent = `${st.inv.length}/${bagSize(st)}`;
+      txt($('#awakeBadge'), `각성 ${st.awakenings}`);
+      txt($('#bagCnt'), `${st.inv.length}/${bagSize(st)}`);
       // 물약 칸: 가방에서 정해 둔 물약이면 그 그림 · 개수
       for (const [k, sel, def] of [['hp', '#btnHp', HP_POTIONS.slice().reverse()], ['mp', '#btnMp', MP_POTIONS.slice().reverse()]]) {
         const pick = st.potSlot?.[k], img = $(sel + ' img'), want = itemIconCut(pick || def[0]);

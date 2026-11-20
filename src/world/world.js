@@ -56,7 +56,7 @@ const ACTIVE_RADIUS = 58;
 const RECOVER = { attack: 0.42, skill: 0.55 };
 const SPAWN_NEAR = 72;   // 이 안의 자리에만 몬스터를 만든다
 const DESPAWN_FAR = 92;  // 이보다 멀어진 한가한 몬스터는 치운다 (다시 오면 새로 만든다)
-const dist2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+const dist2 = (a, b) => { const dx = a.x - b.x, dz = a.z - b.z; return Math.sqrt(dx * dx + dz * dz); }; // v0.49.56 Math.hypot보다 가볍다 (매 프레임 수천 번)
 
 // 보스 전용 패턴 (보스끼리 겹치지 않는다)
 const BOSS_SIG = { // 첫째 = 그 보스만 쓰는 패턴, 둘째 = 결이 맞는 다른 패턴 하나 (조합은 모두 다르다)
@@ -146,7 +146,7 @@ export class World {
       const def = DATA.tiles[set], tt = def?.tiles[id];
       if (!tt) return;
       image(def.imgs[tt[0]]);
-      const d = { z, draw: (ctx, st) => { const src = image(def.imgs[tt[0]]); if (!src.ok || !st.onScreen(x, z, 6)) return; const p = st.toScreen(x, z); drawRect(ctx, src.im, tt.slice(1), p.x, p.y, st.scale()); } };
+      const d = { z, draw: (ctx, st) => { const src = image(def.imgs[tt[0]]); if (!src.ok || !st.onScreen(x, z, 6)) return; const p = st.toScreen(x, z); drawRect(ctx, src.im, (tt._r || (tt._r = tt.slice(1))), p.x, p.y, st.scale()); } };
       this.stage.add(d); this.townDraw.push(d);
     };
     // 큰 그림 하나를 집터 가운데에 (기준점 보정 ax · az, 크기 k, 색 필터)
@@ -158,7 +158,7 @@ export class World {
       if (!tt) return;
       image(def.imgs[tt[0]]);
       const d = { z: z + 2 * k, draw: (ctx, stg) => { const src = image(def.imgs[tt[0]]); if (!src.ok || !stg.onScreen(x, z, 8)) return; const p = stg.toScreen(x + ox * k, z + oz * k);
-        const F = filter && filteredRect(src.im, tt.slice(1), filter); drawRect(ctx, F ? F.im : src.im, F ? F.rect : tt.slice(1), p.x, p.y, stg.scale() * k); } };
+        const F = filter && filteredRect(src.im, (tt._r || (tt._r = tt.slice(1))), filter); drawRect(ctx, F ? F.im : src.im, F ? F.rect : (tt._r || (tt._r = tt.slice(1))), p.x, p.y, stg.scale() * k); } };
       this.stage.add(d); this.townDraw.push(d);
       for (let u = -r; u <= r; u += 1.2) for (let v = -r; v <= r; v += 1.2) if (Math.abs(u) + Math.abs(v) <= r) col(x + u, z + v, 0.8);
     };
@@ -171,7 +171,7 @@ export class World {
         const tt = def.tiles[id]; if (!tt) continue;
         image(def.imgs[tt[0]]);
         const x = cur.x + dx + px / 64 - cx, z = cur.z + dz + py / 32 - cz;
-        const d = { z: cur.z + dz + 1.6, draw: (ctx, stg) => { const src = image(def.imgs[tt[0]]); if (!src.ok || !stg.onScreen(x, z, 10)) return; const p = stg.toScreen(x, z); const F = filter && filteredRect(src.im, tt.slice(1), filter); drawRect(ctx, F ? F.im : src.im, F ? F.rect : tt.slice(1), p.x, p.y, stg.scale()); } };
+        const d = { z: cur.z + dz + 1.6, draw: (ctx, stg) => { const src = image(def.imgs[tt[0]]); if (!src.ok || !stg.onScreen(x, z, 10)) return; const p = stg.toScreen(x, z); const F = filter && filteredRect(src.im, (tt._r || (tt._r = tt.slice(1))), filter); drawRect(ctx, F ? F.im : src.im, F ? F.rect : (tt._r || (tt._r = tt.slice(1))), p.x, p.y, stg.scale()); } };
         this.stage.add(d); this.townDraw.push(d);
       }
       // 바닥 차지: 가로 약 7.4칸 · 세로 약 3칸 (지붕 아래 벽 안쪽)
@@ -185,7 +185,7 @@ export class World {
         const tt = def.tiles[id]; if (!tt) continue;
         image(def.imgs[tt[0]]);
         const x = x0 + (px / 64) * k, z = z0 + (py / 32) * k;
-        const d = { z: z0 + 1.2, draw: (ctx, stg) => { const src = image(def.imgs[tt[0]]); if (!src.ok || !stg.onScreen(x, z, 8)) return; const p = stg.toScreen(x, z); const F = filter && filteredRect(src.im, tt.slice(1), filter); drawRect(ctx, F ? F.im : src.im, F ? F.rect : tt.slice(1), p.x, p.y, stg.scale() * k); } };
+        const d = { z: z0 + 1.2, draw: (ctx, stg) => { const src = image(def.imgs[tt[0]]); if (!src.ok || !stg.onScreen(x, z, 8)) return; const p = stg.toScreen(x, z); const F = filter && filteredRect(src.im, (tt._r || (tt._r = tt.slice(1))), filter); drawRect(ctx, F ? F.im : src.im, F ? F.rect : (tt._r || (tt._r = tt.slice(1))), p.x, p.y, stg.scale() * k); } };
         this.stage.add(d); this.townDraw.push(d);
       }
       for (let u = -1.8; u <= 1.8; u += 0.9) for (let v = -1; v <= 1; v += 0.9) col(x0 + 0.75 * k + u * k, z0 + v * k, 0.6);
@@ -447,9 +447,9 @@ export class World {
       if (k.merchant) { const a = new Actor(this.scene, { npc: 'peddler_goblin' }); a.pos.set(c.x + 3, 0, c.z - 1); a.facing = -0.5; a.play('idle'); a.name = '떠돌이 상인'; this.campNpcs.push(a); }
       if (k.rest) { // 용병 쉼터: 단계마다 천막 하나씩
         const tt = DATA.tiles.grassland.tiles[72], spots = [[-5, -2], [5, -3], [-6, 3], [6, 2.5], [0, -5]];
-        for (let i = 0; i < Math.min(5, k.rest); i++) { const [dx, dz] = spots[i], x = c.x + dx, z = c.z + dz; const d = { z: z + 1.5, draw: (ctx, stg) => { const src = image(DATA.tiles.grassland.imgs[tt[0]]); if (!src.ok || !stg.onScreen(x, z, 5)) return; const p = stg.toScreen(x, z); drawRect(ctx, src.im, tt.slice(1), p.x, p.y, stg.scale() * 0.8); } }; this.stage.add(d); this.campDraw.push(d); }
+        for (let i = 0; i < Math.min(5, k.rest); i++) { const [dx, dz] = spots[i], x = c.x + dx, z = c.z + dz; const d = { z: z + 1.5, draw: (ctx, stg) => { const src = image(DATA.tiles.grassland.imgs[tt[0]]); if (!src.ok || !stg.onScreen(x, z, 5)) return; const p = stg.toScreen(x, z); drawRect(ctx, src.im, (tt._r || (tt._r = tt.slice(1))), p.x, p.y, stg.scale() * 0.8); } }; this.stage.add(d); this.campDraw.push(d); }
       }
-      if (k.fire) { const tt = DATA.tiles.grassland.tiles[100]; const d = { z: c.z + 1.5, draw: (ctx, stg) => { const src = image(DATA.tiles.grassland.imgs[tt[0]]); if (!src.ok || !stg.onScreen(c.x, c.z, 4)) return; const s2 = stg.toScreen(c.x - 3, c.z + 1.5); drawRect(ctx, src.im, tt.slice(1), s2.x, s2.y, stg.scale()); } }; this.stage.add(d); this.campDraw.push(d); }
+      if (k.fire) { const tt = DATA.tiles.grassland.tiles[100]; const d = { z: c.z + 1.5, draw: (ctx, stg) => { const src = image(DATA.tiles.grassland.imgs[tt[0]]); if (!src.ok || !stg.onScreen(c.x, c.z, 4)) return; const s2 = stg.toScreen(c.x - 3, c.z + 1.5); drawRect(ctx, src.im, (tt._r || (tt._r = tt.slice(1))), s2.x, s2.y, stg.scale()); } }; this.stage.add(d); this.campDraw.push(d); }
       if (k.fire) this.campFire.push(this.fx.play('p_burning', c.x - 3, c.z + 1.4, { y: 0.1, loop: true, dur: 1e9, scale: 0.85 }));
     }
   }
@@ -506,7 +506,7 @@ export class World {
       if (q.x > 500 || q.ring || q.wild || i % 3) return; // 보물 상자는 드물게
       const p = this.freeSpot(q.x + (i % 2 ? 2 : -2), q.z - q.r - 2.2, 0.8);
       const c = { id: i, x: p.x, z: p.z, open: opened.includes(i) };
-      c.draw = { z: p.z, draw: (ctx, stg) => { const def = DATA.tiles.dungeon, tt = def.tiles[c.open ? 160 : 144], src = image(def.imgs[tt[0]]); if (!src.ok || !stg.onScreen(c.x, c.z, 3)) return; const s2 = stg.toScreen(c.x, c.z); drawRect(ctx, src.im, tt.slice(1), s2.x, s2.y, stg.scale()); } };
+      c.draw = { z: p.z, draw: (ctx, stg) => { const def = DATA.tiles.dungeon, tt = def.tiles[c.open ? 160 : 144], src = image(def.imgs[tt[0]]); if (!src.ok || !stg.onScreen(c.x, c.z, 3)) return; const s2 = stg.toScreen(c.x, c.z); drawRect(ctx, src.im, (tt._r || (tt._r = tt.slice(1))), s2.x, s2.y, stg.scale()); } };
       this.stage.add(c.draw); this.chests.push(c);
     });
   }
@@ -1017,14 +1017,19 @@ export class World {
   }
 
   updateSpawners(dt) {
+    // v0.49.56 생성 자리 확인은 0.2초마다 (맵 전체 자리를 매 프레임 돌며 버려지는 값이 많았다)
+    this.spAcc = (this.spAcc || 0) + dt;
+    if (this.spAcc < 0.2) return;
+    dt = this.spAcc; this.spAcc = 0;
     const p = this.player.pos;
     const fl = this.st.flood?.list;
+    const flooded = fl?.length ? new Set(fl.map((f) => f.zone)) : null;
     for (const sp of this.spawners) {
       if (sp.mon) continue;
-      if (fl?.length && sp.zone && fl.some((f) => f.zone === sp.zone.id)) continue; // v0.44.45 범람지는 범람 몬스터만 (다시 나지 않는다)
+      if (flooded && sp.zone && flooded.has(sp.zone.id)) continue; // v0.44.45 범람지는 범람 몬스터만 (다시 나지 않는다)
       sp.timer -= dt;
       // 플레이어 바로 앞에서 튀어나오지 않게 · 먼 곳은 가까워질 때 만든다 (몬스터 수 · 메모리 절약)
-      const d = Math.hypot(sp.x - p.x, sp.z - p.z);
+      const ex = sp.x - p.x, ez = sp.z - p.z, d = Math.sqrt(ex * ex + ez * ez);
       if (sp.timer <= 0 && d > 14 && d < SPAWN_NEAR) { const nm = this.spawn(sp); if (nm) this.champion(nm, this.wt - 1); } // v0.48 세계 단계가 높을수록 강화 몬스터
     }
   }
@@ -1034,7 +1039,8 @@ export class World {
     const p = this.player.pos;
     if (m.dash) { this.dashStep(m, dt); return; }
     const d = dist2(m.pos, p);
-    const valid = !this.dead && !this.inTown && !inCamp(p.x, p.z);
+    if (this.validAt !== this.time) { this.validAt = this.time; this.validNow = !this.dead && !this.inTown && !inCamp(p.x, p.z); } // v0.49.56 몬스터마다 다시 재지 않고 프레임마다 한 번
+    const valid = this.validNow;
     const fromHome = dist2(m.pos, m.home);
     const spd = m.rootT > 0 ? 0 : m.speed * (m.slowT > 0 ? 0.5 : 1); // v0.44.38 얼음 감옥: 묶임
     if (m.slowT > 0) m.slowT -= dt;
@@ -1114,7 +1120,9 @@ export class World {
       if (fromHome < 1.5) { m.state = 'idle'; m.hp = m.maxHp; }
     }
     // 서로 겹치지 않게
-    for (const o of this.monsters) {
+    const MS = this.monsters;
+    for (let oi = 0; oi < MS.length; oi++) {
+      const o = MS[oi];
       if (o === m || o.dead) continue;
       const dx = m.pos.x - o.pos.x, dz = m.pos.z - o.pos.z;
       const dd = dx * dx + dz * dz;
@@ -1127,8 +1135,9 @@ export class World {
     if (moving) resolveCollision(this.stage, m.pos, 0.5 * m.actor.scale);
     if (a.lock <= 0) {
       const kay = !!m.def.rig;
-      if (moving === 2) a.play('run', { speed: spd / 7 });
-      else if (moving === 1) a.play('walk', { speed: Math.max(0.35, spd * 0.35 / 4.5) });
+      const po = (m.playOpt ||= { speed: 1 }); // v0.49.56 옵션 객체를 몬스터마다 하나만
+      if (moving === 2) { po.speed = spd / 7; a.play('run', po); }
+      else if (moving === 1) { po.speed = Math.max(0.35, spd * 0.35 / 4.5); a.play('walk', po); }
       else a.play('idle');
     }
   }

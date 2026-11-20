@@ -66,7 +66,7 @@ export const BOSS_CLEAR = 15;
 const nearBoss = (x, z, pad = 0) => ZONES.some((zn) => { const b = bossSpot(zn); return Math.hypot(b.x - x, b.z - z) < BOSS_CLEAR + pad; });
 // 야영지(포탈): 지역마다 하나, 마을 쪽 안쪽. 둘레 7은 지형 · 몬스터가 없는 안전지대
 export const CAMPS = [];
-export const inCamp = (x, z, pad = 0) => CAMPS.find((c) => Math.hypot(x - c.x, z - c.z) < 7 + pad) || null;
+export const inCamp = (x, z, pad = 0) => { const r = 7 + pad, r2 = r * r; for (let i = 0; i < CAMPS.length; i++) { const c = CAMPS[i], dx = x - c.x, dz = z - c.z; if (dx * dx + dz * dz < r2) return c; } return null; }; // v0.49.56 매 프레임 불려 가볍게
 const HAS_BANKS = new Set(['grassland', 'snowplains', 'desert']);
 const LAVA_ZONES = new Set(['inferno', 'demongate', 'abyss', 'throne']);
 function genTerrain(rng) {
@@ -478,7 +478,7 @@ function drawTile(stage, ctx, set, id, sx, sy, s) {
   if (!t) return;
   const src = image(def.imgs[t[0]]);
   if (!src.ok) return;
-  drawRect(ctx, src.im, t.slice(1), sx, sy, s * (t[7] || 1)); // t[7]: 그림 배율 (드라이브 나무)
+  drawRect(ctx, src.im, t._r || (t._r = t.slice(1)), sx, sy, s * (t[7] || 1)); // t[7]: 그림 배율 (드라이브 나무) · v0.49.56 잘라 둔 칸을 다시 쓴다
 }
 
 // 물 타일: Flare 물은 거의 검어서 푸르게 물들인 사본을 한 번 만들어 쓴다
@@ -628,6 +628,12 @@ function drawGround(stage, ctx, W, H, s, M) {
   }
 }
 
+const drawList = [];
+const byZ = (a, b) => (a.z < b.z ? -1 : a.z > b.z ? 1 : 0); // v0.49.56 빼기(소수)를 돌려주면 정렬 비교마다 숫자 객체가 생겼다
+const pushVisible = (d) => { if (d.visible !== false) drawList.push(d); };
+// 덩어리 이름 문자열 (매 프레임 새로 만들지 않게 기억)
+const CK = new Map();
+const chunkKey = (a, b) => { const n = (a + 2048) * 4096 + (b + 2048); let k = CK.get(n); if (k === undefined) { k = a + ',' + b; CK.set(n, k); } return k; };
 function render(stage, dt) {
   stage.time += dt;
   const { ctx, W, H } = stage;
@@ -659,14 +665,14 @@ function render(stage, dt) {
   }
   for (const g of stage.groundLayers) g(ctx, stage);
   // 서 있는 것들: 배경 물건 + 인물 + 효과를 z(화면 아래쪽)로 정렬
-  const list = [];
+  const list = drawList; list.length = 0; // v0.49.56 그릴 목록 배열을 매 프레임 새로 만들지 않는다
   const cx0 = Math.floor(c0.x / CHUNK) - 1, cx1 = Math.floor(c1.x / CHUNK) + 1, cz0 = Math.floor(c0.z / CHUNK) - 1, cz1 = Math.floor(c1.z / CHUNK) + 2;
   for (let a = cx0; a <= cx1; a++) for (let b = cz0; b <= cz1; b++) {
-    const arr = stage.props.get(a + ',' + b);
-    if (arr) for (const p of arr) list.push(p);
+    const arr = stage.props.get(chunkKey(a, b));
+    if (arr) for (let i = 0; i < arr.length; i++) list.push(arr[i]);
   }
-  for (const d of stage.drawables) if (d.visible !== false) list.push(d);
-  list.sort((a, b) => a.z - b.z);
+  stage.drawables.forEach(pushVisible); // Set: forEach는 반복자 객체를 만들지 않는다
+  list.sort(byZ);
   // 화면 밖 타일 물건은 건너뛴다 (덩어리 단위로만 고르면 화면 몇 배를 그렸다)
   const offX0 = -260, offX1 = W + 260, offY0 = -60, offY1 = H + 420;
   for (const o of list) {

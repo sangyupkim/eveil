@@ -7,7 +7,9 @@ export const KEY_ACTIONS = [
   ['inv', '가방', 'KeyI'], ['skills', '스킬 창', 'KeyK'], ['char', '능력 창', 'KeyC'], ['quest', '퀘스트', 'KeyJ'], ['map', '월드맵', 'KeyN'],
   ['town', '마을', 'KeyT'], ['shop', '상점', 'KeyP'], ['guide', '가이드북', 'KeyH'], ['menu', '메뉴', 'KeyM'],
 ];
-export const keyMap = (st) => { const m = {}; for (const [id, , d] of KEY_ACTIONS) m[id] = st.settings.keys?.[id] || d; return m; };
+let kmCache = null, kmSrc = null, kmSig = '';
+// v0.49.56 매 프레임 불려서, 바뀐 키가 그대로면 만든 표를 다시 쓴다
+export const keyMap = (st) => { const src = st.settings.keys || null, sig = src ? JSON.stringify(src) : ''; if (kmCache && kmSrc === st && kmSig === sig) return kmCache; const m = {}; for (const [id, , d] of KEY_ACTIONS) m[id] = src?.[id] || d; kmCache = m; kmSrc = st; kmSig = sig; return m; };
 // 키 → 행동
 export const actionOf = (st, code) => { const m = keyMap(st); return Object.keys(m).find((k) => m[k] === code) || null; };
 export const keyName = (code) => !code ? '-' : code.replace(/^Key/, '').replace(/^Digit/, '').replace(/^Numpad/, '숫자판 ').replace('Space', '스페이스').replace('Arrow', '방향키 ').replace('Shift', 'Shift ').replace('Control', 'Ctrl ').replace(/Left$|Right$/, (s) => s === 'Left' ? '(왼)' : '(오)');

@@ -119,7 +119,7 @@ export function filteredRect(src, rect, filter) {
 // rect = [x, y, w, h, ox, oy] — (sx, sy)가 발끝(기준점)
 export function drawRect(ctx, src, rect, sx, sy, s = 1) {
   if (!src || !rect) return;
-  const [x, y, w, h, ox, oy] = rect;
+  const x = rect[0], y = rect[1], w = rect[2], h = rect[3], ox = rect[4], oy = rect[5]; // v0.49.56 배열 분해는 매번 반복자를 만들었다
   if (w <= 1 || h <= 1) return;
   ctx.drawImage(src, x, y, w, h, sx - ox * s, sy - oy * s, w * s, h * s);
 }
