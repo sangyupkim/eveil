@@ -18,6 +18,8 @@ import { MONSTERS, ZONES, TOWN, TIER_STEP, FINAL_ZONE } from '../data/world.js';
 import { derive, damageReduction, totalStats, skillScale } from '../game/player.js';
 import { monsterRes, mixFxOf } from '../data/resist.js';
 import { ARTS } from '../data/arts.js';
+import { runForm } from './skillForms.js';
+import { FORM_DEFS, formReach, formUser } from '../data/skill_forms.js';
 import { relicBonus, rollRelic, RELIC, RELIC_GRADES } from '../data/relics.js';
 import { nextFloodAt, FLOOD, FLOOD_AFFIX, FLOOD_AFFIX_IDS } from '../data/flood.js';
 import { ELIXIRS, ELIXIR_TIME, HERBS, HP_POTIONS, MP_POTIONS } from '../data/potions.js';
@@ -354,7 +356,7 @@ export class World {
         for (const m of near(r)) this.hitMonster(m, wd * k.v / 100, { src: 'perk' });
       } else if (k.eff === 'blast') {
         const c = at || P;
-        if (this.time - (this.blastFxT || -9) > 0.35) { this.blastFxT = this.time; this.fx.play('v_fireburst', c.x, c.z, { scale: 0.45 }); } // v0.49.51 원소 폭발 그림 작게 · 자주 겹치지 않게 (스킬 그림을 덮던 것)
+        if (this.time - (this.blastFxT || -9) > 0.5) { this.blastFxT = this.time; this.fx.play('spark_orange', c.x, c.z, { y: 0.8, scale: 0.45 }); this.fx.burst(c.x, 0.8, c.z, 0xff9040, 4, 1.2, 0.18); } // v0.49.53 원소 폭발: 작은 불티만 (있다는 것만 보이게)
         for (const m of this.monsters) if (!m.dead && dist2(m.pos, c) < 6.25) this.hitMonster(m, sb * k.v / 100, { src: 'perk' });
       } else if (k.eff === 'chill') {
         for (const m of near(4)) m.slowT = k.v / 10;
@@ -1473,7 +1475,7 @@ export class World {
     if (crit) sfx('crit', 0.8);
     const hc = ctx ? new THREE.Color(SKILLS[ctx.id].color).getHex() : crit ? 0xffd040 : 0xffa060;
     this.fx.hit(m.pos.x, 1.1 * m.actor.scale, m.pos.z, hc, crit);
-    if (ctx) { this.fx.burst(m.pos.x, 1.1 * m.actor.scale, m.pos.z, hc, 10, 4, 0.45); this.fx.decal(0, m.pos.x, m.pos.z, 1.6 * m.actor.scale, hc, 0.3); }
+    if (ctx) this.fx.burst(m.pos.x, 1.1 * m.actor.scale, m.pos.z, hc, 10, 4, 0.45); // v0.49.53 맞을 때마다 찍던 충격파 그림(불 색이면 큰 폭발)은 뺐다 — 여럿이 맞으면 하얀 덩어리가 됐다
     if (d.lifeSteal) this.healPlayer(dmg * d.lifeSteal, false);
     if (crit) addAP(st, 'dex', AP_TABLE.crit, apMult);
 
@@ -2148,10 +2150,13 @@ export class World {
 
   skillRange(id) {
     const sk = SKILLS[id];
+    if (sk.form && FORM_DEFS[sk.form]) return formReach(sk, this.d);
     return sk.type === 'melee' ? this.d.range : sk.type === 'cone' ? sk.radius * 0.8 : sk.range || 0;
   }
 
   needsTarget(id) {
+    const f = FORM_DEFS[SKILLS[id].form];
+    if (f) return f.shape !== 'self';
     return ['melee', 'bolt', 'arrow', 'chain', 'meteor', 'dash', 'line', 'rain', 'cone'].includes(SKILLS[id].type);
   }
 
@@ -2241,6 +2246,17 @@ export class World {
     const FX = (x, z, s = 1) => { if (sk.fx) this.fx.play(sk.fx, x, z, { scale: s * (sk.fxScale || 1) }); };
     const FXarea = (x, z, r, n = 6) => { if (!sk.fx) return; FX(x, z, Math.min(1.6, r / 3)); for (let i = 0; i < n; i++) { const a = (i / n) * 6.28 + Math.random() * 0.5, q = r * (0.45 + Math.random() * 0.4); FX(x + Math.cos(a) * q, z + Math.sin(a) * q, 0.8); } };
     this.fx.castFlash(P.pos.x, P.pos.z, color);
+
+    // v0.49.53 스킬 형상 (data/skill_forms.js): 맞는 모양 · 움직임을 스킬마다 따로
+    if (sk.form && FORM_DEFS[sk.form]) {
+      const user = formUser(sk), mag = sk.ap !== 'weapon';
+      const n = sk.type === 'rain' ? sk.waves || 1 : sk.type === 'spin' ? sk.hits || 1 : 1;
+      sfx(user === 'melee' ? 'heavy' : user === 'bow' ? 'shoot' : 'cast', 0.8);
+      const hit = (m, k) => { if (!m || m.dead) return; if (mag) this.hitMonster(m, spell() * k, { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 }); else { const w = weaponHit(); this.hitMonster(m, w.v * k, { crit: w.crit, src: 'skill', ctx }); } };
+      const ran = runForm({ w: this, sk, P, t, color, FX, hit, n, bow: user === 'bow', melee: user === 'melee', sfx: (a) => sfx(a, 0.6),
+        act: (a, s) => { const dur = P.act(a, s); this.swing = dur * 0.7; return dur; } });
+      if (ran) { this.ui.dirty(); return; }
+    }
 
     switch (sk.type) {
       case 'melee': {

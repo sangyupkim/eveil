@@ -613,4 +613,13 @@ test('강화는 기본 효과(기본 옵션 · 장신구 기본 효과)도 올�
   assert.ok(PL.baseMods({ base: 'novice_staff', ilvl: 1, plus: 10 }).maxMp > 5);
 });
 
+test('스킬 형상: 쓰는 쪽에 맞고, 같은 갈래 · 무기 · 손에서 겹치는 형상은 8쌍 이하', async () => {
+  const { SKILLS } = await import('../src/data/skills.js'); await import('../src/data/skill_fx.js');
+  const F = await import('../src/data/skill_forms.js');
+  for (const [id, f] of Object.entries(F.SKILL_FORMS)) { assert.ok(SKILLS[id], id); assert.ok(F.FORM_DEFS[f], f); assert.ok(F.formFits(f, F.formUser(SKILLS[id])), id + ' ' + f); }
+  const rows = Object.entries(SKILLS).filter(([, s]) => !s.passive && s.type !== 'buff' && s.type !== 'evade' && !s.retired).map(([id, s]) => ({ id, g: (s.lines || Object.keys(s.req || {})).slice().sort().join('+'), u: F.formUser(s), grip: s.grip, f: s.form || 'T:' + s.type }));
+  let dup = 0; for (const a of rows) for (const b of rows) if (a.id < b.id && a.g === b.g && a.u === b.u && (!a.grip || !b.grip || a.grip === b.grip) && a.f === b.f) dup++;
+  assert.ok(dup <= 8, 'dup ' + dup);
+});
+
 console.log(`\n${n}개 통과`);
