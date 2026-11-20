@@ -236,6 +236,39 @@ for (const sk of Object.values(SKILLS)) {
   const R = GRIP_RULES[ls[0]]; if (!R) continue;
   sk.grip = R.one.includes(sk.type) ? 'one' : R.two.includes(sk.type) ? 'two' : undefined;
 }
+// v0.49.51 양손 마법사 다시 짜기: 내 둘레에 터지는 스킬(nova)이 몰려 있던 것 → 멀리 고른 곳 · 긴 줄 · 넓은 부채꼴 광역,
+//  재사용 대기는 길게 · 위력은 높게 (양손 = 느리지만 크게). 같은 id라 배운 스킬은 그대로 바뀐다.
+for (const [id, o] of Object.entries({
+  ice_prison: { type: 'meteor', radius: 5, range: 13, cd: 16, power: 48, perRank: 9, root: 2.5, desc: '고른 곳에 얼음 감옥을 떨어뜨려 둘레 적을 묶는다.' },
+  frost_ring: { name: '서리 회랑', type: 'line', range: 18, width: 3.6, cd: 12, power: 70, perRank: 13, slow: 2.5, desc: '앞으로 길게 얼음 바람을 내뿜어 줄지은 적을 얼린다.' },
+  static_field: { name: '번개 부채', type: 'cone', radius: 11, cd: 11, power: 66, perRank: 12, desc: '앞쪽 넓은 부채꼴로 번개를 쏟아낸다.' },
+  flame_burst: { name: '화염 낙인', type: 'meteor', radius: 5.5, range: 13, cd: 13, power: 88, perRank: 16, desc: '고른 곳에 불기둥을 내리꽂아 넓게 태운다.' },
+  absolute_zero: { type: 'meteor', radius: 7.5, range: 14, cd: 30, power: 230, perRank: 35, slow: 4, desc: '고른 곳의 넓은 땅을 통째로 얼려 막대한 피해를 준다.' },
+  aw_int4b: { type: 'cone', radius: 13, cd: 26, power: 340, perRank: 26, desc: '태초의 불을 앞쪽 거대한 부채꼴로 쏟아붓는다.' },
+  aw_int5c: { type: 'line', range: 22, width: 5, cd: 28, power: 520, perRank: 38, slow: 3, desc: '빙하를 길게 무너뜨려 한 줄을 통째로 얼려 부순다.' },
+})) if (SKILLS[id]) Object.assign(SKILLS[id], o);
+// v0.49.51 같은 갈래 · 무기 · 등급에서 모양이 똑같던 스킬들을 다르게 (그림만 다른 같은 스킬 없애기)
+{
+  const K = { melee: 1, dash: 1, cleave: 1, line: 1, bolt: 1, meteor: 1, nova: 1, cone: 1, chain: 0.9, spin: 0.8, rain: 0.4, arrow: 0.4 };
+  const D = { dash: '대상에게 단숨에 파고들어 친다.', cleave: '앞쪽 넓은 부채꼴을 크게 휩쓴다.', line: '앞으로 길게 한 줄을 꿰뚫는다.', meteor: '고른 곳에 내리꽂아 둘레를 친다.', nova: '몸 둘레로 힘을 터뜨린다.', rain: '고른 곳에 여러 번 쏟아붓는다.', chain: '적과 적 사이를 튀며 잇는다.', arrow: '여러 발을 둘레 적에게 흩뿌린다.', cone: '앞쪽 부채꼴로 내뿜는다.' };
+  const re = (id, type, o = {}) => { const sk = SKILLS[id]; if (!sk) return; if (type && type !== sk.type) { sk.power = +(sk.power * (K[type] || 1) / (K[sk.type] || 1)).toFixed(2); sk.perRank = +((sk.perRank || 0) * (K[type] || 1) / (K[sk.type] || 1)).toFixed(2); sk.type = type; sk.desc = D[type] + (sk.needs === 'melee' ? ' (근접 무기)' : ''); delete sk.hits; } Object.assign(sk, o); };
+  re('counter_slash', null, { echo: 0.6, desc: '빠르게 두 번 되받아 벤다.' });
+  re('frost_bolt', null, { slow: 2 }); re('cold_snap', null, { slow: 2 });
+  re('trap_arrow', null, { root: 1.5, desc: '맞은 적의 발을 잠시 묶는다.' });
+  re('flurry', null, { hits: 3, radius: 3, power: 0.9, desc: '쉴 새 없이 세 번 둘레를 벤다.' });
+  re('scatter_shot', 'cone', { radius: 6, desc: '가까운 부채꼴로 화살을 흩뿌린다.' });
+  re('thunderstorm', null, { root: 0.6, desc: '번개 구름이 넓은 곳을 치고, 맞은 적은 잠시 감전되어 멈춘다.' }); re('inferno_field', null, { waves: 7, desc: '땅을 오래 태우는 불바다를 깐다 (일곱 번).' });
+  re('thunder_strike', null, { root: 0.8, desc: '하늘에서 번개가 내리쳐 맞은 적이 잠시 감전되어 멈춘다.' });
+  re('g_str4_1', 'nova', { radius: 6.5, slow: 1.5 }); re('g_str4_0', 'dash', { range: 9 }); re('g_str4_2', 'cleave', { radius: 6 });
+  re('g_dex4_0', 'cone', { radius: 9 });
+  re('g_vit3_1', 'nova', { radius: 6.5, slow: 2 });
+  re('g_wis5_0', 'rain', { radius: 6, waves: 6, range: 14 }); re('g_wis5_2', 'line', { range: 18, width: 4 });
+  re('g_str5_0', 'nova', { radius: 8, slow: 2 }); re('g_dex5_0', 'meteor', { radius: 5.5, range: 15, name: '종말의 낙뢰 화살' });
+  re('aw_wis5d', 'meteor', { radius: 6, range: 14 }); re('g_vit5_1', 'dash', { range: 9 }); re('g_vit4_2', 'cleave', { radius: 7 });
+  re('g_str5_1', 'nova', { radius: 5.5 }); re('g_dex3_0', 'cleave', { radius: 5 }); re('g_dex4_2', 'cleave', { radius: 6 }); re('g_dex5_1', 'cleave', { radius: 6 });
+  re('g_wis3_0', 'meteor', { radius: 5, range: 13 }); re('g_wis3_3', 'chain', { jumps: 5, range: 12 }); re('g_wis4_2', 'chain', { jumps: 6, range: 12 });
+  re('g_vit3_3', 'nova', { radius: 5 });
+}
 export const SKILL_IDS = Object.keys(SKILLS);
 export function skillsOfTier(t) {
   return SKILL_IDS.filter((id) => SKILLS[id].tier === t && !SKILLS[id].awaken); // 각성 등급이 정해진 스킬은 따로 (몬스터 레벨로, game/loot.js)

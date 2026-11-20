@@ -354,7 +354,7 @@ export class World {
         for (const m of near(r)) this.hitMonster(m, wd * k.v / 100, { src: 'perk' });
       } else if (k.eff === 'blast') {
         const c = at || P;
-        this.fx.burst(c.x, 1, c.z, 0xff8040, 14, 5, 0.4); this.fx.decal(0, c.x, c.z, 2.5, 0xff8040, 0.35);
+        if (this.time - (this.blastFxT || -9) > 0.35) { this.blastFxT = this.time; this.fx.play('v_fireburst', c.x, c.z, { scale: 0.45 }); } // v0.49.51 원소 폭발 그림 작게 · 자주 겹치지 않게 (스킬 그림을 덮던 것)
         for (const m of this.monsters) if (!m.dead && dist2(m.pos, c) < 6.25) this.hitMonster(m, sb * k.v / 100, { src: 'perk' });
       } else if (k.eff === 'chill') {
         for (const m of near(4)) m.slowT = k.v / 10;
