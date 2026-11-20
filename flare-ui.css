@@ -94,10 +94,10 @@ h3::before { background: none; width: 0.55em; height: 0.55em; border: 1px solid 
 body:not(.touch) #quick { bottom: calc(var(--u) * 1.5); padding: 0; background: none; border: 0; box-shadow: none; } /* v0.49.8 둘레 상자 없이 칸만, 조금 아래로 */
 
 /* 타이틀 */
-.looks button { background: url('assets/flare/menus/slot_empty.png') center / 100% 100%; border: 1px solid var(--brass-dk); border-radius: 2px; padding: 3px; }
+.looks button { background: none; border: 1px solid transparent; border-radius: 2px; padding: 3px; } /* v0.49.45 얼굴 뒤 칸 · 바탕 없앰 */
 .looks button img { width: calc(var(--u) * 4.4); height: calc(var(--u) * 4.4); border-radius: 2px; }
 .looks button.on { border-color: var(--brass-hi); box-shadow: 0 0 12px rgba(234, 214, 164, 0.4); }
-.lgroup { background: rgba(10, 9, 8, 0.7); border-color: var(--brass-dk); border-radius: 2px; flex-wrap: wrap; justify-content: center; }
+.lgroup { background: none; border: 0; flex-wrap: wrap; justify-content: center; }
 #nameInput, #account input { background: #0e0c0a; border: 1px solid var(--brass-dk); border-radius: 2px; }
 .pickCard { background: url('assets/flare/menus/slot_empty.png') center / 100% 100%; border: 1px solid var(--brass-dk); border-radius: 2px; }
 .pickCard.on { border-color: var(--brass-hi); }

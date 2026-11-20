@@ -110,5 +110,6 @@
 - `quiver_icon.webp` — Flare 화살 그림(`powers/arrows.webp`, CC-BY-SA) + Flare 허리띠 아이콘을 합친 것
 - 변환: `python3 tools/prep-drive.py <받아 푼 폴더>` · 아이콘 묶음 `node tools/prep-icons4.mjs` · 캐릭터 `node tools/prep-dir-chars.mjs <폴더> x_adventurer,x_armored`
 
-## 첫 화면 그림 (assets/title/key1~3.webp, v0.49.44)
+## 첫 화면 그림 (assets/title/key1~4.webp, v0.49.44 · 45) · 얼굴 그림 (assets/flare/portraits/hero_*.webp, v0.49.45)
 - 사용자가 Google Gemini로 만든 그림 3장 (드라이브 「에베이에셋」). 오른쪽 아래 생성 표식 부분을 잘라 1920 폭으로 줄였다.
+- 얼굴 8명은 사용자가 Gemini로 만든 한 장(카드 8칸)을 칸마다 잘라 256px 정사각형으로.

@@ -234,7 +234,7 @@ h3 .cnt { font-family: var(--f-latin); color: var(--dim); font-size: 0.85em; }
 h3 .goldTxt { margin-left: auto; font-family: var(--f-latin); color: var(--brass-hi); }
 .detail.worn { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line-soft); opacity: 0.85; clear: both; }
 .detail .btns { clear: both; }
-.frame .portrait { width: calc(var(--u) * 4.2); height: calc(var(--u) * 4.2); }
+.frame .portrait { width: calc(var(--u) * 4.2); height: calc(var(--u) * 4.2); padding: 3px; box-sizing: border-box; } /* v0.49.45 넓은 칸 안에서 padding 6%가 얼굴을 0으로 줄이던 것 */
 .shopIco { flex: none; width: calc(var(--u) * 3.2); cursor: default; }
 .qsRow { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
 .btn.qs { position: relative; aspect-ratio: 1; padding: 0; border-radius: 50%; font-family: var(--f-title); font-weight: 800; font-size: calc(var(--u) * 1.2); }

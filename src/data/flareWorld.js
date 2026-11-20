@@ -196,8 +196,9 @@ export const SKILL_ICON = {
 };
 // 얼굴 (초상화 + 머리 겹)
 export const FACES = [
-  ['m01', 'male01', 'm', 'head_short'], ['m02', 'male05', 'm', 'head_short'], ['m03', 'male09', 'm', 'head_bald'], ['m04', 'male14', 'm', 'head_bald'],
-  ['f01', 'female01', 'f', 'head_long'], ['f02', 'female05', 'f', 'head_long'], ['f03', 'female09', 'f', 'head_long'], ['f04', 'female13', 'f', 'head_long'],
+  // v0.49.45 얼굴 그림: 사용자가 Gemini로 만든 8명 (assets/flare/portraits/hero_*.webp, 256px)
+  ['m01', 'hero_m01', 'm', 'head_short'], ['m02', 'hero_m02', 'm', 'head_short'], ['m03', 'hero_m03', 'm', 'head_short'], ['m04', 'hero_m04', 'm', 'head_short'],
+  ['f01', 'hero_f01', 'f', 'head_long'], ['f02', 'hero_f02', 'f', 'head_long'], ['f03', 'hero_f03', 'f', 'head_long'], ['f04', 'hero_f04', 'f', 'head_long'],
 ];
 export const faceOf = (id) => FACES.find((f) => f[0] === id) || FACES[0];
 
