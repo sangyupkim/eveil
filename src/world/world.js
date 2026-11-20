@@ -1,4 +1,4 @@
-import { faceClose } from '../ui/icons.js';
+import { faceClose, bust } from '../ui/icons.js';
 import '../data/skill_fx.js';
 import { bagSize } from '../game/inventory.js';
 import { ZONES as ALL_ZONES } from '../data/world.js';
@@ -303,7 +303,7 @@ export class World {
     st.look = { ...(st.look || {}), face };
     this.stage.remove?.(P); P.dispose?.();
     st.pos = pos; this.makePlayer(); this.player.facing = facing;
-    const f = document.getElementById('face'); if (f) f.src = faceClose(st.look);
+    const f = document.getElementById('face'); if (f) f.src = bust(st.look);
     this.ui.dirty();
   }
 
