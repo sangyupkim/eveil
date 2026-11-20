@@ -149,6 +149,7 @@ globalThis.__stage = stage;
   // 계정: 로그인하면 서버의 캐릭터도 목록에 나온다
   const acc = $('#account');
   const drawAccount = (msg = '') => {
+    $('#btnGuest').hidden = !!cloud.id;
     acc.innerHTML = cloud.id
       ? `<span class="who"><b>${cloud.id}</b> 서버 저장</span><button class="btn" data-acc="out">로그아웃</button><span class="msg">${msg}</span>`
       : `<input id="accId" maxlength="20" placeholder="아이디" autocomplete="username" autocapitalize="off" /><input id="accPw" type="password" maxlength="64" placeholder="비밀번호" autocomplete="current-password" />
@@ -219,6 +220,16 @@ globalThis.__stage = stage;
     startGame(stage, st);
   };
   $('#btnPlay').onclick = () => { const c = chars.find((x) => x.cid === sel); if (c) start(c.st, false); };
+  // v0.49.55 게스트로 시작: 닉네임 없이 바로 (이 기기에 게스트 캐릭터가 있으면 그것으로 이어 한다). 설정에서 계정을 만들어 연동
+  $('#btnGuest').onclick = () => {
+    audio.play('click');
+    const g = chars.find((c) => c.st?.guest);
+    if (g) { start(g.st, false); return; }
+    const st = newPlayer('손님' + String(1000 + Math.floor(Math.random() * 9000)), { ...look }, null);
+    st.cid = newCid(); st.nick = ''; st.guest = true;
+    saveChar(st);
+    start(st, true);
+  };
   $('#btnNew').onclick = async () => {
     const nick = $('#nameInput').value.trim();
     const msg = (t) => { $('#newMsg').textContent = t; };
@@ -299,7 +310,7 @@ function startGame(stage, st) {
       const nick = inp.value.trim();
       if (nickError(nick)) { msg.textContent = cloudError(nickError(nick)); return; }
       if (cloud.id) { msg.textContent = '…'; const r = await cloud.nick(st.cid, nick); if (!r.ok) { msg.textContent = cloudError(r.error); return; } st.nickOk = true; }
-      st.nick = nick; st.name = nick;
+      st.nick = nick; st.name = nick; st.guest = false;
       el.remove(); audio.play('rankup'); hud.toast?.(`닉네임: ${nick}`, '#ffd84a'); world.ui.dirty(); save(true);
     };
     inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') el.querySelector('button').click(); });
@@ -307,7 +318,7 @@ function startGame(stage, st) {
     setTimeout(() => inp.focus(), 50);
   };
   // 첫 무기를 고르는 중이면 고른 뒤에 묻는다
-  if (!st.nick) { const wait = setInterval(() => { if (st.tut !== 0) { clearInterval(wait); askNick(); } }, 300); }
+  if (!st.nick && !st.guest) { const wait = setInterval(() => { if (st.tut !== 0) { clearInterval(wait); askNick(); } }, 300); }
   else if (cloud.id && !st.nickOk) cloud.nick(st.cid, st.nick).then((r) => { if (r.ok) { st.nickOk = true; save(true); } else if (['nick_taken', 'bad_nick', 'nick_bad', 'nick_reserved', 'nick_digits'].includes(r.error)) askNick(cloudError(r.error)); });
   window.__askNick = askNick;
   // 우편이 와 있으면 알려 준다 (메뉴 → 우편함)

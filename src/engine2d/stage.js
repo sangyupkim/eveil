@@ -295,7 +295,7 @@ export function buildWorldProps(stage) {
   DATA.tiles.dtrees ||= { imgs: Object.keys(DRIVE_TREES).map((k) => `../drive/trees/tree${String(k).padStart(2, '0')}_0.webp`),
     tiles: Object.fromEntries(Object.entries(DRIVE_TREES).map(([k, [w, ax, ay]], i) => [k, [i, 0, 0, w, 360, ax, ay, 1.35]])) };
   const roadClear = (x, z) => {
-    if (Math.hypot(x, z) < TOWN.r + 3) return false;
+    if (Math.hypot(x, z) < TOWN.r + 8) return false;
     for (const zn of ZONES) if (distToSeg(x, z, 0, 0, zn.x * 0.72, zn.z * 0.72) < 4.5) return false;
     return true;
   };
@@ -388,16 +388,18 @@ export function buildWorldProps(stage) {
   buildTown(stage, rng);
 }
 
-// 여명 초소: 천막 · 모닥불 · 대장간 모루 · 상자 · 울타리 · 귀환 차원문
+// 여명 초소: 귀환 차원문만 (v0.49.55 흩어진 상자 · 통 · 표지판은 치웠다). 둘레를 나무로 두르고, 사냥터로 가는 길만 비운다
 function buildTown(stage, rng) {
   addProp(stage, 'grassland', 265, 0, -2, 0);
-  for (const [id, x, z, r] of [[100, -6, 6, 1.1], [101, 6, 6, 1.1], [102, -4, 9, 0.8], [96, 3, -7, 0.9], [98, 4.5, -7.5, 0.9], [76, -2.5, -7, 0.8], [139, 9, 9, 0.3]]) addProp(stage, 'grassland', id, x, z, r);
-  // 울타리는 없앴다 (조잡해 보여서)
-  for (let i = 0; i < 0; i++) {
-    const a = (i / 72) * Math.PI * 2;
-    const gate = [Math.PI / 2, -Math.PI / 2, Math.PI, 0].some((g) => Math.abs(Math.atan2(Math.sin(a - g), Math.cos(a - g))) < 0.17);
-    if (gate) continue;
-    addProp(stage, 'grassland', [104, 107, 104, 107][i % 4], Math.cos(a) * TOWN.r, Math.sin(a) * TOWN.r, 1.1);
+  const R = TOWN.r, onRoad = (x, z) => ZONES.some((zn) => distToSeg(x, z, 0, 0, zn.x * 0.72, zn.z * 0.72) < 4.2);
+  const IDS = [1, 2, 8, 9, 11, 12, 13];
+  for (let row = 0; row < 3; row++) {
+    const r = R + 1.2 + row * 2.4, n = Math.round((Math.PI * 2 * r) / 2.3);
+    for (let i = 0; i < n; i++) {
+      const a = ((i + (row % 2) * 0.5) / n) * Math.PI * 2, front = Math.max(0, Math.cos(a) + Math.sin(a)) / Math.SQRT2, rr = r + front * 4 + (rng() - 0.5) * 0.8, x = Math.cos(a) * rr, z = Math.sin(a) * rr; // 화면 아래쪽(앞) 나무는 건물을 가리지 않게 더 바깥에
+      if (onRoad(x, z) || inLake(x, z, 1) || inMesa(x, z)) continue;
+      addProp(stage, 'dtrees', IDS[Math.floor(rng() * IDS.length)], x, z, row === 0 ? 1.1 : 0.9);
+    }
   }
 }
 export function buildTerrain() {}

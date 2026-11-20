@@ -34,7 +34,7 @@ import { QUESTS, QUEST_BOOKS } from '../data/quests.js';
 import { ZONES, MONSTERS } from '../data/world.js';
 import { nextQuest, questDone, questNeed, goalText, questTurnIn } from '../game/quests.js';
 import { audio } from '../engine/audio.js';
-import { cloud } from '../net/cloud.js';
+import { cloud, cloudError } from '../net/cloud.js';
 import { takeOne, countOf, needAwaken } from '../game/inventory.js';
 import { uiSettings, applyUi, editUi } from './layout.js';
 
@@ -1276,6 +1276,7 @@ export class Windows {
     return `<div class="cols"><div class="frame" style="flex:1.1">
         <div class="btns" style="margin:0 0 6px"><button class="plate gold" data-close="1">계속하기</button><button class="plate" data-title="1">메인 화면으로</button></div>
         <div class="btns" style="margin:0 0 6px"><button class="btn" data-mailbox="1">우편함</button><button class="btn" data-notices="1">공지 · 패치</button><button class="btn" data-tab="guide">가이드북</button></div>
+        ${cloud.id ? '' : `<div class="setRow"><span>계정 연동</span><div class="opts"><input id="lnkId" style="width:7.5em" maxlength="20" placeholder="아이디" autocomplete="username" autocapitalize="off" /><input id="lnkPw" style="width:7.5em" type="password" maxlength="64" placeholder="비밀번호" autocomplete="new-password" /><button class="btn gold" data-link="register">가입</button><button class="btn" data-link="login">로그인</button><span class="note" id="lnkMsg"></span></div></div>`}
         <div class="setRow"><span>닉네임</span><div class="opts"><b>${esc(st.nick || '없음')}</b><button class="btn" data-nick="1">바꾸기</button></div></div>
         <div class="setRow"><span>캐릭터 그림</span><div class="opts faceOpts">${FACES.map(([k]) => `<button class="faceBtn${(st.look?.face || FACES[0][0]) === k ? ' on' : ''}" data-face="${k}"><img src="${faceClose({ face: k })}" alt="" /></button>`).join('')}</div></div>
         <div class="setRow"><span>배경음</span><div class="opts">${vol('music')}</div></div>
@@ -1331,6 +1332,20 @@ export class Windows {
     });
     const sn = body.querySelector('#sellN');
     if (sn) sn.oninput = () => { const it = st.inv.find((x) => x.uid === this.sel?.uid); if (it) body.querySelector('#sellNv').textContent = `${sn.value}개 · ${itemValue({ ...it, qty: Number(sn.value) }).toLocaleString()}G`; };
+    // v0.49.55 계정 연동 (게스트 · 로그인 안 한 캐릭터): 가입 · 로그인하면 이 캐릭터가 그 계정 서버 저장에 붙는다
+    body.querySelectorAll('#lnkId, #lnkPw').forEach((el) => el.addEventListener('keydown', (e) => e.stopPropagation()));
+    on('[data-link]', async (el) => {
+      const id = body.querySelector('#lnkId').value.trim(), pw = body.querySelector('#lnkPw').value, msg = body.querySelector('#lnkMsg');
+      audio.play('click'); msg.textContent = '…';
+      const r = await cloud.sign(el.dataset.link, id, pw);
+      if (!r.ok) { msg.textContent = cloudError(r.error); return; }
+      await cloud.claim(st.cid);
+      if (st.nick) { const n = await cloud.nick(st.cid, st.nick); if (n.ok) st.nickOk = true; else window.__askNick?.(cloudError(n.error)); }
+      else window.__askNick?.();
+      this.save?.(true);
+      w.ui.toast(`계정 ${r.id}에 연동했습니다`, '#ffd84a'); audio.play('rankup');
+      this.render();
+    });
     on('[data-ringcmp]', (el) => { this.ringCmp = el.dataset.ringcmp; audio.play('click'); this.render(); });
     on('[data-eq]', (el) => { if (st.equip[el.dataset.eq]) { this.sel = { from: 'equip', slot: el.dataset.eq }; audio.play('click'); this.render(); } });
     on('[data-act]', async (el) => {
