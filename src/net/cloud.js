@@ -67,6 +67,8 @@ export const cloud = {
   async balance() {
     try { const r = await Promise.race([post({ type: 'ash_cfg' }), new Promise((ok) => setTimeout(() => ok({}), 3000))]); return r.ok ? r.data || {} : {}; } catch { return {}; }
   },
+  // v0.49.44 지금 접속자 수 (게임 안에서 채팅방에 붙은 수). 못 받으면 null
+  async online() { try { const r = await fetch(API + '/online'); const j = await r.json(); return j.ok ? j.on : null; } catch { return null; } },
   async notices() { const r = await post({ type: 'ash_notices' }); return r.ok ? r.list || [] : []; },
   // 우편함 (계정마다). claim은 받은 금화 합계를 돌려준다
   async mail() { if (!account) return []; const r = await post({ type: 'ash_mail', token: account.token }); return r.ok ? r.list || [] : []; },

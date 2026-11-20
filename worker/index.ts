@@ -19,6 +19,7 @@ export default {
     const url = new URL(req.url);
     if (url.pathname !== '/api' && !url.pathname.startsWith('/api/')) return env.ASSETS.fetch(req);
     if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
+    if (url.pathname === '/api/online') { const r = await env.CHAT.get(env.CHAT.idFromName('lobby')).fetch(new Request('https://chat/online')); return json(await r.json()); } // v0.49.44 지금 접속자 (게임 안에서 채팅방에 붙은 수)
     if (url.pathname === '/api/chat') return env.CHAT.get(env.CHAT.idFromName('lobby')).fetch(req); // 웹소켓은 채팅방(Durable Object)이 받는다
     try {
       if (!ready) { // ashen이 쓰는 요청 제한 표 (영겁의 틈새 서버가 만들어 두지만 혹시 몰라)

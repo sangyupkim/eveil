@@ -95,7 +95,7 @@
       <button id="btnHp" class="act pot" title="체력 물약 (Q)"><img data-ico="hpot" alt="" /><em>0</em></button>
       <button id="btnAttack" class="act attack" title="공격 (Space)"><img data-ico="g_sword" alt="" /><span>공격</span></button>
     </div>
-    <div id="zoneLoad" hidden><div><b></b><span>불러오는 중…</span></div></div>
+    <div id="zoneLoad" hidden><div><b></b><span>불러오는 중…</span><i class="zlBar"></i></div></div>
     <div id="expBar"><i></i><span></span></div>
   </div>
 
@@ -111,10 +111,15 @@
   <div id="death" hidden></div>
 
   <div id="title">
+    <script>
+      // v0.49.44 첫 화면 · 지역 불러오기 그림: 세 장 중 하나 (접속할 때마다 바뀐다)
+      (function () { var n = 1 + Math.floor(Math.random() * 3); document.documentElement.style.setProperty('--keyArt', 'url(assets/title/key' + n + '.webp)'); window.__keyArt = n; })();
+    </script>
     <div class="tbox">
       <p class="kicker">ÉVEIL · 깨어남</p>
       <h1>에베이</h1>
       <p class="sub">레벨은 없다. 네가 싸운 방식이 너를 만든다.</p>
+      <p class="online" id="onlineNow" hidden></p>
       <div id="loadBar"><i></i></div>
       <button id="loadFix" class="plate gold" hidden>다시 불러오기</button>
       <script>

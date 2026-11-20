@@ -130,6 +130,10 @@ globalThis.__stage = stage;
   };
   drawLooks();
   $('#titleMenu').hidden = false;
+  { // v0.49.44 첫 화면에 지금 접속자 수 (30초마다, 게임을 시작하면 멈춘다)
+    const el = $('#onlineNow'), upd = async () => { if (window.__started) return clearInterval(t); const n = await cloud.online(); if (n != null && el) { el.hidden = false; el.textContent = `지금 ${n.toLocaleString()}명 모험 중`; } };
+    const t = setInterval(upd, 30000); upd();
+  }
   const showNew = (on) => { $('#newChar').hidden = !on; $('#charList').hidden = on; $('#newMsg').textContent = ''; document.querySelectorAll('#titleMenu > .charBtns').forEach((x) => { x.hidden = on; }); };
   $('#btnNewChar').onclick = () => { audio.play('click'); showNew(true); };
   $('#btnNewCancel').onclick = () => { audio.play('click'); showNew(false); };

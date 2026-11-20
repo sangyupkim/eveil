@@ -47,6 +47,7 @@ export class ChatRoom extends DurableObject {
 
   async fetch(req: Request): Promise<Response> {
     const u = new URL(req.url);
+    if (u.pathname.endsWith('/online')) return Response.json({ ok: true, on: this.c.getWebSockets().length });
     if (u.pathname.endsWith('/admin') && req.method === 'POST') return Response.json(await this.admin((await req.json().catch(() => ({}))) as Record<string, unknown>));
     // 연결: /api/chat?token=…&cid=… (웹소켓 업그레이드)
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('websocket only', { status: 426 });
@@ -62,6 +63,7 @@ export class ChatRoom extends DurableObject {
     this.c.acceptWebSocket(server);
     server.serializeAttachment({ name, k: name ? k : null } as Att);
     server.send(JSON.stringify({ t: 'hi', me: name, on: this.c.getWebSockets().length, log: (await this.history()).map(pub) }));
+    this.sayOn(server); // v0.49.44 다른 사람에게 접속자 수
     return new Response(null, { status: 101, webSocket: client } as any);
   }
 
@@ -105,7 +107,9 @@ export class ChatRoom extends DurableObject {
     const out = JSON.stringify({ t: 'msg', m: pub(m), on: this.c.getWebSockets().length });
     for (const s of this.c.getWebSockets()) { try { s.send(out); } catch { /* 끊긴 연결 */ } }
   }
-  async webSocketClose(ws: any, code: number) { try { ws.close(code === 1005 ? 1000 : code, 'bye'); } catch { /* 이미 닫힘 */ } }
+  // 접속자 수가 바뀌면 모두에게 (나간 연결은 빼고)
+  sayOn(skip: any) { const out = JSON.stringify({ t: 'on', on: this.c.getWebSockets().length }); for (const s of this.c.getWebSockets()) if (s !== skip) { try { s.send(out); } catch { /* 끊긴 연결 */ } } }
+  async webSocketClose(ws: any, code: number) { try { ws.close(code === 1005 ? 1000 : code, 'bye'); } catch { /* 이미 닫힘 */ } const n = this.c.getWebSockets().filter((s: any) => s !== ws).length, out = JSON.stringify({ t: 'on', on: n }); for (const s of this.c.getWebSockets()) if (s !== ws) { try { s.send(out); } catch { /* 끊긴 연결 */ } } }
   async webSocketError(ws: any) { try { ws.close(1011, 'error'); } catch { /* 이미 닫힘 */ } }
 
   // 운영자 (index.ts가 관리 키를 확인한 뒤에만 부른다)

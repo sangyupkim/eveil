@@ -109,3 +109,6 @@
 - `assets/flare/enemies/x_adventurer.webp` (늪의 대주술사 · 피의 마녀) — `UPDATE_x320p_Spritesheets` 여성 모험가 · `x_armored.webp` (폭풍의 왕 토르간) — `Separated_Shadow_Uncompressed_Frames` 갑옷 전사. 사용자가 모은 묶음, 출처 페이지를 받으면 적는다
 - `quiver_icon.webp` — Flare 화살 그림(`powers/arrows.webp`, CC-BY-SA) + Flare 허리띠 아이콘을 합친 것
 - 변환: `python3 tools/prep-drive.py <받아 푼 폴더>` · 아이콘 묶음 `node tools/prep-icons4.mjs` · 캐릭터 `node tools/prep-dir-chars.mjs <폴더> x_adventurer,x_armored`
+
+## 첫 화면 그림 (assets/title/key1~3.webp, v0.49.44)
+- 사용자가 Google Gemini로 만든 그림 3장 (드라이브 「에베이에셋」). 오른쪽 아래 생성 표식 부분을 잘라 1920 폭으로 줄였다.

@@ -23,7 +23,7 @@ export function setupChatBox(world) {
   box.id = 'chatBox';
   box.innerHTML = `<div class="chatLines"></div>
     <div class="chatInput" hidden><input id="chatTxt" type="text" maxlength="60" enterkeyhint="send" autocomplete="off" /><button class="btn gold" id="chatSend">보내기</button></div>
-    <div class="chatBar"><button id="chatOpen" class="chatBtn">채팅<em class="chatNew" hidden></em></button><button id="chatFold" class="chatBtn fold"><small class="chev"></small></button></div>`;
+    <div class="chatBar"><button id="chatOpen" class="chatBtn">채팅<em class="chatNew" hidden></em></button><button id="chatFold" class="chatBtn fold"><small class="chev"></small></button><span class="chatOn" hidden></span></div>`;
   document.getElementById('hud').appendChild(box);
   const lines = box.querySelector('.chatLines'), inRow = box.querySelector('.chatInput'), txt = box.querySelector('#chatTxt'), badge = box.querySelector('.chatNew');
   let unread = 0;
@@ -32,6 +32,7 @@ export function setupChatBox(world) {
     box.classList.toggle('folded', folded());
     lines.innerHTML = chat.list.slice(-(document.body.classList.contains('chatKb') ? SHOW_TYPING : SHOW)).map((m) => `<div class="cl${m.n === chat.me ? ' me' : ''}"><b>${esc(m.n)}</b> ${esc(m.x)}</div>`).join('');
     badge.hidden = !(folded() && unread); badge.textContent = unread > 99 ? '99+' : String(unread);
+    { const o = box.querySelector('.chatOn'); o.hidden = !chat.ok; o.textContent = `접속 ${chat.on}`; } // v0.49.44 지금 접속자
   };
   const open = () => {
     if (!cloud.token) { world.ui.toast('로그인하고 닉네임을 정해야 말할 수 있습니다'); audio.play('error'); return; }

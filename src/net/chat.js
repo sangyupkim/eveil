@@ -42,6 +42,7 @@ export const chat = {
         this.emit('hi');
       }
       else if (d.t === 'msg') { this.on = d.on || this.on; this.list.push(d.m); if (this.list.length > KEEP) this.list.splice(0, this.list.length - KEEP); this.emit('msg', d.m); }
+      else if (d.t === 'on') { this.on = d.on || 0; this.emit('on'); } // v0.49.44 접속자 수가 바뀜
       else if (d.t === 'err') this.emit('err', d); // { e: login · slow · same · mute · ban, wait(초) }
     };
     ws.onclose = () => { if (this.ws !== ws) return; this.ws = null; this.ok = false; clearInterval(this.pingT); this.emit('close'); this.retry(); };
