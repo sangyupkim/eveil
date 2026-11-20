@@ -268,6 +268,14 @@ for (const [id, o] of Object.entries({
   re('g_str5_1', 'nova', { radius: 5.5 }); re('g_dex3_0', 'cleave', { radius: 5 }); re('g_dex4_2', 'cleave', { radius: 6 }); re('g_dex5_1', 'cleave', { radius: 6 });
   re('g_wis3_0', 'meteor', { radius: 5, range: 13 }); re('g_wis3_3', 'chain', { jumps: 5, range: 12 }); re('g_wis4_2', 'chain', { jumps: 6, range: 12 });
   re('g_vit3_3', 'nova', { radius: 5 });
+  // v0.49.52 양손 점검 (힘 · 체력 · 정신): 내 둘레 휘두르기 · 폭발만 많던 것 → 땅을 타고 가는 충격파(line) · 뛰어올라 내려찍기(meteor) · 넓은 부채꼴(cone)
+  re('g_str3_2', 'line', { range: 13, width: 3.2, name: '군단 가르기', desc: '땅을 내리쳐 앞으로 길게 충격파를 보낸다. (근접 무기)' });
+  re('g_str4_1', 'meteor', { radius: 6, range: 10, name: '멸망의 도약', desc: '높이 뛰어올라 고른 곳을 내려찍어 둘레를 부순다. (근접 무기)' });
+  re('g_vit2_0', 'line', { range: 12, width: 3, desc: '땅을 굴러 앞으로 길게 진동을 보낸다. (근접 무기)' });
+  re('g_vit4_0', 'meteor', { radius: 6.5, range: 10, name: '불괴 낙하', desc: '온 무게로 뛰어내려 고른 곳 둘레를 뭉갠다. (근접 무기)' });
+  re('g_wis3_2', 'cone', { radius: 10, desc: '앞쪽 넓은 부채꼴로 마력을 쏟아낸다.' });
+  re('g_wis4_1', 'line', { range: 20, width: 5, desc: '거대한 마력의 강을 앞으로 길게 흘려보낸다.' });
+  re('g_wis5_2', null, { cd: 20 });
 }
 export const SKILL_IDS = Object.keys(SKILLS);
 export function skillsOfTier(t) {
