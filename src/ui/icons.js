@@ -56,6 +56,9 @@ export function itemIcon(it) {
 }
 export const skillIcon = (id) => iconUrl(SKILL_ICON[id] ?? SCHOOL_ICON[SKILLS[id]?.school] ?? 0, null, SKILL_FILTER[id] || ''); // v0.49.25 같은 그림은 빛깔을 바꿔서
 export const portrait = (look) => 'assets/flare/portraits/' + faceOf(look?.face)[1] + '.webp';
+// v0.49.46 첫 화면 캐릭터 고르기: 배경을 지운 상반신 (bust_m01 …)
+export const faceClose = (look) => 'assets/flare/portraits/' + faceOf(look?.face)[1].replace('hero_', 'face_') + '.webp';
+export const bust = (look) => 'assets/flare/portraits/' + faceOf(look?.face)[1].replace('hero_', 'bust_') + '.webp';
 export const chestIcon = () => iconUrl(1009);
 export const bookIcon = () => iconUrl(2296); // v0.49.25 문양(UI 그림) 대신 책 그림
 export const coinIcon = () => iconUrl(1008);

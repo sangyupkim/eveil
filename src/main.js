@@ -17,7 +17,7 @@ import { setupInput } from './input.js';
 import { newPlayer } from './game/player.js';
 import { CONFIG } from './data/config.js';
 import { audio } from './engine/audio.js';
-import { portrait, iconsReady } from './ui/icons.js';
+import { portrait, bust, iconsReady } from './ui/icons.js';
 import { Tutorial } from './ui/tutorial.js';
 import { applyUi } from './ui/layout.js';
 import { packShards } from './game/shards.js';
@@ -114,7 +114,7 @@ globalThis.__stage = stage;
     const el = $('#charList');
     el.innerHTML = chars.map((c) => {
       const face = c.st?.look || { face: FACES[0][0] };
-      return `<button class="charCard${c.cid === sel ? ' on' : ''}" data-cid="${c.cid}"><img src="${portrait(face)}" alt="" /><b>${label(c)}</b><small>각성 ${awOf(c)}${c.st ? '' : ' · 서버'}</small></button>`;
+      return `<button class="charCard${c.cid === sel ? ' on' : ''}" data-cid="${c.cid}"><img src="${bust(face)}" alt="" /><b>${label(c)}</b><small>각성 ${awOf(c)}${c.st ? '' : ' · 서버'}</small></button>`;
     }).join('') || '<div class="note">캐릭터가 없습니다</div>';
     el.querySelectorAll('[data-cid]').forEach((b) => { b.onclick = () => { audio.play('click'); sel = b.dataset.cid; drawChars(); }; });
     $('#btnPlay').disabled = !sel;

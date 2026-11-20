@@ -14,7 +14,7 @@ import { expNeeded, powerLevel, recAwaken } from '../game/growth.js';
 import { countOf } from '../game/inventory.js';
 import { skillValues, modsOf } from '../game/skills.js';
 import { ELIXIRS } from '../data/potions.js';
-import { portrait, chestIcon, bookIcon, coinIcon, swordIcon, itemIcon, skillIcon, homeIcon, duelIcon, scrollIcon, townIcon, oreIcon, itemIconCut, glyphIcon, uiIcon } from './icons.js';
+import { faceClose, portrait, chestIcon, bookIcon, coinIcon, swordIcon, itemIcon, skillIcon, homeIcon, duelIcon, scrollIcon, townIcon, oreIcon, itemIconCut, glyphIcon, uiIcon } from './icons.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 
@@ -34,7 +34,7 @@ export class HUD {
     this.world = world;
     // 3D 모델로 찍은 아이콘을 단추에 넣는다
     const face = portrait(world.st.look);
-    $('#face').src = face;
+    $('#face').src = faceClose(world.st.look); // v0.49.46 HUD는 얼굴 가까이
     const icons = { chest: chestIcon(), book: bookIcon(), coin: coinIcon(), face, sword: swordIcon(), home: homeIcon(), duel: duelIcon(),
       hpot: itemIconCut('hp_potion'), mpot: itemIconCut('mp_potion'), scroll: scrollIcon(), town: townIcon(), boots: itemIcon({ base: 'leather_boots' }), rank: itemIconCut('great_helm'),
       // v0.49.8 HUD 단추는 모두 같은 문양 아이콘 (단추 안에 또 네모가 보이지 않게)
