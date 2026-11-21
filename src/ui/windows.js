@@ -6,7 +6,7 @@ import { rumorsOf, analyzeStart, analyzeTime, rumorUpgrade, rumorName, PLUS, PLU
 // 창: 가방(장비) · 스킬 · 능력(스탯/성향) · 상점 · 메뉴
 import { STATS, STAT_NAMES, STAT_COLORS, STAT_DESC, CONFIG } from '../data/config.js';
 import { SKILLS, BOOK_TIERS, GRIP_NAMES } from '../data/skills.js';
-import { BASES, SLOTS, SLOT_NAMES, RARITY, WEAPON_CLASSES, isTwoHandedBase } from '../data/items.js';
+import { BASES, SLOTS, SLOT_NAMES, RARITY, WEAPON_CLASSES, isTwoHandedBase, isBowBase, isQuiverBase, handsOk } from '../data/items.js';
 import { itemName, itemColor, itemValue, affixText, isBook, makeItem } from '../game/items.js';
 import { scaledArmor, scaledDmg, totalStats, derive, baseMods } from '../game/player.js';
 import { addItem } from '../game/inventory.js';
@@ -245,7 +245,7 @@ export class Windows {
     } else if (!b?.slot) { // 그 밖의 물건 (모르는 종류도 창이 비지 않게)
       h += `<div class="sub">${it.qty > 1 ? `×${it.qty}` : ''}</div>`;
     } else {
-      h += `<div class="sub">${RARITY[it.rarity].name} ${SLOT_NAMES[b.slot]} · 아이템 레벨 ${it.ilvl}</div>`;
+      h += `<div class="sub">${RARITY[it.rarity].name} ${SLOT_NAMES[b.slot]} · 아이템 레벨 ${it.ilvl}${isQuiverBase(b) ? ' · <b class="twoTxt">활 전용</b>' : ''}</div>`;
       if (b.dmg) { const d = scaledDmg(it); h += `<div>${WEAPON_CLASSES[b.cls].name}${isTwoHandedBase(b) ? ' · <b class="twoTxt">양손 무기</b>' : ''} · ${WEAPON_CLASSES[b.cls].kind === 'magic' ? '마법 공격력' : '물리 공격력'} ${d[0]}~${d[1]} · 속도 ${b.speed}</div><div class="sub">주 스탯 ${STAT_NAMES[WEAPON_CLASSES[b.cls].ap]}</div>`; }
       if (b.armor) h += `<div>방어력 ${scaledArmor(it)}</div>`;
       if (b.block) h += `<div>막기 확률 ${Math.round(b.block * 100)}%</div>`;
@@ -615,7 +615,7 @@ export class Windows {
   }
   eqStrip(cur) {
     const st = this.w.st, sl = BASES[cur?.base]?.slot || '', ring = sl === 'ring' && this.sel?.from !== 'equip';
-    const w2 = st.equip.weapon && isTwoHandedBase(BASES[st.equip.weapon.base]) ? st.equip.weapon : null;
+    const w2 = st.equip.weapon && isTwoHandedBase(BASES[st.equip.weapon.base]) && !isBowBase(BASES[st.equip.weapon.base]) ? st.equip.weapon : null; // 활은 화살통 자리로 비워 둔다
     const S = ['weapon', 'offhand', 'helm', 'armor', 'gloves', 'belt', 'boots', 'amulet', 'ring1', 'ring2'];
     return `<div class="eqStrip">${S.map((s) => {
       const it = st.equip[s];
@@ -626,7 +626,7 @@ export class Windows {
   equipGrid() {
     const st = this.w.st;
     // v0.44.39 양손 무기를 들면 보조 칸에 그 무기를 연하게 (보조 장비를 낄 수 없다는 표시)
-    const w2 = st.equip.weapon && isTwoHandedBase(BASES[st.equip.weapon.base]) ? st.equip.weapon : null;
+    const w2 = st.equip.weapon && isTwoHandedBase(BASES[st.equip.weapon.base]) && !isBowBase(BASES[st.equip.weapon.base]) ? st.equip.weapon : null; // 활은 화살통 자리로 비워 둔다
     const cell = (s) => { const it = st.equip[s], sel = this.sel?.from === 'equip' && this.sel.slot === s ? ' sel' : '';
       if (s === 'offhand' && !it && w2) return `<div class="cell twoGhost" data-eq="weapon"><span class="lab">${SLOT_NAMES[s]}</span>${ico(w2)}<span class="twoTag">양손 무기</span></div>`;
       return `<div class="cell${sel}${it ? rar(it) : ''}" data-eq="${s}"><span class="lab">${SLOT_NAMES[s]}</span>${it ? ico(it) : ''}</div>`; };
@@ -644,7 +644,8 @@ export class Windows {
     else {
       if (slot === 'ring') slot = this.ringSlot(st);
       eq[slot] = cur;
-      if (slot === 'weapon' && isTwoHandedBase(BASES[cur.base])) eq.offhand = null;
+      if (slot === 'weapon' && eq.offhand && !handsOk(BASES[cur.base], BASES[eq.offhand.base])) eq.offhand = null;
+      if (slot === 'offhand' && eq.weapon && !handsOk(BASES[eq.weapon.base], BASES[cur.base])) eq.weapon = null;
     }
     const a = derive(st, this.w.buffValues()), b = derive({ ...st, equip: eq }, this.w.buffValues());
     const rows = [

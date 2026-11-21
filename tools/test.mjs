@@ -18,6 +18,7 @@ import * as INV from '../src/game/inventory.js';
 import * as NR from '../src/data/nickrules.js';
 import * as PL from '../src/game/player.js';
 import * as IT from '../src/game/items.js';
+import { BASES as IT_BASES } from '../src/data/items.js';
 import { townOf, build as build0, tick, collect, enhance, hire, dispatch, claim, buildingAt, dropMats, craft, craftZones, upgrade, setBase, liberateAdd, assignMerc, recruits, mercSlots, awakenMerc, MERC } from '../src/game/town.js';
 // 테스트에서는 공사를 바로 끝낸다
 const build = (...a) => { const r = build0(...a); finishBuilds(a[0], Date.now() + 864e5); return r; };
@@ -620,6 +621,19 @@ test('스킬 형상: 쓰는 쪽에 맞고, 같은 갈래 · 무기 · 손에서 
   const rows = Object.entries(SKILLS).filter(([, s]) => !s.passive && s.type !== 'buff' && s.type !== 'evade' && !s.retired).map(([id, s]) => ({ id, g: (s.lines || Object.keys(s.req || {})).slice().sort().join('+'), u: F.formUser(s), grip: s.grip, f: s.form || 'T:' + s.type }));
   let dup = 0; for (const a of rows) for (const b of rows) if (a.id < b.id && a.g === b.g && a.u === b.u && (!a.grip || !b.grip || a.grip === b.grip) && a.f === b.f) dup++;
   assert.ok(dup <= 8, 'dup ' + dup);
+});
+
+test('화살통: 활과 함께 낄 수 있고, 활 아닌 무기 · 다른 보조 장비는 양손 규칙 그대로', () => {
+  const st = newPlayer('t', {}, null); st.stats = { str: 999, dex: 999, int: 999, wis: 999, vit: 999 }; st.awakenings = 999;
+  const mk = (base) => { const it = makeItem(base, { rarity: 'common', ilvl: 60 }, st); st.inv.push(it); return it; };
+  st.equip.weapon = null; st.equip.offhand = null;
+  const bow = mk('long_bow'), q = mk('l_dex_off1'), shield = mk('l_vit_off1'), dagger = Object.keys(IT_BASES).find((k) => IT_BASES[k].cls === 'dagger');
+  assert.ok(INV.equip(st, bow.uid).ok); assert.ok(INV.equip(st, q.uid).ok);
+  assert.equal(st.equip.weapon?.uid, bow.uid); assert.equal(st.equip.offhand?.uid, q.uid);
+  assert.ok(INV.equip(st, shield.uid).ok); assert.equal(st.equip.weapon, null, '방패를 끼면 양손 활은 빠진다');
+  if (dagger) { const d = mk(dagger); INV.equip(st, d.uid); const q2 = mk('l_dex_off2'); assert.equal(INV.equip(st, q2.uid).ok, false, '단검에는 화살통을 낄 수 없다'); }
+  st.equip.weapon = mk('long_bow'); st.equip.offhand = mk('l_dex_off3'); const sw = Object.keys(IT_BASES).find((k) => IT_BASES[k].cls === 'sword' && !IT_BASES[k].two);
+  if (sw) { const it = mk(sw); INV.equip(st, it.uid); assert.equal(st.equip.offhand, null, '활 아닌 무기로 바꾸면 화살통은 가방으로'); }
 });
 
 console.log(`\n${n}개 통과`);

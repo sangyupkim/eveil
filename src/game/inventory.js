@@ -1,6 +1,6 @@
 // 가방 · 장착
 import { CONFIG } from '../data/config.js';
-import { BASES, isTwoHandedBase } from '../data/items.js';
+import { BASES, isTwoHandedBase, isQuiverBase, isBowBase, handsOk } from '../data/items.js';
 import { isStack, sameStack } from './items.js';
 import { meetsReq } from './skills.js';
 import { totalStats } from './player.js';
@@ -41,6 +41,7 @@ export function canEquip(st, it) {
   if (!base?.slot) return { ok: false, why: '장착할 수 없는 아이템' };
   if (!meetsReq(st, base.req, totalStats(st))) return { ok: false, why: '스탯 조건이 부족합니다' };
   if (it.mixReq && !meetsReq(st, it.mixReq, totalStats(st))) return { ok: false, why: '혼합 장비: 두 스탯 조건이 부족합니다' }; // v0.44.41
+  if (isQuiverBase(base) && st.equip.weapon && !isBowBase(BASES[st.equip.weapon.base])) return { ok: false, why: '화살통은 활을 들어야 낄 수 있습니다' }; // v0.49.58
   const need = needAwaken(it);
   if ((st.awakenings || 0) < need) return { ok: false, why: `각성 ${need} 필요` };
   return { ok: true };
@@ -66,8 +67,9 @@ export function equip(st, uid, rng = Math.random, ring = null) {
   it.worn = true; delete it.loot; // 한 번 입은 장비는 자동 판매하지 않는다
   // 양손 무기 ↔ 보조 장비
   const base = BASES[it.base];
-  if (slot === 'weapon' && isTwoHanded(it) && st.equip.offhand) { back.push(st.equip.offhand); st.equip.offhand = null; }
-  if (slot === 'offhand' && st.equip.weapon && isTwoHanded(st.equip.weapon)) { back.push(st.equip.weapon); st.equip.weapon = null; }
+  // v0.49.58 활 + 화살통은 함께, 화살통은 활 아닌 무기와 함께 끼지 않는다
+  if (slot === 'weapon' && st.equip.offhand && !handsOk(base, BASES[st.equip.offhand.base])) { back.push(st.equip.offhand); st.equip.offhand = null; }
+  if (slot === 'offhand' && st.equip.weapon && !handsOk(BASES[st.equip.weapon.base], base)) { back.push(st.equip.weapon); st.equip.weapon = null; }
   for (const b of back) st.inv.push(b); // 꺼낸 장비는 칸 수와 상관없이 가방으로
   // 갈아 끼운 장비에서 낮은 확률로 능력치 파편
   const shards = [];
@@ -85,6 +87,12 @@ export function unequip(st, slot) {
 }
 
 export const isTwoHanded = (it) => isTwoHandedBase(BASES[it.base]);
+// v0.49.58 예전 저장: 활 아닌 무기와 함께 낀 화살통은 가방으로 (바뀌었으면 true)
+export function fixHands(st) {
+  const w = st.equip?.weapon, o = st.equip?.offhand;
+  if (!w || !o || handsOk(BASES[w.base], BASES[o.base])) return false;
+  st.equip.offhand = null; st.inv.push(o); return true;
+}
 // v0.49.25 예전 저장: 같은 스킬의 스킬북을 한 칸으로 (바뀌었으면 true)
 export function packBooks(list) {
   let ch = false;

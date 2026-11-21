@@ -220,6 +220,11 @@ export const BASES = {
   abyss_tome: { name: '심연의 마도서', slot: 'offhand', armor: 7, req: { int: 56 }, minLvl: 34, mods: { matk: 52, int: 8 } },
 };
 export const isTwoHandedBase = (b) => !!(b.two ?? WEAPON_CLASSES[b.cls]?.two);
+// v0.49.58 화살통: 활 전용 보조 장비. 활은 양손이지만 화살통은 함께 낄 수 있다 (다른 양손 무기 · 다른 보조 장비는 그대로 막힌다)
+export const isQuiverBase = (b) => !!b && b.slot === 'offhand' && /화살통/.test(b.name || '');
+export const isBowBase = (b) => b?.cls === 'bow';
+// 무기 · 보조 장비를 같이 낄 수 있나
+export const handsOk = (wb, ob) => !wb || !ob ? true : isQuiverBase(ob) ? isBowBase(wb) : !isTwoHandedBase(wb);
 
 export const RARITY = {
   common: { name: '일반', color: '#d8d2c4', affix: [0, 0], mult: 1, value: 1 },
