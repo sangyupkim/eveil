@@ -8,7 +8,7 @@ import { STATS, STAT_NAMES, STAT_COLORS, STAT_DESC, CONFIG } from '../data/confi
 import { SKILLS, BOOK_TIERS, GRIP_NAMES } from '../data/skills.js';
 import { BASES, SLOTS, SLOT_NAMES, RARITY, WEAPON_CLASSES, isTwoHandedBase, isBowBase, isQuiverBase, handsOk } from '../data/items.js';
 import { itemName, itemColor, itemValue, affixText, isBook, makeItem } from '../game/items.js';
-import { scaledArmor, scaledDmg, totalStats, derive, baseMods } from '../game/player.js';
+import { scaledArmor, scaledDmg, totalStats, derive, baseMods, affixV, affixK } from '../game/player.js';
 import { addItem } from '../game/inventory.js';
 import { skillExpNeeded, skillValues, meetsReq, learn } from '../game/skills.js';
 import { expNeeded } from '../game/growth.js';
@@ -252,7 +252,7 @@ export class Windows {
       { const bm = baseMods(it); for (const k in bm) h += `<div class="baseMod">${modText(k, bm[k])}${it.plus ? ' <small class="note">강화</small>' : ''}</div>`; } // v0.49.34 기본 효과는 강화만큼 오른 값 // v0.44.18 영어 키가 그대로 보이던 것 (dex +40 등)
       if (it.q) h += `<div class="sub">품질 <b style="color:${it.q >= 1.1 ? '#ffd84a' : it.q <= 0.9 ? '#a09a8a' : '#e8e2d4'}">${Math.round(it.q * 100)}%</b> · ${it.rarity === 'myth' ? '115~130' : '85~115'}%</div>`;
       // 옵션마다 이 아이템 레벨 · 등급에서 나올 수 있는 범위
-      for (const a of it.affixes) { const A = AFFIXES[a.id], mx = A ? Math.round(Math.max(A.min, A.max(it.ilvl) * (RARITY[it.rarity]?.mult || 1))) : null; h += `<div class="aff"${a.great ? ' style="color:#ffb84a"' : ''}>${affixText(a)}${a.great ? ' <b style="color:#ffb84a">탁월</b>' : ''}${A ? ` <small class="note">${A.min}~${mx}</small>` : ''}</div>`; }
+      for (const a of it.affixes) { const A = AFFIXES[a.id], mx = A ? Math.round(Math.max(A.min, A.max(it.ilvl) * (RARITY[it.rarity]?.mult || 1))) : null; h += `<div class="aff"${a.great ? ' style="color:#ffb84a"' : ''}>${affixText({ ...a, v: affixV(it, a) })}${affixK(it) > 1 ? ' <small class="note">강화</small>' : ''}${a.great ? ' <b style="color:#ffb84a">탁월</b>' : ''}${A ? ` <small class="note">${A.min}~${mx}</small>` : ''}</div>`; }
       if (it.mixReq) h += `<div class="aff" style="color:#e0b0ff">혼합 전용 · ${Object.entries(it.mixReq).map(([k, v]) => `${STAT_NAMES[k]} ${v}`).join(' · ')}</div>`;
       if (it.unique != null) h += `<div class="aff" style="color:#41e07a">◆ ${UNIQUES[it.unique].text}</div>`;
       if (it.sockets) {
@@ -471,12 +471,14 @@ export class Windows {
     const nx = { ...it, plus: n + 1 };
     const stat = b.dmg ? (() => { const a = scaledDmg(it), z = scaledDmg(nx); return `<span>${WEAPON_CLASSES[b.cls]?.kind === 'magic' ? '마법 공격력' : '물리 공격력'}</span><b>${a[0]}~${a[1]}${max ? '' : ` <i class="arw">▶</i> <em>${z[0]}~${z[1]}</em>`}</b>`; })() : b.armor ? `<span>방어력</span><b>${scaledArmor(it)}${max ? '' : ` <i class="arw">▶</i> <em>${scaledArmor(nx)}</em>`}</b>` : ''
     // v0.49.34 기본 옵션 · 장신구 기본 효과도 강화만큼
-    const bmA = baseMods(it), bmB = baseMods(nx), bmRows = Object.keys(bmA).map((k) => `<span>${modName(k)}</span><b>${bmA[k]}${pct(k)}${max ? '' : ` <i class="arw">▶</i> <em>${bmB[k]}${pct(k)}</em>`}</b>`).join('');
+    const bmA = baseMods(it), bmB = baseMods(nx), bmRows = Object.keys(bmA).map((k) => `<span>${modName(k)}</span><b>${bmA[k]}${pct(k)}${max ? '' : ` <i class="arw">▶</i> <em>${bmB[k]}${pct(k)}</em>`}</b>`).join('')
+    // v0.49.59 반지 · 목걸이: 붙은 옵션도 강화만큼
+    const afRows = affixK(nx) > 1 ? (it.affixes || []).map((a) => { const A = AFFIXES[a.id]; if (!A) return ''; const nm = A.text.replace(/ ?[+-]?\{v\}%?/, ''), u = /%/.test(A.text) ? '%' : ''; return `<span>${nm}</span><b>${affixV(it, a)}${u}${max ? '' : ` <i class="arw">▶</i> <em>${affixV(nx, a)}${u}</em>`}</b>`; }).join('') : '';
     const have = resCount(st, c.oreId), okGold = st.gold >= c.gold, okOre = have >= c.ore;
     let L = `<div class="forgeTop"><div class="cell forgeSlot${rar(it)}">${ico(it)}</div><div><div class="nm" style="color:${itemColor(it)}">${esc(itemName(it))}</div><div class="note">${where} · Lv ${it.ilvl}</div><div class="plusBig">+${n}${max ? ' <small>상한</small>' : ` <i class="arw">▶</i> <em>+${n + 1}</em>`}</div></div></div>`;
-    if (!max) L += `<div class="kv">${stat}${bmRows}<span>성공 확률</span><b class="${c.jang >= 1 ? 'goldTxt' : ''}">${c.jang >= 1 ? '100%' : `${+(c.chance * 100).toFixed(1)}%`}</b><span>장인의 기운</span><b>${+(c.jang * 100).toFixed(1)}%</b><span>금화</span><b style="${okGold ? '' : 'color:#ff7060'}">${c.gold.toLocaleString()} G</b><span>${c.oreName}</span><b style="${okOre ? '' : 'color:#ff7060'}">${c.ore} <small class="note">/ ${have}</small></b></div>
+    if (!max) L += `<div class="kv">${stat}${bmRows}${afRows}<span>성공 확률</span><b class="${c.jang >= 1 ? 'goldTxt' : ''}">${c.jang >= 1 ? '100%' : `${+(c.chance * 100).toFixed(1)}%`}</b><span>장인의 기운</span><b>${+(c.jang * 100).toFixed(1)}%</b><span>금화</span><b style="${okGold ? '' : 'color:#ff7060'}">${c.gold.toLocaleString()} G</b><span>${c.oreName}</span><b style="${okOre ? '' : 'color:#ff7060'}">${c.ore} <small class="note">/ ${have}</small></b></div>
       <div class="btns forgeGo"><button class="btn gold big" data-enh="${key}" ${okGold && okOre ? '' : 'disabled'}>강화</button></div>`;
-    else L += `<div class="kv">${stat}${bmRows}</div>`;
+    else L += `<div class="kv">${stat}${bmRows}${afRows}</div>`;
     return [L, right];
   }
   smithRef(st, smith) {
@@ -1455,12 +1457,13 @@ export class Windows {
     on('[data-collect]', () => { const r = collect(st, this.townSel); if (r?.n) { audio.play('coin'); w.ui.toast(r.got ? `약초: ${Object.entries(r.got).map(([h, q]) => `${HERBS[h].name} ${q}`).join(' · ')}` : `${r.what} ${r.n}개를 거뒀습니다${r.o2 ? ` · 상급 ${r.o2}` : ''}${r.o3 ? ` · 최상급 ${r.o3}` : ''}`, '#7fe07a'); } w.ui.dirty(); this.render(); });
     on('[data-enh]', (el) => {
       const it = gearAt(st, el.dataset.enh), b0 = BASES[it.base], before = b0.dmg ? scaledDmg(it).join('~') : b0.armor ? scaledArmor(it) : null, p0 = it.plus || 0;
+      const affA = (it.affixes || []).map((a) => affixText({ ...a, v: affixV(it, a) })); // v0.49.59 장신구 옵션 바뀐 값
       const r = enhance(st, it); if (el.dataset.enh.startsWith('v:')) vaultSave();
       if (!r.ok) { w.ui.toast(r.why); audio.play('error'); }
       else if (r.success) {
         audio.play('awaken'); w.fx.pillar(w.player.pos.x, w.player.pos.z, 0xffd060, 0.8); w.refreshGear();
         const after = b0.dmg ? scaledDmg(it).join('~') : b0.armor ? scaledArmor(it) : null, nm = b0.dmg ? (WEAPON_CLASSES[b0.cls]?.kind === 'magic' ? '마법 공격력' : '물리 공격력') : '방어력';
-        this.forgeFx(true, it, `+${r.plus} 강화 성공`, [`<div><span>강화</span><b>+${p0}</b><i class="arw">▶</i><em>+${r.plus}</em></div>`, ...(before != null ? [`<div><span>${nm}</span><b>${before}</b><i class="arw">▶</i><em>${after}</em></div>`] : [])]);
+        this.forgeFx(true, it, `+${r.plus} 강화 성공`, [`<div><span>강화</span><b>+${p0}</b><i class="arw">▶</i><em>+${r.plus}</em></div>`, ...(before != null ? [`<div><span>${nm}</span><b>${before}</b><i class="arw">▶</i><em>${after}</em></div>`] : []), ...(affixK(it) > 1 ? (it.affixes || []).map((a, k) => `<div><b>${esc(affA[k])}</b><i class="arw">▶</i><em>${esc(affixText({ ...a, v: affixV(it, a) }))}</em></div>`) : [])]);
       } else { audio.play('error'); this.forgeFx(false, it, '강화 실패', [`<div><span>장인의 기운</span><em>${+((r.jang || 0) * 100).toFixed(1)}%</em></div>`]); }
       w.ui.dirty(); this.render();
     });

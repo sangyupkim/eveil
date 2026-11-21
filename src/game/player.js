@@ -64,7 +64,7 @@ export function gearSum(st) {
     if (base.armor) g.armor += scaledArmor(it);
     if (base.block) g.block += base.block;
     for (const [k, v] of Object.entries(baseMods(it))) { if (k === 'spellPct') g.matk = (g.matk || 0) + spellToMatk(v, it.ilvl); else g[k] = (g[k] || 0) + v; } // v0.49.34 기본 효과는 강화만큼
-    for (const a of it.affixes || []) { if (a.id === 'spellPct') g.matk = (g.matk || 0) + spellToMatk(a.v, it.ilvl); else g[a.id] = (g[a.id] || 0) + a.v; } // v0.44.37 주문 피해 % → 마법 공격력
+    for (const a of it.affixes || []) { const v = affixV(it, a); if (a.id === 'spellPct') g.matk = (g.matk || 0) + spellToMatk(v, it.ilvl); else g[a.id] = (g[a.id] || 0) + v; } // v0.44.37 주문 피해 % → 마법 공격력 · v0.49.59 장신구 옵션은 강화만큼
     for (const gm of it.gems || []) { const b = BASES[gm]; if (b) g[GEMS[b.gem].stat] = (g[GEMS[b.gem].stat] || 0) + GEM_GRADES[b.grade].v; }
   }
   const sb = setBonus(st.equip);
@@ -73,6 +73,10 @@ export function gearSum(st) {
 }
 
 // 강화(+n)는 기본 효과(공격력 · 방어력 · 기본 옵션 · 장신구 기본 효과)를 단계마다 +8%, +5 · +10 · +15 · +20을 넘을 때마다 +5% 더 (v0.49.34)
+// v0.49.59 반지 · 목걸이는 기본 효과가 작아 강화해도 거의 오르지 않았다 → 붙은 옵션도 단계마다 +5% (+10 = 1.5배 · +20 = 2배)
+export const JEWEL_SLOTS = new Set(['ring', 'amulet']);
+export const affixK = (it) => (JEWEL_SLOTS.has(BASES[it.base]?.slot) ? 1 + 0.05 * (it.plus || 0) : 1);
+export const affixV = (it, a) => { const k = affixK(it); if (k === 1) return a.v; const v = a.v * k; return Number.isInteger(a.v) ? Math.round(v) : Math.round(v * 10) / 10; };
 export const plusK = (it) => 1 + 0.08 * (it.plus || 0) + 0.05 * Math.floor((it.plus || 0) / 5);
 // v0.49.34 기본 옵션이 없던 반지 · 목걸이의 기본 효과 (아이템 레벨만큼). 구리 · 은 반지와 그냥 반지는 장비마다 다섯 스탯 중 하나
 const STAT5 = ['str', 'dex', 'int', 'wis', 'vit'], FLAT = new Set([...STAT5, 'allStats', 'maxHp', 'maxMp', 'matk', 'patk']);

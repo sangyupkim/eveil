@@ -326,6 +326,8 @@ for (const [id, slot, stat, tpl, noun] of STAT_LINES) LINE_LV.forEach((lv, i) =>
   o.mods = { ...(b.mods ? Object.fromEntries(Object.entries(b.mods).map(([a, v]) => [a, Math.round(v * g)])) : {}), [stat]: 1 + Math.round(lv / 6) }; // 그 스탯이 조금 붙는다
   BASES[`${id}${i + 1}`] = o;
 });
+// v0.49.59 화살통: 마법 구슬을 본떠 최대 MP · 마법 공격력이 붙어 있던 것 → 궁수용 물리 공격력 · 공격 속도 · 민첩
+for (let i = 1; i <= 4; i++) { const b = BASES['l_dex_off' + i]; if (b) b.mods = { patk: 2 + i * 2, atkSpd: 2 + i, dex: b.mods?.dex || 1 + i }; }
 // v0.49.38 완드는 한손 지능 무기: 지팡이보다 공격력 0.75배 · 빠르게
 for (let i = 1; i <= 4; i++) { const b = BASES['l_int_wand' + i]; if (b) Object.assign(b, { cls: 'wand', dmg: b.dmg.map((v) => Math.max(1, Math.round(v * 0.75))), speed: 1.1 }); }
 Object.assign(BASES, {
