@@ -55,7 +55,12 @@ export const chat = {
     const x = String(text || '').trim().slice(0, 60);
     if (!x) return { ok: false };
     if (!this.ok) return { ok: false, why: '채팅 서버에 연결 중입니다' };
-    if (!this.me) { if (cloud.token) { this.stop(); this.connect(); return { ok: false, why: '채팅 서버에 다시 연결합니다' }; } return { ok: false, why: '로그인하고 닉네임을 정해야 말할 수 있습니다' }; } // 방금 로그인 · 닉네임을 정했으면 다시 붙어 이름을 받는다
+    if (!this.me) {
+      // 방금 로그인 · 닉네임을 정했으면 다시 붙어 이름을 받는다. 다시 붙어도 이름이 없으면 닉네임이 서버에 없는 것 → 정하게 한다 (v0.49.57)
+      if (cloud.token && !this.retried) { this.retried = true; this.stop(); this.connect(); return { ok: false, why: '채팅 서버에 다시 연결합니다. 잠시 뒤 다시 보내 주세요' }; }
+      if (cloud.token) { this.retried = false; globalThis.__askNick?.('채팅하려면 닉네임을 정해 주세요'); return { ok: false }; }
+      return { ok: false, why: '계정을 연동하면 채팅할 수 있습니다 (메뉴 → 설정)' };
+    } // 방금 로그인 · 닉네임을 정했으면 다시 붙어 이름을 받는다
     this.ws.send(JSON.stringify({ t: 'say', x }));
     return { ok: true };
   },

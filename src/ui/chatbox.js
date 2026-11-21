@@ -35,7 +35,7 @@ export function setupChatBox(world) {
     { const o = box.querySelector('.chatOn'); o.hidden = !chat.ok; o.textContent = `접속 ${chat.on}`; } // v0.49.44 지금 접속자
   };
   const open = () => {
-    if (!cloud.token) { world.ui.toast('로그인하고 닉네임을 정해야 말할 수 있습니다'); audio.play('error'); return; }
+    if (!cloud.token) { world.ui.toast('계정을 연동하면 채팅할 수 있습니다 (메뉴 → 설정)', '#ffd84a'); audio.play('error'); globalThis.__game?.windows?.show('menu'); return; } // v0.49.57 게스트 · 로그인 안 함: 바로 연동 칸이 있는 설정으로
     if (folded()) { st.settings.chatHud = true; unread = 0; }
     inRow.hidden = false; box.classList.add('typing'); draw(); txt.focus();
   };

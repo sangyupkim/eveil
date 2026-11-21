@@ -1342,7 +1342,7 @@ export class Windows {
       await cloud.claim(st.cid);
       if (st.nick) { const n = await cloud.nick(st.cid, st.nick); if (n.ok) st.nickOk = true; else window.__askNick?.(cloudError(n.error)); }
       else window.__askNick?.();
-      this.save?.(true);
+      this.save?.(true); window.__chatRe?.();
       w.ui.toast(`계정 ${r.id}에 연동했습니다`, '#ffd84a'); audio.play('rankup');
       this.render();
     });

@@ -311,6 +311,7 @@ function startGame(stage, st) {
       if (nickError(nick)) { msg.textContent = cloudError(nickError(nick)); return; }
       if (cloud.id) { msg.textContent = '…'; const r = await cloud.nick(st.cid, nick); if (!r.ok) { msg.textContent = cloudError(r.error); return; } st.nickOk = true; }
       st.nick = nick; st.name = nick; st.guest = false;
+      if (cloud.id) { chat.retried = false; chat.stop(); chat.connect(); } // v0.49.57 채팅방에서 새 닉네임을 받게 다시 붙는다
       el.remove(); audio.play('rankup'); hud.toast?.(`닉네임: ${nick}`, '#ffd84a'); world.ui.dirty(); save(true);
     };
     inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') el.querySelector('button').click(); });
@@ -321,6 +322,7 @@ function startGame(stage, st) {
   if (!st.nick && !st.guest) { const wait = setInterval(() => { if (st.tut !== 0) { clearInterval(wait); askNick(); } }, 300); }
   else if (cloud.id && !st.nickOk) cloud.nick(st.cid, st.nick).then((r) => { if (r.ok) { st.nickOk = true; save(true); } else if (['nick_taken', 'bad_nick', 'nick_bad', 'nick_reserved', 'nick_digits'].includes(r.error)) askNick(cloudError(r.error)); });
   window.__askNick = askNick;
+  window.__chatRe = () => { chat.retried = false; chat.stop(); chat.connect(); }; // 계정 연동 뒤 토큰으로 다시 붙기
   // 우편이 와 있으면 알려 준다 (메뉴 → 우편함)
   if (cloud.id) cloud.mail().then((l) => { if (l.length) hud.toast?.(`우편 ${l.length}통이 와 있습니다 (메뉴 → 우편함)`, '#ffd84a'); });
 
