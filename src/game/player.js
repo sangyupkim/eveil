@@ -73,10 +73,10 @@ export function gearSum(st) {
 }
 
 // 강화(+n)는 기본 효과(공격력 · 방어력 · 기본 옵션 · 장신구 기본 효과)를 단계마다 +8%, +5 · +10 · +15 · +20을 넘을 때마다 +5% 더 (v0.49.34)
-// v0.49.59 반지 · 목걸이는 기본 효과가 작아 강화해도 거의 오르지 않았다 → 붙은 옵션도 단계마다 +5% (+10 = 1.5배 · +20 = 2배)
+// v0.49.62 반지 · 목걸이의 붙은 옵션(교체 · 제련하는 능력치)은 강화로 오르지 않는다 — 강화는 기본 효과만 (사용자 결정). 대신 기본 효과를 크게
 export const JEWEL_SLOTS = new Set(['ring', 'amulet']);
-export const affixK = (it) => (JEWEL_SLOTS.has(BASES[it.base]?.slot) ? 1 + 0.05 * (it.plus || 0) : 1);
-export const affixV = (it, a) => { const k = affixK(it); if (k === 1) return a.v; const v = a.v * k; return Number.isInteger(a.v) ? Math.round(v) : Math.round(v * 10) / 10; };
+export const affixK = () => 1;
+export const affixV = (it, a) => a.v;
 export const plusK = (it) => 1 + 0.08 * (it.plus || 0) + 0.05 * Math.floor((it.plus || 0) / 5);
 // v0.49.34 기본 옵션이 없던 반지 · 목걸이의 기본 효과 (아이템 레벨만큼). 구리 · 은 반지와 그냥 반지는 장비마다 다섯 스탯 중 하나
 const STAT5 = ['str', 'dex', 'int', 'wis', 'vit'], FLAT = new Set([...STAT5, 'allStats', 'maxHp', 'maxMp', 'matk', 'patk']);
@@ -85,15 +85,19 @@ const JEWEL = {
   amulet: 'allStats', amulet2: 'allStats', bone_amulet: 'maxHp', jade_amulet: 'maxMp', sun_amulet: 'dmgPct', star_amulet: 'spellPct',
 };
 export function jewelImplicit(it) {
-  const b = BASES[it.base], id = b?.tpl && JEWEL[b.tpl] !== undefined ? b.tpl : it.base;
-  if (!b || b.mods || !(id in JEWEL)) return null;
-  const L = it.ilvl || 1, k = JEWEL[id] ?? STAT5[(Number(it.uid) || 0) % 5];
-  const v = k === 'allStats' ? Math.max(1, Math.round(L * 0.04)) : k === 'maxHp' ? Math.round(10 + L * 1.2) : k === 'maxMp' ? Math.round(10 + L) : k === 'dmgPct' || k === 'spellPct' ? Math.round(3 + L * 0.02) : Math.max(2, Math.round(L * 0.09));
+  const b = BASES[it.base];
+  if (!b || !JEWEL_SLOTS.has(b.slot)) return null;
+  // 갈래 장신구(사냥꾼 반지 등)는 그 갈래 스탯, 이름 있는 원본(루비 반지 · 별 목걸이 …)은 정해진 효과, 그 밖(높은 단계 반지 포함)은 장비마다 다섯 스탯 중 하나
+  const id = b.tpl && JEWEL[b.tpl] !== undefined ? b.tpl : it.base;
+  const k = b.line || (b.tpl === 'ruby_ring' ? null : JEWEL[id]) || STAT5[(Number(it.uid) || 0) % 5];
+  // v0.49.62 기본 효과를 키웠다 (레벨 60 기준: 스탯 18 · 모든 스탯 7 · HP 260 · MP 165 · 피해 8%)
+  const L = it.ilvl || 1;
+  const v = k === 'allStats' ? Math.max(1, Math.round(L * 0.12)) : k === 'maxHp' ? Math.round(20 + L * 4) : k === 'maxMp' ? Math.round(15 + L * 2.5) : k === 'dmgPct' || k === 'spellPct' ? Math.round(4 + L * 0.07) : Math.max(3, Math.round(L * 0.3));
   return { [k]: v };
 }
 // 장비의 기본 효과 (기본 옵션 · 장신구 기본 효과) — 강화 배율을 곱한 값
 export function baseMods(it) {
-  const m = BASES[it.base]?.mods || jewelImplicit(it), out = {};
+  const m = jewelImplicit(it) || BASES[it.base]?.mods, out = {}; // 장신구는 기본 효과를 레벨로 (갈래 장신구의 작던 고정값 대신)
   if (!m) return out;
   const k = plusK(it);
   for (const [s, v] of Object.entries(m)) out[s] = FLAT.has(s) ? Math.round(v * k) : Math.round(v * k * 10) / 10; // 능력치 · HP · MP는 정수, % · 회복은 소수 한 자리

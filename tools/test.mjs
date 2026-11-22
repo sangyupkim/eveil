@@ -609,7 +609,8 @@ test('닉네임 규칙: 2~8자 · 욕설 · 운영진 이름 · 숫자만은 안
 
 test('강화는 기본 효과(기본 옵션 · 장신구 기본 효과)도 올린다', () => {
   assert.equal(PL.plusK({ plus: 0 }), 1); assert.equal(+PL.plusK({ plus: 5 }).toFixed(2), 1.45); assert.equal(+PL.plusK({ plus: 10 }).toFixed(2), 1.9);
-  const r = { base: 'ruby_ring', ilvl: 60, uid: 7, plus: 0 }; assert.deepEqual(PL.baseMods(r), { str: 5 }); assert.deepEqual(PL.baseMods({ ...r, plus: 10 }), { str: 10 });
+  const r = { base: 'ruby_ring', ilvl: 60, uid: 7, plus: 0 }; assert.deepEqual(PL.baseMods(r), { str: 18 }); assert.deepEqual(PL.baseMods({ ...r, plus: 10 }), { str: 34 }); // v0.49.62 장신구 기본 효과를 키움
+  { const g = { base: 'l_dex_ring3', ilvl: 60, uid: 1, affixes: [{ id: 'dex', v: 10 }] }; assert.equal(PL.affixV({ ...g, plus: 20 }, g.affixes[0]), 10, '붙은 옵션은 강화로 오르지 않는다'); }
   const c1 = PL.baseMods({ base: 'copper_ring', ilvl: 10, uid: 1 }), c2 = PL.baseMods({ base: 'copper_ring', ilvl: 10, uid: 2 }); assert.notDeepEqual(Object.keys(c1), Object.keys(c2));
   assert.ok(PL.baseMods({ base: 'novice_staff', ilvl: 1, plus: 10 }).maxMp > 5);
 });
