@@ -63,6 +63,7 @@ export const MONSTER_LOOK = {
   brood_mother: { sprite: 'x_spider_giant', size: 3.0 }, spider_queen: { sprite: 'x_spider_giant', tint: 0xd0a0ff, size: 4.2 },
   ghost_crew: { sprite: 'x_pirate_ghost_crewman', size: 3.2 }, bone_knight: { sprite: 'x_skeleton_knight', size: 3.1 }, occultist: { sprite: 'x_skeleton_occultist', size: 3.0 }, dock_assassin: { sprite: 'x_assassin', size: 3.4 },
   high_mage: { sprite: 'x_necromancer', size: 4.0 }, ghost_captain: { sprite: 'x_pirate_ghost_captain', size: 4.8 },
+  pirate_archer: { sprite: 'x_adventurer', size: 2.6 }, // v0.49.60 활 든 여성 모험가 = 망령의 항구 해적 궁수
   hell_hound: { sprite: 'x_werewolf', tint: 0xff9070, size: 3.3 }, dread_bear: { sprite: 'x_werebear', tint: 0xc08080, size: 2.8 }, void_shade: { sprite: 'x_shadow', tint: 0xd090ff, size: 2.0 }, gargoyle: { sprite: 'x_demon_statue', size: 1.5 },
   pit_lord: { sprite: 'x_beast_warrior', size: 3.4 }, arch_demon: { sprite: 'x_demon', tint: 0xff8060, size: 2.5 },
   slime: { sprite: 'antlion_small', size: 0.9 },
@@ -254,7 +255,7 @@ for (const [id, size] of Object.entries(SHARP_SIZE)) if (MONSTER_LOOK[id]) MONST
 // v0.44.4 그래도 흐리던 보스 · 네임드는 큰 원본으로 만든 몬스터로 바꾼다 [그림, 크기, 색]
 const SHARP_SWAP = {
   spider_queen: ['x_spider_horror', 3.9, 0xd0a0ff], crystal_king: ['x_spider_horror', 3.9, 0xe8b8ff], brood_mother: ['x_spider_horror', 3.7, 0xa0ffa0],
-  ghost_captain: ['x_fishman_blade', 3.0, 0xb0f0e0], bog_witch: ['x_adventurer', 2.6, undefined], blood_lord: ['x_adventurer', 2.6, 0xff9a9a], // v0.49.24 마녀 둘은 여성 모험가 그림
+  ghost_captain: ['x_fishman_blade', 3.0, 0xb0f0e0], bog_witch: ['x_cloth_mage', 2.6, 0xa8e0a0], blood_lord: ['x_chainmail_mage', 2.6, 0xff9a9a], // v0.49.60 주술사 둘은 마법사 그림 (활 든 여성 모험가는 항구의 해적 궁수로)
   crypt_king: ['x_ice_mummy', 1.8, 0xc8e8ff], high_mage: ['x_ice_mummy', 1.75, 0xd0d0e0], crypt_lord: ['x_ice_mummy', 1.75, 0x80b0ff],
   flame_lord: ['x_spearman', 3.3, 0xff9060], abyss_king: ['x_spearman', 3.3, 0xa070e0], temple_lord: ['x_knight', 2.5, 0xf0d080],
   temple_king: ['x_tusk_beast', 3.2, 0xd8d0b0], doom_king: ['x_tusk_beast', 3.2, 0x904050],

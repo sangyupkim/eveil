@@ -93,6 +93,7 @@ export const MONSTERS = {
   ghost_crew: { name: '망령 선원', model: 'm_ghost', h: 2.0, attack: 'melee', hp: 300, dmg: [38, 46], speed: 3.6, interval: 1.5, range: 2.2, aggro: 12, exp: 96 },
   bone_knight: { behave: 'shield', name: '해골 기사단', model: 'm_skel', h: 2.1, attack: 'melee', hp: 420, dmg: [40, 48], speed: 2.8, interval: 1.8, range: 2.3, aggro: 11, exp: 102 },
   occultist: { name: '해골 사교도', model: 'm_skel', h: 2.0, attack: 'spell', hp: 280, dmg: [40, 48], speed: 3.0, interval: 2.0, range: 9, aggro: 13, exp: 100 },
+  pirate_archer: { name: '해적 궁수', model: 'm_human', h: 1.9, attack: 'ranged', atk: 'cast', hp: 240, dmg: [40, 48], speed: 3.4, interval: 1.8, range: 10, aggro: 13, exp: 98 }, // v0.49.60
   dock_assassin: { behave: 'charge', name: '부두 암살자', model: 'm_human', h: 1.9, attack: 'melee', hp: 290, dmg: [42, 50], speed: 4.6, interval: 1.2, range: 2.0, aggro: 13, exp: 100 },
   high_mage: { name: '고위 해골 마법사', model: 'm_skel', h: 2.4, attack: 'spell', hp: 640, dmg: [58, 70], speed: 3.0, interval: 1.8, range: 10, aggro: 14, exp: 112, patterns: ['volley', 'spores'] },
   ghost_captain: { name: '유령 선장 모르간', model: 'm_ghost', h: 2.8, attack: 'melee', hp: 760, dmg: [62, 74], speed: 3.4, interval: 1.6, range: 3.0, aggro: 15, exp: 130, patterns: ['charge', 'summon', 'slam', 'volley'], minion: 'ghost_crew' },
@@ -181,7 +182,7 @@ export const ZONES = [
   },
   {
     id: 'harbor', name: '망령의 항구', x: 0, z: -172, r: 40, levels: [55, 60], count: 21, ground: [0.18, 0.22, 0.26], music: 'unrest',
-    spawns: { ghost_crew: 30, bone_knight: 20, occultist: 22, dock_assassin: 18 },
+    spawns: { ghost_crew: 26, bone_knight: 18, occultist: 18, dock_assassin: 16, pirate_archer: 18 },
     named: { type: 'high_mage', name: '고위 해골 마법사 네크로스' },
     boss: { type: 'ghost_captain', name: '유령 선장 모르간' },
     props: {},

@@ -54,6 +54,7 @@ const sfx = (n, k, fam) => audio.play(n, k, fam);
 const ACTIVE_RADIUS = 58;
 // 후딜(초): 공격 뒤 · 스킬 뒤 다음 행동까지
 const RECOVER = { attack: 0.42, skill: 0.55 };
+const LEASH_TIME = 4; // v0.49.60 원 밖에서 어그로 게이지가 다 주는 시간(초)
 const SPAWN_NEAR = 72;   // 이 안의 자리에만 몬스터를 만든다
 const DESPAWN_FAR = 92;  // 이보다 멀어진 한가한 몬스터는 치운다 (다시 오면 새로 만든다)
 const dist2 = (a, b) => { const dx = a.x - b.x, dz = a.z - b.z; return Math.sqrt(dx * dx + dz * dz); }; // v0.49.56 Math.hypot보다 가볍다 (매 프레임 수천 번)
@@ -1016,6 +1017,29 @@ export class World {
     return m;
   }
 
+  // v0.49.60 겹침 풀기(resolveCollision)가 큰 몸을 벽 기둥마다 차례로 밀다 벽 너머로 던지거나, 벽 속 · 던전 바닥 밖에 두면 움직이기 전 자리로 되돌린다
+  keepSide(m, px0, pz0) {
+    if (m.pos.x === px0 && m.pos.z === pz0) return;
+    const cross = Math.abs(m.pos.x - px0) + Math.abs(m.pos.z - pz0) > 0.5 && !clearLine(this.stage, { x: px0, z: pz0 }, m.pos, 0.05);
+    if ((cross || blockedAt(this.stage, m.pos.x, m.pos.z, 0.05)) && !blockedAt(this.stage, px0, pz0, 0.05)) { m.pos.x = px0; m.pos.z = pz0; }
+  }
+  // v0.49.60 몬스터가 곧장 갈 수 있는 끝 자리: 벽(몸 크기만큼) · 원(LEASH) 밖에 닿기 전까지
+  clipMove(m, to) {
+    const r = Math.max(0.3, 0.4 * (m.actor?.scale || 1)), L0 = this.leashOf(m) * 1.2, fx0 = m.pos.x, fz0 = m.pos.z;
+    const dx = to.x - fx0, dz = to.z - fz0, l = Math.hypot(dx, dz), n = Math.ceil(l / 0.3);
+    let x = fx0, z = fz0;
+    for (let i = 1; i <= n; i++) {
+      const nx = fx0 + (dx * i) / n, nz = fz0 + (dz * i) / n;
+      if (blockedAt(this.stage, nx, nz, r) || (m.home && Math.hypot(nx - m.home.x, nz - m.home.z) > L0)) break;
+      x = nx; z = nz;
+    }
+    return { x, z };
+  }
+  // v0.49.60 원래 자리 원 반지름 (이 밖에서 어그로 게이지가 줄어든다)
+  leashOf(m) { return m.tier === 'boss' ? 30 : 26; }
+  // v0.49.60 근접 몬스터의 닿는 거리: 몸이 큰 만큼 더 (큰 보스가 붙은 플레이어를 「멀다」고 보고 계속 걸어 움직였다)
+  reachOf(m) { return m.def.range + (m.def.attack === 'melee' ? 0.7 * Math.max(0, (m.actor?.scale || 1) - 1) : 0); }
+
   updateSpawners(dt) {
     // v0.49.56 생성 자리 확인은 0.2초마다 (맵 전체 자리를 매 프레임 돌며 버려지는 값이 많았다)
     this.spAcc = (this.spAcc || 0) + dt;
@@ -1038,6 +1062,7 @@ export class World {
     const a = m.actor;
     const p = this.player.pos;
     if (m.dash) { this.dashStep(m, dt); return; }
+    const px0 = m.pos.x, pz0 = m.pos.z; // v0.49.60 벽 속 · 던전 바닥 밖으로 밀려나면 되돌린다
     const d = dist2(m.pos, p);
     if (this.validAt !== this.time) { this.validAt = this.time; this.validNow = !this.dead && !this.inTown && !inCamp(p.x, p.z); } // v0.49.56 몬스터마다 다시 재지 않고 프레임마다 한 번
     const valid = this.validNow;
@@ -1065,7 +1090,10 @@ export class World {
       }
       if (valid && d < m.def.aggro * (m.tier === 'boss' ? 1.3 : 1)) m.state = 'chase';
     } else if (m.state === 'chase') {
-      if (!valid || fromHome > 32) { m.state = 'return'; }
+      // v0.49.60 어그로 게이지 (리그 오브 레전드 정글몹처럼): 원(LEASH) 밖에 있는 동안 줄어들고 다 줄면 돌아간다. 원 안으로 들어오면 다시 찬다
+      const L0 = this.leashOf(m);
+      if (fromHome > L0) m.leashT = (m.leashT || 0) + dt; else if (m.leashT) m.leashT = Math.max(0, m.leashT - dt * 2);
+      if (!valid || (m.leashT || 0) > LEASH_TIME || fromHome > L0 * 1.6) { m.state = 'return'; m.leashT = 0; m.retT = 0; m.retBest = fromHome; }
       else if (m.def.behave === 'charge' && m.tier !== 'boss' && d > 4 && d < 10 && (m.chargeCd = (m.chargeCd ?? 3) - dt) <= 0 && a.lock <= 0) {
         // 돌진형: 선을 그어 알린 뒤 곧게 달려든다
         m.chargeCd = 5 + Math.random() * 3;
@@ -1079,13 +1107,14 @@ export class World {
         const away = { x: m.pos.x * 2 - p.x, z: m.pos.z * 2 - p.z };
         this.stepToward(m.pos, away, spd * 0.8 * dt); a.face(p.x, p.z); moving = 2;
         if (m.atkT <= 0) this.monsterAttack(m);
-      } else if (d > m.def.range) {
+      } else if (d > this.reachOf(m)) {
         if (a.lock <= 0) {
           // 앞이 막혔으면 길을 찾아 돌아온다 (0.6초마다 다시 본다)
           m.pathT = (m.pathT || 0) - dt;
           if (m.pathT <= 0) {
             m.pathT = 0.6 + Math.random() * 0.3;
-            m.path = clearLine(this.stage, m.pos, p, 0.45) ? null : findPath(this.stage, m.pos, p, 0.45, 1800);
+            // v0.49.60 가까우면(6칸 안) 길찾기 없이 곧장 — 옆 기둥 때문에 길을 찾으면 첫 칸이 등 뒤 격자점이라 보스가 조금씩 뒤로 밀려났다
+            m.path = d < 6 || clearLine(this.stage, m.pos, p, 0.45) ? null : findPath(this.stage, m.pos, p, 0.45, 1800);
           }
           let goal = p;
           if (m.path?.length) {
@@ -1113,10 +1142,18 @@ export class World {
         if (m.farT <= 0 && a.lock <= 0) { m.farT = 3.2 / TIER_K[this.wt].pat; const f = farOf(m.type); this.bossPattern(m, f[(m.farI = (m.farI || 0) + 1) % f.length]); }
       } else if (m.farT != null && m.farT < 1.2) m.farT = 1.2;
     } else if (m.state === 'return') {
-      this.stepToward(m.pos, m.home, spd * 1.3 * dt);
-      a.face(m.home.x, m.home.z);
+      // v0.49.60 막혀 있으면 길을 찾아 돌아가고, 3초 넘게 가까워지지 못하면(벽 너머 등) 제자리로 순간이동
+      m.pathT = (m.pathT || 0) - dt;
+      if (m.pathT <= 0) { m.pathT = 0.8; m.path = clearLine(this.stage, m.pos, m.home, 0.45) ? null : findPath(this.stage, m.pos, m.home, 0.45, 2500); }
+      let goal = m.home;
+      if (m.path?.length) { goal = m.path[0]; if (dist2(m.pos, goal) < 0.6) { m.path.shift(); goal = m.path[0] || m.home; } }
+      this.stepToward(m.pos, goal, spd * 1.3 * dt);
+      a.face(goal.x, goal.z);
+      m.retT = (m.retT || 0) + dt;
+      if (fromHome < (m.retBest ?? 1e9) - 0.5) { m.retBest = fromHome; m.retT = 0; }
+      if (m.retT > 3) { this.fx.play?.('sparkle', m.pos.x, m.pos.z, { scale: 0.9, dur: 0.4 }); m.pos.x = m.home.x; m.pos.z = m.home.z; m.path = null; m.retT = 0; this.fx.play?.('sparkle', m.home.x, m.home.z, { scale: 0.9, dur: 0.4 }); }
       moving = 2;
-      m.hp = Math.min(m.maxHp, m.hp + m.maxHp * 0.25 * dt);
+      m.hp = Math.min(m.maxHp, m.hp + m.maxHp * 0.1 * dt); // v0.49.60 돌아가며 천천히 찬다 (원 안에서 다시 맞으면 그 체력에서 이어 싸운다)
       if (fromHome < 1.5) { m.state = 'idle'; m.hp = m.maxHp; }
     }
     // 서로 겹치지 않게
@@ -1124,6 +1161,7 @@ export class World {
     for (let oi = 0; oi < MS.length; oi++) {
       const o = MS[oi];
       if (o === m || o.dead) continue;
+      if (m.tier === 'boss' && o.tier !== 'boss') continue; // v0.49.60 보스는 졸개에게 밀리지 않는다 (졸개가 플레이어 쪽으로 몰리며 보스를 원 밖으로 밀어냈다)
       const dx = m.pos.x - o.pos.x, dz = m.pos.z - o.pos.z;
       const dd = dx * dx + dz * dz;
       const min = 1.1 * Math.max(m.actor.scale, o.actor.scale);
@@ -1133,6 +1171,7 @@ export class World {
       }
     }
     if (moving) resolveCollision(this.stage, m.pos, 0.5 * m.actor.scale);
+    this.keepSide(m, px0, pz0);
     if (a.lock <= 0) {
       const kay = !!m.def.rig;
       const po = (m.playOpt ||= { speed: 1 }); // v0.49.56 옵션 객체를 몬스터마다 하나만
@@ -1151,7 +1190,7 @@ export class World {
       if (m.dead || this.dead) return;
       const dmg = randRange(m.dmg[0], m.dmg[1]);
       if (m.def.attack === 'melee') {
-        if (dist2(m.pos, this.player.pos) <= m.def.range + 1.3) this.hurtPlayer(dmg, m);
+        if (dist2(m.pos, this.player.pos) <= this.reachOf(m) + 1.3) this.hurtPlayer(dmg, m);
       } else {
         const spell = m.def.attack === 'spell';
         this.fx.projectile({
@@ -1268,7 +1307,7 @@ export class World {
       }
       // ── 원거리 응징 (멀리 있을 때) ──
       case 'leap': { // 플레이어 자리로 뛰어올라 내려찍기
-        cast('attack2', 1.3); const x = P().x, z = P().z;
+        cast('attack2', 1.3); const { x, z } = this.clipMove(m, P()); // v0.49.60 벽 너머 · 원 밖으로는 뛰지 않는다 (막히기 전 자리까지)
         D(x, z, 4.2, 1.1, 1.6, 0xff7a20);
         at(1.05, () => { M.x = x; M.z = z; this.fx.smoke.add({ x, y: 0.4, z, vy: 0.6, color: 0x4a3c30, size: 2, size1: 5, life: 0.9, cell: 'smoke', alpha: 0.5 }); });
         return true;
@@ -1322,11 +1361,24 @@ export class World {
   dashStep(m, dt) {
     const ds = m.dash, p = this.player.pos;
     ds.t -= dt;
-    this.stepToward(m.pos, ds.to, 26 * dt);
+    // v0.49.60 잘게 나눠 움직이고, 벽 · 던전 바닥 끝 · 원(LEASH) 끝에 닿으면 멈춘다 (한 번에 크게 건너뛰어 벽을 넘던 것)
+    let left = 26 * dt, stop = false;
+    const L0 = this.leashOf(m) * 1.2;
+    while (left > 1e-4 && !stop) {
+      const st0 = Math.min(0.3, left); left -= st0;
+      const dx = ds.to.x - m.pos.x, dz = ds.to.z - m.pos.z, l = Math.hypot(dx, dz);
+      if (l < 0.05) { stop = true; break; }
+      const k = Math.min(1, st0 / l), nx = m.pos.x + dx * k, nz = m.pos.z + dz * k;
+      if (blockedAt(this.stage, nx, nz, Math.max(0.3, 0.4 * m.actor.scale)) || (m.home && Math.hypot(nx - m.home.x, nz - m.home.z) > L0)) { stop = true; break; }
+      m.pos.x = nx; m.pos.z = nz;
+    }
+    if (stop) ds.t = 0;
     m.actor.face(ds.to.x, ds.to.z);
+    const dpx = m.pos.x, dpz = m.pos.z;
     this.fx.smoke.add({ x: m.pos.x, y: 0.4, z: m.pos.z, vy: 0.6, color: 0x4a3c30, size: 1.6, size1: 3.4, life: 0.8, cell: 'smoke', alpha: 0.4 });
     if (!ds.hit && dist2(m.pos, p) < 2.2) { ds.hit = true; this.fx.shake(0.45); this.hurtPlayer(randRange(m.dmg[0], m.dmg[1]) * 1.7, m); }
     resolveCollision(this.stage, m.pos, 0.5 * m.actor.scale);
+    this.keepSide(m, dpx, dpz);
     if (ds.t <= 0 || dist2(m.pos, ds.to) < 0.6) { m.dash = null; m.atkT = 0.8; }
     m.actor.update(0);
   }
@@ -1476,7 +1528,7 @@ export class World {
     m.showHp = 6;
     this.lastHit = m;
     if (m.state !== 'return') m.state = 'chase';
-    else if (!this.inTown && !inCamp(this.player.pos.x, this.player.pos.z) && dist2(m.pos, m.home) < 26) m.state = 'chase'; // 돌아가던 몬스터도 맞으면 다시 쫓아온다 (v0.41.6: 멀리서 쏘면 피만 차던 문제)
+    else if (!this.inTown && !inCamp(this.player.pos.x, this.player.pos.z) && dist2(m.pos, m.home) < this.leashOf(m)) { m.state = 'chase'; m.leashT = 0; } // 돌아가던 몬스터도 원 안에서 맞으면 그 자리 · 그 체력에서 다시 싸운다 (v0.49.60) (v0.41.6: 멀리서 쏘면 피만 차던 문제)
     m.actor.hitFlash(crit ? 0xffd040 : 0xffffff);
     const head = m.pos.clone().setY(2.3 * m.actor.scale);
     this.fx.text(head, crit ? `${dmg}!` : String(dmg), crit ? 'crit' : '');
@@ -2951,7 +3003,7 @@ export class World {
     } else if (this.target && !this.target.dead) {
       const t = this.target;
       // 자동 사냥: 집으로 돌아가며 피를 채우는 몬스터(쫓아오지 않는 상태)는 버리고 다른 몬스터로 (헛손질 방지)
-      if (this.auto && t.state === 'return' && (dist2(t.pos, t.home) >= 26 || inCamp(P.pos.x, P.pos.z) || this.inTown)) { t.ignoreUntil = this.time + 8; this.target = null; this.atkQueue = null; }
+      if (this.auto && t.state === 'return' && (dist2(t.pos, t.home) >= this.leashOf(t) || inCamp(P.pos.x, P.pos.z) || this.inTown)) { t.ignoreUntil = this.time + 8; this.target = null; this.atkQueue = null; }
       const range = this.pendingSkill ? this.skillRange(this.pendingSkill) : d.range;
       const dd = dist2(t.pos, P.pos);
       if (dd > range) {
