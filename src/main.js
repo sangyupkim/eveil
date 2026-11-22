@@ -24,6 +24,7 @@ import { packShards } from './game/shards.js';
 import { packBooks, fixHands } from './game/inventory.js';
 import { chat } from './net/chat.js';
 import { setupChatBox } from './ui/chatbox.js';
+import { setupAutoSaver } from './ui/autoSaver.js';
 import { cloud, cloudError } from './net/cloud.js';
 import { charIds, loadChar, saveChar, deleteChar, keyOf, newCid, CHAR_MAX, nickError } from './game/chars.js';
 
@@ -291,6 +292,7 @@ function startGame(stage, st) {
   // v0.49.29 채팅: 이 캐릭터 이름으로 채팅방에 붙고, 왼쪽 아래 채팅창에 보인다
   chat.start(st.cid || '');
   globalThis.__chatBox = setupChatBox(world);
+  setupAutoSaver(world); // v0.49.61 자동 사냥: 화면 꺼짐 막기 · 화면 가리기
   document.addEventListener('visibilitychange', () => { if (!document.hidden) chat.wake(); });
   hud.onDirty = () => { clearTimeout(hud.winT); hud.winT = setTimeout(() => windows.refresh(), 0); };
   const input = setupInput(world, stage, windows);
@@ -340,7 +342,7 @@ function startGame(stage, st) {
     safe('tut', () => tut.update());
     safe('follow', () => stage.follow(world.player.pos.x, world.player.pos.z, dt));
     safe('hud', () => hud.update(dt));
-    safe('render', () => stage.render(dt));
+    if (!window.__saverOn) safe('render', () => stage.render(dt)); // v0.49.61 화면 가리기 중엔 그리지 않는다 (전기 · 열)
     saveT -= dt;
     if (saveT <= 0) { saveT = CONFIG.autosaveInterval; save(); }
     frames++; fpsT += dt;

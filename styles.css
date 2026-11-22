@@ -831,3 +831,19 @@ body.ui-edit #chatBox { pointer-events: auto; outline: 2px dashed rgba(255,213,7
   #title { background: linear-gradient(90deg, rgba(6,4,8,.15) 0%, rgba(6,4,8,.72) 38%, rgba(6,4,8,.72) 62%, rgba(6,4,8,.2) 100%), linear-gradient(180deg, #0b0912 calc(50% - 28vw), rgba(11,9,18,0) calc(50% - 17vw), rgba(11,9,18,0) calc(50% + 17vw), #0b0912 calc(50% + 28vw)), var(--keyArt) center / 100% auto no-repeat, #0b0912; }
   #zoneLoad { background: linear-gradient(180deg, rgba(6,4,8,0) 45%, rgba(6,4,8,.85) 100%), linear-gradient(180deg, #0b0912 calc(50% - 28vw), rgba(11,9,18,0) calc(50% - 17vw), rgba(11,9,18,0) calc(50% + 17vw), #0b0912 calc(50% + 28vw)), var(--keyArt) center / 100% auto no-repeat, #0b0912; }
 }
+
+/* v0.49.61 자동 사냥 화면 가리기 */
+#autoSaver { position: fixed; inset: 0; z-index: 60; background: #000; display: flex; align-items: center; justify-content: center; }
+#autoSaver[hidden] { display: none; }
+#autoSaver .asBox { display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 0.6); min-width: min(80vw, calc(var(--u) * 26)); }
+#autoSaver .asTitle { color: #ffd860; font-family: var(--f-title); font-weight: 800; font-size: calc(var(--u) * 1.8); letter-spacing: 0.12em; animation: pulse 1.8s infinite; }
+#autoSaver .asZone { color: #9a917f; font-size: calc(var(--u) * 0.95); min-height: 1em; }
+#autoSaver .asRows { display: grid; grid-template-columns: 1fr 1fr; column-gap: calc(var(--u) * 2.4); row-gap: calc(var(--u) * 0.35); width: 100%; margin: calc(var(--u) * 0.6) 0; }
+#autoSaver .asRows > div { display: flex; justify-content: space-between; gap: 1em; color: #c8c0b0; font-size: calc(var(--u) * 1); border-bottom: 1px solid rgba(255, 255, 255, 0.07); padding-bottom: 2px; }
+#autoSaver .asRows b { color: #f0e6d0; }
+#autoSaver .asRows b.full { color: #ff7060; }
+#autoSaver .asRows em { color: #7fe07a; font-style: normal; }
+#autoSaver .asRows .asBar { grid-column: 1 / -1; height: 4px; background: #222; border: 0; padding: 0; border-radius: 2px; overflow: hidden; }
+#autoSaver .asBar i { display: block; height: 100%; background: linear-gradient(90deg, #b88a2a, #ffd860); }
+#btnHideScreen { position: absolute; left: 50%; top: calc(60% + var(--u) * 2.2); transform: translateX(-50%); pointer-events: auto; font-size: calc(var(--u) * 0.85); padding: calc(var(--u) * 0.25) calc(var(--u) * 0.9); opacity: 0.85; }
+#btnHideScreen[hidden] { display: none; }
