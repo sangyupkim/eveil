@@ -76,9 +76,31 @@ export function setupInput(world, stage, windows) {
 
   // ── 화면 클릭/탭: 몬스터면 공격, 땅이면 이동 ──
   let holding = null;
+  // v0.49.63 휴대폰: 스킬 · 행동 단추 사이 빈틈을 누르면 땅을 누른 것으로 쳐 오른쪽 아래로 걸어가던 것
+  //  → 단추 묶음 근처면 가장 가까운 단추(단추 크기의 반만큼 넉넉히)를 누른 것으로, 그래도 멀면 아무것도 하지 않는다
+  const PAD_SEL = '#quick .slot, #btnAttack, #btnHp, #btnMp, #btnAuto, #btnRecall';
+  const padHit = (x, y) => {
+    const els = [...document.querySelectorAll(PAD_SEL)].filter((el) => el.offsetParent !== null);
+    let best = null, bd = Infinity, L = Infinity, T = Infinity, R = -Infinity, B = -Infinity, size = 0;
+    for (const el of els) {
+      const r = el.getBoundingClientRect(); if (!r.width) continue;
+      const dx = Math.max(r.left - x, 0, x - r.right), dy = Math.max(r.top - y, 0, y - r.bottom), d = Math.hypot(dx, dy);
+      if (d < bd) { bd = d; best = el; size = Math.min(r.width, r.height); }
+      L = Math.min(L, r.left); T = Math.min(T, r.top); R = Math.max(R, r.right); B = Math.max(B, r.bottom);
+    }
+    if (!best) return null;
+    if (bd <= size * 0.5) return best;
+    const pad = size * 0.4;
+    return x > L - pad && x < R + pad && y > T - pad && y < B + pad ? 'block' : null;
+  };
   canvas.addEventListener('pointerdown', (e) => {
     if (windows.open || world.dead) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (e.pointerType !== 'mouse') {
+      const h = padHit(e.clientX, e.clientY);
+      if (h === 'block') return;
+      if (h) { h.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: e.pointerId, pointerType: e.pointerType, clientX: e.clientX, clientY: e.clientY })); return; }
+    }
     const m = pickMonster(e.clientX, e.clientY);
     world.manual();
     if (m) { world.cmdAttack(m); return; }
@@ -184,7 +206,7 @@ export function setupInput(world, stage, windows) {
   document.querySelectorAll('[data-win]').forEach((b) => b.addEventListener('pointerdown', (e) => { e.preventDefault(); windows.toggle(b.dataset.win); }));
   $('#quick').addEventListener('pointerdown', (e) => {
     const s = e.target.closest('.slot');
-    if (!s) return;
+    if (!s) { e.preventDefault(); const h = padHit(e.clientX, e.clientY); if (h && h !== 'block') h.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: e.pointerId, pointerType: e.pointerType, clientX: e.clientX, clientY: e.clientY })); return; } // v0.49.63 칸 사이 빈틈: 가까운 단추
     e.preventDefault();
     const id = world.st.quick[Number(s.dataset.i)];
     if (id) { world.manual(); world.useSkill(id); } else windows.show('skills');
