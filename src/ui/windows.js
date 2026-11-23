@@ -25,10 +25,11 @@ import { terrain, fogCan, MAP_R, MAP_W, FOG_C, seen as seenAt } from './mapimg.j
 import { CAMPS, inCamp } from '../engine2d/stage.js';
 import { TIER_NAMES } from '../world/world.js';
 import { entranceOf } from '../data/dungeons.js';
-import { MATERIALS, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
+import { MATERIALS, SETS, SET_SLOTS, craftCost, upgradeMats, upgradeNeed } from '../data/crafting.js';
 import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, mercUngear, mercById, recruits, assignMerc, SKILL_OF, SKILLS_ALL, BONUS, bonusOf, awakenMerc, awakenCost, dismiss, staMax, SKILL_NAMES, GRADES, MERC, EXP_STA, deathChance, salvage, salvageValue, reforge, reforgeCost, resCount, resTake, resAdd, ORE_RECIPES, oreRecipeOk, craftOre, KEY_RECIPES, craftKey, ESS_RECIPES, craftEss, INN_BEDS, innRestK, stopRepeat, MYTH_MARKS, mythMarks, mythLvMax, craftMyth, FRESH, freshK, isVet, herbSwap, herbSwapGold } from '../game/town.js';
 import { RESEARCH, researchCost } from '../data/buildings.js';
 import { AFFIXES } from '../data/items.js';
+import { highHerbs, storeCap, essRecipe, researchMax, labSlots, labJobs } from '../game/town.js';
 import { PLOTS, BUILDINGS, EXPEDITIONS, townOf, buildingAt, build, upgrade, collect, enhance, enhanceCap, enhanceCost, hire, mercSlots, dispatch, claim, tick } from '../game/town.js';
 import { QUESTS, QUEST_BOOKS } from '../data/quests.js';
 import { ZONES, MONSTERS } from '../data/world.js';
@@ -54,7 +55,7 @@ import { GEMS, GEM_GRADES, gemId } from '../data/legends.js';
 import { applyShard, canApply, lockMax, shardCost, shardVals } from '../game/shards.js';
 import { HERBS, HERB_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
 import { RARITY_IDS, junkCount, discardJunk } from '../game/town.js';
-import { MYTH_CHANCE, wageTotal, mercWage, buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
+import { MYTH_CHANCE, wageTotal, mercWage, buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, brewQueue, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
 import { RESEARCH_MAX, SHELTER } from '../data/buildings.js';
 import { herbIcon, homeIcon, uiIcon } from './icons.js';
 import { vault, vaultSize, vaultPut, vaultTake, vaultAdd, vaultSave, vaultReady } from '../game/vault.js';
@@ -352,10 +353,10 @@ export class Windows {
     // v0.42 높은 강화석 (제작소 6 · 8단계)
     P.ore = `<h3>강화석 제작</h3>` + ORE_RECIPES.map((r) => { const ok = oreRecipeOk(st, r); const need = Object.entries(r.need).map(([id, q]) => `${BASES[id].name} ${q} (${resCount(st, id)})`).join(' · ');
       return `<div class="row"><div class="cell shopIco">${ico({ base: r.id })}</div><div class="grow"><b>${BASES[r.id].name}</b><div class="note">${b.lv < r.lv ? `제작소 ${r.lv}단계` : `${need} · 지역 재료 ${r.zoneMats} · ${r.gold.toLocaleString()} G`}</div></div><button class="btn" data-orecraft="${r.id}|1" ${ok.ok ? '' : 'disabled'}>1개</button><button class="btn" data-orecraft="${r.id}|5" ${oreRecipeOk(st, r, 5).ok ? '' : 'disabled'}>5개</button></div>`; }).join('') + KEY_PANEL(st, b);
-    P.ess = `<h3>정수 교환</h3>` + ESS_RECIPES.map((r) => { const [from, q] = Object.entries(r.need)[0], ok = oreRecipeOk(st, r);
+    P.ess = `<h3>정수 교환</h3>` + ESS_RECIPES.map((r0) => { const r = essRecipe(st, r0); const [from, q] = Object.entries(r.need)[0], ok = oreRecipeOk(st, r);
         return `<div class="row"><div class="cell shopIco">${ico({ base: r.id })}</div><div class="grow"><b>${BASES[r.id].name} ${r.out}</b><div class="note">${BASES[from].name} ${q} (${resCount(st, from)}) · ${r.gold.toLocaleString()} G</div></div><button class="btn" data-esscraft="${r.rid}|1" ${ok.ok ? '' : 'disabled'}>1번</button><button class="btn" data-esscraft="${r.rid}|5" ${oreRecipeOk(st, r, 5).ok ? '' : 'disabled'}>5번</button></div>`; }).join('');
     const q = t.brew || [], ready = q.filter((x) => x.until <= Date.now()).length;
-    P.queue = !q.length ? '' : `<h3>제작 중 <span class="cnt">${q.length} / ${BREW_QUEUE}</span>${ready ? '<button class="btn gold" data-brewget="bag" style="margin-left:auto">가방으로</button><button class="btn gold" data-brewget="vault">창고로</button>' : ''}</h3>` + q.map((x) => `<div class="row"><div class="cell shopIco">${ico({ base: x.id })}</div><div class="grow"><b>${BASES[x.id].name} ×${x.n}</b> <small class="note">${x.until <= Date.now() ? '완성' : `${Math.ceil((x.until - Date.now()) / 1000)}초`}</small>${gauge(x.from, x.until, 60000, '#7fe07a')}</div></div>`).join('');
+    P.queue = !q.length ? '' : `<h3>제작 중 <span class="cnt">${q.length} / ${brewQueue(st)}</span>${ready ? '<button class="btn gold" data-brewget="bag" style="margin-left:auto">가방으로</button><button class="btn gold" data-brewget="vault">창고로</button>' : ''}</h3>` + q.map((x) => `<div class="row"><div class="cell shopIco">${ico({ base: x.id })}</div><div class="grow"><b>${BASES[x.id].name} ×${x.n}</b> <small class="note">${x.until <= Date.now() ? '완성' : `${Math.ceil((x.until - Date.now()) / 1000)}초`}</small>${gauge(x.from, x.until, 60000, '#7fe07a')}</div></div>`).join('');
     P.recipes = '<h3>만들기</h3>';
     for (const rc of RECIPES) {
       const open = rc.lv <= b.lv, can = (k) => open && Object.entries(rc.herbs).every(([h, q]) => (t.herbs[h] || 0) >= q * k) && Object.entries(rc.mats || {}).every(([id, q]) => resCount(st, id) >= q * k) && st.gold >= brewGold(st, rc) * k;
@@ -376,7 +377,7 @@ export class Windows {
     const st = this.w.st, t = townOf(st), def = BUILDINGS[b.type], MT = ['merc', '용병'], now = Date.now();
     const mercRow = (m, btn = '') => `<div class="row mrow">${this.mercLine(m)}${btn}</div>`;
     const prod = () => { const eff = Math.min(1, t.mercs.filter((m) => m.work === sel && !m.tired).reduce((a, m) => a + (m[b.type] || 0) / 10, 0) / b.lv);
-      return `<h3>${def.name} · ${b.lv}단계</h3><div class="kv"><span>생산</span><b>시간당 ${Math.round(def.rate(b.lv) * eff)}</b><span>쌓인 양</span><b>${Math.floor(b.stock)} / ${def.store(b.lv)}</b></div><div class="mini" style="margin:6px 0"><i style="width:${(b.stock / def.store(b.lv)) * 100}%;background:linear-gradient(#ffe7a0,#c99a3a)"></i></div><div class="btns forgeGo"><button class="btn gold big" data-collect="1" ${b.stock < 1 ? 'disabled' : ''}>거두기</button></div>`; };
+      return `<h3>${def.name} · ${b.lv}단계</h3><div class="kv"><span>생산</span><b>시간당 ${Math.round(def.rate(b.lv) * eff)}</b><span>쌓인 양</span><b>${Math.floor(b.stock)} / ${storeCap(st, b)}</b></div><div class="mini" style="margin:6px 0"><i style="width:${(b.stock / storeCap(st, b)) * 100}%;background:linear-gradient(#ffe7a0,#c99a3a)"></i></div><div class="btns forgeGo"><button class="btn gold big" data-collect="1" ${b.stock < 1 ? 'disabled' : ''}>거두기</button></div>`; };
     switch (b.type) {
       case 'smithy': return this.smithyView(b, sel);
       case 'workshop': return this.workshopView(b, sel);
@@ -391,11 +392,11 @@ export class Windows {
         if (k === 'merc') return this.mercTab(b, sel);
         if (k === 'map') return this.labMap(st, t, now);
         const ids = Object.keys(RESEARCH); if (!ids.includes(this.labSel)) this.labSel = ids[0];
-        const R = ids.map((id) => { const r = RESEARCH[id], lv = researchLv(st, id), open = b.lv >= r.lab; return `<div class="row pick${id === this.labSel ? ' on' : ''}" data-labsel="${id}" style="${open ? '' : 'opacity:.45'}"><div class="grow"><b>${r.name}</b> <small>${lv} / ${RESEARCH_MAX}</small><div class="note">${open ? (lv ? r.text(lv) : '없음') : `연구소 ${r.lab}단계`}</div></div></div>`; }).join('');
-        const id = this.labSel, r = RESEARCH[id], lv = researchLv(st, id), c = researchCost(lv, id), max = lv >= RESEARCH_MAX, open = b.lv >= r.lab;
-        let L = t.lab ? `<h3>연구 중</h3><div class="row"><div class="grow"><b>${RESEARCH[t.lab.id].name}</b> <small class="note">${Math.max(1, Math.ceil((t.lab.until - now) / 60000))}분</small>${gauge(t.lab.from, t.lab.until)}</div></div>` : `<h3>연구 중</h3><div class="note">없음</div>`;
-        L += `<h3 style="margin-top:10px">${r.name} <small>${lv} / ${RESEARCH_MAX}</small></h3><div class="kv"><span>지금</span><b>${lv ? r.text(lv) : '없음'}</b>${max ? '' : `<span>다음</span><b><em>${r.text(lv + 1)}</em></b><span>금화</span><b style="${st.gold < c.gold ? 'color:#ff7060' : ''}">${c.gold.toLocaleString()} G</b><span>재료</span><b>${c.mats}${c.ess ? ` · ${BASES[c.ess.id].name} ${c.ess.n}` : ''}</b><span>시간</span><b>${c.min}분</b>`}</div>`;
-        L += open ? `<div class="btns forgeGo"><button class="btn gold big" data-research="${id}" ${max || t.lab || st.gold < c.gold ? 'disabled' : ''}>${max ? '완료' : '연구'}</button></div>` : `<div class="note">연구소 ${r.lab}단계</div>`;
+        const R = ids.map((id) => { const r = RESEARCH[id], lv = researchLv(st, id), open = b.lv >= r.lab; return `<div class="row pick${id === this.labSel ? ' on' : ''}" data-labsel="${id}" style="${open ? '' : 'opacity:.45'}"><div class="grow"><b>${r.name}</b> <small>${lv} / ${researchMax(st)}</small><div class="note">${open ? (lv ? r.text(lv) : '없음') : `연구소 ${r.lab}단계`}</div></div></div>`; }).join('');
+        const id = this.labSel, r = RESEARCH[id], lv = researchLv(st, id), c = researchCost(lv, id), max = lv >= researchMax(st), open = b.lv >= r.lab, jobs = labJobs(st), full = jobs.length >= labSlots(st);
+        let L = `<h3>연구 중 <span class="cnt">${jobs.length} / ${labSlots(st)}</span></h3>` + (jobs.map((j) => `<div class="row"><div class="grow"><b>${RESEARCH[j.id].name}</b> <small class="note">${Math.max(1, Math.ceil((j.until - now) / 60000))}분</small>${gauge(j.from, j.until)}</div></div>`).join('') || '<div class="note">없음</div>');
+        L += `<h3 style="margin-top:10px">${r.name} <small>${lv} / ${researchMax(st)}</small></h3><div class="kv"><span>지금</span><b>${lv ? r.text(lv) : '없음'}</b>${max ? '' : `<span>다음</span><b><em>${r.text(lv + 1)}</em></b><span>금화</span><b style="${st.gold < c.gold ? 'color:#ff7060' : ''}">${c.gold.toLocaleString()} G</b><span>재료</span><b>${c.mats}${c.ess ? ` · ${BASES[c.ess.id].name} ${c.ess.n}` : ''}${c.ore2 ? ` · 상급 강화석 ${c.ore2}` : ''}${c.herbs ? ` · 높은 약초 ${c.herbs}` : ''}</b><span>시간</span><b>${c.min}분</b>`}</div>`;
+        L += open ? `<div class="btns forgeGo"><button class="btn gold big" data-research="${id}" ${max || full || jobs.some((j) => j.id === id) || st.gold < c.gold ? 'disabled' : ''}>${max ? '완료' : '연구'}</button></div>` : `<div class="note">연구소 ${r.lab}단계</div>`;
         return [L, `<h3>연구</h3>` + R]; });
       case 'inn': return this.tabView(b, 'inn', [['hire', '고용'], ['mine', '내 용병'], ['rest', '휴식'], MT], (k) => {
         if (k === 'merc') return this.mercTab(b, sel);
@@ -463,7 +464,7 @@ export class Windows {
   workshopView(b, sel) {
     const st = this.w.st, t = townOf(st), P = this.workshopParts(st, b, t);
     return this.tabView(b, 'workshop', [['make', '제작'], ['swap', '교환'], ['merc', '용병']], (k) => {
-      if (k === 'make') return [P.queue || `<h3>제작 중 <span class="cnt">0 / ${BREW_QUEUE}</span></h3><div class="note">없음</div>`, P.recipes + P.ore];
+      if (k === 'make') return [P.queue || `<h3>제작 중 <span class="cnt">0 / ${brewQueue(st)}</span></h3><div class="note">없음</div>`, P.recipes + P.ore];
       if (k === 'swap') {
         // 오른쪽: 가진 재료 (약초 · 강화석 · 정수)
         const mats = ['ore', ...ORE_RECIPES.map((r) => r.id), ...new Set(ESS_RECIPES.flatMap((r) => [r.id, ...Object.keys(r.need)]))].filter((id, i, a) => BASES[id] && a.indexOf(id) === i);
@@ -1191,9 +1192,9 @@ export class Windows {
     const left = PLOTS.map((pl) => {
       const x = t.plots[pl.id];
       const def = x && BUILDINGS[x.type];
-      const stock = def?.rate ? `<div class="mini"><i style="width:${(x.stock / def.store(x.lv)) * 100}%;background:linear-gradient(#ffe7a0,#c99a3a)"></i></div>` : '';
+      const stock = def?.rate ? `<div class="mini"><i style="width:${(x.stock / storeCap(st, x)) * 100}%;background:linear-gradient(#ffe7a0,#c99a3a)"></i></div>` : '';
       return `<div class="row pick${pl.id === sel ? ' on' : ''}" data-plot="${pl.id}"><div class="grow"><b>${def ? `${def.name} <small>${x.lv}단계</small>` : '빈터'}</b><div class="note">${def ? def.desc : pl.name}</div>${stock}</div>
-        ${def?.rate ? `<span class="note">${Math.floor(x.stock)} / ${def.store(x.lv)}</span>` : ''}</div>`;
+        ${def?.rate ? `<span class="note">${Math.floor(x.stock)} / ${storeCap(st, x)}</span>` : ''}</div>`;
     }).join('') + (() => { const fp = floodPenalty(st); return fp.n ? `<div class="row" style="border-color:#a03a2a"><div class="grow"><b style="color:#ff7a5a">범람지 ${fp.n}곳</b><div class="note">${floodText(fp)}</div><div class="note">${st.flood.list.map((f) => ZONES.find((z) => z.id === f.zone)?.name).join(' · ')}</div></div></div>` : ''; })();
     let right = '';
     if (!b) {
@@ -1204,16 +1205,17 @@ export class Windows {
       }).join('');
     } else {
       const def = BUILDINGS[b.type], up = def.cost(b.lv);
-      const um = up == null ? null : upgradeMats(b.lv), umOk = !um || resCount(st, um.base) >= um.n;
+      const un = up == null ? null : upgradeNeed(b.lv), umOk = !un || (un.items.every((x) => resCount(st, x.base) >= x.n) && (!un.herbs || highHerbs(st) >= un.herbs));
+      const needTxt = (q) => q ? [...q.items.map((x) => `${BASES[x.base].name} ${x.n}`), ...(q.herbs ? [`높은 약초 ${q.herbs}`] : [])].join(' · ') : ''; // v0.49.73 11 ~ 20단계는 재료가 여럿
       const an = def.up?.[b.lv - 1] ?? 0, anOk = (st.awakenings || 0) >= an;
       const fmtT = (ms) => { const m = Math.ceil(ms / 60000), h = Math.floor(m / 60); return h >= 24 ? `${Math.floor(h / 24)}일 ${h % 24}시간` : h ? `${h}시간 ${m % 60}분` : `${m}분`; };
       // 단계별 비용표: 금화 · 재료 · 각성 · 시간
       const costTable = `<h3 style="margin-top:8px">단계별 비용 <small>${def.max}단계까지</small></h3><div class="kv costT">` + Array.from({ length: def.max }, (_, i) => i).filter((lv) => lv >= b.lv - 1 && lv <= b.lv + 1).map((lv) => { // v0.45.7 지금 · 다음 단계 근처만
-        const g = def.cost(lv), m = lv ? upgradeMats(lv) : null, aw = lv ? def.up?.[lv - 1] ?? 0 : def.need || 0;
-        return `<span${b.lv === lv + 1 ? ' style="color:#ffd84a"' : ''}>${lv + 1}단계</span><b>${g.toLocaleString()} G${m ? ` · ${BASES[m.base].name} ${m.n}` : ''} · 각성 ${aw} · ${fmtT(buildTime(lv + 1))}</b>`;
+        const g = def.cost(lv), m = lv ? upgradeNeed(lv) : null, aw = lv ? def.up?.[lv - 1] ?? 0 : def.need || 0;
+        return `<span${b.lv === lv + 1 ? ' style="color:#ffd84a"' : ''}>${lv + 1}단계</span><b>${g.toLocaleString()} G${m && needTxt(m) ? ` · ${needTxt(m)}` : ''} · 각성 ${aw} · ${fmtT(buildTime(lv + 1))}</b>`;
       }).join('') + '</div>';
       if (b.bld) right = `<h3>${def.name} · ${b.bld.to === 1 ? '짓는 중' : `${b.bld.to}단계로 올리는 중`} <small class="note">${fmtT(Math.max(60000, b.bld.until - Date.now()))}</small></h3>${gauge(b.bld.from, b.bld.until, 60000, '#ffd84a')}` + (bmode ? costTable : '');
-      else right = `<h3>${def.name} · ${b.lv}단계</h3>` + (one ? '' : `<div class="btns" style="margin:0 0 8px"><button class="btn" data-upgrade="1" ${up == null || st.gold < up || !umOk || !anOk ? 'disabled' : ''}>${up == null ? '최고 단계' : !anOk ? `각성 ${an} 필요` : `단계 올리기 ${up.toLocaleString()} G${um ? ` · ${BASES[um.base].name} ${um.n}` : ''}`}</button></div><div class="note">${def.desc}</div>`);
+      else right = `<h3>${def.name} · ${b.lv}단계</h3>` + (one ? '' : `<div class="btns" style="margin:0 0 8px"><button class="btn" data-upgrade="1" ${up == null || st.gold < up || !umOk || !anOk ? 'disabled' : ''}>${up == null ? '최고 단계' : !anOk ? `각성 ${an} 필요` : `단계 올리기 ${up.toLocaleString()} G${un && needTxt(un) ? ` · ${needTxt(un)}` : ''}`}</button></div><div class="note">${def.desc}</div>`);
       if (bmode && !b.bld) right += costTable;
       if (one && !b.bld) { const v = this.buildingView(b, sel); if (v) return v; } // v0.45 건물 창: 기능별 탭 · 두 쪽
       if (!bmode && !(b.bld?.to === 1)) {
@@ -1231,7 +1233,7 @@ export class Windows {
         right += crew.map((m) => `<div class="row mrow">${this.mercLine(m, sk)}<button class="btn" data-mwork="${m.id}|">쉬게</button></div>`).join('') || `<div class="note">${def.rate ? '일하는 용병이 없으면 생산하지 않습니다' : '없음'}</div>`;
         if (crew.length < b.lv && idle.length) right += `<div class="note" style="margin-top:6px">쉬는 용병</div>` + idle.sort((a, c) => (c[sk] || 0) - (a[sk] || 0)).map((m) => `<div class="row mrow">${this.mercLine(m, sk)}<button class="btn" data-mwork="${m.id}|${sel}">일 맡기기</button></div>`).join('');
       }
-      if (def.rate) right += `<div class="kv"><span>생산</span><b>시간당 ${Math.round(def.rate(b.lv) * Math.min(1, t.mercs.filter((m) => m.work === sel && !m.tired).reduce((a, m) => a + m[b.type] / 10, 0) / b.lv) * 1)}</b><span>쌓인 양</span><b>${Math.floor(b.stock)} / ${def.store(b.lv)}</b></div>
+      if (def.rate) right += `<div class="kv"><span>생산</span><b>시간당 ${Math.round(def.rate(b.lv) * Math.min(1, t.mercs.filter((m) => m.work === sel && !m.tired).reduce((a, m) => a + m[b.type] / 10, 0) / b.lv) * 1)}</b><span>쌓인 양</span><b>${Math.floor(b.stock)} / ${storeCap(st, b)}</b></div>
         <div class="btns"><button class="btn gold" data-collect="1" ${b.stock < 1 ? 'disabled' : ''}>거두기</button></div>`;
       if (b.type === 'smithy') {
         const cap = enhanceCap(st);
@@ -1247,11 +1249,11 @@ export class Windows {
         right += COL + this.shardPanel(b);
       }
       if (b.type === 'lab') {
-        right += COL + '<h3>연구</h3>'; if (t.lab) right += `<div class="note">연구 중: ${RESEARCH[t.lab.id].name} · ${Math.max(1, Math.ceil((t.lab.until - Date.now()) / 60000))}분 남음</div>${gauge(t.lab.from, t.lab.until)}`;
+        right += COL + '<h3>연구</h3>'; for (const j of labJobs(st)) right += `<div class="note">연구 중: ${RESEARCH[j.id].name} · ${Math.max(1, Math.ceil((j.until - Date.now()) / 60000))}분 남음</div>${gauge(t.lab.from, t.lab.until)}`;
         for (const [id, r] of Object.entries(RESEARCH)) {
-          const lv = researchLv(st, id), c = researchCost(lv, id), max = lv >= RESEARCH_MAX, open = b.lv >= r.lab;
-          right += `<div class="row" style="${open ? '' : 'opacity:.45'}"><div class="grow"><b>${r.name}</b> <small>${lv} / ${RESEARCH_MAX}</small><div class="note">${open ? `${lv ? r.text(lv) : '없음'}${max ? '' : ` → ${r.text(lv + 1)}`}` : `연구소 ${r.lab}단계 · ${r.text(1)}`}</div></div>
-            ${open ? `<button class="btn" data-research="${id}" ${max || t.lab || st.gold < c.gold ? 'disabled' : ''}>${max ? '완료' : `${c.gold.toLocaleString()}G · 재료 ${c.mats}${c.ess ? ` · ${BASES[c.ess.id].name} ${c.ess.n}` : ''} · ${c.min}분`}</button>` : ''}</div>`;
+          const lv = researchLv(st, id), c = researchCost(lv, id), max = lv >= researchMax(st), open = b.lv >= r.lab;
+          right += `<div class="row" style="${open ? '' : 'opacity:.45'}"><div class="grow"><b>${r.name}</b> <small>${lv} / ${researchMax(st)}</small><div class="note">${open ? `${lv ? r.text(lv) : '없음'}${max ? '' : ` → ${r.text(lv + 1)}`}` : `연구소 ${r.lab}단계 · ${r.text(1)}`}</div></div>
+            ${open ? `<button class="btn" data-research="${id}" ${max || labJobs(st).length >= labSlots(st) || st.gold < c.gold ? 'disabled' : ''}>${max ? '완료' : `${c.gold.toLocaleString()}G · 재료 ${c.mats}${c.ess ? ` · ${BASES[c.ess.id].name} ${c.ess.n}` : ''} · ${c.min}분`}</button>` : ''}</div>`;
         }
       }
       if (b.type === 'altar') { // v0.44.47 유물 제단

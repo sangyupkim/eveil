@@ -52,7 +52,7 @@ import { reveal, saveFog, loadFog } from '../ui/mapimg.js';
 import { DATA, image, animImage, drawRect, frameIndex, filteredRect } from '../engine2d/sprites.js';
 import { MONSTER_LOOK, ITEM_LOOK, LOOT_LOOK, ZONE_LOOK as ZONE_LOOK_W } from '../data/flareWorld.js';
 import { PLOTS, BUILDINGS, VAULT_SPOT } from '../data/buildings.js';
-import { townOf, tick as townTick, researchK, researchTick, researchLv } from '../game/town.js';
+import { townOf, tick as townTick, researchK, researchTick, researchLv, storeCap } from '../game/town.js';
 import { RESEARCH, LEVEL_DECOR } from '../data/buildings.js';
 import { audio, familyOf } from '../engine/audio.js';
 const sfx = (n, k, fam) => audio.play(n, k, fam);
@@ -894,7 +894,7 @@ export class World {
     }
   }
   hordeCleared(m) {
-    const st = this.st, dg = this.dungeon, H = dg.horde, zn = dg.zone, mult = 1 + H.pen, gMark = this.ground.length;
+    const st = this.st, dg = this.dungeon, H = dg.horde, zn = dg.zone, mult = (1 + H.pen) * (1 + researchK(st, 'hordeUp')), gMark = this.ground.length;
     dg.cleared = true;
     for (const x of this.monsters) if (!x.dead && x.horde) { x.noLoot = true; x.exp = 0; this.later(0.2, () => { if (!x.dead) this.hitMonster(x, 1e12, { src: 'none' }); }); }
     // 보상: 금화 · 재료 · 정수 · 영웅 이상 장비 둘 · 상품 스킬북 한 권 (벌칙이 쌓였으면 그만큼 더)
@@ -3329,7 +3329,7 @@ export class World {
     for (const [pid, b] of Object.entries(t.plots)) {
       const def = BUILDINGS[b.type];
       if (!def?.store || b.bld?.to === 1) continue;
-      const full = (b.stock || 0) >= def.store(b.lv);
+      const full = (b.stock || 0) >= storeCap(st, b);
       if (full && !ntf[pid]) this.ui.log(`${def.name}이 가득 찼습니다 · 거두어야 다시 쌓입니다`, '#ffc860');
       ntf[pid] = full;
     }

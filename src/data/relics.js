@@ -15,8 +15,8 @@ export const RELICS = [
 ];
 export const RELIC = Object.fromEntries(RELICS.map((r) => [r.id, r]));
 export const RELIC_GRADES = [{ name: '일반', k: 1, days: 3, color: '#d8d2c4' }, { name: '희귀', k: 1.5, days: 5, color: '#6aa8ff' }, { name: '전설', k: 2, days: 7, color: '#ffb040' }];
-export const altarSlots = (lv) => (lv >= 10 ? 5 : lv >= 8 ? 4 : lv >= 5 ? 3 : lv >= 3 ? 2 : lv >= 1 ? 1 : 0);
-export const altarDur = (lv) => 1 + (lv >= 10 ? 0.4 : lv >= 8 ? 0.3 : lv >= 5 ? 0.2 : lv >= 3 ? 0.1 : 0);
+export const altarSlots = (lv) => (lv >= 20 ? 7 : lv >= 15 ? 6 : lv >= 10 ? 5 : lv >= 8 ? 4 : lv >= 5 ? 3 : lv >= 3 ? 2 : lv >= 1 ? 1 : 0);
+export const altarDur = (lv) => 1 + (lv > 10 ? 0.4 + 0.05 * (lv - 10) : lv >= 10 ? 0.4 : lv >= 8 ? 0.3 : lv >= 5 ? 0.2 : lv >= 3 ? 0.1 : 0);
 export const altarOdds = (lv) => (lv >= 9 ? [15, 55, 30] : lv >= 7 ? [30, 55, 15] : lv >= 5 ? [50, 45, 5] : lv >= 3 ? [75, 25, 0] : [100, 0, 0]);
 export function rollRelic(altarLv, rng = Math.random) {
   const o = altarOdds(altarLv), r = rng() * 100, g = r < o[0] ? 0 : r < o[0] + o[1] ? 1 : 2;

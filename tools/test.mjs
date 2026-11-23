@@ -256,7 +256,7 @@ test('재료 · 제작소 · 세트 효과', () => {
   for (const sl of ['helm', 'armor']) { const r = craft(p, 'field', sl); assert.ok(r.ok, r.why); equip(p, r.item.uid); }
   assert.ok(derive(p).maxHp >= hp0 + 30, '2세트 효과');
   // 단계 올리기는 각성 · 재료가 든다 (5단계는 각성 60 이하)
-  for (const d of Object.values(BUILDINGS)) assert.ok(d.max === 10 && d.up.length === 9 && d.up[3] <= 60 && d.up[8] === 300 && d.up.every((v, i) => !i || v > d.up[i - 1])); // v0.42 10단계
+  for (const d of Object.values(BUILDINGS)) assert.ok(d.max === 20 && d.up.length === 19 && d.up[3] <= 60 && d.up[8] === 300 && d.up[18] === 1050 && d.up.every((v, i) => !i || v > d.up[i - 1])); // v0.42 10단계 · v0.49.73 20단계
   const aw = p.awakenings; p.awakenings = 0;
   assert.equal(upgrade(p, 'p5').ok, false);
   p.awakenings = aw;

@@ -1,13 +1,13 @@
 import { relicBonus } from '../data/relics.js';
 import { floodPenalty } from '../data/flood.js';
 // 마을 규칙 (화면과 무관): 짓기 · 단계 올리기 · 생산 쌓기 · 강화 · 용병 파견
-import { BUILDINGS, PLOTS, ENHANCE, EXPEDITIONS, RESEARCH, RESEARCH_MAX, SHELTER, researchCost } from '../data/buildings.js';
+import { BUILDINGS, PLOTS, ENHANCE, EXPEDITIONS, RESEARCH, RESEARCH_MAX, researchMaxAt, SHELTER, researchCost } from '../data/buildings.js';
 import { HERBS, herbsAt, RECIPES } from '../data/potions.js';
 import { ZONES } from '../data/world.js';
 import { rollLoot } from './loot.js';
 import { addItem, bagSize, takeOne } from './inventory.js';
 import { makeItem, rollBase } from './items.js';
-import { MATERIALS, MAT_DROP, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
+import { MATERIALS, MAT_DROP, SETS, SET_SLOTS, craftCost, upgradeMats, upgradeNeed, HIGH_HERBS } from '../data/crafting.js';
 import { BASES } from '../data/items.js';
 import { vault, vaultAdd, vaultSave, vaultSize } from './vault.js';
 import { lifeProgress } from './daily.js';
@@ -60,6 +60,11 @@ function resources(st) {
   if (oldOre > 0) resAdd(st, 'ore', Math.round(oldOre));
   if (oldMats) for (const [k, n] of Object.entries(oldMats)) if (n > 0 && MATERIALS[k]) resAdd(st, 'mat_' + k, Math.round(n));
 }
+// v0.49.73 높은 약초(서리꽃 이상) 합 · 많은 것부터 꺼내기
+export const highHerbs = (st) => HIGH_HERBS.reduce((a, h) => a + (townOf(st).herbs[h] || 0), 0);
+export function takeHighHerbs(st, n) { const hs = townOf(st).herbs; while (n > 0) { const h = HIGH_HERBS.slice().sort((a, b) => (hs[b] || 0) - (hs[a] || 0))[0]; const k = Math.min(n, hs[h] || 0); if (k <= 0) break; hs[h] -= k; n -= k; } }
+// v0.49.73 광산 · 약초밭 저장량 (큰 저장고 연구만큼 더)
+export const storeCap = (st, b) => Math.round(BUILDINGS[b.type].store(b.lv) * (1 + researchK(st, 'store')));
 export const buildingAt = (st, plot) => townOf(st).plots[plot] || null;
 export const findBuilding = (st, type) => Object.values(townOf(st).plots).find((b) => b.type === type) || null;
 
@@ -91,10 +96,12 @@ export function upgrade(st, plot) {
   const an = def.up?.[b.lv - 1] ?? 0;
   if ((st.awakenings || 0) < an) return { ok: false, why: `각성 ${an} 필요` };
   if (st.gold < cost) return { ok: false, why: '금화가 모자랍니다' };
-  const um = upgradeMats(b.lv);
-  if (um && resCount(st, um.base) < um.n) return { ok: false, why: `${BASES[um.base].name} ${um.n}개가 필요합니다` };
+  const un = upgradeNeed(b.lv);
+  for (const x of un.items) if (resCount(st, x.base) < x.n) return { ok: false, why: `${BASES[x.base].name} ${x.n}개가 필요합니다` };
+  if (un.herbs && highHerbs(st) < un.herbs) return { ok: false, why: `높은 약초(서리꽃 이상) ${un.herbs}개가 필요합니다` };
   st.gold -= cost;
-  if (um) resTake(st, um.base, um.n);
+  for (const x of un.items) resTake(st, x.base, x.n);
+  if (un.herbs) takeHighHerbs(st, un.herbs);
   const now = Date.now();
   b.bld = { to: b.lv + 1, from: now, until: now + buildTime(b.lv + 1) };
   return { ok: true };
@@ -108,6 +115,7 @@ export function tick(st, now = Date.now()) {
   finishBuilds(st, now);
   payWages(st, now);
   let left = Math.min(hours, 72);
+  const awayK = hours > 0.1 ? 1 + researchK(st, 'away') : 1; // v0.49.73 자리 비움 관리 (꺼 둔 동안 몰아 셀 때)
   while (left > 1e-9) {
     const h = Math.min(0.25, left); left -= h;
     const save = 1 - bonusOf(st, 'house'), rest = 1 + bonusOf(st, 'inn');
@@ -118,7 +126,7 @@ export function tick(st, now = Date.now()) {
       if (def.rate) {
         const eff = crew.reduce((a, m) => a + workEff(m, b.type), 0) / b.lv;
         const rk = (b.type === 'herb' ? 1 + researchK(st, 'herb') : b.type === 'mine' ? 1 + researchK(st, 'mine') : 1) * floodPenalty(st).prod * (1 + relicBonus(st, 'prod') / 100); // v0.44.43 범람 불이익 · v0.44.47 유물
-        b.stock = Math.min(def.store(b.lv), (b.stock || 0) + def.rate(b.lv) * rk * Math.min(2, eff) * h);
+        b.stock = Math.min(storeCap(st, b), (b.stock || 0) + def.rate(b.lv) * rk * awayK * Math.min(2, eff) * h);
       }
       for (const m of crew) { m.sta -= MERC.workSta * save * h; growSkill(m, SKILL_OF[b.type], h); gainExp(m, MERC.workExp * h); if (m.sta <= 0) { m.sta = 0; m.tired = true; } }
     }
@@ -158,11 +166,13 @@ export const enhanceCap = (st) => { const s = findBuilding(st, 'smithy'); return
 // 장인의 기운: 실패할 때마다 (그 시도 확률 × 0.465)만큼 쌓이고 100%면 다음은 반드시 성공.
 // 실패마다 기본 확률의 10%씩 올라 최대 2배 (성공하면 둘 다 0으로)
 export const jangOf = (it) => it.jang || 0;
+// v0.49.73 대장간 11 ~ 20단계: 단계마다 초월 강화 금화 −2% · 장인의 기운 +3% (단계 수 × 0.01)
+export const smithK = (st) => { const s = findBuilding(st, 'smithy'); return s ? Math.max(0, s.lv - 10) * 0.01 : 0; };
 export function enhanceCost(it, st = null, whet = false) {
   const n = it.plus || 0, hk = Math.max(0.5, 1 - (it.ilvl || 1) / 750), base = n < 2 ? ENHANCE.chance(n) : ENHANCE.chance(n) * hk, up = Math.min(base, base * 0.1 * (it.fails || 0)); // 높은 장비는 성공률이 낮다 (레벨 200 ×0.56)
   const chance = jangOf(it) >= 1 ? 1 : Math.min(1, base + up + (st ? researchK(st, 'enh') : 0) + (whet && n >= 20 ? 0.05 : 0)); // v0.50 왕좌의 숫돌: 초월 강화 +5%
   const oreId = ENHANCE.oreId(n), oreK = oreId === 'ore' ? 1 + (it.ilvl || 1) / 130 : 1 + (it.ilvl || 1) / 400;
-  return { gold: Math.round(ENHANCE.gold(n, it.ilvl || 1) * (1 - (st ? bonusOf(st, 'smithy') : 0))), ore: Math.round(ENHANCE.ore(n) * oreK), oreId, oreName: BASES[oreId].name, chance, base, jang: jangOf(it) }; // 강화석도 높은 장비일수록 많이
+  return { gold: Math.round(ENHANCE.gold(n, it.ilvl || 1) * (1 - (st ? bonusOf(st, 'smithy') : 0)) * (n >= 20 && st ? (1 - smithK(st) * 2) * (1 - researchK(st, 'transGold')) : 1)), ore: Math.round(ENHANCE.ore(n) * oreK), oreId, oreName: BASES[oreId].name, chance, base, jang: jangOf(it) }; // 강화석도 높은 장비일수록 많이
 }
 // rng: 0~1. 실패해도 단계가 떨어지지는 않는다 (재료만 사라진다)
 export function enhance(st, it, rng = Math.random, whet = false) {
@@ -175,7 +185,7 @@ export function enhance(st, it, rng = Math.random, whet = false) {
   st.gold -= c.gold; resTake(st, c.oreId, c.ore); lifeProgress(st, 'enhance'); if (whet) takeOne(st, 'whetstone');
   if (rng() < c.chance) { it.plus = n + 1; it.jang = 0; it.fails = 0; return { ok: true, success: true, plus: it.plus }; }
   it.fails = (it.fails || 0) + 1;
-  it.jang = Math.min(1, jangOf(it) + c.chance * 0.465);
+  it.jang = Math.min(1, jangOf(it) + c.chance * 0.465 * (1 + smithK(st) * 3 + researchK(st, 'jangUp'))); // v0.49.73 대장간 11단계부터 단계마다 +3%
   return { ok: true, success: false, plus: n, jang: it.jang };
 }
 
@@ -248,14 +258,14 @@ export function bonusOf(st, type) {
 }
 export const GRADES = [{ name: '평범', color: '#c8c0b0', k: 1 }, { name: '숙련', color: '#6aa8ff', k: 1.5 }, { name: '정예', color: '#d080ff', k: 2.2 }, { name: '전설', color: '#ffb040', k: 3.2 }, { name: '신화', color: '#ff4a6a', k: 4.6 }];
 // v0.44.55 신화 용병: 여관 7단계부터 가끔 (7 1% · 8 2% · 9 3% · 10 5%)
-export const MYTH_CHANCE = (lv) => [0, 0, 0, 0, 0, 0, 0, 0.01, 0.02, 0.03, 0.05][lv] || 0;
+export const MYTH_CHANCE = (lv) => (lv > 10 ? Math.min(0.12, 0.05 + 0.007 * (lv - 10)) : [0, 0, 0, 0, 0, 0, 0, 0.01, 0.02, 0.03, 0.05][lv] || 0);
 // 용병 값: 고용비 = 값 × 10, 하루 품삯 = 값 × 1.2 × (1 + 레벨당 4%)
 export const mercValue = (m) => (m.mine + m.herb + m.craft + m.lore + (m.care || 0) + m.hunt * 1.5 + (m.vit || 0)) * 20 * (GRADES[m.grade || 0]?.k || 1);
 export const mercWage = (m) => Math.round(mercValue(m) * 1.2 * (1 + 0.04 * ((m.lv || 1) - 1)));
 export const wageTotal = (st) => townOf(st).mercs.reduce((a, m) => a + mercWage(m), 0);
 const NA = ['브', '셀', '오', '이', '케', '도', '미', '하', '유', '바', '로', '카', '테', '루', '자', '에', '실', '아', '고', '네'], NB = ['란', '마', '덴', '라', '일', '르', '나', '스', '크', '린', '온', '벨', '렌', '드', '아', '토'];
 // v0.44.15 여관에서 쉬기: 지친(또는 체력이 반 아래인) 놀거나 지친 용병이 여관 침대에 눕는다. 여관 단계 = 침대 수 · 회복 속도
-export const INN_BEDS = (lv) => [0, 2, 3, 4, 6, 8, 10, 12, 14, 16, 20][lv] || 0;
+export const INN_BEDS = (lv) => (lv > 10 ? 20 + 2 * (lv - 10) : [0, 2, 3, 4, 6, 8, 10, 12, 14, 16, 20][lv] || 0);
 export const innRestK = (st) => { const b = findBuilding(st, 'inn'); return b ? 3 * (1 + 0.25 * b.lv) : 1; }; // 밖에서 쉬는 것의 3.75 ~ 10.5배
 export function restAssign(st) {
   const t = townOf(st), b = findBuilding(st, 'inn'), beds = b && !(b.bld?.to === 1) ? INN_BEDS(b.lv) : 0;
@@ -392,7 +402,7 @@ export function mercPower(m, zn) {
 }
 // 파견 힘: 용병 힘 × 연구 × 쉼터 × 챙긴 영약
 export const partyPower = (st, m, zn, boost = {}) => mercPower(m, zn) * (1 + (st ? researchK(st, 'mercPow') : 0)) * (1 + SHELTER.power * (st ? shelterLv(st, zn.id) : 0)) * (1 + (boost.pow || 0));
-export const deathChance = (m, zn, expId, st = null, boost = {}) => Math.min(0.5, EXP_RISK[expId] * Math.max(0.2, 1 / partyPower(st, m, zn, boost)) ** 2 * (1 - Math.min(0.6, SHELTER.safe * (st ? shelterLv(st, zn.id) : 0))) * (1 - (boost.safe || 0)) * (st && guildLv(st) >= 10 ? 0.7 : 1) * (st ? floodPenalty(st).death * (1 - relicBonus(st, 'safe') / 100) : 1));
+export const deathChance = (m, zn, expId, st = null, boost = {}) => (st ? 1 - researchK(st, 'mercSafe') : 1) * Math.min(0.5, EXP_RISK[expId] * Math.max(0.2, 1 / partyPower(st, m, zn, boost)) ** 2 * (1 - Math.min(0.6, SHELTER.safe * (st ? shelterLv(st, zn.id) : 0))) * (1 - (boost.safe || 0)) * (st && guildLv(st) >= 10 ? 0.7 : 1) * (st ? floodPenalty(st).death * (1 - relicBonus(st, 'safe') / 100) : 1));
 // 여러 명을 한 번에: 파견소 단계만큼 인원 · 챙길 물건. pack = [{ base, qty }] (물약 · 영약)
 export function dispatchParty(st, ids, zoneId, expId, pack = [], now = Date.now(), opt = {}) {
   const t = townOf(st), ex = EXPEDITIONS.find((e) => e.id === expId), zn = ZONES.find((z) => z.id === zoneId);
@@ -494,12 +504,13 @@ export const brewGold = (st, r) => Math.round(r.gold * (1 - bonusOf(st, 'worksho
 // 제작에는 시간이 든다: 한 번에 하나씩 차례로 (t.brew 줄, 끝나면 [받기])
 export const brewTime = (r) => (20 + 15 * r.lv) * 1000; // 한 번 만드는 데 드는 시간
 export const BREW_QUEUE = 5;
+export const brewQueue = (st) => { const w = findBuilding(st, 'workshop'); return w ? BUILDINGS.workshop.queue(w.lv) : BREW_QUEUE; }; // v0.49.73 11단계부터 +1씩
 export function brew(st, id, times = 1, now = Date.now()) {
   const r = RECIPES.find((x) => x.id === id), t = townOf(st);
   if (!r || !recipesOpen(st).includes(r)) return { ok: false, why: '제작소 단계를 올려야 합니다' };
   times = Math.max(1, Math.floor(times));
   t.brew ||= [];
-  if (t.brew.length >= BREW_QUEUE) return { ok: false, why: '제작 줄이 가득 찼습니다' };
+  if (t.brew.length >= brewQueue(st)) return { ok: false, why: '제작 줄이 가득 찼습니다' };
   for (const [h, q] of Object.entries(r.herbs)) if ((t.herbs[h] || 0) < q * times) return { ok: false, why: `${HERBS[h].name}이(가) 모자랍니다` };
   for (const [id, q] of Object.entries(r.mats || {})) if (resCount(st, id) < q * times) return { ok: false, why: `${BASES[id].name}이(가) 모자랍니다` };
   const g = brewGold(st, r) * times;
@@ -516,9 +527,10 @@ export function brew(st, id, times = 1, now = Date.now()) {
 export function brewCollect(st, now = Date.now(), put = null) {
   const t = townOf(st); let n = 0;
   while (t.brew?.length && t.brew[0].until <= now) {
-    const b = t.brew[0], it = makeItem(b.id, { qty: b.n }, st);
+    const b = t.brew[0]; if (b.extra == null) { const k = researchK(st, 'alch'); b.extra = Math.floor(b.n * k + Math.random()); } // v0.49.73 연금 공학
+    const it = makeItem(b.id, { qty: b.n + b.extra }, st);
     if (!(put ? put(st, it) : addItem(st, it))) return { ok: n > 0, n, why: put ? '창고가 가득 찼습니다' : '가방이 가득 찼습니다' };
-    n += b.n; t.brew.shift(); lifeProgress(st, 'brew');
+    n += b.n + b.extra; t.brew.shift(); lifeProgress(st, 'brew');
   }
   return { ok: n > 0, n };
 }
@@ -560,25 +572,37 @@ export function setBonus(equip) {
 // ── 연구소 ── 한 번에 하나, 끝나는 시각으로 흐른다 (꺼 둔 동안에도)
 export const researchLv = (st, id) => townOf(st).research?.[id] || 0;
 export const researchK = (st, id) => researchLv(st, id) * RESEARCH[id].k;
+export const researchMax = (st) => researchMaxAt(findBuilding(st, 'lab')?.lv || 0);
+// v0.49.73 연구소 15단계부터 두 개를 함께 (t.lab · t.lab2)
+export const labSlots = (st) => ((findBuilding(st, 'lab')?.lv || 0) >= 15 ? 2 : 1);
+export const labJobs = (st) => [townOf(st).lab, townOf(st).lab2].filter(Boolean);
 export function researchStart(st, id, now = Date.now()) {
   const t = townOf(st), lab = findBuilding(st, 'lab');
-  if (!lab || t.lab) return { ok: false, why: t.lab ? '이미 연구 중입니다' : '연구소가 없습니다' };
+  if (!lab) return { ok: false, why: '연구소가 없습니다' };
+  const slot = !t.lab ? 'lab' : labSlots(st) >= 2 && !t.lab2 ? 'lab2' : null;
+  if (!slot) return { ok: false, why: '이미 연구 중입니다' };
+  if (labJobs(st).some((j) => j.id === id)) return { ok: false, why: '그 연구는 이미 하는 중입니다' };
   const lv = researchLv(st, id), R = RESEARCH[id];
   if (!R || lab.lv < R.lab) return { ok: false, why: `연구소 ${R?.lab}단계에서 열립니다` };
-  if (lv >= RESEARCH_MAX) return { ok: false, why: '최고 단계입니다' };
+  if (lv >= researchMax(st)) return { ok: false, why: '최고 단계입니다' };
   const c = researchCost(lv, id);
   if (st.gold < c.gold) return { ok: false, why: '금화가 모자랍니다' };
   if (zoneMatTotal(st) < c.mats) return { ok: false, why: '지역 재료가 모자랍니다' };
   if (c.ess && resCount(st, c.ess.id) < c.ess.n) return { ok: false, why: `${BASES[c.ess.id].name}가 모자랍니다` };
-  takeZoneMats(st, c.mats); if (c.ess) resTake(st, c.ess.id, c.ess.n);
-  st.gold -= c.gold; t.lab = { id, from: now, until: now + c.min * 60000 * (1 - bonusOf(st, 'lab')) * (1 - relicBonus(st, 'lab') / 100) };
+  if (c.ore2 && resCount(st, 'ore2') < c.ore2) return { ok: false, why: `상급 강화석 ${c.ore2}개가 필요합니다` };
+  if (c.herbs && highHerbs(st) < c.herbs) return { ok: false, why: `높은 약초(서리꽃 이상) ${c.herbs}개가 필요합니다` };
+  takeZoneMats(st, c.mats); if (c.ess) resTake(st, c.ess.id, c.ess.n); if (c.ore2) resTake(st, 'ore2', c.ore2); if (c.herbs) takeHighHerbs(st, c.herbs);
+  st.gold -= c.gold; t[slot] = { id, from: now, until: now + c.min * 60000 * (1 - bonusOf(st, 'lab')) * (1 - relicBonus(st, 'lab') / 100) };
   return { ok: true };
 }
 export function researchTick(st, now = Date.now()) {
   const t = townOf(st);
-  if (!t.lab || now < t.lab.until) return null;
-  const id = t.lab.id; (t.research ||= {})[id] = (t.research[id] || 0) + 1; t.lab = null;
-  return id;
+  for (const k of ['lab', 'lab2']) {
+    if (!t[k] || now < t[k].until) continue;
+    const id = t[k].id; (t.research ||= {})[id] = (t.research[id] || 0) + 1; t[k] = null;
+    return id;
+  }
+  return null;
 }
 // 용병 장비: 가방에서 가장 좋은 (끼지 않은) 장비 하나를 맡긴다 (돌려받지 않는다)
 // 용병 장비: 가방(from 'inv', key = uid)이나 창고(from 'vault', key = 칸 번호)에서 골라 입힌다.
@@ -650,8 +674,10 @@ export const ESS_RECIPES = [2, 3, 4].flatMap((g) => [
   { rid: `up${g + 1}`, id: `ess${g + 1}`, lv: 2, gold: 5000 * g * g, need: { [`ess${g}`]: 5 }, zoneMats: 0, out: 1 },
   { rid: `dn${g}`, id: `ess${g}`, lv: 2, gold: 2000 * g * g, need: { [`ess${g + 1}`]: 1 }, zoneMats: 0, out: 3 },
 ]);
+// v0.49.73 정수 순환 연구: 올리기 재료 5 → 4 (5단계) → 3 (10단계)
+export const essRecipe = (st, r) => (r.rid.startsWith('up') && researchLv(st, 'essFlow') >= 5 ? { ...r, need: Object.fromEntries(Object.entries(r.need).map(([k, q]) => [k, q - Math.floor(researchLv(st, 'essFlow') / 5)])) } : r);
 export function craftEss(st, rid, times = 1) {
-  const r = ESS_RECIPES.find((x) => x.rid === rid), ok = r && oreRecipeOk(st, r, times);
+  const r0 = ESS_RECIPES.find((x) => x.rid === rid), r = r0 && essRecipe(st, r0), ok = r && oreRecipeOk(st, r, times);
   if (!ok?.ok) return ok || { ok: false };
   st.gold -= r.gold * times;
   for (const [k, q] of Object.entries(r.need)) resTake(st, k, q * times);
@@ -716,7 +742,7 @@ export function autoBrewTick(st, now = Date.now()) {
   const t = townOf(st);
   if (!t.autoBrew) return 0;
   let n = 0;
-  while ((t.brew?.length || 0) < BREW_QUEUE && brew(st, t.autoBrew, 1, now).ok) n++;
+  while ((t.brew?.length || 0) < brewQueue(st) && brew(st, t.autoBrew, 1, now).ok) n++;
   return n;
 }
 
