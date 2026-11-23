@@ -14,7 +14,7 @@ const BOOK_AW = [20, 60, 150, 300, 500]; // v0.50 책 차수 (권장 각성)
 // mon: { tier, level }, opt: { auto, magicFind, goldFind }
 export function rollLoot(mon, opt = {}, st = null, rng = R) {
   const t = LOOT[mon.tier];
-  const dropMult = opt.auto ? CONFIG.autoDrop ?? 0.3 : 1;
+  const dropMult = (opt.auto ? CONFIG.autoDrop ?? 0.3 : 1) * (opt.dropK ?? 1); // v0.50 dropK: 군세 벌칙 · 정복지
   const out = [];
   // 골드
   if (chance(t.gold[0] * dropMult, rng)) {
@@ -46,21 +46,7 @@ export function rollLoot(mon, opt = {}, st = null, rng = R) {
   }
   // v0.50 스킬북: 그 사냥터 권장 각성(몬스터 레벨 − 1)의 차수 — 그 차수 70% · 아래 차수 25% · 다음 차수 5% (보스 · 네임드 15%)
   //  등급 하품 6 · 중품 3 · 상품 1 (보스 · 네임드는 상품 ×3). 이미 배운 스킬은 ×0.5. 혼합 스킬은 보스 · 네임드만. 단검(dg_)은 등급(tier)으로 같이 섞는다
-  if (chance(Math.min(1, t.book * dropMult * (CONFIG.bookDrop ?? 1)), rng)) {
-    const zs = ZONE_SCHOOLS[mon.sp?.zone?.id] || [];
-    const big = mon.tier === 'named' || mon.tier === 'boss';
-    const rec = Math.max(0, Math.round((mon.level || 1) - 1)), cRec = Math.max(1, BOOK_AW.filter((lv) => rec >= lv).length);
-    const r = rng();
-    let c = cRec;
-    if (cRec < 5 && r < (big ? 0.15 : 0.05)) c = cRec + 1;
-    else if (cRec > 1 && r > 0.75) c = 1 + Math.floor(rng() * (cRec - 1));
-    const g = Number(weighted(big ? { 1: 6, 2: 3, 3: 3 } : { 1: 6, 2: 3, 3: 1 }, rng));
-    const cOf = (sk) => sk.chasu || Math.max(1, Math.min(5, (sk.tier || 1) - 1));
-    let pool = Object.keys(SKILLS).filter((id) => { const sk = SKILLS[id]; return !sk.passive && cOf(sk) === c && (sk.q || 2) === g && (big || !(sk.lines?.length > 1)); });
-    if (!pool.length) pool = Object.keys(SKILLS).filter((id) => !SKILLS[id].passive && cOf(SKILLS[id]) === c);
-    const wts = pool.flatMap((id) => { const w = (zs.includes(SKILLS[id].school) ? 3 : 1) * (st?.skills?.[id] ? 0.5 : 1) * 2; return Array(Math.max(1, Math.round(w))).fill(id); });
-    if (wts.length) out.push({ kind: 'item', item: makeBook(pick(wts, rng), st) });
-  }
+  if (chance(Math.min(1, t.book * dropMult * (CONFIG.bookDrop ?? 1)), rng)) { const bk = rollBook(mon, st, rng); if (bk) out.push({ kind: 'item', item: bk }); }
   // 이름 있는 전설 (지역 보스 · 드물게 네임드)
   const zid = mon.sp?.zone?.id, nc = mon.dungeon ? (mon.tier === 'boss' ? NAMED_CHANCE.dungeon : 0) : NAMED_CHANCE[mon.tier] || 0;
   if (zid && nc && chance(nc * dropMult, rng)) { const pool = namedOf(zid); if (pool.length) out.push({ kind: 'item', item: makeNamed(pick(pool, rng), st, mon.level) }); }
@@ -88,4 +74,22 @@ export function rollDeathDrop(st, rng = R) {
   }
   const i = st.inv.findIndex((x) => x.uid === c.uid);
   return st.inv.splice(i, 1)[0];
+}
+
+// v0.50 스킬북 한 권: 그 사냥터 권장 각성(몬스터 레벨 − 1)의 차수 — 그 차수 70% · 아래 차수 25% · 다음 차수 5% (보스 · 네임드 15%)
+//  등급 하품 6 · 중품 3 · 상품 1 (보스 · 네임드는 상품 ×3, q를 주면 그 등급). 이미 배운 스킬은 ×0.5. 혼합 스킬은 보스 · 네임드만
+export function rollBook(mon, st = null, rng = R, q = null) {
+  const zs = ZONE_SCHOOLS[mon.sp?.zone?.id] || [];
+  const big = mon.tier === 'named' || mon.tier === 'boss';
+  const rec = Math.max(0, Math.round((mon.level || 1) - 1)), cRec = Math.max(1, BOOK_AW.filter((lv) => rec >= lv).length);
+  const r = rng();
+  let c = cRec;
+  if (cRec < 5 && r < (big ? 0.15 : 0.05)) c = cRec + 1;
+  else if (cRec > 1 && r > 0.75) c = 1 + Math.floor(rng() * (cRec - 1));
+  const g = q || Number(weighted(big ? { 1: 6, 2: 3, 3: 3 } : { 1: 6, 2: 3, 3: 1 }, rng));
+  const cOf = (sk) => sk.chasu || Math.max(1, Math.min(5, (sk.tier || 1) - 1));
+  let pool = Object.keys(SKILLS).filter((id) => { const sk = SKILLS[id]; return !sk.passive && cOf(sk) === c && (sk.q || 2) === g && (big || !(sk.lines?.length > 1)); });
+  if (!pool.length) pool = Object.keys(SKILLS).filter((id) => !SKILLS[id].passive && cOf(SKILLS[id]) === c);
+  const wts = pool.flatMap((id) => { const w = (zs.includes(SKILLS[id].school) ? 3 : 1) * (st?.skills?.[id] ? 0.5 : 1) * 2; return Array(Math.max(1, Math.round(w))).fill(id); });
+  return wts.length ? makeBook(pick(wts, rng), st) : null;
 }

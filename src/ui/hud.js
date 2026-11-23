@@ -8,6 +8,7 @@ import { entranceOf, layout as dungeonLayout, cellPos, N, T } from '../data/dung
 import { terrain, fogCan, MAP_R, FOG_C, seen as seenAt } from './mapimg.js';
 import { CAMPS } from '../engine2d/stage.js';
 import { dailyOf, dailyText } from '../game/daily.js';
+import { hordePen } from '../data/horde.js';
 import { townOf } from '../game/town.js';
 import { PLOTS, BUILDINGS, VAULT_SPOT } from '../data/buildings.js';
 import { expNeeded, powerLevel, recAwaken } from '../game/growth.js';
@@ -182,7 +183,9 @@ export class HUD {
     // 퀘스트 칸: 오늘의 의뢰 진행 (바뀔 때만 다시 쓴다)
     this.dailyT = (this.dailyT || 0) - dt; // v0.49.56 0.5초마다 (매 프레임 오늘 날짜 · 목록 문자열을 새로 만들었다)
     const dl = this.dailyT <= 0 ? ((this.dailyT = 0.5), dailyOf(st)) : null, dk = dl ? dl.list.map((q) => q.have + (q.done ? 'd' : '') + (q.got ? 'g' : '')).join('|') : this.dailyKey;
-    if (dl && dk !== this.dailyKey) { this.dailyKey = dk; $('#dailyBox').innerHTML = dl.list.filter((q) => !q.got).map((q) => `<div class="dq${q.done ? ' fin' : ''}">${dailyText(q)} <b>${q.done ? '완료' : `${q.have} / ${q.need}`}</b></div>`).join(''); }
+    // v0.50 군세: 모여 있으면 맨 위에 (벌칙이 붙으면 붉게)
+    const hz = st.horde?.zone, hp = hz ? hordePen(st) : 0, hl = hz ? `<div class="dq hordeQ${hp ? ' pen' : ''}">군세 토벌 · ${ZONES.find((z) => z.id === hz)?.name || ''} <b>${hp ? `드랍 · 경험치 −${Math.round(hp * 100)}%` : '하겐'}</b></div>` : '';
+    if (dl && dk + hl !== this.dailyKey) { this.dailyKey = dk + hl; $('#dailyBox').innerHTML = hl + dl.list.filter((q) => !q.got).map((q) => `<div class="dq${q.done ? ' fin' : ''}">${dailyText(q)} <b>${q.done ? '완료' : `${q.have} / ${q.need}`}</b></div>`).join(''); }
     if (this.qsetShown !== st.quickSet) { this.qsetShown = st.quickSet; document.querySelectorAll('#qsets [data-qset]').forEach((el) => el.classList.toggle('on', Number(el.dataset.qset) === (st.quickSet || 0))); }
     tfm($('.bar.hp i'), `scaleX(${Math.max(0, st.hp / d.maxHp)})`);
     txt($('.bar.hp span'), `${Math.ceil(Math.max(0, st.hp))} / ${d.maxHp}`);

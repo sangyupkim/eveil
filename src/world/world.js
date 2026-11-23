@@ -26,7 +26,8 @@ import { nextFloodAt, FLOOD, FLOOD_AFFIX, FLOOD_AFFIX_IDS } from '../data/flood.
 import { ELIXIRS, ELIXIR_TIME, HERBS, HP_POTIONS, MP_POTIONS } from '../data/potions.js';
 import { addAP, gainExp, rewardFactor, recAwaken } from '../game/growth.js';
 import { addSkillExp, skillValues, skillEff, modsOf, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
-import { rollLoot, rollDeathDrop } from '../game/loot.js';
+import { rollLoot, rollDeathDrop, rollBook } from '../game/loot.js';
+import { HORDE, hordePen, conqLeft, hordeGap } from '../data/horde.js';
 import { dropMats, liberateAdd, dropEss, resAdd, resCount, claim as claimMerc, lootRoomFull, brewCollect, collect as collectPlot, repeatTick, autoBrewTick } from '../game/town.js';
 import { vaultAdd } from '../game/vault.js';
 import { itemIcon, iconUrl, coinIcon, oreIcon, herbIcon, townIcon, bookIcon } from '../ui/icons.js';
@@ -781,8 +782,126 @@ export class World {
     for (const g of [...this.ground]) if (g.x > DUNGEON_X - 80) { if (g.deathDrop) { this.removeGround(g); const n = this.dropGround({ kind: 'item', item: g.item }, ent.x + 1, ent.z + 1, g.expires); n.deathDrop = true; } else this.removeGround(g); }
     this.target = null; this.chasePath = null;
     const zn = this.dungeon.zone;
+    if (this.dungeon.horde && !this.dungeon.cleared) this.ui.toast('토벌을 멈췄습니다 — 군세는 그대로 남아 있습니다', '#ff8a5a');
+    document.getElementById('hordeHud')?.remove();
     this.dungeon = null;
     if (!silent) { const e = entranceOf(zn); this.player.pos.set(e.x + 2, 0, e.z + 2); this.gateCd = 4; this.fx.arrive(e.x + 2, e.z + 2); }
+  }
+  // ───── v0.50 군세 토벌 (data/horde.js) ─────
+  // 내 권장 레벨: 가장 높이 잡은 보스 레벨 (spawn이 세계 단계를 다시 더하므로 뺀다)
+  hordeLevel() {
+    const top = this.st.bossTop || Math.max(1, ...ALL_ZONES.filter((z) => this.bossCleared(z)).map((z) => z.levels[1] + this.tierOffset));
+    return Math.max(1, Math.round(top) - this.tierOffset);
+  }
+  // 낮은 지역에서 나와도 세기는 가장 높은 보스를 잡은 지역 것으로 (범람과 같은 방식)
+  hordeScale(m, cz) {
+    curWt = this.wt; const fz = this.floodRefZi();
+    if (fz >= 0 && cz >= 0 && fz !== cz) { const A = chapterK(fz, m.tier), B = chapterK(cz, m.tier); m.maxHp = Math.round(m.maxHp * A.hp / B.hp); m.hp = m.maxHp; m.dmg = m.dmg.map((v) => v * A.dmg / B.dmg); m.exp *= (A.exp || 1) / (B.exp || 1); }
+  }
+  hordeTick() {
+    const st = this.st, now = Date.now(), H = (st.horde ||= { zone: null, at: 0, next: 0, conq: {} });
+    H.conq ||= {};
+    for (const z in H.conq) if (H.conq[z] <= now) delete H.conq[z];
+    const ok = ALL_ZONES.filter((z) => this.bossCleared(z));
+    if (!ok.length) return;
+    if (!H.next) H.next = now + HORDE.firstMs;
+    if (H.zone || now < H.next) return;
+    const free = ok.filter((z) => !H.conq[z.id]), pool = free.length ? free : ok, zn = pool[Math.floor(Math.random() * pool.length)];
+    H.zone = zn.id; H.at = now;
+    this.ui.toast(`${zn.name}에 군세가 모였습니다 — 경비대장 하겐`, '#ff8a5a'); this.ui.log(`군세가 모였습니다: ${zn.name} (경비대장 하겐에게서 토벌)`, '#ff8a5a'); sfx('error'); this.ui.dirty();
+  }
+  enterHorde() {
+    const st = this.st, H = st.horde; if (!H?.zone || this.dead) return;
+    const zi = ALL_ZONES.findIndex((z) => z.id === H.zone); if (zi < 0) { H.zone = null; return; }
+    const zn = ALL_ZONES[zi];
+    this.leaveDungeon(true); this.toggleAuto(false);
+    const pen = hordePen(st);
+    this.dungeon = { zi, stage: 1, zone: zn, diff: 1, muts: [], started: true, t0: this.time, dmg: 0, kills: 0, got: [], until: Date.now() + 86400e3, L: this.hordeLevel(),
+      horde: { phase: 1, kills: 0, down: 0, t: 1, pen, t0: this.time } };
+    const Ld = dungeonLayout(zi), sp0 = cellPos(zi, Ld.start[0], Ld.start[1]);
+    this.player.pos.set(sp0.x, 0, sp0.z); this.moveTo = null; this.target = null;
+    this.stage.cam.x = sp0.x; this.stage.cam.z = sp0.z; this.fx.arrive(sp0.x, sp0.z);
+    this.ui.toast(`군세 토벌 · ${zn.name} — 몰려오는 군세를 막으세요`, '#ff8a5a'); sfx('awaken', 0.6);
+    this.ui.dirty();
+  }
+  // 토벌지 몬스터 하나: 플레이어에게서 [가까이, 멀리] 거리의 바닥 칸에
+  hordeMob(tier, near, opt = {}) {
+    const dg = this.dungeon, zi = dg.zi, zn = dg.zone, Ld = dungeonLayout(zi), P = this.player.pos;
+    let c = opt.at;
+    if (!c) {
+      const cells = []; for (let k = 0; k < Ld.g.length; k++) if (Ld.g[k]) { const q = cellPos(zi, k % N, Math.floor(k / N)), dd = Math.hypot(q.x - P.x, q.z - P.z); if (dd >= near[0] && dd <= near[1]) cells.push(q); }
+      if (!cells.length) return null; c = cells[Math.floor(Math.random() * cells.length)];
+    }
+    const m = this.spawn({ zone: zn, x: c.x, z: c.z, level: dg.L, tier, timer: 0, mon: null, fixed: opt.fixed });
+    if (!m) return null;
+    this.hordeScale(m, zi);
+    m.dungeon = true; m.horde = true; m.home = { x: c.x, z: c.z }; m.exp *= HORDE.expK * (1 + dg.horde.pen);
+    if (opt.hp) { m.maxHp = m.hp = Math.round(m.maxHp * opt.hp); }
+    if (!opt.still) { m.state = 'chase'; m.hordeWave = true; }
+    this.champion(m, this.wt - 1);
+    return m;
+  }
+  hordeStep(dt) {
+    const dg = this.dungeon, H = dg?.horde;
+    let el = document.getElementById('hordeHud');
+    if (!H || dg.cleared) { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement('div'); el.id = 'hordeHud'; document.body.appendChild(el); }
+    const txt = H.phase === 1 ? `군세의 파도 ${Math.min(H.kills, HORDE.waveKills)} / ${HORDE.waveKills}` : H.phase === 2 ? `군기 기둥 ${H.down} / 3` : '군세 대장';
+    const min = Math.floor((this.time - H.t0) / 60), sec = Math.floor((this.time - H.t0) % 60);
+    const key = txt + min + ':' + sec; if (el.dataset.k !== key) { el.dataset.k = key; el.innerHTML = `<b>군세 토벌 · ${dg.zone.name}</b><span>${txt}</span><small>${min}:${String(sec).padStart(2, '0')}</small>`; }
+    if (this.dead || (H.t -= dt) > 0) return;
+    H.t = 1.2;
+    const alive = this.monsters.filter((m) => !m.dead && m.hordeWave).length;
+    const cap = H.phase === 1 ? HORDE.waveAlive : H.phase === 2 ? Math.round(HORDE.waveAlive * (1 - 0.25 * H.down)) : 8;
+    for (let i = 0; i < Math.min(6, cap - alive); i++) this.hordeMob('normal', [9, 18]);
+    if (H.phase === 2 && Math.random() < 0.15 * (1 + H.down)) this.hordeMob('elite', [9, 16]);
+  }
+  hordeKill(m) {
+    const dg = this.dungeon, H = dg.horde;
+    if (m.pillar) {
+      H.down++; this.fx.pillar(m.pos.x, m.pos.z, 0xff6a3a, 1.4, 5, 1); sfx('rankup', 0.6);
+      for (let i = 0; i < 2; i++) this.hordeMob('elite', [6, 12]);
+      if (H.down >= 3) {
+        H.phase = 3;
+        const zn = dg.zone, b = this.hordeMob('boss', [8, 13], { fixed: { type: zn.boss.type, name: `${zn.name} 군세 대장` }, hp: HORDE.bossHp, still: true });
+        if (b) { b.state = 'chase'; this.fx.pillar(b.pos.x, b.pos.z, 0xff3a2a, 2, 7, 1.5); }
+        this.ui.toast('군세 대장이 나타났습니다!', '#ff5a3a'); sfx('error');
+      } else this.ui.toast(`군기 기둥 ${H.down} / 3 — 군세가 약해집니다`, '#ffb060');
+      return;
+    }
+    if (m.hordeWave && H.phase === 1 && ++H.kills >= HORDE.waveKills) {
+      H.phase = 2;
+      // 군기 기둥 셋: 플레이어 둘레 서로 다른 쪽, 조금 떨어진 곳
+      const P = this.player.pos, zi = dg.zi, Ld = dungeonLayout(zi), cand = [];
+      for (let k = 0; k < Ld.g.length; k++) if (Ld.g[k]) { const q = cellPos(zi, k % N, Math.floor(k / N)), dd = Math.hypot(q.x - P.x, q.z - P.z); if (dd >= 9 && dd <= 17) cand.push({ ...q, a: Math.atan2(q.z - P.z, q.x - P.x) }); }
+      const got = [];
+      for (let i = 0; i < 3 && cand.length; i++) {
+        const gap = (q) => got.length ? Math.min(...got.map((g) => Math.abs(Math.atan2(Math.sin(g.a - q.a), Math.cos(g.a - q.a))))) : Math.random();
+        const c = cand.reduce((x, y) => (gap(y) > gap(x) ? y : x)); got.push(c);
+        const pm = this.hordeMob('elite', null, { at: c, fixed: { type: 'gargoyle', name: '군기 기둥', tint: 0xff7a5a }, hp: HORDE.pillarHp, still: true });
+        if (pm) { pm.pillar = true; pm.speed = 0; pm.noLoot = true; pm.exp *= 3; this.fx.pillar(c.x, c.z, 0xff6a3a, 1.2, 5, 1.2); }
+      }
+      this.ui.toast('군기 기둥 셋을 부수세요', '#ffb060'); sfx('awaken', 0.5);
+    }
+  }
+  hordeCleared(m) {
+    const st = this.st, dg = this.dungeon, H = dg.horde, zn = dg.zone, mult = 1 + H.pen, gMark = this.ground.length;
+    dg.cleared = true;
+    for (const x of this.monsters) if (!x.dead && x.horde) { x.noLoot = true; x.exp = 0; this.later(0.2, () => { if (!x.dead) this.hitMonster(x, 1e12, { src: 'none' }); }); }
+    // 보상: 금화 · 재료 · 정수 · 영웅 이상 장비 둘 · 상품 스킬북 한 권 (벌칙이 쌓였으면 그만큼 더)
+    const L = m.level, P = m.pos;
+    this.dropGround({ kind: 'gold', amount: Math.round(L * 2500 * mult) }, P.x, P.z + 1);
+    const g = Math.min(5, 2 + Math.floor(L / 120)); resAdd(st, 'ess' + g, Math.round(4 * mult));
+    { const mz = MATERIALS[zn.id] ? zn.id : ALL_ZONES.slice(0, ALL_ZONES.indexOf(zn) + 1).reverse().find((z) => MATERIALS[z.id])?.id; if (mz) { const ms = townOf(st).mats; ms[mz] = (ms[mz] || 0) + Math.round(8 * mult); } }
+    for (let i = 0; i < Math.round(2 * mult); i++) { const it = makeItem(rollBase(L), { rarity: Math.random() < 0.08 ? 'legend' : 'hero', ilvl: L }, st); const a = i * 1.3; this.dropGround({ kind: 'item', item: it }, P.x + Math.cos(a) * 1.5, P.z + Math.sin(a) * 1.5); }
+    { const bk = rollBook({ level: L, tier: 'boss', sp: { zone: zn } }, st, Math.random, 3); if (bk) this.dropGround({ kind: 'item', item: bk }, P.x - 1.2, P.z - 0.6); }
+    // 정복지 7일 · 다음 군세
+    H.done = true; st.horde.conq[zn.id] = Date.now() + HORDE.conqMs; st.horde.zone = null; st.horde.at = 0; st.horde.next = Date.now() + hordeGap();
+    st.horde.cleared = (st.horde.cleared || 0) + 1;
+    this.fx.pillar(P.x, P.z, 0xffd060, 2, 8, 2); sfx('awaken');
+    this.ui.toast(`군세 토벌 완료 — ${zn.name}이(가) 7일 동안 정복지가 됩니다`, '#ffd060');
+    this.ui.log(`정수 ${'ⅠⅡⅢⅣⅤ'[g - 1] || g} +${Math.round(4 * mult)} · ${zn.name} 재료`, '#ffd060');
+    this.ui.dirty();
   }
   // 던전 나가기: 묻고 나간다
   askLeave() {
@@ -1045,7 +1164,7 @@ export class World {
     return { x, z };
   }
   // v0.49.60 원래 자리 원 반지름 (이 밖에서 어그로 게이지가 줄어든다)
-  leashOf(m) { return m.tier === 'boss' ? 30 : 26; }
+  leashOf(m) { return m.horde ? 999 : m.tier === 'boss' ? 30 : 26; }
   // v0.49.60 근접 몬스터의 닿는 거리: 몸이 큰 만큼 더 (큰 보스가 붙은 플레이어를 「멀다」고 보고 계속 걸어 움직였다)
   reachOf(m) { return m.def.range + (m.def.attack === 'melee' ? 0.7 * Math.max(0, (m.actor?.scale || 1) - 1) : 0); }
 
@@ -1063,7 +1182,13 @@ export class World {
       sp.timer -= dt;
       // 플레이어 바로 앞에서 튀어나오지 않게 · 먼 곳은 가까워질 때 만든다 (몬스터 수 · 메모리 절약)
       const ex = sp.x - p.x, ez = sp.z - p.z, d = Math.sqrt(ex * ex + ez * ez);
-      if (sp.timer <= 0 && d > 14 && d < SPAWN_NEAR) { const nm = this.spawn(sp); if (nm) this.champion(nm, this.wt - 1); } // v0.48 세계 단계가 높을수록 강화 몬스터
+      if (sp.timer <= 0 && d > 14 && d < SPAWN_NEAR) {
+        // v0.50 정복지: 내 권장 레벨 사냥터 (세기는 가장 높은 보스를 잡은 지역 기준) · 보상 +20%
+        const cq = sp.zone && conqLeft(this.st, sp.zone.id) > 0, lv0 = sp.level;
+        if (cq) sp.level = Math.max(lv0, this.hordeLevel());
+        const nm = this.spawn(sp); sp.level = lv0;
+        if (nm) { if (cq) { this.hordeScale(nm, ALL_ZONES.indexOf(sp.zone)); nm.conq = true; } this.champion(nm, this.wt - 1); } // v0.48 세계 단계가 높을수록 강화 몬스터
+      }
     }
   }
 
@@ -1071,6 +1196,7 @@ export class World {
     const a = m.actor;
     const p = this.player.pos;
     if (m.dash) { this.dashStep(m, dt); return; }
+    if (m.pillar) { if (m.dotT > 0) { m.dotT -= dt; m.dotAcc = (m.dotAcc || 0) + dt; if (m.dotAcc >= 1) { m.dotAcc -= 1; this.hitMonster(m, m.dotV / 0.9, { src: 'dot' }); } } if (m.showHp > 0) m.showHp -= dt; return; } // v0.50 군기 기둥: 움직이지 않는다
     const px0 = m.pos.x, pz0 = m.pos.z; // v0.49.60 벽 속 · 던전 바닥 밖으로 밀려나면 되돌린다
     const d = dist2(m.pos, p);
     if (this.validAt !== this.time) { this.validAt = this.time; this.validNow = !this.dead && !this.inTown && !inCamp(p.x, p.z); } // v0.49.56 몬스터마다 다시 재지 않고 프레임마다 한 번
@@ -1605,7 +1731,7 @@ export class World {
     m.dead = true;
     if (m.dungeon && this.dungeon) this.dungeon.kills = (this.dungeon.kills || 0) + 1; else if (m.flood) { const fr = (this.floodRun ||= { t0: this.time, dmg: 0, kills: 0 }); fr.kills++; }
     if (m.sp?.zone) (this.st.zoneHunt ||= {})[m.sp.zone.id] = Date.now(); // v0.44.43 범람지: 지역별 마지막 사냥
-    if (m.tier === 'boss' && !m.flood && !this.dungeon?.unknown && m.level >= (this.st.bossTop || 0)) { this.st.bossTop = m.level; const zi = ALL_ZONES.indexOf(m.sp?.zone || this.dungeon?.zone); if (zi >= 0) this.st.bossTopZi = zi; } // v0.49.12 그 보스의 지역도 (범람 세기 보정) // v0.44.62 이번 패치 뒤 잡은 가장 높은 보스 (범람 · 미지의 땅 기준)
+    if (m.tier === 'boss' && !m.flood && !m.horde && !this.dungeon?.unknown && m.level >= (this.st.bossTop || 0)) { this.st.bossTop = m.level; const zi = ALL_ZONES.indexOf(m.sp?.zone || this.dungeon?.zone); if (zi >= 0) this.st.bossTopZi = zi; } // v0.49.12 그 보스의 지역도 (범람 세기 보정) // v0.44.62 이번 패치 뒤 잡은 가장 높은 보스 (범람 · 미지의 땅 기준)
     if (m.flood) this.floodDeath(m);
     else if (m.tier === 'boss' && !m.dungeon && m.sp?.zone && Math.random() < 0.1) { resAdd(this.st, 'odd_map', 1); this.ui.toast('알 수 없는 지도 조각', '#ffd060'); } // v0.44.49 필드 보스 10%
     if (src !== 'perk') this.perk('kill');
@@ -1652,12 +1778,13 @@ export class World {
     this.lastKillT = this.time;
     if (this.chain >= 3) this.fx.text(this.player.pos.clone().setY(3.2), `연쇄 ${this.chain}`, this.chain >= 10 ? 'crit' : 'heal');
     if (this.chain % 10 === 0) { this.chainSpdT = 5; sfx('buff', 0.6); }
-    const exp = m.exp * rf.exp * (this.autoKill ? CONFIG.autoExpPenalty ?? CONFIG.autoPenalty : 1) * (1 + Math.min(20, this.chain) * 0.02) * (this.night > 0.5 ? 1.2 : 1);
+    const fk = !m.dungeon && !m.flood ? (1 - hordePen(st)) * (m.conq ? HORDE.conqK : 1) : 1; // v0.50 군세 벌칙 · 정복지 (필드 사냥만)
+    const exp = fk * m.exp * rf.exp * (this.autoKill ? CONFIG.autoExpPenalty ?? CONFIG.autoPenalty : 1) * (1 + Math.min(20, this.chain) * 0.02) * (this.night > 0.5 ? 1.2 : 1);
     const results = gainExp(st, m.flood ? 0 : exp * (1 + researchK(st, 'exp')) * (1 + relicBonus(st, 'exp') / 100)); // 범람 몬스터는 경험치 없음
     for (const r of results) this.onAwaken(r);
 
     // 드랍
-    const drops = m.noLoot ? [] : rollLoot(m, { auto: this.autoKill, magicFind: d.magicFind + researchK(st, 'luck'), goldFind: d.goldFind * (1 + researchK(st, 'gold')) }, st);
+    const drops = m.noLoot ? [] : rollLoot(m, { dropK: fk, auto: this.autoKill, magicFind: d.magicFind + researchK(st, 'luck'), goldFind: d.goldFind * (1 + researchK(st, 'gold')) }, st);
     if (m.champ && !m.noLoot && !m.child) for (let k = 0; k < m.champ; k++) if (Math.random() < 0.35) drops.push(...rollLoot(m, { auto: this.autoKill, magicFind: d.magicFind + researchK(st, 'luck') + 50, goldFind: d.goldFind }, st)); // v0.48 강화 몬스터는 더 준다
     drops.forEach((dr, i) => {
       const a = (i / Math.max(1, drops.length)) * Math.PI * 2 + Math.random();
@@ -1675,7 +1802,8 @@ export class World {
     if (!m.dungeon && !m.noLoot && m.tier === 'boss' && Math.random() < 0.3 * (this.autoKill ? CONFIG.autoDrop ?? 0.3 : 1)) { // 보스가 가끔 열쇠
       if (addItem(st, makeItem('dungeon_key', { qty: 1 }, st))) { this.ui.toast('던전 열쇠를 얻었습니다', '#ffd84a'); sfx('rare', 0.7); }
     }
-    if (m.dungeon && m.tier === 'boss' && this.dungeon) this.dungeonCleared(m);
+    if (m.horde && this.dungeon?.horde) this.hordeKill(m);
+    if (m.dungeon && m.tier === 'boss' && this.dungeon) { if (this.dungeon.horde) this.hordeCleared(m); else this.dungeonCleared(m); }
     if (!m.noLoot) this.dailyDone(dailyProgress(st, { kind: 'kill', zone: m.dungeon ? null : m.sp?.zone?.id, tier: m.tier }));
     // 강화석: 강한 몬스터는 가끔, 일반 몬스터는 아주 가끔
     if (!m.noLoot) {
@@ -2808,6 +2936,7 @@ export class World {
     this.merchantStep(dt);
     this.rumorStep(dt);
     this.dungeonStep(dt);
+    this.hordeStep(dt);
     this.debuffStep(dt);
     this.petStep(dt);
     this.skyStep(dt);
@@ -2926,6 +3055,7 @@ export class World {
       if (done) secs.push({ title: '연구 완료', rows: [{ img: bookIcon(), name: `${RESEARCH[done].name} ${researchLv(st, done)}단계` }] });
       secs.push(...this.townAuto());
       this.floodTick();
+      this.hordeTick();
       if (st.dailyNew?.length) { this.dailyDone(st.dailyNew); st.dailyNew = []; }
       if (secs.length) { sfx('coin'); if (globalThis.__game?.windows) globalThis.__game.windows.notice(secs); else for (const x of secs) this.ui.toast(x.title, '#7fe07a'); }
       this.checkAchievements();
@@ -3123,7 +3253,7 @@ export class World {
       this.zone = id;
       if (zn && !dg) this.zoneGate(zn);
       if (zn) st.lastZone = zn.id;
-      this.ui.zone(dg?.hidden ? { name: `${dg.zone.name} 숨은 던전${dg.plus ? ` +${dg.plus}` : ''}`, levels: [dg.zone.levels[1] + 5 + this.tierOffset, dg.zone.levels[1] + 5 + this.tierOffset] } : dg ? { name: `${dg.zone.name} 던전 ${dg.stage}단계`, levels: [dungeonLevel(dg.zone, dg.stage) + this.tierOffset, dungeonLevel(dg.zone, dg.stage) + this.tierOffset] } : id === 'town' ? TOWN : zn);
+      this.ui.zone(dg?.horde ? { name: `${dg.zone.name} 군세 토벌`, levels: [dg.L + this.tierOffset, dg.L + this.tierOffset] } : dg?.hidden ? { name: `${dg.zone.name} 숨은 던전${dg.plus ? ` +${dg.plus}` : ''}`, levels: [dg.zone.levels[1] + 5 + this.tierOffset, dg.zone.levels[1] + 5 + this.tierOffset] } : dg ? { name: `${dg.zone.name} 던전 ${dg.stage}단계`, levels: [dungeonLevel(dg.zone, dg.stage) + this.tierOffset, dungeonLevel(dg.zone, dg.stage) + this.tierOffset] } : id === 'town' ? TOWN : zn);
     }
     this.musicT = (this.musicT || 0) - dt;
     if (this.musicT <= 0) {

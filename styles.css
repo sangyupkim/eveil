@@ -884,3 +884,14 @@ body.ui-edit #qsets { display: none; }
 .plusRg { color: #ff9a4a !important; text-shadow: 0 0 5px rgba(255, 80, 40, .7); }
 .plusRb { background: linear-gradient(90deg, #ff6a6a, #ffd36a, #7dff8a, #6ac8ff, #c48aff); -webkit-background-clip: text; background-clip: text; color: transparent !important; animation: plusRb 3s linear infinite; background-size: 200% 100%; }
 @keyframes plusRb { to { background-position: 200% 0; } }
+/* v0.50 군세 토벌 */
+.hordeCard { display: flex; align-items: center; gap: 8px; padding: 6px 8px; margin-bottom: 8px; border: 1px solid #a0602a; border-radius: 8px; background: rgba(160, 70, 30, .15); }
+.hordeCard .nm { color: #ffb070; }
+.hordeCard.pen { border-color: #c03a2a; background: rgba(190, 40, 30, .18); }
+.hordeCard.pen .note { color: #ff9a8a; }
+.dq.hordeQ { color: #ffb070; }
+.dq.hordeQ.pen { color: #ff7a6a; }
+#hordeHud { position: fixed; top: calc(var(--u) * 5.5); left: 50%; transform: translateX(-50%); z-index: 30; pointer-events: none; display: flex; gap: 10px; align-items: baseline;
+  padding: 4px 14px; border-radius: 10px; background: rgba(30, 12, 8, .75); border: 1px solid #a0502a; color: #ffd0a0; font-family: var(--f-title); font-size: calc(var(--u) * 1.15); white-space: nowrap; }
+#hordeHud b { color: #ff9a5a; }
+#hordeHud small { color: var(--dim); font-family: var(--f-latin); }

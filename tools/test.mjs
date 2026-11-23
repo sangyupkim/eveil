@@ -647,4 +647,17 @@ test('초월 강화(+21~): +20보다 싸지 않고 단계마다 기본 효과 +5
   assert.equal(B.smithy.cap(10), Infinity);
 });
 
+test('군세 토벌: 24시간 뒤 −20% · 48시간 뒤 −35%, 정복지 7일', async () => {
+  const { hordePen, conqLeft, hordeGap, HORDE } = await import('../src/data/horde.js');
+  const now = Date.now(), st = { horde: { zone: 'field', at: now - 10 * 3600e3, conq: { forest: now + HORDE.conqMs } } };
+  assert.equal(hordePen(st, now), 0);
+  assert.equal(hordePen(st, now + 15 * 3600e3), 0.2);
+  assert.equal(hordePen(st, now + 40 * 3600e3), 0.35);
+  assert.equal(hordePen({ horde: { zone: null, at: 0 } }, now), 0);
+  assert.ok(conqLeft(st, 'forest', now) > 6.9 * 86400e3 && conqLeft(st, 'field', now) === 0);
+  for (let i = 0; i < 50; i++) { const g = hordeGap(); assert.ok(g >= 24 * 3600e3 && g <= 48 * 3600e3); }
+  const { rollBook } = await import('../src/game/loot.js'); const { SKILLS: SK } = await import('../src/data/skills.js');
+  for (let i = 0; i < 30; i++) { const b = rollBook({ level: 200, tier: 'boss' }, null, Math.random, 3); assert.equal(SK[b.book].q, 3); }
+});
+
 console.log(`\n${n}개 통과`);

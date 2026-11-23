@@ -43,6 +43,7 @@ import { variantsOf, VARIANT_RANKS, modsOf, skillEff } from '../game/skills.js';
 import { SCHOOL_NAMES } from '../data/skills.js';
 import { awakenOk, skillGrade, QUALITY, gradeName } from '../data/awaken_skills.js';
 import { ROLE_NAMES } from '../data/skill_roster.js';
+import { hordePen } from '../data/horde.js';
 // v0.50 초월 강화 숫자 색: +21 금색 · +50 붉은 금 · +100 무지개
 const plusCls = (n) => n >= 100 ? ' plusRb' : n >= 50 ? ' plusRg' : n > 20 ? ' plusG' : '';
 import { GEMS, GEM_GRADES, gemId } from '../data/legends.js';
@@ -874,6 +875,16 @@ export class Windows {
         list += `<div class="row qrow${fin ? ' fin' : ''}${cur ? ' on' : ''}"><div class="grow">${fin || cur ? x.name : '???'}</div><span class="note">${fin ? '완료' : cur ? '진행 중' : ''}</span></div>`;
       }
     }
+    // v0.50 군세 토벌: 모여 있으면 맨 위 (하겐 앞에서 토벌지로) · 정복지
+    { const H = st.horde, zn = H?.zone && ZONES.find((z) => z.id === H.zone), pen = zn ? hordePen(st) : 0, now = Date.now();
+      const cq = Object.entries(H?.conq || {}).filter(([, t]) => t > now).map(([z, t]) => `<span class="rw">${ZONES.find((x) => x.id === z)?.name || z} <b>${Math.ceil((t - now) / 86400e3)}일</b></span>`).join('');
+      let hb = '';
+      if (zn) { const h = Math.floor((now - H.at) / 3600e3);
+        hb = `<div class="hordeCard${pen ? ' pen' : ''}"><div class="grow"><div class="nm">군세 토벌 · ${zn.name}</div><div class="note">모인 지 ${h}시간${pen ? ` · 모든 사냥터 드랍률 · 경험치 −${Math.round(pen * 100)}% · 토벌 보상 +${Math.round(pen * 100)}%` : h < 24 ? ` · ${24 - h}시간 뒤 벌칙` : ''}</div></div>
+          <button class="btn gold" data-horde="1" ${this.townMode === 'build' ? '' : 'disabled'}>${this.townMode === 'build' ? '토벌지로' : '경비대장 하겐'}</button></div>`; }
+      else if (H?.next && (H.cleared || cq)) { const hh = Math.max(0, Math.ceil((H.next - now) / 3600e3)); hb = `<div class="note">다음 군세 ${hh}시간 안팎</div>`; }
+      if (cq) hb += `<div class="rws" style="margin-top:4px"><span class="note">정복지</span>${cq}</div>`;
+      if (hb) det = hb + det; }
     const got = st.ach || [];
     det += `<h3 style="margin-top:14px">업적 <span class="cnt">${got.length} / ${ACHIEVEMENTS.length}</span></h3><div class="achs">${ACHIEVEMENTS.map((a) => `<span class="ach${got.includes(a.id) ? ' on' : ''}" title="${a.text}">${a.name}<small>${a.text}</small></span>`).join('')}</div>`;
     return `<div class="cols"><div class="frame detail" style="flex:1.1">${det}</div><div class="frame" style="flex:1">${list}</div></div>`;
@@ -1415,6 +1426,7 @@ export class Windows {
       w.ui.dirty();
       this.render();
     });
+    on('[data-horde]', () => { if (this.townMode !== 'build') return; this.close(); w.enterHorde(); });
     on('[data-skassign]', () => { this.skAssign = this.skAssign ? null : this.skillSel; audio.play('click'); this.render(); });
     on('[data-skline]', (el) => { this.skillLine = el.dataset.skline; this.skAssign = null; audio.play('click'); this.render(); });
     on('[data-buy]', (el) => {
