@@ -2543,6 +2543,14 @@ export class World {
   // ───────── 스킬 ─────────
 
   // v0.49.38 한손 + 보조 ↔ 양손 스킬: 지금 무기로 못 쓰면 까닭 (쓸 수 있으면 null)
+  // v0.50 무기 종류: 근접 스킬은 근접 무기(검 · 도끼 · 둔기 · 단검 · 대방패), 활 스킬은 활 — 못 쓰면 까닭
+  weaponWhy(sk) {
+    if (!sk?.needs) return null;
+    const kind = this.d?.cls?.kind;
+    if (sk.needs === 'melee' && (kind !== 'melee' || !this.st.equip.weapon)) return '근접 무기(검 · 도끼 · 둔기 · 단검 · 대방패)가 필요합니다';
+    if (sk.needs === 'bow' && kind !== 'ranged') return '활이 필요합니다';
+    return null;
+  }
   gripWhy(sk) {
     if (!sk?.grip) return null;
     const w = this.st.equip.weapon, two = !!w && isTwoHandedBase(BASES[w.base]);
@@ -2563,10 +2571,7 @@ export class World {
     if ((this.cds[id] || 0) > 0) return { ok: false, why: '재사용 대기 중' };
     { const g = this.gripWhy(sk); if (g) return { ok: false, why: g, grip: true }; } // v0.49.38 한손 · 양손 스킬
     if (this.st.mp < v.mp) return { ok: false, why: 'MP가 부족합니다' };
-    const kind = this.d.cls.kind;
-    if (sk.needs === 'melee' && kind !== 'melee') return { ok: false, why: '검이 필요합니다' };
-    if (sk.needs === 'melee' && !this.st.equip.weapon) return { ok: false, why: '검이 필요합니다' };
-    if (sk.needs === 'bow' && kind !== 'ranged') return { ok: false, why: '활이 필요합니다' };
+    { const ww = this.weaponWhy(sk); if (ww) return { ok: false, why: ww, grip: true }; }
     if (!meetsReq(this.st, sk.req, this.d.stats)) return { ok: false, why: '스탯 조건이 부족합니다' };
     if (sk.awaken) { const a = awakenOk(this.st, sk); if (!a.ok) return a; } // awaken 등급이 정해진 스킬은 쓸 때도 차수 · 4차 갈래 (책 단계로 정한 등급은 배울 때만 — 이미 배운 스킬은 그대로)
     return { ok: true, v };

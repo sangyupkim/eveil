@@ -908,3 +908,5 @@ body.ui-edit #qsets { display: none; }
 .tkN { font-size: .75em; padding: 1px 6px; border-radius: 6px; background: rgba(255, 200, 90, .12); color: #ffd890; }
 .tuneRow { gap: 4px; padding: 3px 0; }
 .tuneRow .btn { padding: 2px 8px; font-size: .8em; }
+.skRole.wNeed { background: rgba(200, 180, 140, .15); color: #d8c8a0; }
+.skRole.wNeed.bad { background: rgba(230, 80, 60, .22); color: #ff8a7a; }

@@ -47,6 +47,7 @@ import { hordePen } from '../data/horde.js';
 import { rerollAffix, addSocket, engrave, extractEngrave, extractShard } from '../game/raidgear.js';
 import { RAID, RAID_GRADES, RAID_RULES, RAID_SHOP, ENGRAVE, LORDS, raidWeek, raidOf, raidOpen, fmtTime, shopPrice, shopBought, lordName } from '../data/raid.js';
 import { MUTS as MUTS_ } from '../data/mutators.js';
+const NEED_NAMES = { melee: '근접 무기 (검 · 도끼 · 둔기 · 단검 · 대방패)', bow: '활' }; // v0.50 스킬이 쓰는 무기
 // v0.50 초월 강화 숫자 색: +21 금색 · +50 붉은 금 · +100 무지개
 const plusCls = (n) => n >= 100 ? ' plusRb' : n >= 50 ? ' plusRg' : n > 20 ? ' plusG' : '';
 import { GEMS, GEM_GRADES, gemId } from '../data/legends.js';
@@ -230,8 +231,9 @@ export class Windows {
     if (isBook(it)) {
       const sk = SKILLS[it.book];
       const gr = skillGrade(sk), qn = QUALITY[sk.q || 2], awk = `${BOOK_TIERS[sk.tier].name} 스킬북 · ${gradeName(gr)} · <span style="color:${qn.color}">${qn.name}</span>`;
-      h += `<div class="sub">${awk} · MP ${sk.mp} · 재사용 ${sk.cd}초</div><div>${sk.desc}</div>${mixFxOf(sk.lines || Object.keys(sk.req || {})).map((f) => `<div class="aff" style="color:#e0b0ff">혼합 효과 · ${f.name}: ${f.text}</div>`).join('')}`;
+      h += `<div class="sub">${awk} · MP ${sk.mp} · 재사용 ${sk.cd}초</div><div>${sk.desc.replace(/\s*\(근접 무기\)/, '')}</div>${mixFxOf(sk.lines || Object.keys(sk.req || {})).map((f) => `<div class="aff" style="color:#e0b0ff">혼합 효과 · ${f.name}: ${f.text}</div>`).join('')}`;
       if (gr) { const SN = { str: '힘', dex: '민첩', int: '지능', wis: '정신', vit: '체력' }; const a = awakenOk(st, sk); const lab = sk.awaken === 4 ? `4차 각성 · 갈래에 ${SN[sk.line]}` : `${gr}차 각성 필요`; h += `<div class="aff" style="color:${a.ok ? '#7fe07a' : '#ff8a7a'}">${lab}${a.ok || a.why === lab ? '' : ` — ${a.why}`}</div>`; } // v0.49.27 같은 말이 두 번 나오지 않게
+      if (sk.needs) { const bad = this.w.weaponWhy?.(sk); h += `<div class="aff" style="color:${bad ? '#ff8a7a' : '#d8c8a0'}">무기: ${NEED_NAMES[sk.needs]}</div>`; } // v0.50
       if (sk.grip) { const g = this.w.gripWhy?.(sk); h += `<div class="aff"><b class="gripTag">${GRIP_NAMES[sk.grip]}</b>${g ? ` <span style="color:#ff8a7a">— ${g}</span>` : ''}</div>`; } // v0.49.38
       h += reqLine(sk.req, totalStats(st));
       if (st.skills[it.book]) h += `<div class="aff">아는 스킬 — 숙련 EXP로 흡수</div>`;
@@ -772,7 +774,7 @@ export class Windows {
     if (this.skAssign && this.skAssign !== this.skillSel) this.skAssign = null;
     const sets = st.quickSets || [st.quick], cur = st.quickSet || 0;
     const where = (id) => sets.map((q, k) => q.map((x, i) => x === id ? `<span class="qchip${k === cur ? ' on' : ''}">${k === cur ? i + 1 : `${k + 1}-${i + 1}`}</span>` : '').join('')).join('');
-    const roleTag = (sk) => sk.role ? `<span class="skRole r_${sk.role}">${ROLE_NAMES[sk.role]}</span>` : '';
+    const roleTag = (sk) => (sk.role ? `<span class="skRole r_${sk.role}">${ROLE_NAMES[sk.role]}</span>` : '') + (sk.needs ? `<span class="skRole wNeed${this.w.weaponWhy?.(sk) ? ' bad' : ''}">${sk.needs === 'bow' ? '활' : '근접'}</span>` : ''); // v0.50 쓰는 무기
     // 위: 퀵슬롯 줄
     let bar = `<div class="skBar"><div class="btns">${sets.map((_, k) => `<button class="btn${cur === k ? ' on' : ''}" data-qsetw="${k}">세트 ${k + 1}</button>`).join('')}</div><div class="skSlots${this.skAssign ? ' assign' : ''}">`;
     for (let i = 0; i < CONFIG.quickSlots; i++) {
@@ -802,6 +804,7 @@ export class Windows {
       else kv.push(['효과', `${Math.round(v.power)}${/Pct$/.test(sk.buff || '') ? '%' : ''}`], ['다음 랭크', `${Math.round(nx.power)}${/Pct$/.test(sk.buff || '') ? '%' : ''}`]);
       kv.push(['MP', this.w.manaGrip?.(sk) ? `${Math.ceil(v.mp * 1.5)} (대홀)` : v.mp], ['재사용', `${v.cd.toFixed(1)}초`]);
       if (sk.grip) { const g = this.w.gripWhy?.(sk); kv.push(['무기', `<b class="gripTag">${GRIP_NAMES[sk.grip]}</b>${g ? ` <span style="color:#ff8a7a">${g}</span>` : ''}`]); }
+      if (sk.needs) { const bad = this.w.weaponWhy?.(sk); kv.push(['무기', `<b style="color:${bad ? '#ff8a7a' : ''}" title="${NEED_NAMES[sk.needs]}">${sk.needs === 'bow' ? '활' : '근접 무기'}</b>`]); } // v0.50 근접 · 활 스킬
       if (e.range) kv.push(['사거리', e.range.toFixed(1)]);
       if (e.radius) kv.push(['범위', e.radius.toFixed(1)]);
       if (e.width) kv.push(['너비', e.width.toFixed(1)]);
