@@ -255,13 +255,16 @@ export class World {
     if (sig === this.workerSig) return;
     this.workerSig = sig;
     const was = new Map((this.workers || []).map((w) => [w.m.id, { x: w.a.pos.x, z: w.a.pos.z, kind: w.kind, lying: w.lying }]));
+    this.workers0 = !!this.workers; // 이미 한 번 그렸나 (처음이면 쉬는 용병은 침대에 누운 채로)
     for (const w of this.workers || []) w.a.dispose();
     this.workers = [];
     resting.forEach((m, i) => {
       const a = this.mercActor(m), to = { x: innPl.x - 3 + (i % 4) * 1.6, z: innPl.z + 4.6 + Math.floor(i / 4) * 1.4 };
-      const from = was.get(m.id) || (m.work && PLOTS.find((q) => q.id === m.work)) || { x: 0, z: 6 };
+      // v0.49.80 처음 그릴 때(게임을 켜거나 마을에 돌아왔을 때)는 이미 누워 있다. 새로 쉬러 가는 용병만 일하던 곳(없으면 자리마다 다른 곳)에서 걸어간다 — 예전엔 모두 한 점(0, 6)에서 겹쳐 뛰어갔다
+      const first = !this.workers0, prev = was.get(m.id);
+      const from = prev || (m.work && PLOTS.find((q) => q.id === m.work)) || { x: -6 + (i % 5) * 3, z: 6 + Math.floor(i / 5) * 2.5 };
       a.pos.set(from.x, 0, from.z); a.name = m.name;
-      const lying = from.kind === 'rest' && from.lying;
+      const lying = first || (from.kind === 'rest' && from.lying);
       if (lying) { a.pos.set(to.x, 0, to.z); a.play('die', { once: true, force: true }); } else a.play('run');
       this.workers.push({ a, m, kind: 'rest', to, lying, t: 2 + Math.random() * 3 });
     });

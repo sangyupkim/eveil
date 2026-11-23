@@ -757,4 +757,16 @@ test('던전 돌파 책: 어느 레벨 · 등급이든 책이 나온다 (빈 목
   for (const lv of [5, 30, 80, 160, 320, 520, 900]) for (const q of [2, 3]) for (let i = 0; i < 20; i++) assert.ok(rollBook({ level: lv, tier: 'boss' }, null, Math.random, q), lv + '/' + q);
 });
 
+test('여관 침대: 한 번 누운 용병은 다 쉴 때까지 그대로 (목록 · 마을 일꾼이 왔다 갔다 하지 않게)', async () => {
+  const T = await import('../src/game/town.js'), { newPlayer: NP } = await import('../src/game/player.js');
+  const st = NP(); st.gold = 1e12; st.awakenings = 999; T.build(st, 'p1', 'inn'); T.finishBuilds(st, Date.now() + 1e9); T.buildingAt(st, 'p1').lv = 3;
+  const t = T.townOf(st); for (let i = 0; i < 10; i++) { const m = T.rollMerc(Math.random, 1); m.sta = 5 + i; m.tired = true; t.mercs.push(m); }
+  let now = Date.now(); t.last = now; T.tick(st, now + 60e3);
+  let prev = t.mercs.filter((m) => m.rest).map((m) => m.id).join(), changes = 0;
+  for (let k = 1; k <= 40; k++) { T.tick(st, now + 60e3 + k * 300e3); const cur = t.mercs.filter((m) => m.rest).map((m) => m.id); const curS = cur.join();
+    if (curS !== prev) { const before = new Set(prev.split(',')); const left = [...before].filter((id) => id && !cur.includes(id)); for (const id of left) { const m = t.mercs.find((x) => x.id === id); assert.ok(m.sta >= T.staMax(m) - 1e-6 || m.job, '다 쉬기 전에 침대에서 나감'); } changes++; }
+    prev = curS; }
+  assert.ok(changes < 15, '침대 주인이 너무 자주 바뀜 ' + changes);
+});
+
 console.log(`\n${n}개 통과`);

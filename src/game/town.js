@@ -357,9 +357,11 @@ export const INN_BEDS = (lv) => (lv > 10 ? 20 + 2 * (lv - 10) : [0, 2, 3, 4, 6, 
 export const innRestK = (st) => { const b = findBuilding(st, 'inn'); return b ? 3 * (1 + 0.25 * b.lv) : 1; }; // 밖에서 쉬는 것의 3.75 ~ 10.5배
 export function restAssign(st) {
   const t = townOf(st), b = findBuilding(st, 'inn'), beds = b && !(b.bld?.to === 1) ? INN_BEDS(b.lv) : 0;
-  const want = t.mercs.filter((m) => !m.job && (m.tired || m.rest || (!m.work && m.sta < staMax(m) * 0.5)) && m.sta < staMax(m))
-    .sort((x, y) => (y.tired ? 1 : 0) - (x.tired ? 1 : 0) || x.sta / staMax(x) - y.sta / staMax(y));
-  const inBed = new Set(want.slice(0, beds));
+  // v0.49.80 한 번 누운 용병은 다 쉴 때까지 그 침대에 (예전엔 0.25시간마다 체력 순으로 다시 나눠 침대 주인이 계속 바뀌었다 → 목록 · 마을 일꾼이 왔다 갔다)
+  const order = (x, y) => (y.tired ? 1 : 0) - (x.tired ? 1 : 0) || x.sta / staMax(x) - y.sta / staMax(y);
+  const keep = t.mercs.filter((m) => m.rest && !m.job && m.sta < staMax(m)).sort(order).slice(0, beds);
+  const want = t.mercs.filter((m) => !m.rest && !m.job && (m.tired || (!m.work && m.sta < staMax(m) * 0.5)) && m.sta < staMax(m)).sort(order);
+  const inBed = new Set([...keep, ...want.slice(0, Math.max(0, beds - keep.length))]);
   for (const m of t.mercs) m.rest = inBed.has(m);
 }
 export const staMax = (m) => 50 + m.lv * 2 + (m.aw || 0) * 8 + (m.vit || 0);
