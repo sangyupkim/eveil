@@ -211,7 +211,7 @@ export function setupInput(world, stage, windows) {
     if (!s) { e.preventDefault(); const h = padHit(e.clientX, e.clientY); if (h && h !== 'block') h.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: e.pointerId, pointerType: e.pointerType, clientX: e.clientX, clientY: e.clientY })); return; } // v0.49.63 칸 사이 빈틈: 가까운 단추
     e.preventDefault();
     const id = world.st.quick[Number(s.dataset.i)];
-    if (id) { world.manual(); world.useSkill(id); } else windows.show('skills');
+    if (id) { world.manual(); world.useSkill(id); } // v0.49.82 빈 칸은 아무 일도 하지 않는다 (전투 중 스킬 창이 열리던 것)
   });
 
   // ── 키보드 ──
