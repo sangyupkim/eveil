@@ -717,4 +717,17 @@ test('마을 20단계: 11단계부터 정수 · 강화석 · 높은 약초, 저�
   assert.equal(T.RATION.deep, 10);
 });
 
+test('대전제: 각성이 높을수록 각성 1당 처치 수가 늘어난다 · 모든 지역에 원거리 몬스터', async () => {
+  const { ZONES: Z, MONSTERS: M, TIER_STEP: TS } = await import('../src/data/world.js');
+  const { tierCurveK } = await import('../src/data/tiercurve.js'), { chapterK: CK } = await import('../src/data/chapters.js'), { expNeeded: EN } = await import('../src/game/growth.js');
+  const OFF = [0, TS, TS * 2, 380]; let prev = 0;
+  for (const wt of [1, 2, 3, 4]) for (let zi = 0; zi < Z.length; zi++) {
+    const zn = Z[zi], ts = Object.keys(zn.spawns), avg = ts.reduce((a, t) => a + M[t].exp, 0) / ts.length, L = zn.levels[1] + OFF[wt - 1];
+    const k = tierCurveK(zi, wt)?.exp ?? CK(zi, 'normal').exp, K = EN(Math.max(0, L - 1)) / (avg * (1 + 0.3 * (L - 1)) * k * 0.45);
+    if (L >= 30) assert.ok(K >= prev * 0.97, `${wt}단계 ${zn.name} 각성 1당 ${Math.round(K)} < 앞 ${Math.round(prev)}`); // 지역 끝 기준, 3% 안 흔들림은 허용
+    prev = Math.max(prev, K);
+    assert.ok(ts.some((t) => M[t].attack !== 'melee'), zn.name + ' 원거리 몬스터');
+  }
+});
+
 console.log(`\n${n}개 통과`);

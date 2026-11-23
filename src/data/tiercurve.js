@@ -3,6 +3,11 @@
 // 예전: 악몽 푸리에 들판 몬스터 체력이 평온 끝의 1% · 경험치 0.04% (지역 배율이 1번 지역 값으로 다시 시작해서)
 import { ZONES, MONSTERS, TIER_STEP } from './world.js';
 import { CHAPTER } from './chapters.js';
+import { expNeeded } from '../game/growth.js';
+// v0.49.74 경험치는 복리(×1.15)가 아니라 「각성 1당 처치 수」 목표에서 거꾸로 (높은 각성일수록 더 오래 걸린다는 대전제)
+//   자동 사냥(경험치 ×0.45) 기준, 지역 끝 레벨에서 레벨 120 → 1,000마리 · 500 → 1,500마리
+export const killsPerAwaken = (L) => 1000 * (1 + Math.max(0, L - 120) / 760);
+const AUTO_EXP = 0.45;
 export const CURVE = { hp: 1.12, dmg: 1.035, exp: 1.15 }; // v0.49.72 공격 1.10 → 1.035 (1.10은 60지역에 ×304라 혼돈에서 고스펙도 한 방에 죽었다 — tools/sim/survive · farm)
 const OFF = { 1: 0, 2: TIER_STEP, 3: TIER_STEP * 2, 4: 380 };
 const lvHp = (L) => 1 + 0.4 * (L - 1), lvDmg = (L) => 1 + 0.27 * (L - 1), lvExp = (L) => 1 + 0.3 * (L - 1);
@@ -15,6 +20,6 @@ export function tierCurveK(zi, wt) {
   if (wt <= 1 || zi < 0 || !ZONES[zi]) return null;
   const key = zi * 10 + wt; if (cache.has(key)) return cache.get(key);
   const zn = ZONES[zi], a = avg(zn), L = zn.levels[1] + OFF[wt], n = zi + 1 + ZONES.length * (wt - 2), E = end();
-  const k = { hp: (E.hp * CURVE.hp ** n) / (a.hp * lvHp(L)), dmg: (E.dmg * CURVE.dmg ** n) / (a.dmg * lvDmg(L)), exp: (E.exp * CURVE.exp ** n) / (a.exp * lvExp(L)) };
+  const k = { hp: (E.hp * CURVE.hp ** n) / (a.hp * lvHp(L)), dmg: (E.dmg * CURVE.dmg ** n) / (a.dmg * lvDmg(L)), exp: expNeeded(Math.max(0, L - 1)) / (killsPerAwaken(L) * a.exp * lvExp(L) * AUTO_EXP) };
   cache.set(key, k); return k;
 }

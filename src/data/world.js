@@ -112,7 +112,7 @@ export const TOWN = { id: 'town', name: '여명 초소', x: 0, z: 0, r: 30 };
 export const ZONES = [
   {
     id: 'field', name: '푸리에 들판', x: 0, z: 62, r: 40, levels: [1, 3], count: 17, ground: [0.30, 0.33, 0.17],
-    spawns: { slime: 45, rat: 20, mushnub: 35 },
+    spawns: { slime: 45, rat: 20, mushnub: 35, wasp: 10 }, // v0.49.74 모든 지역에 원거리 몬스터 하나 이상
     named: { type: 'slime_spiky', name: '가시 개미귀신 군주' },
     boss: { type: 'mushking', name: '고블린 대두목 무르크' },
     props: { tree: 16, trees: 12, n_tree1: 16, n_tree2: 12, n_tree3: 10, n_birch: 10, n_bush: 22, n_bush2: 16, n_berries: 10, n_flowers: 36, n_grass: 30, rock: 14, n_moss1: 10, n_stump: 8, n_log: 6, fence_broken: 6, bone: 6 },
@@ -154,7 +154,7 @@ export const ZONES = [
   },
   {
     id: 'valley', name: '고대 협곡', x: 102, z: -102, r: 40, levels: [31, 36], count: 20, ground: [0.38, 0.3, 0.18], music: 'field',
-    spawns: { raptor: 30, tricer: 18, stego: 16, paraso: 18, bison: 18 },
+    spawns: { raptor: 30, tricer: 18, stego: 16, paraso: 18, bison: 18, drake: 16 }, // v0.49.74 원거리(브레스) 하나
     named: { type: 'apato', name: '늙은 미노타우로스 브론' },
     boss: { type: 'trex', name: '미노타우로스 왕 렉스' },
     props: { n_pine_au: 18, n_tree_au: 16, n_tree_au2: 14, n_rock1: 26, n_rock2: 22, n_cactus: 12, n_cactus2: 10, n_bush: 20, n_wheat: 20, n_dead1: 10 },

@@ -19,8 +19,8 @@ export const CHAPTER = [
   { hp: 19.3, dmg: 10.78, boss: 0.65, bossDmg: 0.45, exp: 25.51 }, // 16 피의 늪
   { hp: 11.15, dmg: 6.71, boss: 0.82, bossDmg: 0.62, exp: 19.76 }, // 17 천둥 고원
   { hp: 9.1, dmg: 5.18, boss: 0.38, bossDmg: 0.38, exp: 16.55 }, // 18 망각의 사원
-  { hp: 8.76, dmg: 4.98, boss: 0.52, bossDmg: 0.43, exp: 25.15 }, // 19 심연의 균열
-  { hp: 7.32, dmg: 4.92, boss: 0.35, bossDmg: 0.3, exp: 32.24 }, // 20 종말의 왕좌
+  { hp: 8.76, dmg: 4.98, boss: 0.52, bossDmg: 0.43, exp: 18.9 }, // 19 심연의 균열 (v0.49.74 손으로: 각성 1당 처치가 앞 지역보다 줄던 것 → 끝 약 950)
+  { hp: 7.32, dmg: 4.92, boss: 0.35, bossDmg: 0.3, exp: 20.7 }, // 20 종말의 왕좌 (v0.49.74 손으로: 끝 약 1,000)
 ];
 export const chapterK = (zi, tier = 'normal') => {
   const c = CHAPTER[zi] || {};
