@@ -15,8 +15,11 @@ export const HERBS = {
   star: { name: '별빛 이끼', lv: 8, w: 0.5, color: '#b8c0ff', icon: 65 },
   dragon: { name: '용숨결초', lv: 9, w: 0.4, color: '#ff8040', icon: 70 },
   world: { name: '세계수 잎', lv: 10, w: 0.3, color: '#80ff90', icon: 88 },
+  // v0.49.73 변이 약초: 약초밭 15단계부터 거둘 때 가끔 (밭에서 자라는 목록에는 없다 — lv 99)
+  myriad: { name: '만년 약초', lv: 99, w: 0, color: '#ffe0a0', icon: 88 },
 };
 export const HERB_IDS = Object.keys(HERBS);
+export const GROW_IDS = HERB_IDS.filter((id) => HERBS[id].lv < 99); // 밭에서 자라는 약초 (만년 약초 빼고)
 export const herbsAt = (lv) => HERB_IDS.filter((id) => HERBS[id].lv <= lv);
 
 // 영약 효과 (마시면 5분). buff: 세계(world)의 버프 열쇠, v: 값 (stat은 그 스탯의 10%, 최소 5)

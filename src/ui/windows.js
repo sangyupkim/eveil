@@ -29,7 +29,8 @@ import { MATERIALS, SETS, SET_SLOTS, craftCost, upgradeMats, upgradeNeed } from 
 import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, mercUngear, mercById, recruits, assignMerc, SKILL_OF, SKILLS_ALL, BONUS, bonusOf, awakenMerc, awakenCost, dismiss, staMax, SKILL_NAMES, GRADES, MERC, EXP_STA, deathChance, salvage, salvageValue, reforge, reforgeCost, resCount, resTake, resAdd, ORE_RECIPES, oreRecipeOk, craftOre, KEY_RECIPES, craftKey, ESS_RECIPES, craftEss, INN_BEDS, innRestK, stopRepeat, MYTH_MARKS, mythMarks, mythLvMax, craftMyth, FRESH, freshK, isVet, herbSwap, herbSwapGold } from '../game/town.js';
 import { RESEARCH, researchCost } from '../data/buildings.js';
 import { AFFIXES } from '../data/items.js';
-import { highHerbs, storeCap, essRecipe, researchMax, labSlots, labJobs } from '../game/town.js';
+import { highHerbs, storeCap, essRecipe, researchMax, labSlots, labJobs, censerSlotsOf, censerSet, setHerbFocus, fertilize, distill, FERT, DISTILL } from '../game/town.js';
+import { CENSERS, CENSER_IDS } from '../data/censer.js';
 import { PLOTS, BUILDINGS, EXPEDITIONS, townOf, buildingAt, build, upgrade, collect, enhance, enhanceCap, enhanceCost, hire, mercSlots, dispatch, claim, tick } from '../game/town.js';
 import { QUESTS, QUEST_BOOKS } from '../data/quests.js';
 import { ZONES, MONSTERS } from '../data/world.js';
@@ -53,7 +54,7 @@ const NEED_NAMES = { melee: '근접 무기 (검 · 도끼 · 둔기 · 단검 ·
 const plusCls = (n) => n >= 100 ? ' plusRb' : n >= 50 ? ' plusRg' : n > 20 ? ' plusG' : '';
 import { GEMS, GEM_GRADES, gemId } from '../data/legends.js';
 import { applyShard, canApply, lockMax, shardCost, shardVals } from '../game/shards.js';
-import { HERBS, HERB_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
+import { HERBS, HERB_IDS, GROW_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
 import { RARITY_IDS, junkCount, discardJunk } from '../game/town.js';
 import { MYTH_CHANCE, wageTotal, mercWage, buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, brewQueue, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
 import { RESEARCH_MAX, SHELTER } from '../data/buildings.js';
@@ -348,8 +349,8 @@ export class Windows {
   // 제작소 내용 조각 (예전 한 화면 · v0.45 탭 화면이 함께 쓴다)
   workshopParts(st, b, t) {
     const P = {};
-    P.herbs = `<h3>약초</h3><div class="herbList">${HERB_IDS.map((h) => `<span class="hb"><img src="${herbIcon(h)}" alt="" />${HERBS[h].name} <b>${t.herbs[h] || 0}</b></span>`).join('')}</div>`;
-    P.swap = `<h3>약초 교환 <small>남는 약초 3 → 1</small></h3>` + HERB_IDS.map((h) => `<div class="row"><div class="grow"><img src="${herbIcon(h)}" alt="" style="width:20px;vertical-align:middle" /> <b>${HERBS[h].name}</b> <small>${herbSwapGold(h)} G</small></div><button class="btn" data-hswap="${h}|1">1</button><button class="btn" data-hswap="${h}|10">×10</button></div>`).join('');
+    P.herbs = `<h3>약초</h3><div class="herbList">${HERB_IDS.map((h) => `<span class="hb"><img src="${herbIcon(h)}" alt="" />${HERBS[h].name} <b>${Math.floor(t.herbs[h] || 0)}</b></span>`).join('')}</div>`;
+    P.swap = `<h3>약초 교환 <small>남는 약초 3 → 1</small></h3>` + GROW_IDS.map((h) => `<div class="row"><div class="grow"><img src="${herbIcon(h)}" alt="" style="width:20px;vertical-align:middle" /> <b>${HERBS[h].name}</b> <small>${herbSwapGold(h)} G</small></div><button class="btn" data-hswap="${h}|1">1</button><button class="btn" data-hswap="${h}|10">×10</button></div>`).join('');
     // v0.42 높은 강화석 (제작소 6 · 8단계)
     P.ore = `<h3>강화석 제작</h3>` + ORE_RECIPES.map((r) => { const ok = oreRecipeOk(st, r); const need = Object.entries(r.need).map(([id, q]) => `${BASES[id].name} ${q} (${resCount(st, id)})`).join(' · ');
       return `<div class="row"><div class="cell shopIco">${ico({ base: r.id })}</div><div class="grow"><b>${BASES[r.id].name}</b><div class="note">${b.lv < r.lv ? `제작소 ${r.lv}단계` : `${need} · 지역 재료 ${r.zoneMats} · ${r.gold.toLocaleString()} G`}</div></div><button class="btn" data-orecraft="${r.id}|1" ${ok.ok ? '' : 'disabled'}>1개</button><button class="btn" data-orecraft="${r.id}|5" ${oreRecipeOk(st, r, 5).ok ? '' : 'disabled'}>5개</button></div>`; }).join('') + KEY_PANEL(st, b);
@@ -381,7 +382,7 @@ export class Windows {
     switch (b.type) {
       case 'smithy': return this.smithyView(b, sel);
       case 'workshop': return this.workshopView(b, sel);
-      case 'herb': return this.tabView(b, 'herb', [['main', '약초'], MT], (k) => k === 'merc' ? this.mercTab(b, sel) : [prod(), `<h3>자라는 약초</h3><div class="herbList herbCards">${herbsAt(5).map((h) => { const on = HERBS[h].lv <= b.lv; return `<span class="hb" style="${on ? '' : 'opacity:.4'}"><img src="${herbIcon(h)}" alt="" />${HERBS[h].name} <b>${on ? (t.herbs[h] || 0) : `${HERBS[h].lv}단계`}</b></span>`; }).join('')}</div>`]);
+      case 'herb': return this.tabView(b, 'herb', [['main', '약초'], ...(b.lv >= 11 ? [['grow', '재배']] : []), MT], (k) => k === 'merc' ? this.mercTab(b, sel) : k === 'grow' ? this.herbGrow(st, t, b) : [prod(), `<h3>자라는 약초</h3><div class="herbList herbCards">${herbsAt(10).map((h) => { const on = HERBS[h].lv <= b.lv; return `<span class="hb" style="${on ? '' : 'opacity:.4'}"><img src="${herbIcon(h)}" alt="" />${HERBS[h].name} <b>${on ? Math.floor(t.herbs[h] || 0) : `${HERBS[h].lv}단계`}</b></span>`; }).join('')}</div>`]);
       case 'mine': return this.tabView(b, 'mine', [['main', '광산'], MT], (k) => k === 'merc' ? this.mercTab(b, sel) : [prod(), `<h3>가진 강화석</h3><div class="herbList herbCards">${['ore', 'ore2', 'ore3'].filter((id) => BASES[id]).map((id) => `<span class="hb">${ico({ base: id })}${BASES[id].name} <b>${resCount(st, id).toLocaleString()}</b></span>`).join('')}</div>`]);
       case 'house': return this.tabView(b, 'house', [['main', '숙소'], MT], (k) => {
         if (k === 'merc') return this.mercTab(b, sel);
@@ -440,7 +441,8 @@ export class Windows {
         if (k === 'now') return [Q.info + Q.back + Q.away, Q.reps || '<h3>반복 파견</h3><div class="note">없음</div>'];
         if (Q.none) return [Q.none, ''];
         return [Q.back + Q.go + Q.zone, k === 'pack' ? Q.pack : Q.mercs]; }); }
-      case 'altar': return this.tabView(b, 'altar', [['main', '유물']], () => {
+      case 'altar': return this.tabView(b, 'altar', [['main', '유물'], ...(censerSlotsOf(st) ? [['censer', '향로']] : [])], (k) => {
+        if (k === 'censer') return this.censerTab(st, t);
         const R = (st.relics ||= { bag: [], on: [] }), slots = altarSlots(b.lv); R.on = (R.on || []).filter((r) => r.until > now);
         const lf = (r) => { const m = Math.ceil((r.until - now) / 60000), h = Math.floor(m / 60); return h >= 24 ? `${Math.floor(h / 24)}일 ${h % 24}시간` : `${h}시간 ${m % 60}분`; };
         const G = (r) => RELIC_GRADES[r.g] || RELIC_GRADES[0];
@@ -1224,7 +1226,7 @@ export class Windows {
         const P = this.workshopParts(st, b, t);
         right += P.herbs + P.swap + P.ore + P.ess + P.queue + COL + P.recipes;
       }
-      if (b.type === 'herb') right += `<h3>자라는 약초</h3><div class="herbList">${herbsAt(5).map((h) => { const on = HERBS[h].lv <= b.lv; return `<span class="hb" style="${on ? '' : 'opacity:.4'}"><img src="${herbIcon(h)}" alt="" />${HERBS[h].name} <b>${on ? (t.herbs[h] || 0) : `${HERBS[h].lv}단계`}</b></span>`; }).join('')}</div>`;
+      if (b.type === 'herb') right += `<h3>자라는 약초</h3><div class="herbList">${herbsAt(10).map((h) => { const on = HERBS[h].lv <= b.lv; return `<span class="hb" style="${on ? '' : 'opacity:.4'}"><img src="${herbIcon(h)}" alt="" />${HERBS[h].name} <b>${on ? Math.floor(t.herbs[h] || 0) : `${HERBS[h].lv}단계`}</b></span>`; }).join('')}</div>`;
       if (b.type === 'guild') right += `<div class="kv"><span>8단계</span><b style="${b.lv >= 8 ? '' : 'opacity:.45'}">죽어도 물약 회수</b><span>10단계</span><b style="${b.lv >= 10 ? '' : 'opacity:.45'}">사망 -30% · 전리품 +10%</b></div>` + this.guildPanel(b);
       if (SKILL_OF[b.type]) {
         const sk = SKILL_OF[b.type], crew = t.mercs.filter((m) => m.work === sel), idle = t.mercs.filter((m) => !m.work && !m.job);
@@ -1358,6 +1360,32 @@ export class Windows {
     const k = `${wk}|${g}`; (this.raidRank ||= {}); if (this.raidRank[k] !== undefined || this.raidLoading?.[k]) return;
     (this.raidLoading ||= {})[k] = true;
     cloud.raidList(wk, g).then((list) => { this.raidRank[k] = list || []; this.raidLoading[k] = false; if (this.kind === 'raid') this.render(); });
+  }
+  // v0.49.73 약초밭 재배 (11단계~): 왼쪽 = 주력 재배 · 비료 | 오른쪽 = 증류 · 가진 약초
+  herbGrow(st, t, b) {
+    const now = Date.now(), F = t.herbFocus || [], ids = herbsAt(b.lv), fl = Math.max(0, (t.fertUntil || 0) - now);
+    const lock = (lv) => `<div class="note">${lv}단계</div>`;
+    let L = `<h3>주력 재배 <small>${F.length} / 2 · 고른 약초가 절반</small></h3><div class="btns" style="flex-wrap:wrap">${ids.map((h) => `<button class="btn${F.includes(h) ? ' on' : ''}" data-hfocus="${h}"><img src="${herbIcon(h)}" alt="" style="width:18px;vertical-align:middle" /> ${HERBS[h].name}</button>`).join('')}</div>`;
+    L += `<h3 style="margin-top:8px">비료 <small>8시간 약초 생산 +50%</small></h3>` + (b.lv >= 13 ? `<div class="kv"><span>남은 시간</span><b>${fl ? `${Math.floor(fl / 3600e3)}시간 ${Math.floor((fl % 3600e3) / 60000)}분` : '없음'}</b></div>
+      <div class="btns"><button class="btn gold" data-fert="ore" ${resCount(st, 'ore') >= FERT.ore ? '' : 'disabled'}>강화석 ${FERT.ore}</button><button class="btn gold" data-fert="ore2" ${resCount(st, 'ore2') >= FERT.ore2 ? '' : 'disabled'}>상급 강화석 ${FERT.ore2}</button></div>` : lock(13));
+    L += `<h3 style="margin-top:8px">변이 약초</h3>` + (b.lv >= 15 ? `<div class="kv"><span>${HERBS.myriad.name}</span><b>${Math.floor(t.herbs.myriad || 0)} · 거둘 때 ${(0.4 + 0.1 * (b.lv - 15)).toFixed(1)}%</b></div>` : lock(15));
+    const hh = highHerbs(st);
+    let R = `<h3>증류 <small>높은 약초 → 정수</small></h3>` + (b.lv >= 18 ? Object.entries(DISTILL).map(([id, n]) => `<div class="row"><div class="grow">${ico({ base: id })} ${BASES[id].name} <span class="note">높은 약초 ${n}</span></div><button class="btn gold" data-distill="${id}" ${hh >= n ? '' : 'disabled'}>증류</button></div>`).join('') : lock(18));
+    R += `<h3 style="margin-top:8px">가진 약초 <small>높은 약초 ${Math.floor(hh)}</small></h3><div class="herbList herbCards">${HERB_IDS.filter((h) => (t.herbs[h] || 0) >= 1).map((h) => `<span class="hb"><img src="${herbIcon(h)}" alt="" />${HERBS[h].name} <b>${Math.floor(t.herbs[h])}</b></span>`).join('')}</div>`;
+    return [L, R];
+  }
+  // v0.49.73 제단 향로: 왼쪽 = 향로 자리(타는지 · 시간당 약초) | 오른쪽 = 향 고르기
+  censerTab(st, t) {
+    const C = (t.censer ||= { on: [], burn: {} }), n = censerSlotsOf(st), k = 1 - researchLv(st, 'censer') * 0.03;
+    const fuel = (id) => Object.entries(CENSERS[id].fuel).map(([h, q]) => `${h === 'high' ? '높은 약초' : HERBS[h].name} ${+(q * k).toFixed(1)}`).join(' · ');
+    const have = (id) => Object.keys(CENSERS[id].fuel).map((h) => `${h === 'high' ? '높은 약초' : HERBS[h].name} ${Math.floor(h === 'high' ? highHerbs(st) : t.herbs[h] || 0)}`).join(' · ');
+    if (this.censerSlot == null || this.censerSlot >= n) this.censerSlot = 0;
+    const L = `<h3>향로 <span class="cnt">${n}</span></h3>` + Array.from({ length: n }, (_, i) => { const id = C.on[i], on = id && C.burn[id];
+      return `<div class="row pick${i === this.censerSlot ? ' on' : ''}" data-cslot="${i}"><div class="grow"><b>${id ? CENSERS[id].name : '빈 향로'}</b> ${id ? `<small style="color:${on ? '#9fe39f' : '#ff8a7a'}">${on ? '타는 중' : '약초 부족'}</small>` : ''}
+        <div class="note">${id ? `${CENSERS[id].text} · 시간당 ${fuel(id)}` : ''}</div></div>${id ? `<button class="btn" data-coff="${i}">끄기</button>` : ''}</div>`; }).join('');
+    const R = `<h3>향 <small>${this.censerSlot + 1}번 향로에</small></h3>` + CENSER_IDS.map((id) => { const used = C.on.some((x, i) => x === id && i !== this.censerSlot);
+      return `<div class="row"><div class="grow"><b>${CENSERS[id].name}</b><div class="note">${CENSERS[id].text}</div><div class="note">시간당 ${fuel(id)} · 가진 것 ${have(id)}</div></div><button class="btn gold" data-con="${id}" ${used || C.on[this.censerSlot] === id ? 'disabled' : ''}>${used ? '피우는 중' : '피우기'}</button></div>`; }).join('');
+    return [L, R];
   }
   // v0.50 원정 문장 상점: 오른쪽 물건(이번 주 산 수) → 왼쪽 정보 · 사기
   raidShop(st) {
@@ -1504,6 +1532,12 @@ export class Windows {
       w.ui.dirty();
       this.render();
     });
+    on('[data-hfocus]', (el) => { const h = el.dataset.hfocus, F = [...(townOf(st).herbFocus || [])]; const i = F.indexOf(h); if (i >= 0) F.splice(i, 1); else { if (F.length >= 2) F.shift(); F.push(h); } setHerbFocus(st, F); audio.play('click'); this.render(); });
+    on('[data-fert]', (el) => { const r = fertilize(st, el.dataset.fert); if (!r.ok) { w.ui.toast(r.why); audio.play('error'); } else audio.play('buff'); w.ui.dirty(); this.render(); });
+    on('[data-distill]', (el) => { const r = distill(st, el.dataset.distill); if (!r.ok) { w.ui.toast(r.why); audio.play('error'); } else { audio.play('coin'); w.ui.toast(`${BASES[el.dataset.distill].name} +1`, '#ffd84a'); } w.ui.dirty(); this.render(); });
+    on('[data-cslot]', (el) => { this.censerSlot = Number(el.dataset.cslot); audio.play('click'); this.render(); });
+    on('[data-con]', (el) => { const r = censerSet(st, this.censerSlot || 0, el.dataset.con); if (!r.ok) { w.ui.toast(r.why); audio.play('error'); } else audio.play('buff'); this.render(); });
+    on('[data-coff]', (el) => { censerSet(st, Number(el.dataset.coff), null); audio.play('click'); this.render(); });
     on('[data-rshop]', (el) => { this.rshopSel = el.dataset.rshop; audio.play('click'); this.render(); });
     ask('[data-rbuy]', (el) => { const g = RAID_SHOP.find((x) => x.id === el.dataset.rbuy); return g ? ['원정 상점', `${g.title ? `칭호 「${lordName(g.title)}」` : BASES[g.id].name}을(를) 원정 문장 ${shopPrice(g, st)}에 삽니다`, '사기'] : null; }, (el) => {
       const g = RAID_SHOP.find((x) => x.id === el.dataset.rbuy), rd = raidOf(st), price = shopPrice(g, st);
