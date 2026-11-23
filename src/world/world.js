@@ -2,7 +2,8 @@ import { faceClose, bust } from '../ui/icons.js';
 import '../data/skill_fx.js';
 import { bagSize } from '../game/inventory.js';
 import { ZONES as ALL_ZONES } from '../data/world.js';
-import { chapterK } from '../data/chapters.js';
+import { chapterK as chapterK0 } from '../data/chapters.js';
+import { tierCurveK } from '../data/tiercurve.js';
 import { awakenOk } from '../data/awaken_skills.js';
 import { DUNGEON_X, entranceOf, MAX_STAGE, stageMods, dungeonLevel, layout as dungeonLayout, cellPos, N, DUNGEON_DIFFS } from '../data/dungeons.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
@@ -76,6 +77,14 @@ const farOf = (id) => { let h = 0; for (const c of id || '') h = (h * 31 + c.cha
 
 // 세계 단계 배율 (레벨 보정 위에 더): 악몽 · 지옥은 몬스터가 확실히 더 세다
 const TIER_K = { 1: { hp: 1, dmg: 1, pat: 1 }, 2: { hp: 1.8, dmg: 1.45, pat: 1.25 }, 3: { hp: 3, dmg: 2, pat: 1.5 }, 4: { hp: 7, dmg: 3.6, pat: 1.8 } };
+// v0.50 지역 배율: 평온은 chapters.js, 악몽부터는 목표 곡선(tiercurve.js)에 그 지역 보스 · 네임드 비율을 곱한다. TIER_K의 체력 · 공격은 곡선에 녹였다 (패턴 속도만 남김)
+let curWt = 1;
+const chapterK = (zi, tier = 'normal') => {
+  const c = chapterK0(zi, tier), t = tierCurveK(zi, curWt);
+  if (!t) return { ...c, hp: c.hp * TIER_K[curWt].hp, dmg: c.dmg * TIER_K[curWt].dmg };
+  const n = chapterK0(zi, 'normal');
+  return { hp: t.hp * (c.hp / n.hp), dmg: t.dmg * (c.dmg / n.dmg), exp: t.exp };
+};
 
 export class World {
   constructor(stage, st, ui) {
@@ -980,7 +989,7 @@ export class World {
     const def = MONSTERS[type];
     const T = TIERS[tier];
     // 챕터(지역) 보정: 지역마다 머무는 시간 · 처치 시간 · 보스 세기를 맞춘다 (data/chapters.js, 던전도 그 지역 값)
-    const czn = sp.zone || this.dungeon?.zone, CK = chapterK(czn ? ALL_ZONES.indexOf(czn) : -1, tier);
+    curWt = this.wt; const czn = sp.zone || this.dungeon?.zone, CK = chapterK(czn ? ALL_ZONES.indexOf(czn) : -1, tier);
     const L = sp.level + this.tierOffset;
     const look = MONSTER_LOOK[type] || { sprite: 'goblin' };
     const fam = familyOf(look.sprite);
@@ -998,8 +1007,8 @@ export class World {
     const m = {
       id: actor.id, def, type, tier, level: L, actor, sp, fam,
       name: name || (tier === 'elite' ? `정예 ${def.name}` : def.name),
-      maxHp: Math.round(def.hp * (1 + 0.4 * (L - 1)) * T.hp * TIER_K[this.wt].hp * CK.hp),
-      dmg: def.dmg.map((v) => v * (1 + 0.27 * (L - 1)) * T.dmg * TIER_K[this.wt].dmg * CK.dmg),
+      maxHp: Math.round(def.hp * (1 + 0.4 * (L - 1)) * T.hp * CK.hp),
+      dmg: def.dmg.map((v) => v * (1 + 0.27 * (L - 1)) * T.dmg * CK.dmg),
       armor: L * 2,
       exp: def.exp * (1 + 0.3 * (L - 1)) * T.exp * CK.exp,
       speed: def.speed * (tier === 'boss' ? 1.1 : 1),
@@ -1963,7 +1972,7 @@ export class World {
       if (m.affix.includes('frenzy')) { m.speed *= 1.3; m.def = { ...m.def, interval: m.def.interval / 1.3 }; }
       m.name = `${tier === 'boss' ? '범람한 ' : ''}${m.name} [${m.affix.map((x) => FLOOD_AFFIX[x].name).join('·')}]`;
       // v0.49.12 지역 세기 보정은 범람 난 지역이 아니라 가장 높은 보스를 잡은 지역 것으로 (낮은 지역 범람이 레벨만 높고 약했다)
-      { const fz = this.floodRefZi(), cz = ALL_ZONES.indexOf(zn); if (fz >= 0 && cz >= 0 && fz !== cz) { const A = chapterK(fz, tier), B = chapterK(cz, tier); m.maxHp = Math.round(m.maxHp * A.hp / B.hp); m.hp = m.maxHp; m.dmg = m.dmg.map((v) => v * A.dmg / B.dmg); } }
+      { curWt = this.wt; const fz = this.floodRefZi(), cz = ALL_ZONES.indexOf(zn); if (fz >= 0 && cz >= 0 && fz !== cz) { const A = chapterK(fz, tier), B = chapterK(cz, tier); m.maxHp = Math.round(m.maxHp * A.hp / B.hp); m.hp = m.maxHp; m.dmg = m.dmg.map((v) => v * A.dmg / B.dmg); } }
       if (k) { m.maxHp *= k; m.hp = m.maxHp; }
       m.actor.setGlow(0x400010);
       return m;
@@ -2047,8 +2056,8 @@ export class World {
   }
   // v0.44.41 도감용: 그 지역 · 지금 세계 단계에서 이 몬스터의 체력 · 공격력 (spawn과 같은 식)
   monStats(type, tier, zn) {
-    const def = MONSTERS[type], T = TIERS[tier], L = zn.levels[1] + this.tierOffset, CK = chapterK(ALL_ZONES.indexOf(zn), tier);
-    return { level: L, hp: Math.round(def.hp * (1 + 0.4 * (L - 1)) * T.hp * TIER_K[this.wt].hp * CK.hp), dmg: def.dmg.map((v) => Math.round(v * (1 + 0.27 * (L - 1)) * T.dmg * TIER_K[this.wt].dmg * CK.dmg)), armor: L * 2, speed: def.speed, attack: def.attack };
+    curWt = this.wt; const def = MONSTERS[type], T = TIERS[tier], L = zn.levels[1] + this.tierOffset, CK = chapterK(ALL_ZONES.indexOf(zn), tier);
+    return { level: L, hp: Math.round(def.hp * (1 + 0.4 * (L - 1)) * T.hp * CK.hp), dmg: def.dmg.map((v) => Math.round(v * (1 + 0.27 * (L - 1)) * T.dmg * CK.dmg)), armor: L * 2, speed: def.speed, attack: def.attack };
   }
   // v0.44.35 인내의 폭발: 모은 피해 × 계수(%)를 둘레로. 탱커가 딜러가 되지 않게 무기 한 방의 1.5 ~ 8배 사이로
   vengeRelease(b) {
