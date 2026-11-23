@@ -124,11 +124,11 @@ export function convertMats(st, from, times = 1) {
 export function herbOrders(st, now = Date.now()) {
   const t = townOf(st), hb = findBuilding(st, 'herb'), day = new Date(now + 9 * 3600e3).toISOString().slice(0, 10);
   if (!hb) return [];
-  if (t.herbOrd?.day === day) return t.herbOrd.list;
+  if (t.herbOrd?.day === day) { for (const o of t.herbOrd.list) if (!BASES[o.ess]) o.ess = 'ess2'; return t.herbOrd.list; } // v0.49.76 예전에 없는 정수(ess1)로 만든 의뢰 고치기
   const ids = herbsAt(hb.lv), tw = ids.reduce((a, id) => a + HERBS[id].w, 0), rate = BUILDINGS.herb.rate(hb.lv);
   const pick = [ids[Math.floor(Math.random() * Math.min(ids.length, 3))], ids[ids.length - 1]].filter((h, i, a) => a.indexOf(h) === i);
   const list = pick.map((h) => { const n = Math.max(10, Math.round((rate * 8 * HERBS[h].w) / tw / 5) * 5), g = Math.min(5, 1 + Math.floor(HERBS[h].lv / 2));
-    return { h, n, gold: Math.round(n * HERBS[h].lv ** 2 * 40), ess: 'ess' + Math.max(1, g), essN: HERBS[h].lv >= 6 ? 2 : 1, done: false }; });
+    return { h, n, gold: Math.round(n * HERBS[h].lv ** 2 * 40), ess: 'ess' + Math.max(2, g), essN: HERBS[h].lv >= 6 ? 2 : 1, done: false }; }); // 정수는 Ⅱ(빛바랜)부터 있다
   t.herbOrd = { day, list }; return list;
 }
 export function herbDeliver(st, i, now = Date.now()) {

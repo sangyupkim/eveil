@@ -205,7 +205,7 @@ export class Windows {
     const keep = {}; { const n = {}; body.querySelectorAll(SC).forEach((el) => { const c = el.className, i = (n[c] = (n[c] || 0) + 1); if (el.scrollTop || el.scrollLeft) keep[scKey(el, i)] = [el.scrollTop, el.scrollLeft]; }); }
     // 창 내용을 만들다 오류가 나도 빈 창이 되지 않게: 알리고 기록을 보낸다
     let html;
-    try { html = this[this.kind](); } catch (e) { console.error(e); cloud.reportError(`[win:${this.kind}] ${e?.message}`, e?.stack, GAME_VERSION); html = `<div class="frame" style="flex:1"><div class="note">창을 여는 중 오류가 났습니다 · ${esc(e?.message || '')}</div></div>`; }
+    try { html = this[this.kind](); } catch (e) { console.error(e); this.bTab = {}; /* v0.49.76 고장 난 탭을 기억하면 창이 계속 깨진다 → 다음엔 첫 탭으로 */ cloud.reportError(`[win:${this.kind}] ${e?.message}`, e?.stack, GAME_VERSION); html = `<div class="frame" style="flex:1"><div class="note">창을 여는 중 오류가 났습니다 · ${esc(e?.message || '')}</div></div>`; }
     body.innerHTML = html;
     const wc = body.querySelector('.wmc');
     if (wc && this.kind === 'map') { const mf = body.querySelector('.mapFrame'), me = body.querySelector('.pin.me'); if (mf && me && (this.mapCenter !== false)) { requestAnimationFrame(() => { mf.scrollLeft = me.offsetLeft - mf.clientWidth / 2; mf.scrollTop = me.offsetTop - mf.clientHeight / 2; }); this.mapCenter = false; } }
@@ -455,7 +455,7 @@ export class Windows {
   // 건물 탭 화면: 맨 위 탭 줄 + 두 쪽 [왼쪽, 오른쪽]
   tabView(b, key, tabs, pages) {
     const st = this.w.st, cur = this.bTab?.[key] && tabs.some((x) => x[0] === this.bTab[key]) ? this.bTab[key] : tabs[0][0];
-    const head = `<div class="stabs">${tabs.map(([k, n]) => `<button class="tab txt${k === cur ? ' on' : ''}" data-stab="${key}|${k}"><span>${n}</span></button>`).join('')}${b === null ? '' : `<span class="stabInfo">${typeof b === 'string' ? b : `${BUILDINGS[b.type].name} ${b.lv}단계`} · <span class="goldTxt">${st.gold.toLocaleString()} G</span></span>`}</div>`; // null = 오른쪽 위 정보 없음 (랭킹)
+    const head = `<div class="stabs">${tabs.map(([k, n]) => `<button class="tab txt${k === cur ? ' on' : ''}" data-stab="${key}|${k}"><span>${n}</span></button>`).join('')}${b === null ? '' : `<span class="stabInfo">${typeof b === 'string' ? b : `${BUILDINGS[b.type].name} ${b.lv}단계${b.bld ? ` · <span style="color:#ffd84a">${b.bld.to}단계로 올리는 중 ${Math.max(1, Math.ceil((b.bld.until - Date.now()) / 60000))}분</span>${countOf(st, 'build_rush') ? ' <button class="btn" data-rush="1">촉진제</button>' : ''}` : ''}`} · <span class="goldTxt">${st.gold.toLocaleString()} G</span></span>`}</div>`; // null = 오른쪽 위 정보 없음 (랭킹)
     const [L, R] = pages(cur);
     return `<div class="smithWrap">${head}<div class="cols"><div class="frame detail fPage">${L}</div><div class="frame detail fPage">${R}</div></div></div>`;
   }
@@ -1235,7 +1235,7 @@ export class Windows {
       if (b.bld) right = `<h3>${def.name} · ${b.bld.to === 1 ? '짓는 중' : `${b.bld.to}단계로 올리는 중`} <small class="note">${fmtT(Math.max(60000, b.bld.until - Date.now()))}</small></h3>${gauge(b.bld.from, b.bld.until, 60000, '#ffd84a')}` + (countOf(st, 'build_rush') ? `<div class="btns"><button class="btn gold" data-rush="1">공사 촉진제 ${countOf(st, 'build_rush')} · 남은 시간 절반</button></div>` : '') + (bmode ? costTable : '');
       else right = `<h3>${def.name} · ${b.lv}단계</h3>` + (one ? '' : `<div class="btns" style="margin:0 0 8px"><button class="btn" data-upgrade="1" ${up == null || st.gold < up || !umOk || !anOk ? 'disabled' : ''}>${up == null ? '최고 단계' : !anOk ? `각성 ${an} 필요` : `단계 올리기 ${up.toLocaleString()} G${un && needTxt(un) ? ` · ${needTxt(un)}` : ''}`}</button></div><div class="note">${def.desc}</div>`);
       if (bmode && !b.bld) right += costTable;
-      if (one && !b.bld) { const v = this.buildingView(b, sel); if (v) return v; } // v0.45 건물 창: 기능별 탭 · 두 쪽
+      if (one && b.bld?.to !== 1) { const v = this.buildingView(b, sel); if (v) return v; } // v0.49.76 단계를 올리는 중에도 탭 화면 (두 쪽) — 예전엔 공사 중이면 세 칸 화면이 나왔다 // v0.45 건물 창: 기능별 탭 · 두 쪽
       if (!bmode && !(b.bld?.to === 1)) {
       if (b.type === 'workshop') {
         if (one) return this.workshopView(b, sel);
@@ -1380,7 +1380,7 @@ export class Windows {
   }
   // v0.49.73 약초 납품 의뢰: 왼쪽 = 오늘의 납품 | 오른쪽 = 가진 약초
   herbOrderTab(st) {
-    const t = townOf(st), L = `<h3>오늘의 납품</h3>` + herbOrders(st).map((o, i) => `<div class="row${o.done ? ' fin' : ''}"><img src="${herbIcon(o.h)}" alt="" style="width:28px" /><div class="grow"><b>${HERBS[o.h].name} ${o.n}</b> <small class="note">가진 ${Math.floor(t.herbs[o.h] || 0)}</small><div class="note">${o.gold.toLocaleString()} G · ${BASES[o.ess].name} ${o.essN}</div></div>
+    const t = townOf(st), L = `<h3>오늘의 납품</h3>` + herbOrders(st).map((o, i) => `<div class="row${o.done ? ' fin' : ''}"><img src="${herbIcon(o.h)}" alt="" style="width:28px" /><div class="grow"><b>${HERBS[o.h].name} ${o.n}</b> <small class="note">가진 ${Math.floor(t.herbs[o.h] || 0)}</small><div class="note">${o.gold.toLocaleString()} G · ${BASES[o.ess]?.name || ''} ${o.essN}</div></div>
       <button class="btn gold" data-hord="${i}" ${o.done || (t.herbs[o.h] || 0) < o.n ? 'disabled' : ''}>${o.done ? '완료' : '납품'}</button></div>`).join('');
     const R = `<h3>가진 약초</h3><div class="herbList herbCards">${HERB_IDS.filter((h) => (t.herbs[h] || 0) >= 1).map((h) => `<span class="hb"><img src="${herbIcon(h)}" alt="" />${HERBS[h].name} <b>${Math.floor(t.herbs[h])}</b></span>`).join('')}</div>`;
     return [L, R];
