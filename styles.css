@@ -855,3 +855,27 @@ body.ui-edit #chatBox { pointer-events: auto; outline: 2px dashed rgba(255,213,7
 body.touch #qsets { left: auto; right: calc(10px + env(safe-area-inset-right) + var(--u) * 21.5); bottom: calc(var(--u) * 1.2 + env(safe-area-inset-bottom)); flex-direction: row; }
 body.touch #qsets .qset { min-width: calc(var(--u) * 2.4); height: calc(var(--u) * 2); font-size: calc(var(--u) * 1); }
 body.ui-edit #qsets { display: none; }
+/* v0.50 스킬 창: 위 퀵슬롯 줄 · 왼쪽 고른 스킬 · 오른쪽 차수별 목록 */
+.skWin { display: flex; flex-direction: column; gap: 6px; height: 100%; min-height: 0; }
+.skWin > .cols { flex: 1; min-height: 0; }
+.skBar { display: flex; align-items: center; gap: 8px; }
+.skBar > .btns { flex: 0 0 auto; }
+.skSlots { flex: 1; display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; }
+.btn.skSlot { position: relative; display: flex; align-items: center; justify-content: center; padding: 2px; min-height: calc(var(--u) * 3); }
+.btn.skSlot img { width: calc(var(--u) * 2.4); height: calc(var(--u) * 2.4); object-fit: contain; }
+.btn.skSlot small { position: absolute; left: 14%; top: 8%; font-size: .7em; color: #e9d9b0; text-shadow: 0 1px 2px #000; }
+.skSlots.assign .btn.skSlot { border-color: #ffd36a; box-shadow: 0 0 0 1px #ffd36a inset, 0 0 8px rgba(255, 211, 106, .55); animation: skPulse 1s ease-in-out infinite alternate; }
+@keyframes skPulse { from { box-shadow: 0 0 0 1px #ffd36a inset, 0 0 3px rgba(255, 211, 106, .3); } to { box-shadow: 0 0 0 1px #ffd36a inset, 0 0 10px rgba(255, 211, 106, .8); } }
+.skTier { margin: 6px 0 2px; font-family: var(--f-title); font-size: .85em; color: #ffd36a; border-bottom: 1px solid rgba(255, 211, 106, .25); }
+.skSide { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.qchip { display: inline-block; min-width: 1.4em; padding: 0 4px; margin-left: 2px; border-radius: 6px; font-size: .7em; text-align: center; background: rgba(255, 255, 255, .08); color: var(--dim); }
+.qchip.on { background: #ffd36a; color: #2a1d08; font-weight: 800; }
+.skRole { margin-right: 4px; padding: 0 4px; border-radius: 4px; font-size: .9em; }
+.skRole.r_hunt { background: rgba(120, 200, 120, .18); color: #9fe39f; }
+.skRole.r_boss { background: rgba(230, 110, 90, .2); color: #ff9e8a; }
+.skRole.r_util { background: rgba(120, 160, 240, .2); color: #a9c4ff; }
+.skUnl { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; font-size: .75em; }
+.skUnl span { padding: 1px 6px; border-radius: 6px; background: rgba(255, 255, 255, .06); color: var(--dim); }
+.skUnl span.on { background: rgba(255, 211, 106, .2); color: #ffd36a; }
+.skVar { flex-wrap: wrap; align-items: center; gap: 4px; margin: 2px 0; }
+.skVar .btn { padding: 2px 8px; font-size: .8em; }

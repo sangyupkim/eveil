@@ -96,25 +96,34 @@ export const isMelee = (sk) => sk.ap === 'weapon' && (sk.needs === 'melee' || ['
 export const WEAPON_K = 2 / 3; // 검 · 활 · 철벽 계수 (주문과 따로)
 export const weaponCoef = (raw, cd) => WEAPON_K * (Math.max(0, raw) / 1.8) * Math.min(1, 0.75 + 0.1 * cd);
 const multiDiv = (sk) => [sk.waves, sk.count, sk.hits].reduce((a, n) => a * ((n || 1) > 1 ? n * 0.5 : 1), 1);
+// v0.50 랭크: 1 → 150랭크까지 고르게 ×1.5 (그 뒤는 그대로). 해금: 30 효과 하나 더 · 80 범위 · 수 늘림 · 150 마무리 (skillEff)
+export const RANK_UNLOCK = [30, 80, 150];
+export const rankMul = (rank) => 1 + 0.5 * (Math.min(Math.max(rank, 1), 150) - 1) / 149;
 export function skillValues(id, rank, vars = []) {
   const sk = SKILLS[id];
   const p = vars.includes('power'), q = vars.includes('quick'), f = vars.includes('fierce'), fr = vars.includes('frugal');
-  const raw = (sk.power + sk.perRank * eff(rank)) * (p ? 1.4 : 1) * (f ? 1.25 : 1);
+  const raw = (sk.power + (sk.perRank || 0) * eff(rank)) * (p ? 1.4 : 1) * (f ? 1.25 : 1);
   return {
     // 주문(지능 공격 스킬)은 「평타 피해 × 계수」: 무기가 좋아지면 함께 커지고, 큰 위력 · 랭크는 0.6제곱으로 눌러 지나치게 세지지 않는다
     // 공격 스킬은 모두 같은 식 (0.34.3~): 평타 × 계수. 주문은 위력을 0.6제곱으로 누르고, 검 · 활은 무기 배율(1.8 = 주문 위력 28급)을
     // 같은 계수로 맞춘다. 재사용 3초 미만은 감쇠. 여러 번 내리는 주문은 한 번당 계수를 (횟수 × 0.5)로 나눈다 (검 · 활 연타 스킬은 원래 한 번당 위력이 작게 짜여 있어 나누지 않는다)
     // 자원 스킬(scale: hp · armor · mp)도 검 · 활과 같은 계수 (자원 보너스 1~2배는 싸울 때 곱한다)
-    power: sk.type === 'buff' ? raw : isSpell(sk) ? spellCoef(raw, sk.cd) / multiDiv(sk) : weaponCoef(raw, sk.cd) * (isMelee(sk) ? MELEE_K : 1),
+    power: (sk.type === 'buff' ? raw : isSpell(sk) ? spellCoef(raw, sk.cd) / multiDiv(sk) : weaponCoef(raw, sk.cd) * (isMelee(sk) ? MELEE_K : 1)) * (sk.chasu && sk.type !== 'buff' ? rankMul(rank) : 1), // v0.50 정리된 스킬: 랭크는 곱으로 (150랭크 ×1.5)
     mp: Math.round(sk.mp * (1 + 0.05 * Math.min(rank - 1, 9) + 0.01 * Math.max(0, rank - 10)) * (fr ? 0.55 : 1)),
-    cd: sk.cd * (1 - 0.02 * Math.min(rank - 1, 15)) * (q ? 0.65 : 1) * (f ? 0.85 : 1),
+    cd: sk.cd * (sk.chasu ? 1 : 1 - 0.02 * Math.min(rank - 1, 15)) * (q ? 0.65 : 1) * (f ? 0.85 : 1), // v0.50 정리된 스킬은 랭크로 쿨이 줄지 않는다 (차수 곡선을 지키려고)
   };
 }
 // 변형을 반영한 스킬 정의 (범위 · 수 · 느리게 · 지속 · 메아리)
-export function skillEff(id, vars = []) {
+export function skillEff(id, vars = [], rank = 1) {
   const sk = SKILLS[id];
-  if (!vars.length) return sk;
+  if (!vars.length && !(sk?.chasu && rank >= RANK_UNLOCK[0])) return sk;
   const o = { ...sk };
+  // v0.50 랭크 해금 (정리된 스킬)
+  if (sk.chasu && sk.type !== 'buff') {
+    if (rank >= 30) { if (o.role === 'boss') o.bleed = true; else if (o.role === 'util') { if (o.root) o.root *= 1.5; o.slow = Math.max(o.slow || 0, 2); } else if (!o.slow) o.slow = 1.5; else o.root = Math.max(o.root || 0, 0.6); }
+    if (rank >= 80) { for (const k of ['radius', 'width']) if (o[k]) o[k] *= 1.25; for (const k of ['count', 'jumps']) if (o[k]) o[k] += 1; if (o.waves) o.waves += 1; if (o.hits) o.hits += 1; }
+    if (rank >= 150) { o.echo = Math.max(o.echo || 0, 0.4); o.finisher = true; }
+  }
   if (vars.includes('wide')) {
     for (const k of ['radius', 'width']) if (o[k]) o[k] *= 1.4;
     if (o.range) o.range *= 1.15;
@@ -132,7 +141,12 @@ export function moveRetiredSkills(st, vaultItems = []) {
   let n = 0;
   for (const [old, to] of Object.entries(SKILL_MOVED)) {
     const had = st.skills?.[old];
-    if (had) { const cur = st.skills[to]; if (!cur || (cur.rank || 0) < (had.rank || 0)) st.skills[to] = had; delete st.skills[old]; n++; }
+    if (had) { // v0.50 숙련을 합친다: 옮겨 가는 스킬의 모든 숙련(지나온 랭크 + 남은 숙련)을 대상 스킬에 더한다
+      const cur = st.skills[to];
+      if (!cur) st.skills[to] = had;
+      else { let tot = had.exp || 0; for (let r = 1; r < (had.rank || 1); r++) tot += skillExpNeeded(r); if (!cur.mod && had.mod) cur.mod = had.mod; addSkillExp(st, to, tot); }
+      delete st.skills[old]; n++;
+    }
     for (const set of st.quickSets || (st.quick ? [st.quick] : [])) for (let i = 0; i < set.length; i++) if (set[i] === old) set[i] = to; // v0.50 세 벌 모두 (제자리 바꿈 — st.quick이 지금 세트를 가리킨다)
   }
   for (const it of [...(st.inv || []), ...vaultItems]) if (it?.book && SKILL_MOVED[it.book]) { it.book = SKILL_MOVED[it.book]; n++; }

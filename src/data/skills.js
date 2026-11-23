@@ -279,5 +279,5 @@ for (const [id, o] of Object.entries({
 }
 export const SKILL_IDS = Object.keys(SKILLS);
 export function skillsOfTier(t) {
-  return SKILL_IDS.filter((id) => SKILLS[id].tier === t && !SKILLS[id].awaken); // 각성 등급이 정해진 스킬은 따로 (몬스터 레벨로, game/loot.js)
+  return Object.keys(SKILLS).filter((id) => SKILLS[id].tier === t && !SKILLS[id].awaken); // 각성 등급이 정해진 스킬은 따로 (몬스터 레벨로, game/loot.js)
 }

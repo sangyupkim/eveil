@@ -1511,6 +1511,7 @@ export class World {
       if (A.includes('reflect') && src !== 'dot' && raw > 0 && !(m.reflT > this.time)) { m.reflT = this.time + 0.5; this.hurtPlayer(Math.min(raw * 0.1, this.d.maxHp * 0.04), m, { sure: true }); } } // 반사: 받은 피해의 10%, 한 번에 최대 HP 4%까지 · 0.5초에 한 번 (강한 캐릭터가 한 방에 죽던 것)
     if (m.dungeon && this.dungeon?.muts && ctx?.id) { const sc = SKILLS[ctx.id]?.school; if (Object.entries(MUT_RESIST).some(([k, v]) => v === sc && this.mut(k))) raw *= 0.5; } // v0.47 원소 변이
     if (m.vulnT > 0) raw *= this.art('soulmark') ? 1.25 : 1.15;
+    if (m.bvulnT > this.time) raw *= 1.35; // v0.50 보스기에 맞은 대상: 4초 동안 받는 피해 +35% (모든 피해)
     if (m.markT > this.time) raw *= 1 + (m.markV || 0) / 100; // v0.49.21 칭호 특성 「약점 표시」
     if (this.art('sniper') && (src === 'ranged' || ctx) && Math.hypot(m.pos.x - this.player.pos.x, m.pos.z - this.player.pos.z) > 8) raw *= 1.15;
     if (this.art('huntertrap') && m.rootT > 0) raw *= 1.1;
@@ -1524,6 +1525,8 @@ export class World {
     }
     const dmg = Math.max(1, Math.round(raw * (1 - red)));
     m.hp -= dmg;
+    if (ctx?.role === 'boss') m.bvulnT = this.time + 4;
+    if (ctx?.bleed) { m.dotV = Math.max(m.dotV || 0, dmg * 0.1); m.dotT = 3; }
     if (ctx?.mixFx) for (const f of ctx.mixFx) {
       this.artEv('fx:' + f.name);
       if (f.id === 'bleed') { const bk = (this.art('gale') && f.name === '출혈') || (this.art('burn') && f.name === '화상') ? 1.5 : 1; m.dotV = Math.max(m.dotV || 0, dmg * 0.1 * bk); m.dotT = 3; if (this.art('truth') && f.name === '마력 연소') { const o = this.monstersNear(m.pos, 4).find((x) => x !== m && !x.dotT); if (o) { o.dotV = m.dotV; o.dotT = 3; } } }
@@ -2256,13 +2259,13 @@ export class World {
   }
 
   castSkill(id, v) {
-    const st = this.st, d = this.d, sk = { ...skillEff(id, modsOf(st.skills[id])) };
+    const st = this.st, d = this.d, sk = { ...skillEff(id, modsOf(st.skills[id]), st.skills[id]?.rank || 1) };
     // v0.44.42 비전: 범위 · 발 수
     if (this.art('quake') && (sk.type === 'spin' || sk.type === 'cleave') && sk.radius) sk.radius *= 1.2;
     if (this.manaGrip(SKILLS[id]) && sk.radius) sk.radius *= 1.2; // v0.49.38 대홀: 범위 +20%
     if (sk.type === 'arrow' && sk.count) sk.count += (this.art('volley') ? 2 : 0) + (this.art('constellation') && this.time < (this.constT || 0) ? 1 : 0);
     // v0.49.54 높은 단계일수록 범위 · 그림이 크다 (1차 1 → 5차 범위 +32% · 그림 1.5배). 단일 공격은 범위 그대로, 그림만
-    const tier = sk.tier || 1, tierK = [1, 0.9, 1, 1.15, 1.3, 1.5][Math.min(5, tier)], areaK = 1 + 0.08 * (Math.min(5, tier) - 1);
+    const tier = sk.tier || 1, tierK = [1, 0.75, 1, 1.15, 1.3, 1.5][Math.min(5, tier)] * (sk.q === 3 ? 1.15 : 1), areaK = 1 + 0.08 * (Math.min(5, tier) - 1);
     for (const k of ['radius', 'width', 'splash']) if (sk[k]) sk[k] *= areaK;
     if (sk.type === 'line' && sk.range) sk.range *= 1 + 0.05 * (Math.min(5, tier) - 1);
     const P = this.player;
@@ -2281,7 +2284,7 @@ export class World {
     // 쓴 횟수도 성장에: 스킬의 필요 스탯에 필요량 비율대로 (각성 때 그 스탯으로 나뉜다)
     if (!v.echoed && sk.req) { const tot = Object.values(sk.req).reduce((a, b) => a + b, 0) || 1; for (const [k, n] of Object.entries(sk.req)) addAP(st, k, AP_TABLE.skillUse * (1 + 0.5 * ((sk.tier || 1) - 1)) * (n / tot), this.autoMult); }
     if (!v.echoed) this.skillExp(id, 1);
-    const ctx = { id, mp: v.mp, hits: 0, apGiven: false, slow: sk.slow, root: sk.root };
+    const ctx = { id, mp: v.mp, hits: 0, apGiven: false, slow: sk.slow, root: sk.root, role: sk.role, bleed: sk.bleed }; // v0.50 보스기 약화 · 30랭크 출혈
     // v0.44.41 연계: 서로 다른 스탯의 단일 스킬을 번갈아 쓰면 「연계」가 쌓이고 (5초 안, 최대 3), 혼합 스킬이 쌓인 만큼 +15%씩 세진다
     const lines = sk.lines || Object.keys(sk.req || {});
     let comboK = 1;
@@ -2336,7 +2339,8 @@ export class World {
       const n = sk.type === 'rain' ? sk.waves || 1 : sk.type === 'spin' ? sk.hits || 1 : 1;
       sfx(user === 'melee' ? 'heavy' : user === 'bow' ? 'shoot' : 'cast', 0.8);
       const hit = (m, k) => { if (!m || m.dead) return; if (mag) this.hitMonster(m, spell() * k, { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 }); else { const w = weaponHit(); this.hitMonster(m, w.v * k, { crit: w.crit, src: 'skill', ctx }); } };
-      const ran = runForm({ w: this, sk, P, t, color, FX, hit, n, tier: Math.min(5, tier), tierK, bow: user === 'bow', melee: user === 'melee', sfx: (a) => sfx(a, 0.6),
+      const ran = runForm({ w: this, sk, P, t, color, FX, hit, n, tier: Math.min(5, tier + (sk.q === 3 || sk.finisher ? 1 : 0)), tierK, // v0.50 상품 · 150랭크는 한 단계 위 연출
+ bow: user === 'bow', melee: user === 'melee', sfx: (a) => sfx(a, 0.6),
         act: (a, s) => { const dur = P.act(a, s); this.swing = dur * 0.7; return dur; } });
       if (ran) { this.ui.dirty(); return; }
     }

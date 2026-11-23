@@ -42,6 +42,7 @@ import { TITLE_AT, titleKey, titleName, UNIQUES, perkChoices } from '../data/tit
 import { variantsOf, VARIANT_RANKS, modsOf, skillEff } from '../game/skills.js';
 import { SCHOOL_NAMES } from '../data/skills.js';
 import { awakenOk, skillGrade, QUALITY, gradeName } from '../data/awaken_skills.js';
+import { ROLE_NAMES } from '../data/skill_roster.js';
 import { GEMS, GEM_GRADES, gemId } from '../data/legends.js';
 import { applyShard, canApply, lockMax, shardCost, shardVals } from '../game/shards.js';
 import { HERBS, HERB_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
@@ -723,26 +724,43 @@ export class Windows {
   }
 
   skills() {
+    // v0.50 스킬 창: 위 = 지금 세트의 퀵슬롯(늘 보인다) · 왼쪽 = 고른 스킬 · 오른쪽 = 배운 스킬(차수별)
+    //   퀵슬롯은 [넣기]를 누른 뒤 칸을 눌러야 바뀐다 (그냥 칸을 누르면 그 칸의 스킬을 고른다)
     const st = this.w.st;
-    const all = Object.keys(st.skills), school = this.skillSchool || 'all';
-    const ids = school === 'all' ? all : all.filter((id) => SKILLS[id].school === school);
+    const all = Object.keys(st.skills).filter((id) => SKILLS[id]), line = this.skillLine || 'all';
+    const lineOf = (sk) => { const ks = sk.lines || Object.keys(sk.req || {}); return ks.length >= 2 ? 'mix' : ks[0] || 'str'; };
+    const cOf = (sk) => sk.chasu || Math.max(1, Math.min(5, (sk.tier || 1) - 1));
+    const RO = { hunt: 0, boss: 1, util: 2 };
+    const ids = (line === 'all' ? all : all.filter((id) => lineOf(SKILLS[id]) === line))
+      .sort((x, y) => { const a = SKILLS[x], b = SKILLS[y]; return cOf(a) - cOf(b) || (RO[a.role] ?? 3) - (RO[b.role] ?? 3) || (b.q || 2) - (a.q || 2) || a.name.localeCompare(b.name); });
     const stats = totalStats(st);
     if (this.skillSel && !st.skills[this.skillSel]) this.skillSel = null;
     if (!this.skillSel && ids.length) this.skillSel = ids[0];
-    let list = ids.length ? '' : '<div class="note">배운 스킬이 없습니다<br>스킬북은 사냥으로 얻습니다</div>';
+    if (this.skAssign && this.skAssign !== this.skillSel) this.skAssign = null;
+    const sets = st.quickSets || [st.quick], cur = st.quickSet || 0;
+    const where = (id) => sets.map((q, k) => q.map((x, i) => x === id ? `<span class="qchip${k === cur ? ' on' : ''}">${k === cur ? i + 1 : `${k + 1}-${i + 1}`}</span>` : '').join('')).join('');
+    const roleTag = (sk) => sk.role ? `<span class="skRole r_${sk.role}">${ROLE_NAMES[sk.role]}</span>` : '';
+    // 위: 퀵슬롯 줄
+    let bar = `<div class="skBar"><div class="btns">${sets.map((_, k) => `<button class="btn${cur === k ? ' on' : ''}" data-qsetw="${k}">세트 ${k + 1}</button>`).join('')}</div><div class="skSlots${this.skAssign ? ' assign' : ''}">`;
+    for (let i = 0; i < CONFIG.quickSlots; i++) {
+      const q = st.quick[i];
+      bar += `<button class="btn skSlot${q && q === this.skillSel ? ' on' : ''}" data-qs="${i}"><small>${i + 1}</small>${q && SKILLS[q] ? `<img src="${skillIcon(q)}" alt="" />` : ''}</button>`;
+    }
+    bar += '</div></div>';
+    let list = '', lastC = 0;
+    if (!ids.length) list = '<div class="note">배운 스킬이 없습니다</div>';
     for (const id of ids) {
-      const sk = SKILLS[id], s = st.skills[id];
-      const max = false;
-      const slot = st.quick.indexOf(id);
-      list += `<div class="row pick${this.skillSel === id ? ' on' : ''}" data-skill="${id}">${sicon(id)}
-        <div class="grow"><b>${sk.name}</b> <span style="color:${BOOK_TIERS[sk.tier].color};font-size:.8em">${BOOK_TIERS[sk.tier].name} · ${gradeName(skillGrade(sk))} · <span style="color:${QUALITY[sk.q || 2].color}">${QUALITY[sk.q || 2].name}</span></span>
-          <div class="mini"><i style="width:${max ? 100 : (s.exp / skillExpNeeded(s.rank)) * 100}%;background:${sk.color}"></i></div></div>
-        <div class="note">랭크 ${s.rank}${slot >= 0 ? ` · ${slot + 1}번` : ''}</div></div>`;
+      const sk = SKILLS[id], s = st.skills[id], c = cOf(sk);
+      if (c !== lastC) { list += `<div class="skTier">${c}차</div>`; lastC = c; }
+      list += `<div class="row pick skRow${this.skillSel === id ? ' on' : ''}" data-skill="${id}">${sicon(id)}
+        <div class="grow"><b>${sk.name}</b> <span style="font-size:.78em">${roleTag(sk)}<span style="color:${QUALITY[sk.q || 2].color}">${QUALITY[sk.q || 2].name}</span></span>
+          <div class="mini"><i style="width:${(s.exp / skillExpNeeded(s.rank)) * 100}%;background:${sk.color}"></i></div></div>
+        <div class="skSide"><span class="note">랭크 ${s.rank}</span>${where(id)}</div></div>`;
     }
     let det = '<div class="note">고른 스킬이 없습니다</div>';
     if (this.skillSel) {
       const id = this.skillSel, sk = SKILLS[id], s = st.skills[id];
-      const mods = modsOf(s), v = skillValues(id, s.rank, mods), nx = skillValues(id, s.rank + 1, mods), e = skillEff(id, mods);
+      const mods = modsOf(s), v = skillValues(id, s.rank, mods), nx = skillValues(id, s.rank + 1, mods), e = skillEff(id, mods, s.rank);
       const need = skillExpNeeded(s.rank), d = this.w.d || {};
       const isW = sk.ap === 'weapon', isBuff = sk.type === 'buff';
       const pw = (x) => isW ? `무기 피해 ×${x.toFixed(2)}` : `평타 ×${x.toFixed(2)} · 약 ${Math.round(x * (d.spellBase || 0)).toLocaleString()}`;
@@ -750,7 +768,7 @@ export class Windows {
       if (!isBuff) kv.push(['위력', pw(v.power)], ['다음 랭크', pw(nx.power)]);
       else kv.push(['효과', `${Math.round(v.power)}${/Pct$/.test(sk.buff || '') ? '%' : ''}`], ['다음 랭크', `${Math.round(nx.power)}${/Pct$/.test(sk.buff || '') ? '%' : ''}`]);
       kv.push(['MP', this.w.manaGrip?.(sk) ? `${Math.ceil(v.mp * 1.5)} (대홀)` : v.mp], ['재사용', `${v.cd.toFixed(1)}초`]);
-      if (sk.grip) { const g = this.w.gripWhy?.(sk); kv.push(['무기', `<b class="gripTag">${GRIP_NAMES[sk.grip]}</b>${g ? ` <span style="color:#ff8a7a">${g}</span>` : ''}`]); } // v0.49.38
+      if (sk.grip) { const g = this.w.gripWhy?.(sk); kv.push(['무기', `<b class="gripTag">${GRIP_NAMES[sk.grip]}</b>${g ? ` <span style="color:#ff8a7a">${g}</span>` : ''}`]); }
       if (e.range) kv.push(['사거리', e.range.toFixed(1)]);
       if (e.radius) kv.push(['범위', e.radius.toFixed(1)]);
       if (e.width) kv.push(['너비', e.width.toFixed(1)]);
@@ -760,27 +778,27 @@ export class Windows {
       if (e.hits) kv.push(['타수', e.hits]);
       if (e.duration) kv.push(['지속', `${e.duration}초`]);
       if (e.slow) kv.push(['느리게', `${e.slow}초`]);
-      if (e.echo) kv.push(['메아리', `${e.echo * 100}%`]);
+      if (e.root) kv.push(['속박', `${(+e.root).toFixed(1)}초`]);
+      if (e.echo) kv.push(['메아리', `${Math.round(e.echo * 100)}%`]);
       kv.push(['숙련', `${Math.floor(s.exp).toLocaleString()} / ${need.toLocaleString()}`]);
-      const V = variantsOf(id);
-      det = `<div class="row" style="border:0">${sicon(id)}<div class="grow"><div class="nm" style="color:${BOOK_TIERS[sk.tier].color}">${sk.name}</div>
-          <div class="sub">${BOOK_TIERS[sk.tier].name} · 랭크 ${s.rank}</div></div></div>
+      const U30 = { boss: '출혈', util: '속박 강화', hunt: '느리게 · 속박' }[sk.role] || '추가 효과';
+      const unl = sk.chasu ? `<div class="skUnl">${[[30, U30], [80, '범위 · 수 증가'], [150, '메아리 · 마무리']].map(([r, t]) => `<span class="${s.rank >= r ? 'on' : ''}">${r} ${t}</span>`).join('')}</div>` : '';
+      const V = variantsOf(id), inSet = st.quick.indexOf(id);
+      const vars = VARIANT_RANKS.map((r) => `<div class="btns skVar"><span class="note">${r}</span>${V[r].map((x) => {
+        const on = s.mod?.[r] === x.key, can = s.rank >= r && !s.mod?.[r];
+        return `<button class="btn${on ? ' on' : ''}" data-var="${r}|${x.key}" ${can ? '' : 'disabled'} title="${x.text}">${x.name.split(': ')[1]}</button>`; }).join('')}</div>`).join('');
+      det = `<div class="row" style="border:0">${sicon(id)}<div class="grow"><div class="nm" style="color:${QUALITY[sk.q || 2].color}">${sk.name}</div>
+          <div class="sub">${cOf(sk)}차 ${roleTag(sk)}${QUALITY[sk.q || 2].name} · 랭크 ${s.rank}</div></div>
+          <div class="btns">${this.skAssign ? '<button class="btn on" data-skassign>취소</button>' : `<button class="btn gold" data-skassign>넣기</button>`}${inSet >= 0 ? '<button class="btn" data-qs="-1">빼기</button>' : ''}</div></div>
         <div>${sk.desc.replace(/\s*\([^)]*\)/g, '')}</div>${mixFxOf(sk.lines || Object.keys(sk.req || {})).map((f) => `<div class="aff" style="color:#e0b0ff">혼합 효과 · ${f.name}: ${f.text}</div>`).join('')}
-        <div class="kv" style="margin-top:8px">${kv.map(([k, x]) => `<span>${k}</span><b>${x}</b>`).join('')}</div>
+        <div class="kv" style="margin-top:6px">${kv.map(([k, x]) => `<span>${k}</span><b>${x}</b>`).join('')}</div>${unl}
         ${reqLine(sk.req, stats)}${meetsReq(st, sk.req, stats) ? '' : '<div class="bad">조건 부족</div>'}
-        <h3 style="margin-top:10px">변형</h3>${VARIANT_RANKS.map((r) => `<div class="note">랭크 ${r}</div><div class="btns" style="flex-wrap:wrap;margin:2px 0 6px">${V[r].map((x) => {
-          const on = s.mod?.[r] === x.key, can = s.rank >= r && !s.mod?.[r];
-          return `<button class="btn${on ? ' on' : ''}" data-var="${r}|${x.key}" ${can ? '' : 'disabled'}>${x.name.split(': ')[1]}<small style="display:block;font-size:.7em;opacity:.8">${x.text}</small></button>`; }).join('')}</div>`).join('')}
-        <h3 style="margin-top:14px">퀵슬롯 <span class="btns" style="display:inline-flex;margin-left:6px">${[0, 1, 2].map((k) => `<button class="btn${(st.quickSet || 0) === k ? ' on' : ''}" data-qsetw="${k}">세트 ${k + 1}</button>`).join('')}</span></h3><div class="qsRow">`;
-      for (let i = 0; i < CONFIG.quickSlots; i++) {
-        const q = st.quick[i];
-        det += `<button class="btn qs${q === id ? ' on' : ''}" data-qs="${i}"><small>${i + 1}</small>${q ? `<img src="${skillIcon(q)}" alt="" />` : ''}</button>`;
-      }
-      det += `</div>${st.quick.includes(id) ? '<div class="btns"><button class="btn" data-qs="-1">빼기</button></div>' : ''}`;
+        <h3 style="margin-top:8px">변형</h3>${vars}`;
     }
-    const tabs = ['all', ...Object.keys(SCHOOL_NAMES)].filter((k) => k === 'all' || all.some((id) => SKILLS[id].school === k)).map((k) => `<button class="btn${school === k ? ' on' : ''}" data-school="${k}">${k === 'all' ? '전체' : SCHOOL_NAMES[k]}</button>`).join('');
-    return `<div class="cols"><div class="frame" style="flex:1"><h3>배운 스킬 <span class="cnt">${all.length}</span></h3><div class="btns" style="flex-wrap:wrap;margin:0 0 6px">${tabs}</div>${list}</div>
-      <div class="frame detail" style="flex:0 0 44%">${det}</div></div>`;
+    const LN = { all: '전체', ...STAT_NAMES, mix: '혼합' };
+    const tabs = ['all', ...STATS, 'mix'].filter((k) => k === 'all' || all.some((id) => lineOf(SKILLS[id]) === k)).map((k) => `<button class="btn${line === k ? ' on' : ''}" data-skline="${k}">${LN[k]}</button>`).join('');
+    return `<div class="skWin">${bar}<div class="cols"><div class="frame detail" style="flex:0 0 46%">${det}</div>
+      <div class="frame" style="flex:1"><h3>배운 스킬 <span class="cnt">${all.length}</span></h3><div class="btns" style="flex-wrap:wrap;margin:0 0 6px">${tabs}</div>${list}</div></div></div>`;
   }
 
   char() {
@@ -1385,16 +1403,18 @@ export class Windows {
     });
     on('[data-skill]', (el) => { this.skillSel = el.dataset.skill; audio.play('click'); this.render(); });
     on('[data-qs]', (el) => {
-      const i = Number(el.dataset.qs);
-      const id = this.skillSel;
-      const cur = st.quick.indexOf(id);
-      if (i < 0) { if (cur >= 0) st.quick[cur] = null; } // 빼기: 그 칸만 비운다 (뒤 칸이 밀리지 않는다)
-      else if (cur >= 0) { const o = st.quick[i]; st.quick[i] = id; st.quick[cur] = o ?? null; } // 이미 퀵슬롯에 있으면 자리 바꾸기
-      else st.quick[i] = id;
-      audio.play('click');
+      const i = Number(el.dataset.qs), id = this.skillSel, cur = st.quick.indexOf(id);
+      if (i < 0) { if (cur >= 0) st.quick[cur] = null; this.skAssign = null; } // 빼기: 그 칸만 비운다
+      else if (this.skAssign && id) { // 넣기 중: 고른 칸에 넣는다 (이미 다른 칸에 있으면 자리 바꾸기)
+        if (cur >= 0) { const o = st.quick[i]; st.quick[i] = id; st.quick[cur] = o ?? null; } else st.quick[i] = id;
+        this.skAssign = null; audio.play('click');
+      } else if (st.quick[i]) { this.skillSel = st.quick[i]; audio.play('click'); this.render(); return; } // 그냥 누르면 그 칸의 스킬을 보여 준다
+      else return;
       w.ui.dirty();
       this.render();
     });
+    on('[data-skassign]', () => { this.skAssign = this.skAssign ? null : this.skillSel; audio.play('click'); this.render(); });
+    on('[data-skline]', (el) => { this.skillLine = el.dataset.skline; this.skAssign = null; audio.play('click'); this.render(); });
     on('[data-buy]', (el) => {
       const id = el.dataset.buy, q = Number(el.dataset.q), b = BASES[id];
       if (st.gold < b.price * q) return;

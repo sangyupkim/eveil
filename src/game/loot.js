@@ -1,7 +1,6 @@
 // 몬스터 드랍과 사망 시 아이템 드랍
 import { CONFIG, LOOT } from '../data/config.js';
-import { QUALITY } from '../data/awaken_skills.js';
-import { skillsOfTier, SKILLS } from '../data/skills.js';
+import { SKILLS } from '../data/skills.js';
 import { ZONE_SCHOOLS } from '../data/skills_more.js';
 import { SLOTS } from '../data/items.js';
 import { R, randInt, chance, weighted, pick } from './rng.js';
@@ -11,6 +10,7 @@ import { NAMED_CHANCE, GEM_DROP, GEMS, GEM_GRADES, gemId, gemGradeFor } from '..
 
 // 각성 등급 1 · 2 · 3 · 4가 정해진 스킬북이 나오기 시작하는 몬스터 레벨
 const AWAKEN_LV = [20, 60, 150, 300, 420]; // v0.42 전직 단계와 같게
+const BOOK_AW = [20, 60, 150, 300, 500]; // v0.50 책 차수 (권장 각성)
 // mon: { tier, level }, opt: { auto, magicFind, goldFind }
 export function rollLoot(mon, opt = {}, st = null, rng = R) {
   const t = LOOT[mon.tier];
@@ -44,24 +44,22 @@ export function rollLoot(mon, opt = {}, st = null, rng = R) {
     const id = (chance(0.6, rng) ? 'hp_potion' : 'mp_potion') + (big ? '_l' : '');
     out.push({ kind: 'item', item: makeItem(id, { qty: 1 }, st) });
   }
-  // 스킬북 — 강한 몬스터일수록 높은 등급
+  // v0.50 스킬북: 그 사냥터 권장 각성(몬스터 레벨 − 1)의 차수 — 그 차수 70% · 아래 차수 25% · 다음 차수 5% (보스 · 네임드 15%)
+  //  등급 하품 6 · 중품 3 · 상품 1 (보스 · 네임드는 상품 ×3). 이미 배운 스킬은 ×0.5. 혼합 스킬은 보스 · 네임드만. 단검(dg_)은 등급(tier)으로 같이 섞는다
   if (chance(Math.min(1, t.book * dropMult * (CONFIG.bookDrop ?? 1)), rng)) {
-    const tier = Number(weighted(t.bookTiers, rng));
     const zs = ZONE_SCHOOLS[mon.sp?.zone?.id] || [];
     const big = mon.tier === 'named' || mon.tier === 'boss';
-    // 각성 등급이 정해진 스킬북: 몬스터 레벨이 그 등급에 닿으면 가끔 (네임드 · 보스는 더 자주). 차수는 그 레벨에서 나올 수 있는 것 중 높을수록 자주
-    const awMax = AWAKEN_LV.filter((lv) => mon.level >= lv).length;
-    if (awMax && chance(big ? 0.35 : 0.12, rng)) {
-      const n = Number(weighted(Object.fromEntries(Array.from({ length: awMax }, (_, i) => [i + 1, i + 1])), rng));
-      // 품질: 하품 5 · 중품 3 · 상품 1 비율 (v0.42.5)
-      const ap = Object.keys(SKILLS).filter((id) => SKILLS[id].awaken === n).flatMap((id) => Array((QUALITY[SKILLS[id].q || 2] || QUALITY[2]).w).fill(id));
-      if (ap.length) out.push({ kind: 'item', item: makeBook(pick(ap, rng), st) });
-    }
-    // (v0.39.6: 위에서 바로 return 해서 이름 있는 전설 · 보석 굴림을 건너뛰던 오류)
-    if (!out.some((d) => d.item?.book)) {
-    const pool = skillsOfTier(tier).filter((id) => big || SKILLS[id].school !== 'mix').flatMap((id) => (zs.includes(SKILLS[id].school) ? [id, id, id] : [id]));
-    if (pool.length) out.push({ kind: 'item', item: makeBook(pick(pool, rng), st) });
-    }
+    const rec = Math.max(0, Math.round((mon.level || 1) - 1)), cRec = Math.max(1, BOOK_AW.filter((lv) => rec >= lv).length);
+    const r = rng();
+    let c = cRec;
+    if (cRec < 5 && r < (big ? 0.15 : 0.05)) c = cRec + 1;
+    else if (cRec > 1 && r > 0.75) c = 1 + Math.floor(rng() * (cRec - 1));
+    const g = Number(weighted(big ? { 1: 6, 2: 3, 3: 3 } : { 1: 6, 2: 3, 3: 1 }, rng));
+    const cOf = (sk) => sk.chasu || Math.max(1, Math.min(5, (sk.tier || 1) - 1));
+    let pool = Object.keys(SKILLS).filter((id) => { const sk = SKILLS[id]; return !sk.passive && cOf(sk) === c && (sk.q || 2) === g && (big || !(sk.lines?.length > 1)); });
+    if (!pool.length) pool = Object.keys(SKILLS).filter((id) => !SKILLS[id].passive && cOf(SKILLS[id]) === c);
+    const wts = pool.flatMap((id) => { const w = (zs.includes(SKILLS[id].school) ? 3 : 1) * (st?.skills?.[id] ? 0.5 : 1) * 2; return Array(Math.max(1, Math.round(w))).fill(id); });
+    if (wts.length) out.push({ kind: 'item', item: makeBook(pick(wts, rng), st) });
   }
   // 이름 있는 전설 (지역 보스 · 드물게 네임드)
   const zid = mon.sp?.zone?.id, nc = mon.dungeon ? (mon.tier === 'boss' ? NAMED_CHANCE.dungeon : 0) : NAMED_CHANCE[mon.tier] || 0;

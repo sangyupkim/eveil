@@ -3,6 +3,7 @@
 //          Flare 원본 덫 · 마름쇠 · 얼어붙음 · 독침, Fallen Kingdom 어둠 안개
 import { SKILLS } from './skills.js';
 import { applyForms } from './skill_forms.js';
+import { buildRoster } from './skill_roster.js';
 export const SKILL_FX = {
   // v0.44 새 효과 그림: Painted Spells(불꽃 · 법신 · 진실의 거울 · 은빛 늑대), Free VFX Sampler(베기 · 불씨 · 먼지 · 물 · 화염 폭발), Haunted Effects(사령 · 영혼 · 유령 안개)
   flame_blade: 'p_burning', flame_wave: 'p_burning', ember_spray: 'p_burning', meteor: 'v_fireburst',
@@ -57,3 +58,4 @@ for (const sk of Object.values(SKILLS)) {
   if (!colorFits(el, sk.color || '#ffffff')) sk.color = ELEM_COLOR[el];
 }
 applyForms(); // v0.49.53 스킬 형상 (원소를 정한 뒤)
+buildRoster(); // v0.50 스킬 정리 (갈래 30 · 차수 · 역할 · 위력) — 형상 · 원소를 정한 뒤

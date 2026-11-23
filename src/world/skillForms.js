@@ -51,6 +51,7 @@ export function runForm(c0) {
   };
   // 첫 타격 자리에 단계만큼 큰 터짐 (2차 그림 · 3차 빛 고리 · 4차 빛기둥 · 5차 별 폭발)
   const big = (x, z) => {
+    if (tier <= 1) return; // v0.50 1차는 작고 소소하게 (첫 타격 터짐 없음)
     const rr = shp === 'one' ? 2.4 : Math.min(R, 6);
     FXi(x, z, (0.7 + 0.15 * tier) / tk);
     fx.burst(x, 1, z, c.color, 8 + tier * 6, 3 + tier, 0.35 + tier * 0.06);

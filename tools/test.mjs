@@ -30,6 +30,7 @@ import { CONFIG, STATS, AP_TABLE } from '../src/data/config.js';
 import { QUESTS } from '../src/data/quests.js';
 import { nextQuest, currentQuest, questKill, questDone, questNeed, questTurnIn } from '../src/game/quests.js';
 import { SKILLS } from '../src/data/skills.js';
+import '../src/data/skill_fx.js';
 import { BASES, AFFIXES } from '../src/data/items.js';
 import { makeShard, shardFrom, applyShard, lockMax, rollShard } from '../src/game/shards.js';
 import { MONSTERS, ZONES } from '../src/data/world.js';
@@ -102,14 +103,16 @@ test('강한 몬스터일수록 스킬북 · 좋은 장비가 잘 나온다', ()
   const stat = (tier, N) => {
     let books = 0, bookTier = 0, good = 0;
     for (let i = 0; i < N; i++) for (const d of rollLoot({ tier, level: 5 }, {}, null, rng)) {
-      if (d.item?.book) { books++; bookTier += SKILLS[d.item.book].tier; }
+      if (d.item?.book) { books++; const k = SKILLS[d.item.book]; bookTier += k.chasu || Math.max(1, (k.tier || 1) - 1); }
       if (d.item && ['hero', 'legend'].includes(d.item.rarity)) good++;
     }
     return { books: books / N, tier: books ? bookTier / books : 0, good: good / N };
   };
   const nrm = stat('normal', 20000), boss = stat('boss', 2000);
   assert.ok(nrm.books < 0.02 && boss.books >= 0.15 && boss.books < 0.4);
-  assert.ok(boss.tier > 3 && nrm.tier <= 1);
+  // v0.50 책 차수는 사냥터 권장 각성 기준: 레벨 5 사냥터는 보스도 1차 위주 (다음 차수 15%까지)
+  assert.ok(nrm.tier <= 1.2 && boss.tier < 1.4, JSON.stringify({ n: nrm.tier, b: boss.tier }));
+  { let hi = 0, n = 0; for (let i = 0; i < 3000; i++) for (const d of rollLoot({ tier: 'boss', level: 320 }, {}, null, rng)) if (d.item?.book) { n++; if ((SKILLS[d.item.book].chasu || 0) >= 4) hi++; } assert.ok(hi / n > 0.5, '레벨 320 사냥터 보스 책은 4차 위주 ' + hi / n); }
   assert.ok(boss.good > nrm.good * 50);
 });
 
@@ -447,20 +450,17 @@ test('드랍 장비 레벨: 모든 세계 단계 · 지역 · 등급에서 몬�
 
 // 모든 소스 파일 문법 검사 (화면용 파일은 테스트에서 불러오지 않아 문법 오류가 그대로 배포된 적이 있다 — 0.33.1 로딩 멈춤)
 const { execFileSync: _ex } = await import('node:child_process'), { readdirSync: _rd, statSync: _st } = await import('node:fs');
-test('주문 피해: 평타 기준 × 계수 (0.34.2에 1/3로 낮춤)', () => {
-  const fb = (r) => skillValues('fire_bolt', r, []).power;
-  assert.ok(fb(1) > 0.3 && fb(1) < 0.4);
-  assert.ok(fb(10) > 0.6 && fb(10) < 0.8);
-  const big = skillValues('absolute_zero', 10, []).power, w = skillValues('judgement', 10, []).power;
-  assert.ok(big < w * 1.6);                         // 가장 큰 주문도 가장 큰 무기 스킬의 1.6배 안
-  for (const id of Object.keys(SKILLS)) { const sk = SKILLS[id]; if (sk.ap === 'int' && sk.type !== 'buff') assert.ok(skillValues(id, 50, []).power < 25, id); }
-  // 여러 번 내리는 주문의 합은 같은 급 활 스킬(화살 폭우)의 1.2배 안
-  const hail = skillValues('hail_of_arrows', 10, []).power * 6;
-  for (const id of ['blizzard', 'inferno_field', 'thunderstorm']) assert.ok(skillValues(id, 10, []).power * SKILLS[id].waves < hail * 1.2, id);
-  // 검 · 활도 같은 식: 같은 1단계 강타 · 징벌, 5단계 심판의 검 · 절대 영도가 비슷
-  const ps = skillValues('power_strike', 10, []).power, sm = skillValues('smite', 10, []).power;
-  assert.ok(ps > sm * 1.05 && ps < sm * 1.4);      // 근접은 ×1.3
-  assert.ok(skillValues('judgement', 10, []).power > big * 0.7);
+test('v0.50 스킬 정리: 차수마다 6개 · 차수 ×1.75 · 랭크 150에 ×1.5', () => {
+  const LINES = ['str', 'dex', 'int', 'wis', 'vit'];
+  const sv = (id, r) => skillValues(id, r, []);
+  for (const ln of LINES) for (let c = 1; c <= 5; c++) {
+    const xs = Object.keys(SKILLS).filter((id) => SKILLS[id].chasu === c && Object.keys(SKILLS[id].req || {}).join() === ln && !id.startsWith('dg_'));
+    assert.equal(xs.length, 6, ln + c);
+    assert.deepEqual(xs.map((id) => SKILLS[id].q).sort().join(''), '112223', ln + c);
+  }
+  const fb = sv('fire_bolt', 1).power;
+  assert.ok(Math.abs(sv('fire_bolt', 150).power / fb - 1.5) < 0.01);
+  assert.ok(Math.abs(sv('fire_bolt', 300).power / fb - 1.5) < 0.01); // 150부터 더 오르지 않음
 });
 
 test('자동 판매는 땅에서 주운 장비만: 입었다 벗은 장비는 남는다', () => {
@@ -476,37 +476,37 @@ test('자동 판매는 땅에서 주운 장비만: 입었다 벗은 장비는 �
 
 test('각성 스킬: 1~3차는 차수만, 4차는 갈래에 그 스탯이 있어야', async () => {
   const { awakenOk, AWAKEN_SKILLS } = await import('../src/data/awaken_skills.js');
-  const { skillsOfTier } = await import('../src/data/skills.js');
+  const { SKILLS: SK1 } = await import('../src/data/skills.js'); await import('../src/data/skill_fx.js');
   const st = { titles: [] };
-  assert.equal(awakenOk(st, AWAKEN_SKILLS.aw_str1).ok, false);
+  assert.equal(awakenOk(st, SK1.aw_str1).ok, false);
   st.titles.push({ tier: 0, key: 'int' }, { tier: 1, key: 'int' }, { tier: 2, key: 'str+int' });
-  assert.ok(awakenOk(st, AWAKEN_SKILLS.aw_str1).ok && awakenOk(st, AWAKEN_SKILLS.aw_vit3).ok); // 하위 차수는 갈래와 상관없이
-  assert.equal(awakenOk(st, AWAKEN_SKILLS.aw_str4b).ok, false);       // 4차 각성 전
+  assert.ok(awakenOk(st, SK1.aw_str1).ok && awakenOk(st, SK1.aw_vit3).ok); // 하위 차수는 갈래와 상관없이
+  assert.equal(awakenOk(st, SK1.aw_str4b).ok, false);       // 4차 각성 전
   st.titles.push({ tier: 3, key: 'str+int+wis' });
-  assert.ok(awakenOk(st, AWAKEN_SKILLS.aw_str4b).ok && awakenOk(st, AWAKEN_SKILLS.aw_wis4a).ok);
-  assert.equal(awakenOk(st, AWAKEN_SKILLS.aw_dex4a).ok, false);       // 갈래에 민첩이 없다
-  for (let t = 1; t <= 5; t++) for (const id of skillsOfTier(t)) assert.ok(!AWAKEN_SKILLS[id] || AWAKEN_SKILLS[id].awaken === 0, id + ' 일반 책 풀에 섞이면 안 됨'); // 각성 전(0) 등급 채우기 스킬은 일반 책
-  // 각성 스킬북: 레벨 100 보스는 가끔 각성 스킬북을 떨어뜨리고, 각성 전이면 배울 수 없다
+  assert.ok(awakenOk(st, SK1.aw_str4b).ok && awakenOk(st, SK1.aw_wis4a).ok);
+  assert.equal(awakenOk(st, SK1.aw_dex4a).ok, false);       // 갈래에 민첩이 없다
+  // v0.50 책은 사냥터 권장 각성 차수: 레벨 110(2차) 보스는 2차 이상 책을 자주, 레벨 10 보스는 3차 이상 책을 주지 않는다
   const { rollLoot } = await import('../src/game/loot.js');
   const { canLearn } = await import('../src/game/skills.js');
-  let aw = 0; for (let i = 0; i < 400; i++) for (const d of rollLoot({ tier: 'boss', level: 110 })) if (d.item?.book && AWAKEN_SKILLS[d.item.book]) aw++;
-  assert.ok(aw > 5, '각성 스킬북 ' + aw);
-  let low = 0; for (let i = 0; i < 400; i++) for (const d of rollLoot({ tier: 'boss', level: 10 })) if (d.item?.book && AWAKEN_SKILLS[d.item.book]) low++;
+  const { SKILLS: SK0 } = await import('../src/data/skills.js'); await import('../src/data/skill_fx.js');
+  let aw = 0; for (let i = 0; i < 400; i++) for (const d of rollLoot({ tier: 'boss', level: 110 })) if (d.item?.book && SK0[d.item.book].chasu >= 2) aw++;
+  assert.ok(aw > 5, '2차 스킬북 ' + aw);
+  let low = 0; for (let i = 0; i < 400; i++) for (const d of rollLoot({ tier: 'boss', level: 10 })) if (d.item?.book && SK0[d.item.book].chasu >= 3) low++;
   assert.equal(low, 0);
   const p0 = { skills: {}, titles: [], stats: { str: 999, dex: 999, int: 999, wis: 999, vit: 999 } };
   assert.equal(canLearn(p0, 'aw_str1', p0.stats).ok, false);
   p0.titles.push({ tier: 0, key: 'str' });
   assert.ok(canLearn(p0, 'aw_str1', p0.stats).ok);
-  // 모든 스킬: 책 3단계 = 1차, 4단계 = 2차, 5단계 = 3차 각성이 있어야 배운다 (1 · 2단계는 바로)
-  const { SKILLS: S } = await import('../src/data/skills.js');
-  const byTier = (t) => Object.keys(S).find((id) => S[id].tier === t && !S[id].awaken);
+  // v0.50 차수: 1차 하품은 바로, 1차 중품 · 상품은 1차 각성(20), 2차는 2차 각성(60) …
+  const { SKILLS: S } = await import('../src/data/skills.js'); await import('../src/data/skill_fx.js');
+  const pickC = (c, q) => Object.keys(S).find((id) => S[id].chasu === c && S[id].line === 'str' && (q == null || S[id].q === q));
   const p1 = { skills: {}, titles: [], stats: p0.stats };
-  assert.ok(canLearn(p1, byTier(2), p1.stats).ok);
-  assert.equal(canLearn(p1, byTier(3), p1.stats).ok, false);
+  assert.ok(canLearn(p1, pickC(1, 1), p1.stats).ok);
+  assert.equal(canLearn(p1, pickC(1, 2), p1.stats).ok, false);
   p1.titles.push({ tier: 0, key: 'str' });
-  assert.ok(canLearn(p1, byTier(3), p1.stats).ok && !canLearn(p1, byTier(4), p1.stats).ok);
+  assert.ok(canLearn(p1, pickC(1, 2), p1.stats).ok && !canLearn(p1, pickC(2), p1.stats).ok);
   p1.titles.push({ tier: 1, key: 'str' }, { tier: 2, key: 'str' });
-  assert.ok(canLearn(p1, byTier(5), p1.stats).ok);
+  assert.ok(canLearn(p1, pickC(3), p1.stats).ok);
 });
 
 test('드랍: 각성 등급 책이 나와도 이름 있는 전설 · 보석 굴림을 건너뛰지 않는다, 탁월한 옵션', async () => {
@@ -615,13 +615,15 @@ test('강화는 기본 효과(기본 옵션 · 장신구 기본 효과)도 올�
   assert.ok(PL.baseMods({ base: 'novice_staff', ilvl: 1, plus: 10 }).maxMp > 5);
 });
 
-test('스킬 형상: 쓰는 쪽에 맞고, 같은 갈래 · 무기 · 손에서 겹치는 형상은 8쌍 이하', async () => {
+test('스킬 형상: 쓰는 쪽에 맞고, 같은 갈래 · 차수에서 겹치는 형상은 3쌍 이하', async () => {
   const { SKILLS } = await import('../src/data/skills.js'); await import('../src/data/skill_fx.js');
   const F = await import('../src/data/skill_forms.js');
-  for (const [id, f] of Object.entries(F.SKILL_FORMS)) { assert.ok(SKILLS[id], id); assert.ok(F.FORM_DEFS[f], f); assert.ok(F.formFits(f, F.formUser(SKILLS[id])), id + ' ' + f); }
+  for (const [id, f] of Object.entries(F.SKILL_FORMS)) { if (!SKILLS[id]) continue; // v0.50 정리로 옮겨진 스킬
+     assert.ok(F.FORM_DEFS[f], f); assert.ok(F.formFits(f, F.formUser(SKILLS[id])), id + ' ' + f); }
   const rows = Object.entries(SKILLS).filter(([, s]) => !s.passive && s.type !== 'buff' && s.type !== 'evade' && !s.retired).map(([id, s]) => ({ id, g: (s.lines || Object.keys(s.req || {})).slice().sort().join('+'), u: F.formUser(s), grip: s.grip, f: s.form || 'T:' + s.type }));
-  let dup = 0; for (const a of rows) for (const b of rows) if (a.id < b.id && a.g === b.g && a.u === b.u && (!a.grip || !b.grip || a.grip === b.grip) && a.f === b.f) dup++;
-  assert.ok(dup <= 8, 'dup ' + dup);
+  // v0.50 정리 뒤: 같은 갈래 · 같은 차수 · 같은 쪽(근접 · 활 · 주문) 안에서 형상이 겹치지 않는다 (3쌍까지)
+  let dup = 0; for (const a of rows) for (const b of rows) if (a.id < b.id && a.g === b.g && a.u === b.u && SKILLS[a.id].chasu === SKILLS[b.id].chasu && a.f === b.f) dup++;
+  assert.ok(dup <= 3, 'dup ' + dup);
 });
 
 test('화살통: 활과 함께 낄 수 있고, 활 아닌 무기 · 다른 보조 장비는 양손 규칙 그대로', () => {
