@@ -10,6 +10,7 @@ import { CAMPS } from '../engine2d/stage.js';
 import { dailyOf, dailyText } from '../game/daily.js';
 import { hordePen } from '../data/horde.js';
 import { RAID_SPOT, lordName } from '../data/raid.js';
+import { karmaNeed } from '../data/mugan.js';
 import { townOf } from '../game/town.js';
 import { PLOTS, BUILDINGS, VAULT_SPOT } from '../data/buildings.js';
 import { expNeeded, powerLevel, recAwaken } from '../game/growth.js';
@@ -81,7 +82,8 @@ export class HUD {
   }
 
   zone(z) {
-    txt($('.zoneName'), z ? z.name + (z.levels ? `  ·  위험도 ${z.levels[0]}~${z.levels[1]}` : '') : '황야');
+    { const o = z?.id ? this.world.tierOffset : 0, mg = z?.id && this.world.wt >= 5 ? `무간 ${this.world.mfloor}층 · ` : ''; // v0.49.75 세계 단계 보정을 더한 위험도 (예전엔 평온 값이 보였다)
+      txt($('.zoneName'), z ? mg + z.name + (z.levels ? `  ·  위험도 ${z.levels[0] + o}~${z.levels[1] + o}` : '') : '황야'); }
     { const fl = z?.id && this.world.st.flood?.list?.some((f) => f.zone === z.id); if (fl) txt($('.zoneName'), '범람지 · ' + $('.zoneName').textContent); $('.zoneName').style.color = fl ? '#ff6a5a' : ''; } // v0.44.44
     let info = '안전 지역 · 상점 이용 가능';
     const off = z?.id ? this.world.tierOffset : 0;
@@ -185,8 +187,9 @@ export class HUD {
     this.dailyT = (this.dailyT || 0) - dt; // v0.49.56 0.5초마다 (매 프레임 오늘 날짜 · 목록 문자열을 새로 만들었다)
     const dl = this.dailyT <= 0 ? ((this.dailyT = 0.5), dailyOf(st)) : null, dk = dl ? dl.list.map((q) => q.have + (q.done ? 'd' : '') + (q.got ? 'g' : '')).join('|') : this.dailyKey;
     // v0.50 군세: 모여 있으면 맨 위에 (벌칙이 붙으면 붉게)
+    const mf = w.wt >= 5 ? w.mfloor : 0, mk = mf ? (st.muganKarma?.[mf] || 0) : 0, ml = mf ? `<div class="dq hordeQ">무간 ${mf}층 · 업보 <b>${mf < (st.muganMax || 1) ? '열림' : `${Math.min(mk, karmaNeed(mf)).toLocaleString()} / ${karmaNeed(mf).toLocaleString()}`}</b></div>` : ''; // v0.49.75
     const hz = st.horde?.zone, hp = hz ? hordePen(st) : 0, hl = hz ? `<div class="dq hordeQ${hp ? ' pen' : ''}">군세 토벌 · ${ZONES.find((z) => z.id === hz)?.name || ''} <b>${hp ? `드랍 · 경험치 −${Math.round(hp * 100)}%` : '하겐'}</b></div>` : '';
-    if (dl && dk + hl !== this.dailyKey) { this.dailyKey = dk + hl; $('#dailyBox').innerHTML = hl + dl.list.filter((q) => !q.got).map((q) => `<div class="dq${q.done ? ' fin' : ''}">${dailyText(q)} <b>${q.done ? '완료' : `${q.have} / ${q.need}`}</b></div>`).join(''); }
+    if (dl && dk + hl + ml !== this.dailyKey) { this.dailyKey = dk + hl + ml; $('#dailyBox').innerHTML = ml + hl + dl.list.filter((q) => !q.got).map((q) => `<div class="dq${q.done ? ' fin' : ''}">${dailyText(q)} <b>${q.done ? '완료' : `${q.have} / ${q.need}`}</b></div>`).join(''); }
     if (this.qsetShown !== st.quickSet) { this.qsetShown = st.quickSet; document.querySelectorAll('#qsets [data-qset]').forEach((el) => el.classList.toggle('on', Number(el.dataset.qset) === (st.quickSet || 0))); }
     tfm($('.bar.hp i'), `scaleX(${Math.max(0, st.hp / d.maxHp)})`);
     txt($('.bar.hp span'), `${Math.ceil(Math.max(0, st.hp))} / ${d.maxHp}`);

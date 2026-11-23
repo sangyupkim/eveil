@@ -561,15 +561,15 @@ export class Windows {
   // v0.49 랭킹: 레벨(각성) · 전투력 탭. 왼쪽 순위 목록 | 오른쪽 내 기록. 열면 바로 불러온다 (1분 안에는 다시 받지 않는다)
   rank() {
     const st = this.w.st, R = (this.rankData ||= {});
-    return this.tabView(null, 'rank', [['aw', '레벨'], ['pw', '전투력']], (by) => {
+    return this.tabView(null, 'rank', [['aw', '레벨'], ['pw', '전투력'], ['mg', '무간지옥']], (by) => {
       const D = R[by];
       if (!D || Date.now() - D.at > 60000) { if (!D?.loading) { R[by] = { ...(D || {}), loading: true, at: D?.at || 0 }; cloud.rank(by).then((list) => { R[by] = { list: list ?? [], at: Date.now() }; if (this.kind === 'rank') this.render(); }); } }
-      const list = R[by]?.list, myName = st.nick || st.name, val = (r) => (by === 'pw' ? (r.pw || 0).toLocaleString() : `각성 ${r.aw}`);
+      const list = R[by]?.list, myName = st.nick || st.name, val = (r) => (by === 'pw' ? (r.pw || 0).toLocaleString() : by === 'mg' ? `${r.mg || 0}층` : `각성 ${r.aw}`);
       const me = list ? list.findIndex((r) => r.name === myName) : -1;
-      const L = `<h3>${by === 'pw' ? '전투력' : '레벨'} 순위 <span class="cnt">${list ? list.length : ''}</span></h3>` + (list == null ? '<div class="note">불러오는 중</div>' : !list.length ? '<div class="note">기록 없음</div>'
+      const L = `<h3>${by === 'pw' ? '전투력' : by === 'mg' ? '무간지옥' : '레벨'} 순위 <span class="cnt">${list ? list.length : ''}</span></h3>` + (list == null ? '<div class="note">불러오는 중</div>' : !list.length ? '<div class="note">기록 없음</div>'
         : list.map((r, i) => `<div class="row rankRow${i === me ? ' on' : ''}"><b class="rk${i < 3 ? ' top' + i : ''}">${i + 1}</b><div class="grow"><b>${esc(r.name)}</b> <small style="color:#ffd860">${esc(r.title || '')}</small></div><b class="goldTxt">${val(r)}</b></div>`).join(''));
       const pw = st.power || 0, P = this.w.d ? powerParts(this.w.d, st) : null, big = (v) => (v >= 1e8 ? `${(v / 1e8).toFixed(1)}억` : v >= 1e4 ? `${(v / 1e4).toFixed(1)}만` : Math.round(v).toLocaleString());
-      const Rr = `<h3>내 기록</h3><div class="kv tight"><span>이름</span><b>${esc(myName || '')}</b><span>각성</span><b>${st.awakenings || 0}</b><span>전투력</span><b class="goldTxt">${pw.toLocaleString()}</b><span>순위</span><b>${me >= 0 ? `${me + 1}위` : list ? '50위 밖' : ''}</b></div>`
+      const Rr = `<h3>내 기록</h3><div class="kv tight"><span>이름</span><b>${esc(myName || '')}</b><span>각성</span><b>${st.awakenings || 0}</b><span>전투력</span><b class="goldTxt">${pw.toLocaleString()}</b>${(st.maxTier || 1) >= 5 ? `<span>무간지옥</span><b>${st.muganMax || 1}층</b>` : ''}<span>순위</span><b>${me >= 0 ? `${me + 1}위` : list ? '50위 밖' : ''}</b></div>`
         + (P ? `<h3 style="margin-top:10px">전투력</h3><div class="kv tight"><span>공격</span><b>${big(P.off)}</b><span>방어</span><b>${big(P.def)}</b></div>` : '');
       return [L, Rr];
     });
@@ -1455,6 +1455,7 @@ export class Windows {
         <div class="setRow"><span>휴대폰 스킬 배치</span><div class="opts"><button class="btn${set.skillLayout === 'grid' ? '' : ' on'}" data-qlay="ring">원형</button><button class="btn${set.skillLayout === 'grid' ? ' on' : ''}" data-qlay="grid">사각</button></div></div>
         <div class="setRow"><span>UI 위치</span><div class="opts"><button class="btn" data-uiedit="1">위치 편집</button><button class="btn" data-uireset="1">처음대로</button></div></div>
         <div class="setRow"><span>세계 단계</span><div class="opts">${TIER_NAMES.map((n, i) => `<button class="btn${(st.worldTier || 1) === i + 1 ? ' on' : ''}" data-tier="${i + 1}" ${i + 1 > (st.maxTier || 1) ? 'disabled' : ''}>${n}</button>`).join('')}</div></div>
+        ${(st.maxTier || 1) >= 5 ? `<div class="setRow"><span>무간지옥 층</span><div class="opts"><button class="btn" data-mfloor="${(st.mugan || 1) - 1}" ${(st.mugan || 1) <= 1 ? 'disabled' : ''}>−</button><b style="min-width:4em;text-align:center">${Math.min(st.mugan || 1, st.muganMax || 1)}층</b><button class="btn" data-mfloor="${(st.mugan || 1) + 1}" ${(st.mugan || 1) >= (st.muganMax || 1) ? 'disabled' : ''}>+</button><button class="btn" data-mfloor="${st.muganMax || 1}">최고 ${st.muganMax || 1}층</button></div></div>` : ''}
         <div class="setRow"><span>타겟 고정</span><div class="opts">${onoff('targetLock', set.targetLock !== false)}</div></div>
         <div class="setRow"><span>떠다니는 조이스틱</span><div class="opts">${onoff('joyFloat', set.joyFloat !== false)}</div></div>
         <div class="setRow"><span>화면 흔들림</span><div class="opts">${onoff('shake', set.shake !== false)}</div></div>
@@ -1687,6 +1688,7 @@ export class Windows {
     ask('[data-mawk]', () => ['용병 각성', '이 용병을 각성합니다', '각성'], (el) => { const r = awakenMerc(st, el.dataset.mawk); if (r.ok) audio.play('awaken'); townDone(r, '용병이 각성했습니다'); });
     ask('[data-mfire]', () => ['용병 내보내기', '이 용병을 내보냅니다. 되돌릴 수 없습니다', '내보내기'], (el) => townDone(dismiss(st, el.dataset.mfire)));
     on('[data-tier]', (el) => { w.setTier(Number(el.dataset.tier)); this.render(); });
+    on('[data-mfloor]', (el) => { w.setMuganFloor(Number(el.dataset.mfloor)); this.render(); });
     on('[data-travel]', (el) => { this.portalAt = null; this.mapZoom = null; this.close(); w.travel(el.dataset.travel); });
     on('[data-mzoom]', (el) => { const Z = [1, 1.6, 2.4, 3.2], i = Math.max(0, Math.min(Z.length - 1, Z.indexOf(this.mapZoom || 1) + Number(el.dataset.mzoom))); this.mapZoom = Z[i]; this.mapCenter = true; audio.play('click'); this.render(); });
     on('[data-camp]', (el) => { const [z, what] = el.dataset.camp.split('|'); const r = w.buildCamp(z, what); if (!r.ok && r.why) w.ui.toast(r.why); w.ui.dirty(); this.render(); });

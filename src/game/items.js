@@ -1,5 +1,7 @@
 // 아이템 생성: 등급 · 랜덤 옵션 · 이름 · 가격
 import { MIX_ITEM, mixUnique } from '../data/resist.js';
+import { MUGAN_FLAT, muganK, muganName } from '../data/mugan.js';
+import { HIGH_TIERS } from '../data/items.js';
 import { BASES, AFFIXES, RARITY, RARITY_ORDER, AFFIX_PREFIX, LEGEND_NAMES, MYTH_NAMES, WEAPON_CLASSES, affixFits, statPref, UTILITY_AFFIX, atkKindOf, favOf } from '../data/items.js';
 import { SKILLS, BOOK_TIERS } from '../data/skills.js';
 import { R, randInt, pick, weighted } from './rng.js';
@@ -52,6 +54,7 @@ export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1, favor =
     // 탁월한 옵션 (영웅 · 전설, 옵션마다 8%): 최대치의 110 ~ 130% — 같은 전설이라도 눈에 띄는 장비가 나오게 (v0.39.6)
     const great = (rarity === 'hero' || rarity === 'legend' || rarity === 'myth') && rng() < (rarity === 'myth' ? 0.2 : 0.08);
     if (great) v = Math.max(v + 1, Math.round(max * (1.1 + rng() * 0.2)));
+    if (ilvl > 500 && MUGAN_FLAT.has(id)) v = Math.round(v * muganK(ilvl)); // v0.49.75 무간지옥 장비: 고정값 옵션은 층마다 ×1.15
     it.affixes.push(great ? { id, v, great: true } : { id, v });
   }
   if (rarity === 'legend' || rarity === 'myth') { it.title = pick(rarity === 'myth' ? MYTH_NAMES : LEGEND_NAMES, rng); it.unique = Math.floor(rng() * UNIQUE_BASE); }
@@ -78,7 +81,7 @@ export function capAffixes(it) {
   { const k = !it.mix && atkKindOf(BASES[it.base]); if (k) for (const a of it.affixes) { const want = k === 'magic' ? 'matk' : 'patk'; if ((a.id === 'matk' || a.id === 'patk') && a.id !== want) { a.id = want; n++; } } }
   for (const a of it.affixes) {
     const A = AFFIXES[a.id]; if (!A || typeof a.v !== 'number') continue;
-    const cap = Math.round(Math.max(A.min, A.max(it.ilvl || 1) * (RARITY[it.rarity]?.mult || 1)) * 1.3);
+    const cap = Math.round(Math.max(A.min, A.max(it.ilvl || 1) * (RARITY[it.rarity]?.mult || 1)) * 1.3 * (MUGAN_FLAT.has(a.id) ? muganK(it.ilvl || 1) : 1));
     if (a.v > cap) { a.v = cap; n++; }
   }
   return n;
@@ -99,16 +102,19 @@ export function itemName(it) {
   const n = baseName(it);
   return it.plus ? `+${it.plus} ${n}` : n;
 }
+// v0.49.75 무간지옥 장비 이름: 높은 단계 이름(종극 …)을 층 이름(업화 · 나락 …)으로, 30개를 돌면 Ⅱ · Ⅲ
+const HIGH_WORDS = new Set(HIGH_TIERS.map((x) => x[1]));
+const bname = (it) => { const n = BASES[it.base].name; if (!(it.ilvl > 500)) return n; const w = n.split(' '), M = muganName(it.ilvl); const rest = HIGH_WORDS.has(w[0]) ? w.slice(1).join(' ') : n; return `${M.name} ${rest}${M.roman ? ' ' + M.roman : ''}`; };
 function baseName(it) {
   if (it.shard) return `능력치 파편: ${AFFIXES[it.shard.id].text.replace('{v}', it.shard.v)}`;
   if (it.book) return `스킬북: ${SKILLS[it.book].name}`;
   const base = BASES[it.base];
   if (base.type === 'potion' || base.stack) return base.name;
   if (it.named) return it.title;
-  if (it.rarity === 'legend' || it.rarity === 'myth') return `${it.title} ${base.name}`;
-  if (it.rarity === 'common' || !it.affixes.length) return base.name;
+  if (it.rarity === 'legend' || it.rarity === 'myth') return `${it.title} ${bname(it)}`;
+  if (it.rarity === 'common' || !it.affixes.length) return bname(it);
   const top = [...it.affixes].sort((a, b) => b.v / AFFIXES[b.id].max(it.ilvl) - a.v / AFFIXES[a.id].max(it.ilvl))[0];
-  return `${AFFIX_PREFIX[top.id]} ${base.name}`;
+  return `${AFFIX_PREFIX[top.id]} ${bname(it)}`;
 }
 
 export function itemColor(it) {

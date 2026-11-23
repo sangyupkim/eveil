@@ -8,7 +8,7 @@ import { awakenOk } from '../data/awaken_skills.js';
 import { DUNGEON_X, entranceOf, MAX_STAGE, stageMods, dungeonLevel, layout as dungeonLayout, cellPos, N, DUNGEON_DIFFS } from '../data/dungeons.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { gemGradeFor } from '../data/legends.js';
-export const TIER_NAMES = ['평온', '악몽', '지옥', '혼돈']; // v0.42 혼돈 = 각성 380 ~ 500
+export const TIER_NAMES = ['평온', '악몽', '지옥', '혼돈', '무간지옥']; // v0.42 혼돈 = 각성 380 ~ 500 · v0.49.75 무간지옥 = 끝없는 층 (data/mugan.js)
 import { TITLE_AT, titleKey, titleName, perkChoices, UNIQUES } from '../data/titles.js';
 // 게임 월드: 플레이어 조작 · 몬스터 AI · 전투 · 스킬 · 드랍 · 사망 · 자동 사냥
 import * as THREE from 'three';
@@ -31,6 +31,8 @@ import { addAP, gainExp, rewardFactor, recAwaken } from '../game/growth.js';
 import { addSkillExp, skillValues, skillEff, modsOf, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
 import { rollLoot, rollDeathDrop, rollBook } from '../game/loot.js';
 import { HORDE, hordePen, conqLeft, hordeGap } from '../data/horde.js';
+import { MUGAN, karmaNeed } from '../data/mugan.js';
+import { muganCurveK } from '../data/tiercurve.js';
 import { RAID, RAID_GRADES, BLESS, BLESS_IDS, RAID_SPOT, raidWeek, raidOf, raidOpen, fmtTime } from '../data/raid.js';
 import { dropMats, liberateAdd, dropEss, resAdd, resCount, claim as claimMerc, lootRoomFull, brewCollect, collect as collectPlot, repeatTick, autoBrewTick } from '../game/town.js';
 import { vaultAdd } from '../game/vault.js';
@@ -81,11 +83,11 @@ const FAR = ['leap', 'snipe', 'fan', 'hail', 'pull'];
 const farOf = (id) => { let h = 0; for (const c of id || '') h = (h * 31 + c.charCodeAt(0)) >>> 0; const i = h % FAR.length; return [FAR[i], FAR[(i + 1 + (h >> 4) % (FAR.length - 1)) % FAR.length]]; };
 
 // 세계 단계 배율 (레벨 보정 위에 더): 악몽 · 지옥은 몬스터가 확실히 더 세다
-const TIER_K = { 1: { hp: 1, dmg: 1, pat: 1 }, 2: { hp: 1.8, dmg: 1.45, pat: 1.25 }, 3: { hp: 3, dmg: 2, pat: 1.5 }, 4: { hp: 7, dmg: 3.6, pat: 1.8 } };
+const TIER_K = { 1: { hp: 1, dmg: 1, pat: 1 }, 2: { hp: 1.8, dmg: 1.45, pat: 1.25 }, 3: { hp: 3, dmg: 2, pat: 1.5 }, 4: { hp: 7, dmg: 3.6, pat: 1.8 }, 5: { hp: 7, dmg: 3.6, pat: 2 } };
 // v0.50 지역 배율: 평온은 chapters.js, 악몽부터는 목표 곡선(tiercurve.js)에 그 지역 보스 · 네임드 비율을 곱한다. TIER_K의 체력 · 공격은 곡선에 녹였다 (패턴 속도만 남김)
-let curWt = 1;
+let curWt = 1, curFloor = 1;
 const chapterK = (zi, tier = 'normal') => {
-  const c = chapterK0(zi, tier), t = tierCurveK(zi, curWt);
+  const c = chapterK0(zi, tier), t = curWt >= 5 ? muganCurveK(zi, curFloor) : tierCurveK(zi, curWt);
   if (!t) return { ...c, hp: c.hp * TIER_K[curWt].hp, dmg: c.dmg * TIER_K[curWt].dmg };
   const n = chapterK0(zi, 'normal');
   return { hp: t.hp * (c.hp / n.hp), dmg: t.dmg * (c.dmg / n.dmg), exp: t.exp };
@@ -803,7 +805,7 @@ export class World {
   }
   // 낮은 지역에서 나와도 세기는 가장 높은 보스를 잡은 지역 것으로 (범람과 같은 방식)
   hordeScale(m, cz) {
-    curWt = this.wt; const fz = this.floodRefZi();
+    curWt = this.wt; curFloor = this.mfloor; const fz = this.floodRefZi();
     if (fz >= 0 && cz >= 0 && fz !== cz) { const A = chapterK(fz, m.tier), B = chapterK(cz, m.tier); m.maxHp = Math.round(m.maxHp * A.hp / B.hp); m.hp = m.maxHp; m.dmg = m.dmg.map((v) => v * A.dmg / B.dmg); m.exp *= (A.exp || 1) / (B.exp || 1); }
   }
   hordeTick() {
@@ -1114,6 +1116,7 @@ export class World {
     const st = this.st, t = st.worldTier || 1;
     if (t >= TIER_NAMES.length || (st.maxTier || 1) > t) return;
     if (t === 3 && (st.awakenings || 0) < 300) return; // 혼돈은 4차 전직(300) 뒤에
+    if (t === 4) { if ((st.awakenings || 0) < 500 || (st.finalBoss || 0) < 4) return; st.maxTier = 5; st.muganMax ||= 1; this.ui.toast('무간지옥이 열렸습니다 — 끝없는 층', '#ff5a3a'); sfx('awaken'); return; } // v0.49.75
     const boss = (st.finalBoss || 0) >= t || (t === 1 && (st.bossDone?.[FINAL_ZONE] || 0)); // 예전 저장: 1단계 보스 기록
     if (!boss || (st.dungeons?.[FINAL_ZONE] || 0) < 3 * t) return;
     st.maxTier = t + 1; this.ui.toast(`세계 ${TIER_NAMES[st.maxTier - 1]} 단계가 열렸습니다`, '#ff9a6a'); sfx('awaken');
@@ -1244,8 +1247,9 @@ export class World {
 
   get canShop() { const P = this.player.pos, c = inCamp(P.x, P.z); return this.inTown || !!(c && this.st.camps?.[c.zone]?.merchant) || !!(this.eventNpc && dist2(this.eventNpc.pos, P) < 6); }
   // 세계 단계: 마지막 보스를 잡으면 다음 단계가 열린다. 단계마다 모든 몬스터 레벨 +66 (드랍 장비 · 보석 등급도 따라 오른다)
-  get wt() { return Math.min(4, Math.max(1, this.st.worldTier || 1)); }
-  get tierOffset() { return [0, TIER_STEP, TIER_STEP * 2, 380][this.wt - 1]; } // 세계 단계 한 칸 = 평온 마지막 지역 레벨 (120)
+  get wt() { return Math.min(5, Math.max(1, this.st.worldTier || 1)); }
+  get mfloor() { return Math.max(1, Math.min(this.st.muganMax || 1, this.st.mugan || 1)); } // v0.49.75 무간지옥 층
+  get tierOffset() { return this.wt >= 5 ? 380 + 10 * this.mfloor : [0, TIER_STEP, TIER_STEP * 2, 380][this.wt - 1]; } // 세계 단계 한 칸 = 평온 마지막 지역 레벨 (120)
   setTier(t) {
     const st = this.st;
     if (t < 1 || t > (st.maxTier || 1) || t === (st.worldTier || 1) || this.dungeon) return;
@@ -1255,6 +1259,14 @@ export class World {
     for (const sp of this.spawners) { sp.mon = null; sp.timer = 0; }
     this.zone = null;
     this.ui.toast(`세계 ${TIER_NAMES[t - 1]} — 모든 몬스터가 강해졌습니다`, '#ff9a6a'); sfx('awaken'); this.ui.dirty();
+  }
+  // v0.49.75 무간지옥 층 고르기 (연 층까지)
+  setMuganFloor(n) {
+    const st = this.st; n = Math.max(1, Math.min(st.muganMax || 1, Math.floor(n)));
+    if (n === this.mfloor || this.dungeon) return;
+    st.mugan = n;
+    if (this.wt >= 5) { for (const m of this.monsters) { m.dead = true; this.stage.remove(m.actor); } this.monsters = []; this.raid = null; for (const sp of this.spawners) { sp.mon = null; sp.timer = 0; } this.zone = null; this.ui.toast(`무간 ${n}층`, '#ff5a3a'); }
+    this.ui.dirty();
   }
   get inTown() {
     return dist2(this.player.pos, TOWN) < TOWN.r;
@@ -1303,12 +1315,13 @@ export class World {
       type = sp.forceType;
     } else {
       type = weightedPick(sp.zone.spawns);
+      if (this.wt >= 5 && MONSTERS[type]?.attack === 'melee' && Math.random() < MUGAN.ranged) { const rs = Object.keys(sp.zone.spawns).filter((t) => MONSTERS[t]?.attack !== 'melee'); if (rs.length) type = rs[Math.floor(Math.random() * rs.length)]; } // v0.49.75 무간: 원거리 30% 이상
       if (Math.random() < CONFIG.eliteChance) tier = 'elite';
     }
     const def = MONSTERS[type];
     const T = TIERS[tier];
     // 챕터(지역) 보정: 지역마다 머무는 시간 · 처치 시간 · 보스 세기를 맞춘다 (data/chapters.js, 던전도 그 지역 값)
-    curWt = this.wt; const czn = sp.zone || this.dungeon?.zone, CK = chapterK(czn ? ALL_ZONES.indexOf(czn) : -1, tier);
+    curWt = this.wt; curFloor = this.mfloor; const czn = sp.zone || this.dungeon?.zone, CK = chapterK(czn ? ALL_ZONES.indexOf(czn) : -1, tier);
     const L = sp.level + this.tierOffset;
     const look = MONSTER_LOOK[type] || { sprite: 'goblin' };
     const fam = familyOf(look.sprite);
@@ -2014,6 +2027,13 @@ export class World {
     if (m.tier !== 'normal') this.ui.log(`${m.name} 처치!`, TIERS[m.tier].color);
     if (!m.dungeon && m.tier === 'boss') { (st.rec ||= {}).bosses = (st.rec.bosses || 0) + 1; if (m.sp?.zone?.id) (st.bossDone ||= {})[m.sp.zone.id] = 1; } // 지역 보스를 잡으면 그 지역 던전이 열린다
     if (!m.dungeon && m.tier === 'boss' && m.sp?.zone?.id === FINAL_ZONE) { st.finalBoss = Math.max(st.finalBoss || 0, st.worldTier || 1); this.checkTierUnlock(); }
+    if (this.wt >= 5 && !m.dungeon && !m.flood && !m.child && m.sp?.zone) { // v0.49.75 무간: 업보 · 층 주인
+      const f = this.mfloor, K = (st.muganKarma ||= {}); K[f] = (K[f] || 0) + 1;
+      if (m.tier === 'boss' && m.sp.zone.id === FINAL_ZONE && f >= (st.muganMax || 1)) {
+        if (K[f] >= karmaNeed(f)) { st.muganMax = f + 1; this.ui.toast(`무간 ${f + 1}층이 열렸습니다`, '#ff5a3a'); sfx('awaken'); this.fx.pillar(m.pos.x, m.pos.z, 0xff3a2a, 2, 8, 2); }
+        else this.ui.toast(`업보가 모자랍니다 · ${K[f].toLocaleString()} / ${karmaNeed(f).toLocaleString()}`, '#ff8a5a');
+      }
+    }
     if (!m.dungeon && !m.noLoot && m.tier === 'boss' && Math.random() < 0.3 * (this.autoKill ? CONFIG.autoDrop ?? 0.3 : 1)) { // 보스가 가끔 열쇠
       if (addItem(st, makeItem('dungeon_key', { qty: 1 }, st))) { this.ui.toast('던전 열쇠를 얻었습니다', '#ffd84a'); sfx('rare', 0.7); }
     }
@@ -2319,7 +2339,7 @@ export class World {
       if (m.affix.includes('frenzy')) { m.speed *= 1.3; m.def = { ...m.def, interval: m.def.interval / 1.3 }; }
       m.name = `${tier === 'boss' ? '범람한 ' : ''}${m.name} [${m.affix.map((x) => FLOOD_AFFIX[x].name).join('·')}]`;
       // v0.49.12 지역 세기 보정은 범람 난 지역이 아니라 가장 높은 보스를 잡은 지역 것으로 (낮은 지역 범람이 레벨만 높고 약했다)
-      { curWt = this.wt; const fz = this.floodRefZi(), cz = ALL_ZONES.indexOf(zn); if (fz >= 0 && cz >= 0 && fz !== cz) { const A = chapterK(fz, tier), B = chapterK(cz, tier); m.maxHp = Math.round(m.maxHp * A.hp / B.hp); m.hp = m.maxHp; m.dmg = m.dmg.map((v) => v * A.dmg / B.dmg); } }
+      { curWt = this.wt; curFloor = this.mfloor; const fz = this.floodRefZi(), cz = ALL_ZONES.indexOf(zn); if (fz >= 0 && cz >= 0 && fz !== cz) { const A = chapterK(fz, tier), B = chapterK(cz, tier); m.maxHp = Math.round(m.maxHp * A.hp / B.hp); m.hp = m.maxHp; m.dmg = m.dmg.map((v) => v * A.dmg / B.dmg); } }
       if (k) { m.maxHp *= k; m.hp = m.maxHp; }
       m.actor.setGlow(0x400010);
       return m;
@@ -2403,7 +2423,7 @@ export class World {
   }
   // v0.44.41 도감용: 그 지역 · 지금 세계 단계에서 이 몬스터의 체력 · 공격력 (spawn과 같은 식)
   monStats(type, tier, zn) {
-    curWt = this.wt; const def = MONSTERS[type], T = TIERS[tier], L = zn.levels[1] + this.tierOffset, CK = chapterK(ALL_ZONES.indexOf(zn), tier);
+    curWt = this.wt; curFloor = this.mfloor; const def = MONSTERS[type], T = TIERS[tier], L = zn.levels[1] + this.tierOffset, CK = chapterK(ALL_ZONES.indexOf(zn), tier);
     return { level: L, hp: Math.round(def.hp * (1 + 0.4 * (L - 1)) * T.hp * CK.hp), dmg: def.dmg.map((v) => Math.round(v * (1 + 0.27 * (L - 1)) * T.dmg * CK.dmg)), armor: L * 2, speed: def.speed, attack: def.attack };
   }
   // v0.44.35 인내의 폭발: 모은 피해 × 계수(%)를 둘레로. 탱커가 딜러가 되지 않게 무기 한 방의 1.5 ~ 8배 사이로

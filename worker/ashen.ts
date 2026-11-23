@@ -84,6 +84,7 @@ function setup(db: DB): Promise<unknown> {
     ])
     // v0.49 전투력 칸 (있으면 그냥 넘어간다)
     .then(() => db.prepare('ALTER TABLE ash_rank ADD COLUMN pw INTEGER').run().catch(() => null))
+    .then(() => db.prepare('ALTER TABLE ash_rank ADD COLUMN mg INTEGER').run().catch(() => null)) // v0.49.75 무간지옥 최고 층
     .catch((e) => {
       ready = null;
       throw e;
@@ -132,7 +133,9 @@ export async function ashen(db: DB, d: Record<string, unknown>, ip: string, admi
   }
   if (type === 'ash_rank') {
     // v0.49 by = 'pw'면 전투력 순, 아니면 각성(레벨) 순
-    const r = d.by === 'pw'
+    const r = d.by === 'mg'
+      ? await db.prepare('SELECT name, aw, dg, title, pw, mg FROM ash_rank WHERE mg > 0 ORDER BY mg DESC, aw DESC, at ASC LIMIT 50').all()
+      : d.by === 'pw'
       ? await db.prepare('SELECT name, aw, dg, title, pw FROM ash_rank WHERE pw > 0 ORDER BY pw DESC, at ASC LIMIT 50').all()
       : await db.prepare('SELECT name, aw, dg, title, pw FROM ash_rank ORDER BY aw DESC, dg DESC, at ASC LIMIT 50').all();
     return { ok: true, list: r.results || [] };
@@ -372,11 +375,12 @@ export async function ashen(db: DB, d: Record<string, unknown>, ip: string, admi
       const dg = Object.values(st.dungeons || {}).reduce((a: number, v: any) => a + Math.min(10, Math.max(0, Math.floor(Number(v) || 0))), 0);
       const aw = Math.min(999, Math.max(0, Math.floor(Number(st.awakenings) || 0)));
       const pw = Math.min(1e12, Math.max(0, Math.floor(Number(st.power) || 0))); // v0.49 전투력 (게임이 계산해 저장에 넣는다)
+      const mg = (Number(st.maxTier) || 1) >= 5 ? Math.min(100000, Math.max(0, Math.floor(Number(st.muganMax) || 0))) : 0; // v0.49.75 무간지옥 최고 층
       const t = Array.isArray(st.titles) && st.titles.length ? String(st.titles[st.titles.length - 1].name || '').slice(0, 20) : '';
       // 순위 이름은 서버에 차지한 닉네임 (없으면 순위에 올리지 않는다)
       const nm = key === id ? { name: String(st.name || id).slice(0, 16) } : await db.prepare('SELECT name FROM ash_names WHERE k = ?').bind(key).first<{ name: string }>();
-      if (nm) await db.prepare('INSERT INTO ash_rank (id, name, aw, dg, title, at, pw) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name = excluded.name, aw = excluded.aw, dg = excluded.dg, title = excluded.title, at = excluded.at, pw = excluded.pw')
-        .bind(key, nm.name, aw, dg, t, Date.now(), pw).run();
+      if (nm) await db.prepare('INSERT INTO ash_rank (id, name, aw, dg, title, at, pw, mg) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name = excluded.name, aw = excluded.aw, dg = excluded.dg, title = excluded.title, at = excluded.at, pw = excluded.pw, mg = excluded.mg')
+        .bind(key, nm.name, aw, dg, t, Date.now(), pw, mg).run();
     } catch { /* 순위는 실패해도 저장은 된다 */ }
     if (last) await db.prepare('UPDATE ash_handoff SET done = 1 WHERE id = ?').bind(id).run();
     return { ok: true, at };

@@ -740,4 +740,16 @@ test('강화 계승: 계승권 필수 50 ~ 80%, 축복석과 함께 80 ~ 95%, �
   for (let i = 0; i < 200; i++) { const x = mk('leather_armor'), y = mk('leather_armor'); x.plus = 40; st.inv.push(IT.makeItem('t_inherit', { qty: 1 }, st), IT.makeItem('t_inherit2', { qty: 1 }, st)); const r = G.inherit(st, x, y, true, () => {}); assert.ok(r.ok && y.plus >= 32 && y.plus <= 38, String(y.plus)); }
 });
 
+test('무간지옥: 끝없는 층 · 장비 이름 · 배율 · 업보 · 경험치 대전제', async () => {
+  const MG = await import('../src/data/mugan.js'), TC = await import('../src/data/tiercurve.js'), IT = await import('../src/game/items.js');
+  assert.equal(MG.muganName(505).name, '업화'); assert.equal(MG.muganName(615).name, '나락'); assert.equal(MG.muganName(3505).roman, 'Ⅱ');
+  assert.ok(Math.abs(MG.muganK(510) - 1.15) < 1e-9 && MG.muganK(500) === 1);
+  assert.ok(MG.karmaNeed(1) < MG.karmaNeed(10) && MG.karmaNeed(100) > 20000);
+  let p = TC.muganCurveK(19, 1); for (let n = 2; n <= 60; n++) { const k = TC.muganCurveK(19, n); assert.ok(k.hp > p.hp && k.dmg > p.dmg, 'n' + n); p = k; }
+  assert.ok(TC.killsPerAwaken(510) > TC.killsPerAwaken(500) && TC.killsPerAwaken(1500) > 10000); // 높을수록 오래
+  const st = { nextUid: 1 }, a = IT.makeItem('leather_armor', { rarity: 'rare', ilvl: 600 }, st), b = IT.makeItem('leather_armor', { rarity: 'rare', ilvl: 500 }, st);
+  assert.ok(IT.itemName(a).includes('나락') || IT.itemName(a).includes('업화'));
+  const { scaledArmor } = await import('../src/game/player.js'); a.q = b.q = 1; assert.ok(scaledArmor(a) / scaledArmor(b) > 3.5); // 10층 = ×1.15^10 ≈ 4 (레벨 몫 포함)
+});
+
 console.log(`\n${n}개 통과`);

@@ -1,3 +1,4 @@
+import { MUGAN, muganK } from '../data/mugan.js';
 import { relicBonus } from '../data/relics.js';
 import { spellToMatk } from '../data/items.js';
 import { GEMS, GEM_GRADES } from '../data/legends.js';
@@ -100,14 +101,14 @@ export function jewelImplicit(it) {
 export function baseMods(it) {
   const m = jewelImplicit(it) || BASES[it.base]?.mods, out = {}; // 장신구는 기본 효과를 레벨로 (갈래 장신구의 작던 고정값 대신)
   if (!m) return out;
-  const k = plusK(it);
-  for (const [s, v] of Object.entries(m)) out[s] = FLAT.has(s) ? Math.round(v * k) : Math.round(v * k * 10) / 10; // 능력치 · HP · MP는 정수, % · 회복은 소수 한 자리
+  const k = plusK(it), mk = muganK(it.ilvl || 1);
+  for (const [s, v] of Object.entries(m)) out[s] = FLAT.has(s) ? Math.round(v * k * mk) : Math.round(v * k * 10) / 10; // v0.49.75 무간 장비는 고정값만 ×1.15/층 // 능력치 · HP · MP는 정수, % · 회복은 소수 한 자리
   return out;
 }
-export const scaledArmor = (it) => Math.round(BASES[it.base].armor * (1 + 0.1 * (it.ilvl - 1)) * plusK(it) * (it.q || 1));
+export const scaledArmor = (it) => Math.round(BASES[it.base].armor * (1 + 0.1 * (it.ilvl - 1)) * plusK(it) * (it.q || 1) * muganK(it.ilvl || 1));
 export const scaledDmg = (it) => {
   const b = BASES[it.base];
-  const m = (1 + 0.1 * (it.ilvl - 1)) * plusK(it) * (it.q || 1);
+  const m = (1 + 0.1 * (it.ilvl - 1)) * plusK(it) * (it.q || 1) * muganK(it.ilvl || 1);
   return [Math.round(b.dmg[0] * m), Math.round(b.dmg[1] * m)];
 };
 
@@ -197,4 +198,4 @@ export function derive(st, buffs = {}) {
 // 몬스터에게 받는 피해 감소율
 // v0.44.62 몬스터 레벨 계수: 120까지 8 → 400에서 40 (높은 레벨에서 방어가 거의 무적이 되던 것)
 export const armorK = (L) => 8 + 32 * Math.min(1, Math.max(0, (L - 120) / 280));
-export const damageReduction = (armor, monLevel) => armor / (armor + 40 + armorK(monLevel) * monLevel);
+export const damageReduction = (armor, monLevel) => armor / (armor + 40 + armorK(monLevel) * monLevel * muganK(monLevel, MUGAN.armor)); // v0.49.75 무간: 몬스터 쪽 값도 층마다 ×1.15
