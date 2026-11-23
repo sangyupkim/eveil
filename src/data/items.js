@@ -253,8 +253,9 @@ export const AFFIXES = {
   dmgPct: { text: '피해 +{v}%', min: 5, max: (l) => 15 + lk(l) * 2, slots: ['weapon'] },
   spellPct: { text: '주문 피해 +{v}%', min: 5, max: (l) => 12 + lk(l) * 1.5, slots: ['weapon', 'helm', ...JEWEL], retired: true }, // v0.44.37 폐지 → 마법 공격력으로 바뀐다 (spellToMatk)
   // v0.44.37 물리 · 마법 공격력 (지팡이 · 홀이 아닌 무기는 마법 공격력 0 → 이 옵션으로)
-  matk: { text: '마법 공격력 +{v}', min: 2, max: (l) => 3 + lk(l) * 1.1, slots: ['weapon', 'offhand', ...JEWEL], notCls: ['staff', 'scepter', 'wand', 'gscepter'] },
-  patk: { text: '물리 공격력 +{v}', min: 2, max: (l) => 3 + lk(l) * 0.9, slots: ['weapon'], onlyCls: ['staff', 'scepter', 'wand', 'gscepter'] },
+  // v0.50 공격력 옵션은 자기 공격 종류만: 마법 무기 · 마도서 · 보주 → 마법 공격력, 물리 무기 · 화살통 · 방패 → 물리 공격력 (예전엔 반대로 붙어 완드에 물리 공격력만 떴다). 장신구는 둘 다
+  matk: { text: '마법 공격력 +{v}', min: 2, max: (l) => 3 + lk(l) * 1.1, slots: ['weapon', 'offhand', ...JEWEL], atkKind: 'magic' },
+  patk: { text: '물리 공격력 +{v}', min: 2, max: (l) => 3 + lk(l) * 0.9, slots: ['weapon', 'offhand', ...JEWEL], atkKind: 'phys' },
   atkSpd: { text: '공격 속도 +{v}%', min: 3, max: (l) => Math.min(30, 8 + l * 0.5), slots: ['weapon', 'gloves', ...JEWEL] },
   crit: { text: '치명타 확률 +{v}%', min: 1, max: (l) => Math.min(20, 3 + l * 0.25), slots: ['weapon', 'gloves', 'helm', ...JEWEL] },
   hpRegen: { text: '초당 HP 회복 +{v}', min: 1, max: (l) => 2 + l * 0.4, slots: ['armor', 'belt', 'helm', ...JEWEL] },
@@ -381,4 +382,27 @@ for (const [k, m] of Object.entries(_MATS)) BASES['mat_' + k] = { name: m.name, 
 
 // v0.44.37 예전 「주문 피해 %」 → 마법 공격력 (그 옵션이 최대치의 몇 %였는지 그대로)
 export const spellToMatk = (v, l = 1) => Math.round((v / (12 + lk(l) * 1.5)) * (3 + lk(l) * 1.1) * 0.8);
-export const affixFits = (a, base) => (!a.slots || a.slots.includes(base.slot)) && (!a.notCls || !a.notCls.includes(base.cls)) && (!a.onlyCls || a.onlyCls.includes(base.cls));
+// v0.50 장비의 공격 종류 (무기 · 보조): 'magic' | 'phys' | null(장신구 · 방어구)
+export const offKind = (b) => { const n = b?.tpl || b?.ltpl || ''; const id = String(b?.name || '') + n; return /화살통/.test(b?.name || '') ? 'phys' : /orb|tome|보주|마도서/.test(id) ? 'magic' : /shield|방패/.test(id) ? 'phys' : null; };
+export const atkKindOf = (b) => (!b ? null : b.slot === 'weapon' ? (WEAPON_CLASSES[b.cls]?.kind === 'magic' ? 'magic' : 'phys') : b.slot === 'offhand' ? offKind(b) : null);
+export const affixFits = (a, base) => (!a.slots || a.slots.includes(base.slot)) && (!a.notCls || !a.notCls.includes(base.cls)) && (!a.onlyCls || a.onlyCls.includes(base.cls))
+  && (!a.atkKind || !['weapon', 'offhand'].includes(base.slot) || atkKindOf(base) === a.atkKind);
+// v0.50 스탯 옵션 가중: 그 장비의 주 · 보조 스탯이 잘 붙는다 (주 ×3 · 보조 ×2 · 나머지 ×0.5). 장신구는 고르게
+const MAT = [[/iron|knight|great_helm|plate|chain|gauntlet|war_boots|heavy|warden|dragon_(helm|plate|gauntlets|boots|belt)|frost_(helm|plate|gauntlets|boots)|투구|갑주|건틀릿|장화|흉갑|손갑|전투화/, ['str', 'vit']],
+  [/leather|hunter|scout|shadow|hood|두건|가죽|장갑/, ['dex', 'str']], [/cloth|wizard|sage|arcane|frost_robe|inferno|mage|ember|rune_sash|모자|로브|법의|소매|신발|허리끈|관$|신$/, ['int', 'wis']]];
+export function statPref(b) {
+  if (!b) return null;
+  if (b.line) { const side = { str: 'vit', dex: 'str', int: 'wis', wis: 'int', vit: 'str' }[b.line]; return [b.line, side]; }
+  if (b.slot === 'weapon') { const c = WEAPON_CLASSES[b.cls]; return c ? [c.ap, c.side || c.ap] : null; }
+  if (b.slot === 'offhand') { const n = b.name || ''; return /화살통/.test(n) ? ['dex', 'str'] : offKind(b) === 'magic' ? (/보주|orb/.test(n + (b.tpl || '')) ? ['wis', 'int'] : ['int', 'wis']) : ['vit', 'str']; }
+  if (['ring', 'amulet'].includes(b.slot)) return null;
+  const id = (b.tpl || '') + ' ' + (b.ltpl || '') + ' ' + Object.keys(BASES).find((k) => BASES[k] === b) + ' ' + (b.name || '');
+  for (const [re, st] of MAT) if (re.test(id)) return st;
+  return null;
+}
+// v0.50 무기 · 보조마다 잘 붙는 옵션 (×2)
+export const FAV_AFFIX = { sword: ['patk', 'atkSpd', 'crit'], dagger: ['atkSpd', 'crit', 'patk'], bow: ['patk', 'crit', 'atkSpd'], mace: ['patk', 'maxHp', 'lifeSteal'], tshield: ['maxHp', 'patk', 'dmgPct'],
+  wand: ['matk', 'atkSpd', 'crit'], staff: ['matk', 'dmgPct', 'maxMp'], scepter: ['matk', 'maxMp', 'mpRegen'], gscepter: ['matk', 'maxMp', 'dmgPct'],
+  quiver: ['patk', 'crit', 'atkSpd'], tome: ['matk', 'maxMp', 'mpRegen'], orb: ['maxMp', 'mpRegen', 'matk'], shield: ['armorPct', 'maxHp', 'patk'] };
+export const favOf = (b) => (!b ? null : b.slot === 'weapon' ? FAV_AFFIX[b.cls] : b.slot === 'offhand' ? FAV_AFFIX[/화살통/.test(b.name || '') ? 'quiver' : offKind(b) === 'magic' ? (/보주|orb/.test((b.name || '') + (b.tpl || '')) ? 'orb' : 'tome') : 'shield'] : null);
+export const UTILITY_AFFIX = new Set(['goldFind', 'magicFind', 'skillExp']); // 잡옵션: 장비 하나에 한 줄까지

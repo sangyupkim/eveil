@@ -1,6 +1,6 @@
 // 아이템 생성: 등급 · 랜덤 옵션 · 이름 · 가격
 import { MIX_ITEM, mixUnique } from '../data/resist.js';
-import { BASES, AFFIXES, RARITY, RARITY_ORDER, AFFIX_PREFIX, LEGEND_NAMES, MYTH_NAMES, WEAPON_CLASSES, affixFits } from '../data/items.js';
+import { BASES, AFFIXES, RARITY, RARITY_ORDER, AFFIX_PREFIX, LEGEND_NAMES, MYTH_NAMES, WEAPON_CLASSES, affixFits, statPref, UTILITY_AFFIX, atkKindOf, favOf } from '../data/items.js';
 import { SKILLS, BOOK_TIERS } from '../data/skills.js';
 import { R, randInt, pick, weighted } from './rng.js';
 import { UNIQUES, UNIQUE_BASE } from '../data/titles.js';
@@ -38,8 +38,13 @@ export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1, favor =
   });
   // 신화: 신화 전용 옵션 세 개를 먼저 (v0.44.18 두 개 → 세 개) (부위에 맞는 것 중)
   if (rarity === 'myth') { const mp = Object.keys(AFFIXES).filter((id) => AFFIXES[id].mythOnly && (!AFFIXES[id].slots || AFFIXES[id].slots.includes(slot))); for (let i = 0; i < 3 && mp.length; i++) { const id = mp.splice(Math.floor(rng() * mp.length), 1)[0], a = AFFIXES[id], mx = a.max(ilvl); it.affixes.push({ id, v: Math.max(a.min, Math.round(mx * (0.7 + rng() * 0.3))), myth: true }); } }
+  // v0.50 스탯 옵션 가중 (주 ×3 · 보조 ×2 · 나머지 ×0.5) · 잡옵션 한 줄까지
+  const pref = statPref(base), fav = favOf(base), S5 = ['str', 'dex', 'int', 'wis', 'vit'];
+  const wOf = (id) => (fav?.includes(id) ? 2 : !pref || !S5.includes(id) ? 1 : id === pref[0] ? 3 : id === pref[1] ? 2 : 0.5);
+  const draw = () => { let t = 0; for (const id of pool) t += wOf(id); let r = rng() * t; for (let k = 0; k < pool.length; k++) { r -= wOf(pool[k]); if (r <= 0) return pool.splice(k, 1)[0]; } return pool.pop(); };
   for (let i = 0; i < n - (rarity === 'myth' ? it.affixes.length : 0) && pool.length; i++) {
-    let id = pool.splice(Math.floor(rng() * pool.length), 1)[0];
+    let id = draw();
+    if (UTILITY_AFFIX.has(id)) for (let k = pool.length - 1; k >= 0; k--) if (UTILITY_AFFIX.has(pool[k])) pool.splice(k, 1);
     if (favor && ['str', 'dex', 'int', 'wis', 'vit'].includes(id) && !favor.includes(id) && rng() < 0.7) { const alt = pool.filter((x) => favor.includes(x)); if (alt.length) { pool.push(id); id = alt[Math.floor(rng() * alt.length)]; pool.splice(pool.indexOf(id), 1); } }
     const a = AFFIXES[id];
     const max = Math.max(a.min, a.max(ilvl) * r.mult);
@@ -69,6 +74,8 @@ export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1, favor =
 export function capAffixes(it) {
   if (!it?.affixes?.length) return 0;
   let n = 0;
+  // v0.50 예전 장비: 자기 종류가 아닌 공격력 옵션(완드의 물리 공격력 등)은 같은 수치의 자기 종류로 (혼합 전용 장비는 그대로)
+  { const k = !it.mix && atkKindOf(BASES[it.base]); if (k) for (const a of it.affixes) { const want = k === 'magic' ? 'matk' : 'patk'; if ((a.id === 'matk' || a.id === 'patk') && a.id !== want) { a.id = want; n++; } } }
   for (const a of it.affixes) {
     const A = AFFIXES[a.id]; if (!A || typeof a.v !== 'number') continue;
     const cap = Math.round(Math.max(A.min, A.max(it.ilvl || 1) * (RARITY[it.rarity]?.mult || 1)) * 1.3);
