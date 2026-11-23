@@ -23,7 +23,7 @@ export const BUILDINGS = {
   smithy: {
     name: '대장간', up: [...[5, 15, 30, 50], ...UP_MORE], need: 0, desc: '장비 강화', max: 10, cost: (lv) => ext([1800, 7200, 24000, 72000, 180000])[lv] ?? null,
     // 단계마다 강화 상한
-    cap: (lv) => [0, 4, 6, 8, 9, 10, 12, 14, 16, 18, 20][lv],
+    cap: (lv) => [0, 4, 6, 8, 9, 10, 12, 14, 16, 18, Infinity][lv], // v0.50 10단계 = 초월 강화(상한 없음)
     look: [['grassland', 103, 0, 0], ['grassland', 100, 1.6, 0.8], ['dungeon', 151, -1.4, 0.6]],
   },
   mine: {
@@ -75,8 +75,9 @@ export const BUILDINGS = {
 // 강화: +n 확률 · 금화 · 강화석
 export const ENHANCE = {
   chance: (n) => [1, 1, 0.9, 0.7, 0.5, 0.35, 0.25, 0.15, 0.1, 0.05][n] ?? 0.05,   // +11 ~ +20도 5% (더 낮추지 않는다, 대신 강화석이 많이 든다)   // n → n+1 (+5 50%, +10 5%)
-  gold: (n, ilvl) => Math.round((60 + ilvl * 15) * Math.pow(1.6, Math.min(n, 10)) * Math.pow(1.25, Math.max(0, n - 10))),
-  ore: (n) => (n < 10 ? 8 + n * 8 : 2 + ((n - 10) % 5) * 2),   // +1 ~ +10: 강화석 8 ~ 80 · +11 ~ +15: 상급 2 ~ 10 · +16 ~ +20: 최상급 2 ~ 10
+  // v0.50 초월 강화(+21~, n ≥ 20): 한 번 = +20 한 번 값 × 1.1 × 1.02^(n − 20) · 최상급 강화석 +20 값 + 10단계마다 1 (어느 단계도 +20보다 싸지 않다)
+  gold: (n, ilvl) => n >= 20 ? Math.round(ENHANCE.gold(19, ilvl) * 1.1 * Math.pow(1.02, n - 20)) : Math.round((60 + ilvl * 15) * Math.pow(1.6, Math.min(n, 10)) * Math.pow(1.25, Math.max(0, n - 10))),
+  ore: (n) => (n >= 20 ? ENHANCE.ore(19) + Math.floor((n - 20) / 10) : n < 10 ? 8 + n * 8 : 2 + ((n - 10) % 5) * 2),   // +1 ~ +10: 강화석 8 ~ 80 · +11 ~ +15: 상급 2 ~ 10 · +16 ~ +20: 최상급 2 ~ 10
   oreId: (n) => (n < 10 ? 'ore' : n < 15 ? 'ore2' : 'ore3'),
   power: 0.08, // 단계마다 피해 · 방어 +8%
 };

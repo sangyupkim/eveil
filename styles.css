@@ -879,3 +879,8 @@ body.ui-edit #qsets { display: none; }
 .skUnl span.on { background: rgba(255, 211, 106, .2); color: #ffd36a; }
 .skVar { flex-wrap: wrap; align-items: center; gap: 4px; margin: 2px 0; }
 .skVar .btn { padding: 2px 8px; font-size: .8em; }
+/* v0.50 초월 강화 숫자 */
+.plusG { color: #ffd84a !important; text-shadow: 0 0 4px rgba(255, 200, 60, .6); }
+.plusRg { color: #ff9a4a !important; text-shadow: 0 0 5px rgba(255, 80, 40, .7); }
+.plusRb { background: linear-gradient(90deg, #ff6a6a, #ffd36a, #7dff8a, #6ac8ff, #c48aff); -webkit-background-clip: text; background-clip: text; color: transparent !important; animation: plusRb 3s linear infinite; background-size: 200% 100%; }
+@keyframes plusRb { to { background-position: 200% 0; } }

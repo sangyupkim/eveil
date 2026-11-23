@@ -77,7 +77,8 @@ export function gearSum(st) {
 export const JEWEL_SLOTS = new Set(['ring', 'amulet']);
 export const affixK = () => 1;
 export const affixV = (it, a) => a.v;
-export const plusK = (it) => 1 + 0.08 * (it.plus || 0) + 0.05 * Math.floor((it.plus || 0) / 5);
+// v0.50 초월 강화(+21~): 단계마다 기본 효과 +5%씩 (+20 ×2.8 → +40 ×3.8 → +100 ×6.8)
+export const plusK = (it) => { const n = it.plus || 0; return n <= 20 ? 1 + 0.08 * n + 0.05 * Math.floor(n / 5) : 2.8 + 0.05 * (n - 20); };
 // v0.49.34 기본 옵션이 없던 반지 · 목걸이의 기본 효과 (아이템 레벨만큼). 구리 · 은 반지와 그냥 반지는 장비마다 다섯 스탯 중 하나
 const STAT5 = ['str', 'dex', 'int', 'wis', 'vit'], FLAT = new Set([...STAT5, 'allStats', 'maxHp', 'maxMp', 'matk', 'patk']);
 const JEWEL = {

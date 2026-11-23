@@ -43,6 +43,8 @@ import { variantsOf, VARIANT_RANKS, modsOf, skillEff } from '../game/skills.js';
 import { SCHOOL_NAMES } from '../data/skills.js';
 import { awakenOk, skillGrade, QUALITY, gradeName } from '../data/awaken_skills.js';
 import { ROLE_NAMES } from '../data/skill_roster.js';
+// v0.50 초월 강화 숫자 색: +21 금색 · +50 붉은 금 · +100 무지개
+const plusCls = (n) => n >= 100 ? ' plusRb' : n >= 50 ? ' plusRg' : n > 20 ? ' plusG' : '';
 import { GEMS, GEM_GRADES, gemId } from '../data/legends.js';
 import { applyShard, canApply, lockMax, shardCost, shardVals } from '../game/shards.js';
 import { HERBS, HERB_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
@@ -359,7 +361,7 @@ export class Windows {
   // ───── v0.45 대장간: 강화 · 제련 · 분해와 용병 탭. 한 탭은 두 쪽(왼쪽 작업 · 오른쪽 고르기)까지만 ─────
   itemCells(list, selKey, attr) {
     if (!list.length) return '<div class="note">없음</div>';
-    return `<div class="grid fGrid">${list.map(([k, it, where]) => `<div class="cell${rar(it)}${k === selKey ? ' sel' : ''}" data-${attr}="${k}">${ico(it)}${lk(it)}${it.plus ? `<span class="q">+${it.plus}</span>` : ''}${where === '착용' ? '<span class="lab">E</span>' : where === '창고' ? '<span class="lab">창고</span>' : ''}</div>`).join('')}</div>`;
+    return `<div class="grid fGrid">${list.map(([k, it, where]) => `<div class="cell${rar(it)}${k === selKey ? ' sel' : ''}" data-${attr}="${k}">${ico(it)}${lk(it)}${it.plus ? `<span class="q${plusCls(it.plus)}">+${it.plus}</span>` : ''}${where === '착용' ? '<span class="lab">E</span>' : where === '창고' ? '<span class="lab">창고</span>' : ''}</div>`).join('')}</div>`;
   }
   // v0.45 건물별 탭 화면 (대장간 · 제작소는 따로)
   buildingView(b, sel) {
@@ -476,7 +478,7 @@ export class Windows {
     // v0.49.59 반지 · 목걸이: 붙은 옵션도 강화만큼
     const afRows = affixK(nx) > 1 ? (it.affixes || []).map((a) => { const A = AFFIXES[a.id]; if (!A) return ''; const nm = A.text.replace(/ ?[+-]?\{v\}%?/, ''), u = /%/.test(A.text) ? '%' : ''; return `<span>${nm}</span><b>${affixV(it, a)}${u}${max ? '' : ` <i class="arw">▶</i> <em>${affixV(nx, a)}${u}</em>`}</b>`; }).join('') : '';
     const have = resCount(st, c.oreId), okGold = st.gold >= c.gold, okOre = have >= c.ore;
-    let L = `<div class="forgeTop"><div class="cell forgeSlot${rar(it)}">${ico(it)}</div><div><div class="nm" style="color:${itemColor(it)}">${esc(itemName(it))}</div><div class="note">${where} · Lv ${it.ilvl}</div><div class="plusBig">+${n}${max ? ' <small>상한</small>' : ` <i class="arw">▶</i> <em>+${n + 1}</em>`}</div></div></div>`;
+    let L = `<div class="forgeTop"><div class="cell forgeSlot${rar(it)}">${ico(it)}</div><div><div class="nm" style="color:${itemColor(it)}">${esc(itemName(it))}</div><div class="note">${where} · Lv ${it.ilvl}</div><div class="plusBig${plusCls(n)}">+${n}${max ? ' <small>상한</small>' : ` <i class="arw">▶</i> <em>+${n + 1}</em>`}</div></div></div>`;
     if (!max) L += `<div class="kv">${stat}${bmRows}${afRows}<span>성공 확률</span><b class="${c.jang >= 1 ? 'goldTxt' : ''}">${c.jang >= 1 ? '100%' : `${+(c.chance * 100).toFixed(1)}%`}</b><span>장인의 기운</span><b>${+(c.jang * 100).toFixed(1)}%</b><span>금화</span><b style="${okGold ? '' : 'color:#ff7060'}">${c.gold.toLocaleString()} G</b><span>${c.oreName}</span><b style="${okOre ? '' : 'color:#ff7060'}">${c.ore} <small class="note">/ ${have}</small></b></div>
       <div class="btns forgeGo"><button class="btn gold big" data-enh="${key}" ${okGold && okOre ? '' : 'disabled'}>강화</button></div>`;
     else L += `<div class="kv">${stat}${bmRows}${afRows}</div>`;
@@ -1170,7 +1172,7 @@ export class Windows {
         <div class="btns"><button class="btn gold" data-collect="1" ${b.stock < 1 ? 'disabled' : ''}>거두기</button></div>`;
       if (b.type === 'smithy') {
         const cap = enhanceCap(st);
-        right += COL + `<h3>강화</h3><div class="note">강화 상한 +${cap} · 실패해도 단계 유지 · 실패하면 장인의 기운이 쌓이고 100%면 반드시 성공</div>`;
+        right += COL + `<h3>강화</h3><div class="note">${cap === Infinity ? '초월 강화' : `강화 상한 +${cap}`} · 실패해도 단계 유지 · 실패하면 장인의 기운이 쌓이고 100%면 반드시 성공</div>`;
         for (const [key, it, where] of gearList(st, (x) => !x.book && !x.noDrop)) {
           const c = enhanceCost(it, st), max = (it.plus || 0) >= cap, rc = reforgeCost(it);
           right += `<div class="row"><div class="cell shopIco${rar(it)}">${ico(it)}</div><div class="grow"><b style="color:${itemColor(it)}">${esc(itemName(it))}</b> <small class="note">${where}</small>

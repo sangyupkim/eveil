@@ -639,4 +639,12 @@ test('화살통: 활과 함께 낄 수 있고, 활 아닌 무기 · 다른 보�
   if (sw) { const it = mk(sw); INV.equip(st, it.uid); assert.equal(st.equip.offhand, null, '활 아닌 무기로 바꾸면 화살통은 가방으로'); }
 });
 
+test('초월 강화(+21~): +20보다 싸지 않고 단계마다 기본 효과 +5%, 대장간 10단계는 상한 없음', async () => {
+  const { ENHANCE, BUILDINGS: B } = await import('../src/data/buildings.js');
+  const { plusK } = await import('../src/game/player.js');
+  for (let n = 20; n < 120; n++) assert.ok(ENHANCE.gold(n, 300) > ENHANCE.gold(n - 1, 300) && ENHANCE.ore(n) >= ENHANCE.ore(19) && ENHANCE.oreId(n) === 'ore3', 'n' + n);
+  assert.ok(Math.abs(plusK({ plus: 40 }) - 3.8) < 1e-9 && Math.abs(plusK({ plus: 100 }) - 6.8) < 1e-9 && plusK({ plus: 21 }) > plusK({ plus: 20 }));
+  assert.equal(B.smithy.cap(10), Infinity);
+});
+
 console.log(`\n${n}개 통과`);
