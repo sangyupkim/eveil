@@ -1154,8 +1154,8 @@ export class World {
       // (예전: 첫 장비는 내 무기 종류로 — 디아블로식으로 완전히 무작위가 되게 없앰)
       this.dropGround({ kind: 'item', item: makeItem(base, { rarity, ilvl: lv }, st) }, m.pos.x + i * 1.2, m.pos.z + 1);
     }
-    const tier = dg.stage >= 7 ? 5 : dg.stage >= 4 ? 4 : 3, pool = Object.keys(SKILLS).filter((id) => SKILLS[id].tier === tier && !SKILLS[id].awaken); // 각성 등급이 정해진 스킬은 몬스터 레벨로만
-    this.dropGround({ kind: 'item', item: makeBook(pool[Math.floor(Math.random() * pool.length)], st) }, m.pos.x - 1.2, m.pos.z + 1);
+    // v0.49.78 스킬북: 그 던전 레벨의 권장 각성 차수 (v0.50 스킬 정리 뒤 예전 「등급 3 ~ 5 · 각성 조건 없음」 목록이 비어 보상이 멈추고 나가기가 안 되던 것)
+    { const q = dg.stage >= 7 ? 3 : dg.stage >= 4 ? (Math.random() < 0.5 ? 3 : 2) : 2, bk = rollBook({ level: lv, tier: 'boss', sp: { zone: zn } }, st, Math.random, q); if (bk) this.dropGround({ kind: 'item', item: bk }, m.pos.x - 1.2, m.pos.z + 1); }
     this.dropGround({ kind: 'gold', amount: Math.round(lv * 60 * (1 + dg.stage * 0.2) * D.loot * MB.gold) }, m.pos.x, m.pos.z - 1);
     if (dg.diff > 1) { const e = dropEss(st, lv, 'boss', D.loot); if (e) this.ui.log(`${BASES[e.id].name} +${e.n}`, '#c8b0ff'); }
     if (myth) { this.fx.shake(0.6); this.fx.pillar(m.pos.x, m.pos.z, 0xff4a8a, 3, 8, 2.5); sfx('rare'); this.ui.toast('신화 장비!', '#ff4a8a'); (st.rec ||= {}).myths = (st.rec.myths || 0) + myth; }

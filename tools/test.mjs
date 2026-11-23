@@ -752,4 +752,9 @@ test('무간지옥: 끝없는 층 · 장비 이름 · 배율 · 업보 · 경험
   const { scaledArmor } = await import('../src/game/player.js'); a.q = b.q = 1; assert.ok(scaledArmor(a) / scaledArmor(b) > 3.5); // 10층 = ×1.15^10 ≈ 4 (레벨 몫 포함)
 });
 
+test('던전 돌파 책: 어느 레벨 · 등급이든 책이 나온다 (빈 목록이면 돌파 보상이 멈췄다)', async () => {
+  const { rollBook } = await import('../src/game/loot.js');
+  for (const lv of [5, 30, 80, 160, 320, 520, 900]) for (const q of [2, 3]) for (let i = 0; i < 20; i++) assert.ok(rollBook({ level: lv, tier: 'boss' }, null, Math.random, q), lv + '/' + q);
+});
+
 console.log(`\n${n}개 통과`);
