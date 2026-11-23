@@ -166,6 +166,8 @@ export const BASES = {
   eng_stone: { name: '각인석', type: 'raid', price: 0, icon: 2085, text: '신화 장비에 새길 수 있는 각인' },
   box_gear: { name: '군주의 장비 상자', type: 'raid', price: 0, icon: 2042, text: '내 무기 · 갈래에 맞는 장비 (신화 · 전설 · 영웅)' },
   box_shard: { name: '군주의 파편 상자', type: 'raid', price: 0, icon: 2014, text: '좋은 능력치 파편 3 ~ 5개' },
+  t_inherit: { name: '계승권', type: 'raid', price: 0, stack: true, icon: 2035, text: '대장간 강화 계승에 하나 (강화 단계 50 ~ 80%를 넘김)' },
+  t_inherit2: { name: '계승 축복석', type: 'raid', price: 0, stack: true, icon: 2036, text: '계승권과 함께 쓰면 80 ~ 95%를 넘김' },
   t_book: { name: '상급 스킬북 고르기권', type: 'raid', price: 0, stack: true, icon: 2087, text: '지금 차수의 상품 스킬북 하나를 고릅니다' }, // v0.42.10 강화 · 극한 돌파마다 1개, 100개로 신화 장비
   dungeon_key2: { name: '강화 던전 열쇠', type: 'key', price: 6000, stack: true }, dungeon_key3: { name: '극한 던전 열쇠', type: 'key', price: 20000, stack: true }, // v0.42 제작소에서 // 상점에서 팔지 않는다: 오늘의 의뢰 · 보스에게서만
   pet_egg: { name: '강아지', type: 'pet', pet: 'pet_dog', price: 3000, stack: true, shop: true },

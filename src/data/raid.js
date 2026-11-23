@@ -87,6 +87,7 @@ export const RAID_SHOP = [
   { id: 't_engrave', price: 80, lim: 1 },
   { id: 'box_shard', price: 50, lim: 2, group: 'box' },
   { id: 'box_gear', price: 70, lim: 2, group: 'box' },
+  { id: 't_inherit', price: 20, lim: 5 }, { id: 't_inherit2', price: 60, lim: 1 }, // v0.49.75 계승권 · 계승 축복석
   { id: 't_book', price: 100, lim: 1 },
   ...LORDS.map((L) => ({ id: 'title_' + L.id, title: L.id, price: 200, lim: 1, once: true })),
 ];

@@ -58,3 +58,26 @@ export function extractShard(st, it, idx, remove) {
 }
 // 끼고 있는 장비의 각인 (효과 계산용)
 export const engraves = (st) => { const o = {}; for (const it of Object.values(st.equip || {})) if (it?.eng) o[it.eng] = (o[it.eng] || 0) + 1; return o; };
+
+// v0.49.75 강화 계승: 계승권 하나로 녹일 장비(src)의 강화 단계 50 ~ 80%를 같은 부위 장비(dst)에 넘긴다 (계승 축복석을 함께 쓰면 80 ~ 95%). 실패 없음. 녹인 장비는 사라진다
+export const slotKind = (it) => { const s = BASES[it?.base]?.slot; return s === 'ring1' || s === 'ring2' ? 'ring' : s; };
+export const inheritRange = (src, boost = false) => { const n = src?.plus || 0; return boost ? [Math.floor(n * 0.8), Math.floor(n * 0.95)] : [Math.floor(n * 0.5), Math.floor(n * 0.8)]; };
+export function inheritCheck(st, src, dst, boost = false) {
+  if (!src || !dst || src === dst) return { ok: false, why: '장비 둘을 고르세요' };
+  if (!BASES[src.base]?.slot || !BASES[dst.base]?.slot) return { ok: false, why: '장비만 계승할 수 있습니다' };
+  if (slotKind(src) !== slotKind(dst)) return { ok: false, why: '같은 부위끼리만 계승합니다' };
+  if (src.lock) return { ok: false, why: '잠근 장비는 녹일 수 없습니다' };
+  if ((src.plus || 0) < 2) return { ok: false, why: '녹일 장비가 +2 이상이어야 합니다' };
+  if (inheritRange(src, boost)[1] <= (dst.plus || 0)) return { ok: false, why: '받을 장비가 이미 그보다 높습니다' };
+  if (countOf(st, 't_inherit') < 1) return { ok: false, why: '계승권이 필요합니다' };
+  if (boost && countOf(st, 't_inherit2') < 1) return { ok: false, why: '계승 축복석이 없습니다' };
+  return { ok: true };
+}
+export function inherit(st, src, dst, boost, remove, rng = R) {
+  const c = inheritCheck(st, src, dst, boost); if (!c.ok) return c;
+  const [lo, hi] = inheritRange(src, boost), m = lo + Math.floor(rng() * (hi - lo + 1)), before = dst.plus || 0;
+  takeOne(st, 't_inherit'); if (boost) takeOne(st, 't_inherit2');
+  remove();
+  dst.plus = Math.max(before, m); dst.jang = 0; dst.fails = 0;
+  return { ok: true, from: src.plus || 0, before, plus: dst.plus };
+}

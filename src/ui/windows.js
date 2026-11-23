@@ -47,7 +47,7 @@ import { SCHOOL_NAMES } from '../data/skills.js';
 import { awakenOk, skillGrade, QUALITY, gradeName } from '../data/awaken_skills.js';
 import { ROLE_NAMES } from '../data/skill_roster.js';
 import { hordePen } from '../data/horde.js';
-import { rerollAffix, addSocket, engrave, extractEngrave, extractShard } from '../game/raidgear.js';
+import { rerollAffix, addSocket, engrave, extractEngrave, extractShard, inherit, inheritCheck, inheritRange } from '../game/raidgear.js';
 import { RAID, RAID_GRADES, RAID_RULES, RAID_SHOP, ENGRAVE, LORDS, raidWeek, raidOf, raidOpen, fmtTime, shopPrice, shopBought, lordName } from '../data/raid.js';
 import { MUTS as MUTS_ } from '../data/mutators.js';
 const NEED_NAMES = { melee: '근접 무기 (검 · 도끼 · 둔기 · 단검 · 대방패)', bow: '활' }; // v0.50 스킬이 쓰는 무기
@@ -462,7 +462,7 @@ export class Windows {
   smithyView(b, sel) {
     const st = this.w.st;
     const tune = raidOpen(st) || ['t_reroll', 't_socket', 't_engx', 't_shardx', 't_engrave', 'eng_stone'].some((id) => countOf(st, id)); // v0.50 원정 상점 물건이 있으면 손질 탭
-    return this.tabView(b, 'smithy', [['enh', '강화'], ['ref', '제련'], ...(tune ? [['tune', '손질']] : []), ['salv', '분해'], ['merc', '용병']], (k) => k === 'enh' ? this.smithEnh(st) : k === 'ref' ? this.smithRef(st, b) : k === 'tune' ? this.smithTune(st) : k === 'salv' ? this.smithSalv(st) : this.mercTab(b, sel));
+    return this.tabView(b, 'smithy', [['enh', '강화'], ['inh', '계승'], ['ref', '제련'], ...(tune ? [['tune', '손질']] : []), ['salv', '분해'], ['merc', '용병']], (k) => k === 'enh' ? this.smithEnh(st) : k === 'inh' ? this.smithInherit(st) : k === 'ref' ? this.smithRef(st, b) : k === 'tune' ? this.smithTune(st) : k === 'salv' ? this.smithSalv(st) : this.mercTab(b, sel));
   }
   workshopView(b, sel) {
     const st = this.w.st, t = townOf(st), P = this.workshopParts(st, b, t);
@@ -496,6 +496,21 @@ export class Windows {
       <div class="btns">${n >= 20 && countOf(st, 'whetstone') ? `<button class="btn${this.useWhet ? ' on' : ''}" data-whet="1">왕좌의 숫돌 ${countOf(st, 'whetstone')} · +5%</button>` : ''}${n >= 10 && n < 20 && countOf(st, 'whet2') ? `<button class="btn${this.useWhet2 ? ' on' : ''}" data-whet2="1">정련 숫돌 ${countOf(st, 'whet2')} · +3%</button>` : ''}${n >= 20 && countOf(st, 'ward_scroll') ? `<button class="btn${this.useWard ? ' on' : ''}" data-ward="1">보호 주문서 ${countOf(st, 'ward_scroll')} · 기운 ×2</button>` : ''}</div>
       <div class="btns forgeGo"><button class="btn gold big" data-enh="${key}" ${okGold && okOre ? '' : 'disabled'}>강화</button></div>`;
     else L += `<div class="kv">${stat}${bmRows}${afRows}</div>`;
+    return [L, right];
+  }
+  // v0.49.75 강화 계승: 왼쪽 = 녹일 장비 · 받을 장비 · 넘어가는 단계 | 오른쪽 = 장비 고르기 (고르는 칸을 왼쪽에서 바꾼다)
+  smithInherit(st) {
+    const pick = this.ihPick || 'src', list = gearList(st, (x) => !x.book && !x.noDrop && (pick === 'dst' || (x.plus || 0) >= 2));
+    const src = gearAt(st, this.ihSrc), dst = gearAt(st, this.ihDst), tk = !!this.ihTicket && countOf(st, 't_inherit2') > 0;
+    const right = `<h3>${pick === 'src' ? '녹일 장비' : '받을 장비'} <span class="cnt">${list.length}</span></h3>` + this.itemCells(list, pick === 'src' ? this.ihSrc : this.ihDst, 'ihsel');
+    const slot = (it, k, nm) => `<div class="row pick${pick === k ? ' on' : ''}" data-ihpick="${k}"><div class="cell shopIco${it ? rar(it) : ''}">${it ? ico(it) : ''}</div><div class="grow"><b>${nm}</b><div class="note" style="color:${it ? itemColor(it) : ''}">${it ? `${esc(itemName(it))}` : '고르기'}</div></div></div>`;
+    let L = `<h3>강화 계승</h3>` + slot(src, 'src', '녹일 장비') + slot(dst, 'dst', '받을 장비');
+    if (src && dst) {
+      const c = inheritCheck(st, src, dst, tk), [lo, hi] = inheritRange(src, tk);
+      L += `<div class="kv" style="margin-top:6px"><span>넘어가는 단계</span><b><em>+${lo} ~ +${hi}</em></b><span>받을 장비 지금</span><b>+${dst.plus || 0}</b><span>계승권</span><b style="${countOf(st, 't_inherit') ? '' : 'color:#ff7060'}">${countOf(st, 't_inherit')} / 1</b></div>
+        ${countOf(st, 't_inherit2') ? `<div class="btns"><button class="btn${this.ihTicket ? ' on' : ''}" data-ihticket="1">계승 축복석 ${countOf(st, 't_inherit2')} · 80 ~ 95%</button></div>` : ''}
+        ${c.ok ? '' : `<div class="bad">${c.why}</div>`}<div class="btns forgeGo"><button class="btn gold big" data-ihgo="1" ${c.ok ? '' : 'disabled'}>계승</button></div>`;
+    }
     return [L, right];
   }
   // v0.50 손질 (원정 상점 물건): 오른쪽 장비 → 왼쪽 옵션 다시 굴림 · 구멍 · 각인 · 파편 추출
@@ -1561,6 +1576,18 @@ export class Windows {
     on('[data-whet2]', () => { this.useWhet2 = !this.useWhet2; audio.play('click'); this.render(); });
     on('[data-ward]', () => { this.useWard = !this.useWard; audio.play('click'); this.render(); });
     on('[data-rush]', () => { const r = rushBuild(st, this.townSel); if (!r.ok) { w.ui.toast(r.why); audio.play('error'); } else { audio.play('buff'); w.ui.toast('공사 시간이 절반으로 줄었습니다', '#ffd84a'); } w.ui.dirty(); this.render(); });
+    on('[data-ihpick]', (el) => { this.ihPick = el.dataset.ihpick; audio.play('click'); this.render(); });
+    on('[data-ihsel]', (el) => { if ((this.ihPick || 'src') === 'src') { this.ihSrc = el.dataset.ihsel; if (this.ihDst === this.ihSrc) this.ihDst = null; this.ihPick = 'dst'; } else { this.ihDst = el.dataset.ihsel; if (this.ihSrc === this.ihDst) this.ihSrc = null; } audio.play('click'); this.render(); });
+    on('[data-ihticket]', () => { this.ihTicket = !this.ihTicket; audio.play('click'); this.render(); });
+    ask('[data-ihgo]', () => { const src = gearAt(st, this.ihSrc); return ['강화 계승', `${src ? esc(itemName(src)) : ''}은(는) 사라집니다`, '계승']; }, () => {
+      const k = this.ihSrc, src = gearAt(st, k), dst = gearAt(st, this.ihDst);
+      const r = inherit(st, src, dst, !!this.ihTicket && countOf(st, 't_inherit2') > 0, () => { if (k.startsWith('e:')) st.equip[k.slice(2)] = null; else { const L = k.startsWith('v:') ? vault().items : st.inv, j = L.indexOf(src); if (j >= 0) L.splice(j, 1); } });
+      if (!r.ok) { w.ui.toast(r.why); audio.play('error'); this.render(); return; }
+      if (k.startsWith('v:') || this.ihDst.startsWith('v:')) vaultSave();
+      this.ihSrc = null; this.ihPick = 'src'; audio.play('awaken'); w.refreshGear(); w.ui.dirty();
+      this.forgeFx(true, dst, `+${r.plus} 계승`, [`<div><span>강화</span><b>+${r.before}</b><i class="arw">▶</i><em>+${r.plus}</em></div>`, `<div><span>녹인 장비</span><b>+${r.from}</b></div>`]);
+      this.render();
+    });
     on('[data-tsel]', (el) => { this.tuneSel = el.dataset.tsel; audio.play('click'); this.render(); });
     const tuneDone = (r, key, msg) => { if (!r?.ok) { if (r?.why) w.ui.toast(r.why); audio.play('error'); } else { if (String(key).startsWith('v:')) vaultSave(); audio.play('rankup'); if (msg) w.ui.toast(msg, '#ffd84a'); w.refreshGear(); w.ui.dirty(); } this.render(); };
     ask('[data-treroll]', () => ['옵션 다시 굴림', '이 옵션을 다른 옵션으로 바꿉니다', '굴리기'], (el) => { const [k, i] = el.dataset.treroll.split('|'), it = gearAt(st, k); const r = rerollAffix(st, it, Number(i)); tuneDone(r, k, r.ok ? `${affixText(r.before)} → ${affixText(r.after)}` : null); });

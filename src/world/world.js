@@ -904,6 +904,7 @@ export class World {
     { const mz = MATERIALS[zn.id] ? zn.id : ALL_ZONES.slice(0, ALL_ZONES.indexOf(zn) + 1).reverse().find((z) => MATERIALS[z.id])?.id; if (mz) { const ms = townOf(st).mats; ms[mz] = (ms[mz] || 0) + Math.round(8 * mult); } }
     for (let i = 0; i < Math.round(2 * mult); i++) { const it = makeItem(rollBase(L), { rarity: Math.random() < 0.08 ? 'legend' : 'hero', ilvl: L }, st); const a = i * 1.3; this.dropGround({ kind: 'item', item: it }, P.x + Math.cos(a) * 1.5, P.z + Math.sin(a) * 1.5); }
     { const bk = rollBook({ level: L, tier: 'boss', sp: { zone: zn } }, st, Math.random, 3); if (bk) this.dropGround({ kind: 'item', item: bk }, P.x - 1.2, P.z - 0.6); }
+    this.dropGround({ kind: 'item', item: makeItem('t_inherit', { qty: 1 }, st) }, P.x + 1.2, P.z - 0.6); // v0.49.75 계승권
     // 정복지 7일 · 다음 군세
     H.done = true; st.horde.conq[zn.id] = Date.now() + HORDE.conqMs; st.horde.zone = null; st.horde.at = 0; st.horde.next = Date.now() + hordeGap();
     st.horde.cleared = (st.horde.cleared || 0) + 1;
@@ -1084,6 +1085,7 @@ export class World {
       }
     }
     { const bk = rollBook({ level: L, tier: 'boss' }, st, Math.random, 3); if (bk) got.push(bk); }
+    got.push(makeItem('t_inherit', { qty: 1 }, st)); if (Math.random() < 0.15) got.push(makeItem('t_inherit2', { qty: 1 }, st)); // v0.49.75 계승권 하나 · 축복석 15%
     for (const x of got) if (!addItem(st, x)) this.dropGround({ kind: 'item', item: x }, P.x + Math.random() * 2 - 1, P.z + 1);
     this.fx.pillar(P.x, P.z, 0xffd060, 1.2, 5, 1.2); sfx('rare');
     globalThis.__game?.windows?.notice?.([{ title: BASES[it.base].name, rows: got.map((x) => ({ img: itemIcon(x), name: itemName(x), color: itemColor(x) })) }]);

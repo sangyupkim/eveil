@@ -730,4 +730,14 @@ test('대전제: 각성이 높을수록 각성 1당 처치 수가 늘어난다 �
   }
 });
 
+test('강화 계승: 계승권 필수 50 ~ 80%, 축복석과 함께 80 ~ 95%, 실패 없음 · 같은 부위만', async () => {
+  const G = await import('../src/game/raidgear.js'), IT = await import('../src/game/items.js');
+  const st = { inv: [], equip: {}, nextUid: 1 }, mk = (b) => IT.makeItem(b, { rarity: 'hero', ilvl: 100 }, st);
+  const a = mk('leather_armor'), b = mk('leather_armor'), c = mk('leather_boots'); a.plus = 40; b.plus = 5; st.inv.push(a, b, c);
+  assert.equal(G.inheritCheck(st, a, b).ok, false); // 계승권 없음
+  assert.equal(G.inheritCheck(st, a, c).ok, false); // 다른 부위
+  for (let i = 0; i < 200; i++) { const x = mk('leather_armor'), y = mk('leather_armor'); x.plus = 40; st.inv.push(IT.makeItem('t_inherit', { qty: 1 }, st)); const r = G.inherit(st, x, y, false, () => {}); assert.ok(r.ok && y.plus >= 20 && y.plus <= 32, String(y.plus)); }
+  for (let i = 0; i < 200; i++) { const x = mk('leather_armor'), y = mk('leather_armor'); x.plus = 40; st.inv.push(IT.makeItem('t_inherit', { qty: 1 }, st), IT.makeItem('t_inherit2', { qty: 1 }, st)); const r = G.inherit(st, x, y, true, () => {}); assert.ok(r.ok && y.plus >= 32 && y.plus <= 38, String(y.plus)); }
+});
+
 console.log(`\n${n}개 통과`);
