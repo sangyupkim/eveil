@@ -17,6 +17,8 @@
  *  - POST /api { type: 'ash_nick', token, cid, nick }          닉네임 차지 (중복이면 nick_taken)
  *  - POST /api { type: 'ash_delchar', token, cid }             캐릭터 지우기 (저장 · 닉네임 · 순위)
  *  - POST /api { type: 'ash_rank' }                             → { ok, list: [{ name, aw, dg, title }] } (각성 · 던전 단계 합 순)
+ *  - POST /api { type: 'ash_raid_list', wk, g }                 → { ok, list: [{ name, t }] } (v0.50 왕좌 원정 주간 순위)
+ *  - POST /api { type: 'ash_raid_put', token, cid, wk, g, t, sk } 원정 기록 (닉네임 차지한 캐릭터만)
  * 비밀번호는 PBKDF2(SHA-256, 소금)로, 토큰은 SHA-256 해시로만 둔다.
  */
 
@@ -72,6 +74,9 @@ function setup(db: DB): Promise<unknown> {
       db.prepare('CREATE TABLE IF NOT EXISTS ash_mail (id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, gold INTEGER NOT NULL, at INTEGER NOT NULL)'),
       db.prepare('CREATE TABLE IF NOT EXISTS ash_mail_got (mid INTEGER NOT NULL, uid TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (mid, uid))'),
       db.prepare('CREATE TABLE IF NOT EXISTS ash_rank (id TEXT PRIMARY KEY, name TEXT, aw INTEGER, dg INTEGER, title TEXT, at INTEGER)'),
+      // v0.50 왕좌 원정 주간 순위: 주 · 등급 · 캐릭터마다 가장 빠른 기록 하나
+      db.prepare('CREATE TABLE IF NOT EXISTS ash_raid (wk TEXT NOT NULL, g INTEGER NOT NULL, id TEXT NOT NULL, name TEXT, t REAL NOT NULL, sk TEXT, at INTEGER NOT NULL, PRIMARY KEY (wk, g, id))'),
+      db.prepare('CREATE TABLE IF NOT EXISTS ash_raid_put (id TEXT NOT NULL, day TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (id, day))'),
       // 계정 공용 창고 (캐릭터끼리 나눠 쓴다)
       db.prepare('CREATE TABLE IF NOT EXISTS ash_vault (id TEXT PRIMARY KEY, data TEXT NOT NULL, at INTEGER NOT NULL)'),
       // v0.44.23 창고 백업: 덮어쓰기 전 내용을 하루 한 번 남긴다 (최근 10개) — 창고가 통째로 바뀌는 사고 복구용
@@ -130,6 +135,13 @@ export async function ashen(db: DB, d: Record<string, unknown>, ip: string, admi
     const r = d.by === 'pw'
       ? await db.prepare('SELECT name, aw, dg, title, pw FROM ash_rank WHERE pw > 0 ORDER BY pw DESC, at ASC LIMIT 50').all()
       : await db.prepare('SELECT name, aw, dg, title, pw FROM ash_rank ORDER BY aw DESC, dg DESC, at ASC LIMIT 50').all();
+    return { ok: true, list: r.results || [] };
+  }
+  if (type === 'ash_raid_list') {
+    // v0.50 왕좌 원정 순위 (로그인 없이): 이번 주 · 등급마다 빠른 순 50
+    const wk = String(d.wk ?? ''), g = Math.floor(Number(d.g));
+    if (!/^w\d{4}-\d{2}-\d{2}$/.test(wk) || !(g >= 0 && g <= 4)) return { ok: false, error: 'bad' };
+    const r = await db.prepare('SELECT name, t FROM ash_raid WHERE wk = ? AND g = ? ORDER BY t ASC, at ASC LIMIT 50').bind(wk, g).all();
     return { ok: true, list: r.results || [] };
   }
   if (type === 'ash_register' || type === 'ash_login') {
@@ -231,6 +243,24 @@ export async function ashen(db: DB, d: Record<string, unknown>, ip: string, admi
   // 캐릭터 열쇠: 아이디/cid (cid는 영문 · 숫자 4~16자)
   const cid = String(d.cid ?? '');
   const key = /^[a-z0-9]{4,16}$/.test(cid) ? `${id}/${cid}` : id;
+  if (type === 'ash_raid_put') {
+    // v0.50 왕좌 원정 기록: 이번 주만 · 등급별 최소 시간보다 빠르면 거절 · 하루 20번까지 · 순위 이름은 차지한 닉네임
+    const g = Math.floor(Number(d.g)), t = Number(d.t);
+    const k = new Date(Date.now() + 9 * 3600e3); k.setUTCDate(k.getUTCDate() - ((k.getUTCDay() + 6) % 7)); const wk = 'w' + k.toISOString().slice(0, 10);
+    if (String(d.wk) !== wk || !(g >= 0 && g <= 4) || !(t > 0 && t <= 900)) return { ok: false, error: 'bad' };
+    if (t < 60 + 30 * g) return { ok: false, error: 'too_fast' };
+    const day = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+    const c = await db.prepare('SELECT n FROM ash_raid_put WHERE id = ? AND day = ?').bind(key, day).first<{ n: number }>();
+    if ((c?.n || 0) >= 20) return { ok: false, error: 'limit' };
+    await db.prepare('INSERT INTO ash_raid_put (id, day, n) VALUES (?, ?, 1) ON CONFLICT(id, day) DO UPDATE SET n = n + 1').bind(key, day).run();
+    const nm = key === id ? null : await db.prepare('SELECT name FROM ash_names WHERE k = ?').bind(key).first<{ name: string }>();
+    if (!nm) return { ok: false, error: 'no_nick' };
+    const sk = String(d.sk ?? '').slice(0, 300);
+    await db.prepare('INSERT INTO ash_raid (wk, g, id, name, t, sk, at) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(wk, g, id) DO UPDATE SET name = excluded.name, t = excluded.t, sk = excluded.sk, at = excluded.at WHERE excluded.t < ash_raid.t')
+      .bind(wk, g, key, nm.name, Math.round(t * 10) / 10, sk, Date.now()).run();
+    await db.prepare('DELETE FROM ash_raid WHERE wk < ?').bind('w' + new Date(Date.now() - 35 * 86400e3).toISOString().slice(0, 10)).run();
+    return { ok: true };
+  }
   if (type === 'ash_chars') {
     // 예전 저장(아이디 하나)은 첫 캐릭터로 옮긴다
     const old = await db.prepare('SELECT id FROM ash_saves WHERE id = ?').bind(id).first();

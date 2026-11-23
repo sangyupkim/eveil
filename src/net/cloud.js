@@ -73,6 +73,13 @@ export const cloud = {
   // 우편함 (계정마다). claim은 받은 금화 합계를 돌려준다
   async mail() { if (!account) return []; const r = await post({ type: 'ash_mail', token: account.token }); return r.ok ? r.list || [] : []; },
   async mailClaim(ids) { if (!account) return { ok: false }; return post({ type: 'ash_mail_claim', token: account.token, ...(ids ? { ids } : {}) }); },
+  // v0.50 왕좌 원정: 기록 올리기 (계정 · 닉네임이 있을 때만) · 주간 순위
+  async raidSubmit(wk, g, t, st) {
+    if (!account || !st?.cid || st.guest) return { ok: false };
+    const sk = (st.quickSets || [st.quick]).map((q) => (q || []).filter(Boolean).join(',')).join('|');
+    return post({ type: 'ash_raid_put', token: account.token, cid: st.cid, wk, g, t, sk });
+  },
+  async raidList(wk, g) { if (!(await this.available())) return null; const r = await post({ type: 'ash_raid_list', wk, g }); return r.ok ? r.list || [] : []; },
   async rank(by = 'aw') {
     if (!(await this.available())) return null;
     const r = await post({ type: 'ash_rank', by });

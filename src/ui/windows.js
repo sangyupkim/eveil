@@ -44,6 +44,9 @@ import { SCHOOL_NAMES } from '../data/skills.js';
 import { awakenOk, skillGrade, QUALITY, gradeName } from '../data/awaken_skills.js';
 import { ROLE_NAMES } from '../data/skill_roster.js';
 import { hordePen } from '../data/horde.js';
+import { rerollAffix, addSocket, engrave, extractEngrave, extractShard } from '../game/raidgear.js';
+import { RAID, RAID_GRADES, RAID_RULES, RAID_SHOP, ENGRAVE, LORDS, raidWeek, raidOf, raidOpen, fmtTime, shopPrice, shopBought, lordName } from '../data/raid.js';
+import { MUTS as MUTS_ } from '../data/mutators.js';
 // v0.50 초월 강화 숫자 색: +21 금색 · +50 붉은 금 · +100 무지개
 const plusCls = (n) => n >= 100 ? ' plusRb' : n >= 50 ? ' plusRg' : n > 20 ? ' plusG' : '';
 import { GEMS, GEM_GRADES, gemId } from '../data/legends.js';
@@ -85,7 +88,7 @@ export function showNotes() {
 }
 const repickCost = (t) => 2000 * (t.tier + 1) ** 2;
 const nextTitle = (st) => { const i = TITLE_AT.findIndex((n) => st.awakenings < n); return i < 0 ? '' : ` · ${i + 1}차 각성 ${titleName(titleKey(st.stats, 10, i), i)}까지 ${TITLE_AT[i] - st.awakenings}`; };
-const TITLES = { arts: '수련 비전', gems: '보석상', map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', news: '공지 · 패치', menu: '메뉴', rank: '랭킹', log: '기록' };
+const TITLES = { raid: '왕좌 원정', arts: '수련 비전', gems: '보석상', map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', news: '공지 · 패치', menu: '메뉴', rank: '랭킹', log: '기록' };
 // 진행 게이지 (시작 ~ 끝 시각). 예전 저장은 시작 시각이 없어 dur로 어림
 const gauge = (from, until, dur = 3600000, color = '#7ad0ff') => { const f = from || until - dur, k = Math.max(0, Math.min(1, (Date.now() - f) / Math.max(1, until - f))); return `<div class="mini" style="margin-top:3px"><i style="width:${(k * 100).toFixed(1)}%;background:linear-gradient(#bfe8ff,${color})"></i></div>`; };
 // 보석 합치기 · 빼기 값
@@ -100,8 +103,8 @@ const COL = '<!--COL-->';
 // 칸 위 작은 글: 능력치 파편은 옵션을 보여 준다
 const lk = (it) => (it?.lock ? '<span class="lk"></span>' : ''); // v0.45 잠근 아이템 표시
 const cellTag = (it) => { if (!it?.shard) return ''; const t = affixText(it.shard), v = t.match(/[+-]?[\d.]+%?/), n = it.vals?.length || 1; return `<span class="ctag">${t.split(' ')[0].slice(0, 2)}<br>${v ? v[0] : ''}</span>${n > 1 ? `<span class="q">${n}</span>` : ''}`; }; // v0.49.11 묶음이면 개수 // v0.45 칸 안에 들어가게 짧게 (골드 획득 +367% → 골드+367%)
-const NPC_ONLY = ['shop', 'town', 'vault', 'gems'];
-const TAB_ORDER = ['gems', 'map', 'inv', 'vault', 'skills', 'char', 'arts', 'quest', 'log', 'dex', 'rank', 'town', 'shop', 'guide', 'news', 'menu'];
+const NPC_ONLY = ['shop', 'town', 'vault', 'gems', 'raid'];
+const TAB_ORDER = ['raid', 'gems', 'map', 'inv', 'vault', 'skills', 'char', 'arts', 'quest', 'log', 'dex', 'rank', 'town', 'shop', 'guide', 'news', 'menu'];
 const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '');
 // 장비 찾기 (v0.41.3): 'e:부위' 착용 · 'b:uid' 가방 · 'v:uid' 창고 — 대장간 · 보석상은 세 곳 모두에서 고른다
 const gearAt = (st, key) => { const [k, v] = String(key || '').split(':'); return k === 'e' ? st.equip[v] : k === 'v' ? vault().items.find((x) => x.uid === Number(v)) : st.inv.find((x) => x.uid === Number(v)); };
@@ -184,7 +187,7 @@ export class Windows {
     $('h2', this.el).textContent = (this.kind === 'town' && this.townMode === 'one' && BUILDINGS[townOf(this.w.st).plots[this.townSel]?.type]?.name) || TITLES[this.kind];
     const tabs = $('.tabs', this.el);
     // 탭은 그림 없이 같은 모양의 글자 단추로
-    const TAB_TXT = { arts: '비전', gems: '보석', map: '지도', inv: '가방', skills: '스킬', char: '능력', quest: '퀘스트', dex: '도감', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '설정', news: '공지', rank: '랭킹', log: '기록' };
+    const TAB_TXT = { raid: '원정', arts: '비전', gems: '보석', map: '지도', inv: '가방', skills: '스킬', char: '능력', quest: '퀘스트', dex: '도감', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '설정', news: '공지', rank: '랭킹', log: '기록' };
     // 상인 · 건물 창은 그 상인의 탭만, 탭이 하나면 탭 줄을 숨긴다
     const list = this.talk ? TAB_ORDER.filter((k) => this.talk.includes(k) || k === this.talkFirst) : TAB_ORDER.filter((k) => !NPC_ONLY.includes(k) && (!['guide', 'news'].includes(k) || k === this.kind)); // 공지 · 가이드북은 설정 창에서 연다
     tabs.style.visibility = list.length < 2 ? 'hidden' : '';
@@ -259,6 +262,8 @@ export class Windows {
       for (const a of it.affixes) { const A = AFFIXES[a.id], mx = A ? Math.round(Math.max(A.min, A.max(it.ilvl) * (RARITY[it.rarity]?.mult || 1))) : null; h += `<div class="aff"${a.great ? ' style="color:#ffb84a"' : ''}>${affixText({ ...a, v: affixV(it, a) })}${affixK(it) > 1 ? ' <small class="note">강화</small>' : ''}${a.great ? ' <b style="color:#ffb84a">탁월</b>' : ''}${A ? ` <small class="note">${A.min}~${mx}</small>` : ''}</div>`; }
       if (it.mixReq) h += `<div class="aff" style="color:#e0b0ff">혼합 전용 · ${Object.entries(it.mixReq).map(([k, v]) => `${STAT_NAMES[k]} ${v}`).join(' · ')}</div>`;
       if (it.unique != null) h += `<div class="aff" style="color:#41e07a">◆ ${UNIQUES[it.unique].text}</div>`;
+      if (it.eng && ENGRAVE[it.eng]) h += `<div class="aff" style="color:#ffc85a">각인 · ${lordName(it.eng)}: ${ENGRAVE[it.eng].text}</div>`; // v0.50 원정 군주 각인
+      if (it.base === 'eng_stone' && ENGRAVE[it.eng]) h += `<div class="aff" style="color:#ffc85a">${lordName(it.eng)}: ${ENGRAVE[it.eng].text}</div>`;
       if (it.sockets) {
         h += `<div class="aff" style="color:#c0b0ff">구멍 ${it.gems.length} / ${it.sockets}${it.gems.map((g) => ` · ${BASES[g].name} ${STAT_NAMES[GEMS[BASES[g].gem].stat]} +${GEM_GRADES[BASES[g].grade].v}`).join('')}</div>`;
       }
@@ -450,7 +455,8 @@ export class Windows {
   }
   smithyView(b, sel) {
     const st = this.w.st;
-    return this.tabView(b, 'smithy', [['enh', '강화'], ['ref', '제련'], ['salv', '분해'], ['merc', '용병']], (k) => k === 'enh' ? this.smithEnh(st) : k === 'ref' ? this.smithRef(st, b) : k === 'salv' ? this.smithSalv(st) : this.mercTab(b, sel));
+    const tune = raidOpen(st) || ['t_reroll', 't_socket', 't_engx', 't_shardx', 't_engrave', 'eng_stone'].some((id) => countOf(st, id)); // v0.50 원정 상점 물건이 있으면 손질 탭
+    return this.tabView(b, 'smithy', [['enh', '강화'], ['ref', '제련'], ...(tune ? [['tune', '손질']] : []), ['salv', '분해'], ['merc', '용병']], (k) => k === 'enh' ? this.smithEnh(st) : k === 'ref' ? this.smithRef(st, b) : k === 'tune' ? this.smithTune(st) : k === 'salv' ? this.smithSalv(st) : this.mercTab(b, sel));
   }
   workshopView(b, sel) {
     const st = this.w.st, t = townOf(st), P = this.workshopParts(st, b, t);
@@ -471,7 +477,7 @@ export class Windows {
     const right = `<h3>장비 <span class="cnt">${list.length}</span></h3>` + this.itemCells(list, this.enhSel, 'esel');
     const cur = list.find((x) => x[0] === this.enhSel);
     if (!cur) return [`<h3>강화</h3><div class="forgeSlot empty"></div>`, right];
-    const [key, it, where] = cur, cap = enhanceCap(st), n = it.plus || 0, max = n >= cap, c = enhanceCost(it, st), b = BASES[it.base];
+    const [key, it, where] = cur, cap = enhanceCap(st), n = it.plus || 0, max = n >= cap, c = enhanceCost(it, st, this.useWhet && n >= 20 && countOf(st, 'whetstone') > 0), b = BASES[it.base];
     const nx = { ...it, plus: n + 1 };
     const stat = b.dmg ? (() => { const a = scaledDmg(it), z = scaledDmg(nx); return `<span>${WEAPON_CLASSES[b.cls]?.kind === 'magic' ? '마법 공격력' : '물리 공격력'}</span><b>${a[0]}~${a[1]}${max ? '' : ` <i class="arw">▶</i> <em>${z[0]}~${z[1]}</em>`}</b>`; })() : b.armor ? `<span>방어력</span><b>${scaledArmor(it)}${max ? '' : ` <i class="arw">▶</i> <em>${scaledArmor(nx)}</em>`}</b>` : ''
     // v0.49.34 기본 옵션 · 장신구 기본 효과도 강화만큼
@@ -481,8 +487,32 @@ export class Windows {
     const have = resCount(st, c.oreId), okGold = st.gold >= c.gold, okOre = have >= c.ore;
     let L = `<div class="forgeTop"><div class="cell forgeSlot${rar(it)}">${ico(it)}</div><div><div class="nm" style="color:${itemColor(it)}">${esc(itemName(it))}</div><div class="note">${where} · Lv ${it.ilvl}</div><div class="plusBig${plusCls(n)}">+${n}${max ? ' <small>상한</small>' : ` <i class="arw">▶</i> <em>+${n + 1}</em>`}</div></div></div>`;
     if (!max) L += `<div class="kv">${stat}${bmRows}${afRows}<span>성공 확률</span><b class="${c.jang >= 1 ? 'goldTxt' : ''}">${c.jang >= 1 ? '100%' : `${+(c.chance * 100).toFixed(1)}%`}</b><span>장인의 기운</span><b>${+(c.jang * 100).toFixed(1)}%</b><span>금화</span><b style="${okGold ? '' : 'color:#ff7060'}">${c.gold.toLocaleString()} G</b><span>${c.oreName}</span><b style="${okOre ? '' : 'color:#ff7060'}">${c.ore} <small class="note">/ ${have}</small></b></div>
+      ${n >= 20 && countOf(st, 'whetstone') ? `<div class="btns"><button class="btn${this.useWhet ? ' on' : ''}" data-whet="1">왕좌의 숫돌 ${countOf(st, 'whetstone')} · +5%</button></div>` : ''}
       <div class="btns forgeGo"><button class="btn gold big" data-enh="${key}" ${okGold && okOre ? '' : 'disabled'}>강화</button></div>`;
     else L += `<div class="kv">${stat}${bmRows}${afRows}</div>`;
+    return [L, right];
+  }
+  // v0.50 손질 (원정 상점 물건): 오른쪽 장비 → 왼쪽 옵션 다시 굴림 · 구멍 · 각인 · 파편 추출
+  smithTune(st) {
+    const list = gearList(st, (x) => !x.book && !x.noDrop);
+    if (!list.some((x) => x[0] === this.tuneSel)) this.tuneSel = list[0]?.[0] ?? null;
+    const right = `<h3>장비 <span class="cnt">${list.length}</span></h3>` + this.itemCells(list, this.tuneSel, 'tsel');
+    const cur = list.find((x) => x[0] === this.tuneSel);
+    if (!cur) return ['<div class="note">장비가 없습니다</div>', right];
+    const [key, it, where] = cur, n = (id) => countOf(st, id);
+    const tk = (id) => `<span class="tkN">${BASES[id].name} ${n(id)}</span>`;
+    const aff = (it.affixes || []).map((a, i) => `<div class="row tuneRow"><div class="grow" style="color:${AFFIXES[a.id]?.mythOnly ? '#ff7aa8' : ''}">${affixText(a)}</div>
+      <button class="btn" data-treroll="${key}|${i}" ${n('t_reroll') ? '' : 'disabled'}>다시 굴림</button><button class="btn" data-tshard="${key}|${i}" ${n('t_shardx') && !it.lock && where !== '착용' ? '' : 'disabled'}>파편 추출</button></div>`).join('') || '<div class="note">옵션 없음</div>';
+    const stones = st.inv.filter((x) => x.base === 'eng_stone');
+    const lords = LORDS.filter((L) => (st.raidLords || {})[L.id]);
+    const eng = it.rarity === 'myth' ? `<h3 style="margin-top:6px">각인 ${it.eng ? `<span class="goldTxt">${lordName(it.eng)} · ${ENGRAVE[it.eng].text}</span>` : '<span class="note">없음</span>'}</h3>
+      <div class="btns" style="flex-wrap:wrap">${lords.map((L) => `<button class="btn" data-teng="${key}|${L.id}" ${n('t_engrave') ? '' : 'disabled'} title="${ENGRAVE[L.id].text}">${L.name}</button>`).join('')}
+      ${stones.map((x) => `<button class="btn gold" data-tstone="${key}|${x.uid}">각인석 · ${lordName(x.eng)}</button>`).join('')}
+      ${it.eng ? `<button class="btn" data-tengx="${key}" ${n('t_engx') ? '' : 'disabled'}>각인 추출</button>` : ''}</div>` : '';
+    const L = `<div class="forgeTop"><div class="cell forgeSlot${rar(it)}">${ico(it)}</div><div><div class="nm" style="color:${itemColor(it)}">${esc(itemName(it))}</div><div class="note">${where} · Lv ${it.ilvl}</div></div></div>
+      <div class="tkRow">${['t_reroll', 't_shardx', 't_socket', 't_engrave', 't_engx'].map(tk).join('')}</div>
+      <h3>옵션</h3>${aff}
+      <h3 style="margin-top:6px">보석 구멍 <span class="cnt">${it.sockets || 0} / 3</span> <button class="btn" data-tsock="${key}" style="margin-left:auto" ${n('t_socket') && (it.sockets || 0) < 3 ? '' : 'disabled'}>구멍 뚫기</button></h3>${eng}`;
     return [L, right];
   }
   smithRef(st, smith) {
@@ -802,6 +832,25 @@ export class Windows {
     const tabs = ['all', ...STATS, 'mix'].filter((k) => k === 'all' || all.some((id) => lineOf(SKILLS[id]) === k)).map((k) => `<button class="btn${line === k ? ' on' : ''}" data-skline="${k}">${LN[k]}</button>`).join('');
     return `<div class="skWin">${bar}<div class="cols"><div class="frame detail" style="flex:0 0 46%">${det}</div>
       <div class="frame" style="flex:1"><h3>배운 스킬 <span class="cnt">${all.length}</span></h3><div class="btns" style="flex-wrap:wrap;margin:0 0 6px">${tabs}</div>${list}</div></div></div>`;
+  }
+
+  // v0.50 왕좌 원정: 왼쪽 = 이번 주 구성 · 고른 등급 도전 | 오른쪽 = 등급 고르기(내 기록) · 순위
+  raid() {
+    const st = this.w.st, W = raidWeek(), rd = raidOf(st), g = this.raidG ?? 0, G = RAID_GRADES[g];
+    if (!raidOpen(st)) return `<div class="frame" style="flex:1"><div class="note">평온 종말의 왕좌 보스를 쓰러뜨리면 열립니다</div></div>`;
+    const bossName = (id) => ZONES.find((z) => z.id === id)?.boss?.name || id;
+    const emb = resCount(st, 'raid_emblem');
+    const L = `<div class="nm">이번 주 원정</div>
+      <div class="raidLine">${W.bosses.map((id, i) => `<span class="rw">${i + 1} · ${bossName(id)}</span>`).join('')}<span class="rw lord">${W.lord.name}</span></div>
+      <div class="note" style="color:#ffb090">${W.lord.text}</div>
+      <h3 style="margin-top:8px">규칙</h3><div class="kv">${W.muts.map((id) => `<span>${MUTS_[id].name}</span><b>${MUTS_[id].text}</b>`).join('')}<span>${RAID_RULES[W.rule].name}</span><b>${RAID_RULES[W.rule].text}</b></div>
+      <h3 style="margin-top:8px">등급 ${G.name}</h3><div class="kv"><span>보스 체력 · 공격</span><b>×${G.hp}</b><span>제한 시간</span><b>${RAID.limit / 60}분 · 부활 없음</b><span>보상</span><b>원정 문장 ${G.emb} · 군주 상자</b><span>이번 주 보상</span><b>${Math.max(0, RAID.claims - rd.claims)} / ${RAID.claims}</b><span>원정 문장</span><b>${emb}</b></div>
+      <div class="btns" style="margin-top:8px"><button class="plate gold" data-raidgo="${g}">도전</button></div>`;
+    const rows = RAID_GRADES.map((x, i) => `<div class="row pick${i === g ? ' on' : ''}" data-raidg="${i}"><div class="grow"><b>등급 ${x.name}</b> <span class="note">×${x.hp}</span></div><span class="note">${rd.best[i] ? fmtTime(rd.best[i]) : '-'}</span></div>`).join('');
+    const rk = this.raidRank?.[`${W.wk}|${g}`];
+    const rank = rk ? (rk.length ? rk.slice(0, 10).map((r, i) => `<div class="row"><b style="width:2em">${i + 1}</b><div class="grow">${esc(r.name)}</div><span class="note">${fmtTime(r.t)}</span></div>`).join('') : '<div class="note">기록 없음</div>') : '<div class="note">불러오는 중</div>';
+    if (!rk && this.w.cloud !== false) this.loadRaidRank?.(W.wk, g);
+    return `<div class="cols"><div class="frame detail" style="flex:1.1">${L}</div><div class="frame" style="flex:1"><h3>등급</h3>${rows}<h3 style="margin-top:8px">이번 주 순위 · 등급 ${G.name}</h3>${rank}</div></div>`;
   }
 
   char() {
@@ -1280,7 +1329,8 @@ export class Windows {
     if (this.sel?.from === 'equip') this.sel = null;
     const goods = Object.keys(BASES).filter((id) => BASES[id].shop && BASES[id].type !== 'gem'); // 보석은 보석상에서
     // v0.45 상점: 구매 (오른쪽 물건 → 왼쪽 정보 · 사기) | 판매 (오른쪽 가방 → 왼쪽 정보 · 팔기)
-    return this.tabView('상인 오르텐', 'shop', [['buy', '구매'], ['sell', '판매']], (k) => {
+    return this.tabView('상인 오르텐', 'shop', [['buy', '구매'], ['sell', '판매'], ...(raidOpen(st) ? [['raid', '원정']] : [])], (k) => {
+      if (k === 'raid') return this.raidShop(st);
       if (k === 'sell') {
         if (this.shopSrc !== 'v') { if (!this.sellPick && !this.cur()) { const f = st.inv.find((x) => BASES[x.base]?.type !== 'mat'); if (f) this.sel = { from: 'inv', uid: f.uid }; } const cur = this.cur(); return [this.describe(cur, cur ? 'inv' : null), this.bagHead() + this.bagGrid()]; }
         const V = vault().items; if (!this.vPick && !V.some((x) => x?.uid === this.vSel)) this.vSel = V.find(Boolean)?.uid ?? null; const it = V.find((x) => x?.uid === this.vSel);
@@ -1297,6 +1347,29 @@ export class Windows {
       const L = this.describe(makeItem(id, { rarity: 'common', ilvl: 1 }), null) + `<div class="btns forgeGo">${qty.map((q) => `<button class="btn gold" data-buy="${id}" data-q="${q}" ${st.gold < b.price * q ? 'disabled' : ''}>${q > 1 ? `×${q} ` : ''}${(b.price * q).toLocaleString()}G</button>`).join('')}</div>`;
       return [L, R];
     });
+  }
+
+  loadRaidRank(wk, g) {
+    const k = `${wk}|${g}`; (this.raidRank ||= {}); if (this.raidRank[k] !== undefined || this.raidLoading?.[k]) return;
+    (this.raidLoading ||= {})[k] = true;
+    cloud.raidList(wk, g).then((list) => { this.raidRank[k] = list || []; this.raidLoading[k] = false; if (this.kind === 'raid') this.render(); });
+  }
+  // v0.50 원정 문장 상점: 오른쪽 물건(이번 주 산 수) → 왼쪽 정보 · 사기
+  raidShop(st) {
+    const rd = raidOf(st), emb = resCount(st, 'raid_emblem');
+    if (!RAID_SHOP.some((g) => g.id === this.rshopSel)) this.rshopSel = RAID_SHOP[0].id;
+    const nm = (g) => g.title ? `칭호 「${lordName(g.title)}」` : BASES[g.id].name;
+    const left = (g) => g.once ? ((st.raidTitles || []).includes(g.title) ? 1 : 0) : g.lim - shopBought(rd, g);
+    const R = `<h3>원정 문장 <span class="cnt">${emb}</span></h3>` + RAID_SHOP.map((g) => `<div class="row shopRow pick${g.id === this.rshopSel ? ' on' : ''}" data-rshop="${g.id}"><div class="cell shopIco">${g.title ? `<img src="${itemIcon({ base: 'raid_emblem' })}" alt="" />` : ico({ base: g.id, rarity: 'common' })}</div>
+      <div class="grow"><b>${nm(g)}</b><div class="note">${g.once ? (left(g) ? '가짐' : '군주마다 한 번') : `이번 주 ${shopBought(rd, g)} / ${g.lim}${g.group ? ' (상자 합쳐)' : ''}`}</div></div><b class="goldTxt">${shopPrice(g, st)}</b></div>`).join('');
+    const g = RAID_SHOP.find((x) => x.id === this.rshopSel), price = shopPrice(g, st);
+    const can = emb >= price && (g.once ? !left(g) && (st.raidLords || {})[g.title] : left(g) > 0);
+    const why = g.once && !(st.raidLords || {})[g.title] ? `${lordName(g.title)}을(를) 쓰러뜨려야 합니다` : g.once && left(g) ? '이미 가졌습니다' : !g.once && left(g) <= 0 ? '이번 주에 다 샀습니다' : emb < price ? '원정 문장이 모자랍니다' : '';
+    const desc = g.title ? `<div class="nm">칭호 「${lordName(g.title)}」</div><div class="note">이름 옆에 보입니다</div>` : `<div class="nm">${BASES[g.id].name}</div><div>${BASES[g.id].text || ''}</div>`;
+    const L = `<div class="forgeTop"><div class="cell forgeSlot">${g.title ? `<img src="${itemIcon({ base: 'raid_emblem' })}" alt="" />` : ico({ base: g.id, rarity: 'common' })}</div><div>${desc}</div></div>
+      <div class="kv"><span>값</span><b>원정 문장 ${price}</b><span>가진 문장</span><b>${emb}</b></div>${why ? `<div class="bad">${why}</div>` : ''}
+      <div class="btns forgeGo"><button class="btn gold big" data-rbuy="${g.id}" ${can ? '' : 'disabled'}>사기</button></div>`;
+    return [L, R];
   }
 
   menu() {
@@ -1426,6 +1499,26 @@ export class Windows {
       w.ui.dirty();
       this.render();
     });
+    on('[data-rshop]', (el) => { this.rshopSel = el.dataset.rshop; audio.play('click'); this.render(); });
+    ask('[data-rbuy]', (el) => { const g = RAID_SHOP.find((x) => x.id === el.dataset.rbuy); return g ? ['원정 상점', `${g.title ? `칭호 「${lordName(g.title)}」` : BASES[g.id].name}을(를) 원정 문장 ${shopPrice(g, st)}에 삽니다`, '사기'] : null; }, (el) => {
+      const g = RAID_SHOP.find((x) => x.id === el.dataset.rbuy), rd = raidOf(st), price = shopPrice(g, st);
+      if (!g || resCount(st, 'raid_emblem') < price) return;
+      if (g.once) { if ((st.raidTitles ||= []).includes(g.title) || !(st.raidLords || {})[g.title]) return; st.raidTitles.push(g.title); st.raidTitle = g.title; }
+      else { if (g.lim - shopBought(rd, g) <= 0) return; const it = g.id.startsWith('box_') ? w.makeRaidBox(g.id, 2) : makeItem(g.id, { qty: 1 }, st); if (!addItem(st, it)) { w.ui.toast('가방이 가득 찼습니다'); return; } rd.buys[g.id] = (rd.buys[g.id] || 0) + 1; }
+      resTake(st, 'raid_emblem', price); audio.play('coin'); w.ui.dirty(); this.render();
+    });
+    on('[data-whet]', () => { this.useWhet = !this.useWhet; audio.play('click'); this.render(); });
+    on('[data-tsel]', (el) => { this.tuneSel = el.dataset.tsel; audio.play('click'); this.render(); });
+    const tuneDone = (r, key, msg) => { if (!r?.ok) { if (r?.why) w.ui.toast(r.why); audio.play('error'); } else { if (String(key).startsWith('v:')) vaultSave(); audio.play('rankup'); if (msg) w.ui.toast(msg, '#ffd84a'); w.refreshGear(); w.ui.dirty(); } this.render(); };
+    ask('[data-treroll]', () => ['옵션 다시 굴림', '이 옵션을 다른 옵션으로 바꿉니다', '굴리기'], (el) => { const [k, i] = el.dataset.treroll.split('|'), it = gearAt(st, k); const r = rerollAffix(st, it, Number(i)); tuneDone(r, k, r.ok ? `${affixText(r.before)} → ${affixText(r.after)}` : null); });
+    ask('[data-tshard]', () => ['장비 파편 추출', '이 옵션을 파편으로 뽑습니다. 장비는 사라집니다', '뽑기'], (el) => { const [k, i] = el.dataset.tshard.split('|'), it = gearAt(st, k);
+      const r = extractShard(st, it, Number(i), () => { const L = k.startsWith('v:') ? vault().items : st.inv, j = L.indexOf(it); if (j >= 0) L.splice(j, 1); }); if (r.ok) this.tuneSel = null; tuneDone(r, k, r.ok ? `파편: ${affixText(r.shard.shard)}` : null); });
+    ask('[data-tsock]', () => ['구멍 뚫기', '보석 구멍을 하나 더 뚫습니다', '뚫기'], (el) => { const k = el.dataset.tsock; tuneDone(addSocket(st, gearAt(st, k)), k, '구멍을 뚫었습니다'); });
+    ask('[data-teng]', (el) => ['각인 새기기', `${lordName(el.dataset.teng.split('|')[1])}: ${ENGRAVE[el.dataset.teng.split('|')[1]].text}`, '새기기'], (el) => { const [k, L] = el.dataset.teng.split('|'); tuneDone(engrave(st, gearAt(st, k), L), k, '각인을 새겼습니다'); });
+    ask('[data-tstone]', () => ['각인석', '각인석을 이 장비에 새깁니다', '새기기'], (el) => { const [k, u] = el.dataset.tstone.split('|'); tuneDone(engrave(st, gearAt(st, k), null, Number(u)), k, '각인을 새겼습니다'); });
+    ask('[data-tengx]', () => ['각인 추출', '각인을 떼어 각인석으로 만듭니다', '추출'], (el) => { const k = el.dataset.tengx; tuneDone(extractEngrave(st, gearAt(st, k)), k, '각인석을 얻었습니다'); });
+    on('[data-raidg]', (el) => { this.raidG = Number(el.dataset.raidg); audio.play('click'); this.render(); });
+    on('[data-raidgo]', (el) => { const g = Number(el.dataset.raidgo); this.close(); w.enterRaid(g); });
     on('[data-horde]', () => { if (this.townMode !== 'build') return; this.close(); w.enterHorde(); });
     on('[data-skassign]', () => { this.skAssign = this.skAssign ? null : this.skillSel; audio.play('click'); this.render(); });
     on('[data-skline]', (el) => { this.skillLine = el.dataset.skline; this.skAssign = null; audio.play('click'); this.render(); });
@@ -1495,7 +1588,7 @@ export class Windows {
     on('[data-enh]', (el) => {
       const it = gearAt(st, el.dataset.enh), b0 = BASES[it.base], before = b0.dmg ? scaledDmg(it).join('~') : b0.armor ? scaledArmor(it) : null, p0 = it.plus || 0;
       const affA = (it.affixes || []).map((a) => affixText({ ...a, v: affixV(it, a) })); // v0.49.59 장신구 옵션 바뀐 값
-      const r = enhance(st, it); if (el.dataset.enh.startsWith('v:')) vaultSave();
+      const r = enhance(st, it, Math.random, !!this.useWhet); if (el.dataset.enh.startsWith('v:')) vaultSave();
       if (!r.ok) { w.ui.toast(r.why); audio.play('error'); }
       else if (r.success) {
         audio.play('awaken'); w.fx.pillar(w.player.pos.x, w.player.pos.z, 0xffd060, 0.8); w.refreshGear();

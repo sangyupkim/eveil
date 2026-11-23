@@ -895,3 +895,16 @@ body.ui-edit #qsets { display: none; }
   padding: 4px 14px; border-radius: 10px; background: rgba(30, 12, 8, .75); border: 1px solid #a0502a; color: #ffd0a0; font-family: var(--f-title); font-size: calc(var(--u) * 1.15); white-space: nowrap; }
 #hordeHud b { color: #ff9a5a; }
 #hordeHud small { color: var(--dim); font-family: var(--f-latin); }
+/* v0.50 왕좌 원정 */
+#raidHud { position: fixed; top: calc(var(--u) * 8); left: 50%; transform: translateX(-50%); z-index: 30; pointer-events: none; display: flex; gap: 10px; align-items: center;
+  padding: 4px 14px; border-radius: 10px; background: rgba(28, 20, 8, .78); border: 1px solid #b08a3a; color: #ffe0a0; font-family: var(--f-title); font-size: calc(var(--u) * 1.15); white-space: nowrap; }
+#raidHud b { color: #ffd060; }
+#raidHud small { color: var(--dim); font-family: var(--f-latin); }
+#raidHud .rg { display: inline-block; width: calc(var(--u) * 8); height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .12); overflow: hidden; }
+#raidHud .rg i { display: block; height: 100%; background: linear-gradient(90deg, #ffb060, #ffe08a); }
+.raidLine { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
+.raidLine .rw.lord { color: #ff9a6a; border-color: #a0502a; }
+.tkRow { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 6px; }
+.tkN { font-size: .75em; padding: 1px 6px; border-radius: 6px; background: rgba(255, 200, 90, .12); color: #ffd890; }
+.tuneRow { gap: 4px; padding: 3px 0; }
+.tuneRow .btn { padding: 2px 8px; font-size: .8em; }

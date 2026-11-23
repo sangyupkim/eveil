@@ -9,6 +9,7 @@ import { terrain, fogCan, MAP_R, FOG_C, seen as seenAt } from './mapimg.js';
 import { CAMPS } from '../engine2d/stage.js';
 import { dailyOf, dailyText } from '../game/daily.js';
 import { hordePen } from '../data/horde.js';
+import { RAID_SPOT, lordName } from '../data/raid.js';
 import { townOf } from '../game/town.js';
 import { PLOTS, BUILDINGS, VAULT_SPOT } from '../data/buildings.js';
 import { expNeeded, powerLevel, recAwaken } from '../game/growth.js';
@@ -294,7 +295,7 @@ export class HUD {
     };
     // 내 캐릭터 머리 위: 칭호 · 닉네임 · 작은 체력 · 마나 줄
     if (!w.dead) {
-      const st = w.st, d = w.d, ttl = st.titles?.[st.titles.length - 1]?.name || '';
+      const st = w.st, d = w.d, ttl = [st.raidTitle && lordName(st.raidTitle), st.titles?.[st.titles.length - 1]?.name].filter(Boolean).join(' · '); // v0.50 원정 칭호
       place('me', P, 2.45 * (w.player.scale || 1), () => {
         const el = document.createElement('div'); el.className = 'lbl me';
         el.innerHTML = '<small class="ttl"></small><b class="nm"></b><span class="hb"><i></i></span><span class="mb"><i></i></span>';
@@ -349,6 +350,7 @@ export class HUD {
       });
     }
     if (w.inTown) place('vaultLbl', { x: VAULT_SPOT.x, y: 0, z: VAULT_SPOT.z }, 1.6, () => { const el = document.createElement('div'); el.className = 'lbl npc'; el.textContent = '공용 창고'; return el; });
+    if (w.inTown) place('raidLbl', { x: RAID_SPOT.x, y: 0, z: RAID_SPOT.z }, 2.2, () => { const el = document.createElement('div'); el.className = 'lbl npc'; el.textContent = '왕좌의 문'; return el; });
     if (w.inTown) for (const pl of PLOTS) {
       const b = w.st.town?.plots?.[pl.id], nm = b ? `${BUILDINGS[b.type].name} ${b.bld ? '공사 중' : `${b.lv}단계`}` : '빈 집터';
       place('plot' + pl.id + nm, { x: pl.x, y: 0, z: pl.z }, b && b.type !== 'herb' ? 4.2 : 1.6, () => { const el = document.createElement('div'); el.className = 'lbl npc'; el.textContent = nm; return el; });

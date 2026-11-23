@@ -154,7 +154,19 @@ export const BASES = {
   map_piece: { name: '미지의 땅 조각', type: 'mat', price: 0, stack: true, icon: 2322 }, // v0.44.47 미지의 땅
   unknown_gate: { name: '열린 미지의 길', type: 'map', price: 0, icon: 2339 }, // v0.44.50 24시간 안 다시 들어가기 (it.zi · it.until)
   unknown_map: { name: '미지의 지도', type: 'map', price: 0, stack: true, icon: 2328 },
-  myth_mark: { name: '신화의 흔적', type: 'mat', price: 0, stack: true, icon: 1011 }, // v0.42.10 강화 · 극한 돌파마다 1개, 100개로 신화 장비
+  myth_mark: { name: '신화의 흔적', type: 'mat', price: 0, stack: true, icon: 1011 },
+  // v0.50 왕좌 원정: 원정 문장 · 문장 상점 물건 (data/raid.js RAID_SHOP)
+  raid_emblem: { name: '원정 문장', type: 'raid', price: 0, stack: true, icon: 2081 },
+  whetstone: { name: '왕좌의 숫돌', type: 'raid', price: 0, stack: true, icon: 2041, text: '초월 강화(+21~) 한 번 성공 확률 +5%' },
+  t_reroll: { name: '옵션 다시 굴림권', type: 'raid', price: 0, stack: true, icon: 2034, text: '장비 옵션 한 줄을 다시 굴립니다' },
+  t_socket: { name: '구멍 뚫기권', type: 'raid', price: 0, stack: true, icon: 2101, text: '장비에 보석 구멍 하나 (최대 3)' },
+  t_engx: { name: '각인 추출권', type: 'raid', price: 0, stack: true, icon: 2084, text: '신화 장비의 각인을 각인석으로 뗍니다' },
+  t_shardx: { name: '장비 파편 추출권', type: 'raid', price: 0, stack: true, icon: 2095, text: '장비의 옵션 한 줄을 파편으로 뽑습니다 (장비는 사라짐)' },
+  t_engrave: { name: '군주의 각인', type: 'raid', price: 0, stack: true, icon: 2086, text: '신화 장비에 원정 군주의 각인을 새깁니다' },
+  eng_stone: { name: '각인석', type: 'raid', price: 0, icon: 2085, text: '신화 장비에 새길 수 있는 각인' },
+  box_gear: { name: '군주의 장비 상자', type: 'raid', price: 0, icon: 2042, text: '내 무기 · 갈래에 맞는 장비 (신화 · 전설 · 영웅)' },
+  box_shard: { name: '군주의 파편 상자', type: 'raid', price: 0, icon: 2014, text: '좋은 능력치 파편 3 ~ 5개' },
+  t_book: { name: '상급 스킬북 고르기권', type: 'raid', price: 0, stack: true, icon: 2087, text: '지금 차수의 상품 스킬북 하나를 고릅니다' }, // v0.42.10 강화 · 극한 돌파마다 1개, 100개로 신화 장비
   dungeon_key2: { name: '강화 던전 열쇠', type: 'key', price: 6000, stack: true }, dungeon_key3: { name: '극한 던전 열쇠', type: 'key', price: 20000, stack: true }, // v0.42 제작소에서 // 상점에서 팔지 않는다: 오늘의 의뢰 · 보스에게서만
   pet_egg: { name: '강아지', type: 'pet', pet: 'pet_dog', price: 3000, stack: true, shop: true },
   pet_cat: { name: '고양이', type: 'pet', pet: 'pet_cat', price: 3000, stack: true, shop: true },

@@ -5,7 +5,7 @@ import { BUILDINGS, PLOTS, ENHANCE, EXPEDITIONS, RESEARCH, RESEARCH_MAX, SHELTER
 import { HERBS, herbsAt, RECIPES } from '../data/potions.js';
 import { ZONES } from '../data/world.js';
 import { rollLoot } from './loot.js';
-import { addItem, bagSize } from './inventory.js';
+import { addItem, bagSize, takeOne } from './inventory.js';
 import { makeItem, rollBase } from './items.js';
 import { MATERIALS, MAT_DROP, SETS, SET_SLOTS, craftCost, upgradeMats } from '../data/crafting.js';
 import { BASES } from '../data/items.js';
@@ -158,20 +158,21 @@ export const enhanceCap = (st) => { const s = findBuilding(st, 'smithy'); return
 // 장인의 기운: 실패할 때마다 (그 시도 확률 × 0.465)만큼 쌓이고 100%면 다음은 반드시 성공.
 // 실패마다 기본 확률의 10%씩 올라 최대 2배 (성공하면 둘 다 0으로)
 export const jangOf = (it) => it.jang || 0;
-export function enhanceCost(it, st = null) {
+export function enhanceCost(it, st = null, whet = false) {
   const n = it.plus || 0, hk = Math.max(0.5, 1 - (it.ilvl || 1) / 750), base = n < 2 ? ENHANCE.chance(n) : ENHANCE.chance(n) * hk, up = Math.min(base, base * 0.1 * (it.fails || 0)); // 높은 장비는 성공률이 낮다 (레벨 200 ×0.56)
-  const chance = jangOf(it) >= 1 ? 1 : Math.min(1, base + up + (st ? researchK(st, 'enh') : 0));
+  const chance = jangOf(it) >= 1 ? 1 : Math.min(1, base + up + (st ? researchK(st, 'enh') : 0) + (whet && n >= 20 ? 0.05 : 0)); // v0.50 왕좌의 숫돌: 초월 강화 +5%
   const oreId = ENHANCE.oreId(n), oreK = oreId === 'ore' ? 1 + (it.ilvl || 1) / 130 : 1 + (it.ilvl || 1) / 400;
   return { gold: Math.round(ENHANCE.gold(n, it.ilvl || 1) * (1 - (st ? bonusOf(st, 'smithy') : 0))), ore: Math.round(ENHANCE.ore(n) * oreK), oreId, oreName: BASES[oreId].name, chance, base, jang: jangOf(it) }; // 강화석도 높은 장비일수록 많이
 }
 // rng: 0~1. 실패해도 단계가 떨어지지는 않는다 (재료만 사라진다)
-export function enhance(st, it, rng = Math.random) {
+export function enhance(st, it, rng = Math.random, whet = false) {
   const n = it.plus || 0;
   if (n >= enhanceCap(st)) return { ok: false, why: '대장간 단계를 올려야 합니다' };
-  const c = enhanceCost(it, st), t = townOf(st);
+  whet = whet && n >= 20 && countOf(st, 'whetstone') > 0;
+  const c = enhanceCost(it, st, whet), t = townOf(st);
   if (st.gold < c.gold) return { ok: false, why: '금화가 모자랍니다' };
   if (resCount(st, c.oreId) < c.ore) return { ok: false, why: `${c.oreName}이 모자랍니다` };
-  st.gold -= c.gold; resTake(st, c.oreId, c.ore); lifeProgress(st, 'enhance');
+  st.gold -= c.gold; resTake(st, c.oreId, c.ore); lifeProgress(st, 'enhance'); if (whet) takeOne(st, 'whetstone');
   if (rng() < c.chance) { it.plus = n + 1; it.jang = 0; it.fails = 0; return { ok: true, success: true, plus: it.plus }; }
   it.fails = (it.fails || 0) + 1;
   it.jang = Math.min(1, jangOf(it) + c.chance * 0.465);

@@ -1,6 +1,7 @@
 // 입력: PC(마우스 · 키보드) + 모바일(조이스틱 · 터치 · 버튼)
 import { isTouch, CAMPS } from './engine2d/stage.js';
 import { PLOTS, BUILDINGS, VAULT_SPOT } from './data/buildings.js';
+import { RAID_SPOT } from './data/raid.js';
 import { iconCut, uiIcon } from './ui/icons.js';
 import { actionOf, keyMap, bindKey } from './data/keys.js';
 
@@ -52,6 +53,7 @@ export function setupInput(world, stage, windows) {
     { const hr = world.rumorNear(3.2); if (hr) return { name: '숨은 던전', exit: true, go: () => world.askRumor(hr) }; }
     { const dz = world.dungeonNear(3); if (dz >= 0) return { name: '던전', exit: true, go: () => world.askDungeon(dz) }; }
     if (world.inTown && near(VAULT_SPOT, 2.6)) return { name: '창고', go: () => windows.talkTo(['vault'], 'vault') };
+    if (world.inTown && near(RAID_SPOT, 2.6)) return { name: '왕좌의 문', go: () => windows.talkTo(['raid'], 'raid') }; // v0.50 왕좌 원정
     if (world.inTown) {
       const pl = PLOTS.filter((q) => near(q, 7.5)).sort((a, b) => Math.hypot(a.x - world.player.pos.x, a.z - world.player.pos.z) - Math.hypot(b.x - world.player.pos.x, b.z - world.player.pos.z))[0];
       const b = pl && world.st.town?.plots?.[pl.id];

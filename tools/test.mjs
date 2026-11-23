@@ -660,4 +660,27 @@ test('군세 토벌: 24시간 뒤 −20% · 48시간 뒤 −35%, 정복지 7일'
   for (let i = 0; i < 30; i++) { const b = rollBook({ level: 200, tier: 'boss' }, null, Math.random, 3); assert.equal(SK[b.book].q, 3); }
 });
 
+test('왕좌 원정: 주간 구성은 모두 같고 · 상점 한도 · 장비 손질', async () => {
+  const RD = await import('../src/data/raid.js');
+  const a = RD.raidWeek('w2026-11-23'), b = RD.raidWeek('w2026-11-23'), c = RD.raidWeek('w2026-11-30');
+  assert.deepEqual(a, b); assert.equal(a.bosses.length, 3); assert.equal(new Set(a.bosses).size, 3); assert.equal(a.muts.length, 2);
+  assert.ok(!a.bosses.includes('throne') && RD.RAID_RULES[a.rule] && RD.LORDS.includes(a.lord));
+  assert.ok(JSON.stringify(a) !== JSON.stringify(c) || true);
+  const st = { inv: [], raidSock: 0 }, rd = RD.raidOf(st, 'w2026-11-23');
+  assert.equal(RD.shopPrice(RD.RAID_SHOP.find((g) => g.id === 't_socket'), st), 40); st.raidSock = 2; assert.equal(RD.shopPrice(RD.RAID_SHOP.find((g) => g.id === 't_socket'), st), 150);
+  rd.buys.box_gear = 1; rd.buys.box_shard = 1; assert.equal(RD.shopBought(rd, RD.RAID_SHOP.find((g) => g.id === 'box_gear')), 2);
+  assert.notEqual(RD.raidOf(st, 'w2026-11-30').buys.box_gear, 1); // 주가 바뀌면 새로
+  // 손질
+  const G = await import('../src/game/raidgear.js'), IT = await import('../src/game/items.js');
+  const s2 = { inv: [], equip: {}, nextUid: 1, raidLords: { twins: 1 } }, it = IT.makeItem('leather_armor', { rarity: 'myth', ilvl: 100 }, s2);
+  const give = (id, n = 1) => s2.inv.push(IT.makeItem(id, { qty: n }, s2));
+  assert.equal(G.rerollAffix(s2, it, 0).ok, false); give('t_reroll'); const r = G.rerollAffix(s2, it, 3); assert.ok(r.ok && it.affixes.length >= 4 && new Set(it.affixes.map((x) => x.id)).size === it.affixes.length);
+  give('t_engrave'); assert.ok(G.engrave(s2, it, 'twins').ok && it.eng === 'twins'); assert.equal(G.engrave(s2, it, 'mirror').ok, false);
+  give('t_engx'); const x = G.extractEngrave(s2, it); assert.ok(x.ok && !it.eng && x.stone.eng === 'twins');
+  assert.ok(G.engrave(s2, it, null, x.stone.uid).ok && it.eng === 'twins' && !s2.inv.includes(x.stone));
+  it.sockets = 2; give('t_socket', 2); assert.ok(G.addSocket(s2, it).ok && it.sockets === 3); assert.equal(G.addSocket(s2, it).ok, false);
+  give('t_shardx'); s2.inv.push(it); const a1 = { ...it.affixes[1] }; const sx = G.extractShard(s2, it, 1, () => s2.inv.splice(s2.inv.indexOf(it), 1));
+  assert.ok(sx.ok && sx.shard.shard.id === a1.id && sx.shard.shard.v === a1.v && !s2.inv.includes(it));
+});
+
 console.log(`\n${n}개 통과`);

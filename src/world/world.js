@@ -14,7 +14,10 @@ import { TITLE_AT, titleKey, titleName, perkChoices, UNIQUES } from '../data/tit
 import * as THREE from 'three';
 import { CONFIG, TIERS, AP_TABLE, STAT_NAMES } from '../data/config.js';
 import { SKILLS } from '../data/skills.js';
-import { BASES, WEAPON_CLASSES, RARITY_ORDER, isTwoHandedBase } from '../data/items.js';
+import { BASES, WEAPON_CLASSES, RARITY_ORDER, isTwoHandedBase, AFFIXES, RARITY } from '../data/items.js';
+import { makeShard } from '../game/shards.js';
+import { cloud } from '../net/cloud.js';
+import { engraves } from '../game/raidgear.js';
 import { MONSTERS, ZONES, TOWN, TIER_STEP, FINAL_ZONE } from '../data/world.js';
 import { derive, damageReduction, totalStats, skillScale } from '../game/player.js';
 import { monsterRes, mixFxOf } from '../data/resist.js';
@@ -28,6 +31,7 @@ import { addAP, gainExp, rewardFactor, recAwaken } from '../game/growth.js';
 import { addSkillExp, skillValues, skillEff, modsOf, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
 import { rollLoot, rollDeathDrop, rollBook } from '../game/loot.js';
 import { HORDE, hordePen, conqLeft, hordeGap } from '../data/horde.js';
+import { RAID, RAID_GRADES, BLESS, BLESS_IDS, RAID_SPOT, raidWeek, raidOf, raidOpen, fmtTime } from '../data/raid.js';
 import { dropMats, liberateAdd, dropEss, resAdd, resCount, claim as claimMerc, lootRoomFull, brewCollect, collect as collectPlot, repeatTick, autoBrewTick } from '../game/town.js';
 import { vaultAdd } from '../game/vault.js';
 import { itemIcon, iconUrl, coinIcon, oreIcon, herbIcon, townIcon, bookIcon } from '../ui/icons.js';
@@ -220,6 +224,8 @@ export class World {
     };
     // 공용 창고 상자
     tile('grassland', 76, VAULT_SPOT.x, VAULT_SPOT.z); col(VAULT_SPOT.x, VAULT_SPOT.z, 0.7);
+    // v0.50 왕좌의 문: 차원문 옆 돌기둥 둘 + 가운데 석상
+    tile('ruins', 223, RAID_SPOT.x - 1.3, RAID_SPOT.z); col(RAID_SPOT.x - 1.3, RAID_SPOT.z, 0.6); tile('ruins', 223, RAID_SPOT.x + 1.3, RAID_SPOT.z); col(RAID_SPOT.x + 1.3, RAID_SPOT.z, 0.6); tile('dungeon', 128, RAID_SPOT.x, RAID_SPOT.z - 0.6);
     for (const pl of PLOTS) {
       const b = t.plots[pl.id];
       if (!b) { tile('grassland', 138, pl.x, pl.z); continue; }
@@ -340,6 +346,7 @@ export class World {
     for (const k in this.pbuffs || {}) if (this.pbuffs[k].t > 0) b[k] = (b[k] || 0) + this.pbuffs[k].v;
     // 영약 (마신 뒤 5분)
     for (const k in this.st.elix || {}) { const e = this.st.elix[k]; if (e.t > 0) b[e.buff] = (b[e.buff] || 0) + e.v; }
+    for (const id of this.dungeon?.raid?.bless || []) { const B = BLESS[id]; if (B?.buff) b[B.buff] = (b[B.buff] || 0) + B.v; } // v0.50 원정 축복
     return b;
   }
 
@@ -783,7 +790,8 @@ export class World {
     this.target = null; this.chasePath = null;
     const zn = this.dungeon.zone;
     if (this.dungeon.horde && !this.dungeon.cleared) this.ui.toast('토벌을 멈췄습니다 — 군세는 그대로 남아 있습니다', '#ff8a5a');
-    document.getElementById('hordeHud')?.remove();
+    if (this.dungeon.raid && !this.dungeon.raid.done) this.ui.toast('왕좌 원정 실패', '#ff6a5a');
+    document.getElementById('hordeHud')?.remove(); document.getElementById('raidHud')?.remove();
     this.dungeon = null;
     if (!silent) { const e = entranceOf(zn); this.player.pos.set(e.x + 2, 0, e.z + 2); this.gateCd = 4; this.fx.arrive(e.x + 2, e.z + 2); }
   }
@@ -858,6 +866,7 @@ export class World {
   }
   hordeKill(m) {
     const dg = this.dungeon, H = dg.horde;
+    if (m.stunT > this.time) { if (m.showHp > 0) m.showHp -= dt; return; } // v0.50 원정 · 무력화
     if (m.pillar) {
       H.down++; this.fx.pillar(m.pos.x, m.pos.z, 0xff6a3a, 1.4, 5, 1); sfx('rankup', 0.6);
       for (let i = 0; i < 2; i++) this.hordeMob('elite', [6, 12]);
@@ -901,6 +910,195 @@ export class World {
     this.fx.pillar(P.x, P.z, 0xffd060, 2, 8, 2); sfx('awaken');
     this.ui.toast(`군세 토벌 완료 — ${zn.name}이(가) 7일 동안 정복지가 됩니다`, '#ffd060');
     this.ui.log(`정수 ${'ⅠⅡⅢⅣⅤ'[g - 1] || g} +${Math.round(4 * mult)} · ${zn.name} 재료`, '#ffd060');
+    this.ui.dirty();
+  }
+  // ───── v0.50 왕좌 원정 (data/raid.js) ─────
+  enterRaid(grade) {
+    const st = this.st; if (!raidOpen(st) || this.dead) return;
+    const W = raidWeek(), zi = ALL_ZONES.findIndex((z) => z.id === RAID.arena), zn = ALL_ZONES[zi];
+    this.leaveDungeon(true); this.toggleAuto(false);
+    this.dungeon = { zi, stage: 1, zone: zn, diff: 1, muts: [...W.muts], started: true, t0: this.time, dmg: 0, kills: 0, got: [], until: Date.now() + 86400e3, L: this.hordeLevel(),
+      raid: { grade, G: RAID_GRADES[grade], W, idx: 0, bless: [], state: 'rest', restT: 4, t0: this.time } };
+    const c = this.raidCenter();
+    this.player.pos.set(c.x, 0, c.z + 7); this.moveTo = null; this.target = null;
+    this.stage.cam.x = c.x; this.stage.cam.z = c.z + 7; this.fx.arrive(c.x, c.z + 7);
+    this.ui.toast(`왕좌 원정 · 등급 ${RAID_GRADES[grade].name}`, '#ffd060'); sfx('awaken', 0.6);
+    this.ui.dirty();
+  }
+  raidCenter() { const dg = this.dungeon, Ld = dungeonLayout(dg.zi); return cellPos(dg.zi, Ld.boss[0], Ld.boss[1]); }
+  raidMob(type, name, hpK, at, opt = {}) {
+    const dg = this.dungeon, R = dg.raid;
+    const m = this.spawn({ zone: dg.zone, x: at.x, z: at.z, level: dg.L, tier: opt.tier || 'boss', timer: 0, mon: null, fixed: type ? { type, name, tint: opt.tint ?? null } : undefined });
+    if (!m) return null;
+    this.hordeScale(m, dg.zi);
+    if (m.tier === 'boss') { const ref = MONSTERS[dg.zone.boss.type]; if (ref && m.def.hp) { m.maxHp *= ref.hp / m.def.hp; m.dmg = m.dmg.map((v) => v * (ref.dmg?.[1] || 1) / (m.def.dmg?.[1] || ref.dmg?.[1] || 1)); } } // 보스마다 기본 체력이 달라 원정 보스는 왕좌 보스 기준으로 맞춘다
+    m.maxHp = m.hp = Math.round(m.maxHp * hpK * R.G.hp); m.dmg = m.dmg.map((v) => v * R.G.dmg);
+    m.dungeon = true; m.raid = true; m.noLoot = true; m.exp *= 0.5; m.state = 'chase'; m.home = { x: at.x, z: at.z };
+    const MA = (dg.muts || []).filter((x) => MUT_AFFIX.includes(x));
+    if (MA.length) { m.affix = [...new Set([...(m.affix || []), ...MA])]; if (MA.includes('frenzy')) { m.speed *= 1.3; m.def = { ...m.def, interval: m.def.interval / 1.3 }; } }
+    return m;
+  }
+  raidSpawnBoss() {
+    const dg = this.dungeon, R = dg.raid, W = R.W, c = this.raidCenter();
+    if (R.idx < 3) {
+      const zn = ALL_ZONES.find((z) => z.id === W.bosses[R.idx]);
+      const m = this.raidMob(zn.boss.type, `원정 · ${zn.boss.name}`, RAID.bossHp, c); if (m) m.raidBoss = true;
+      this.ui.toast(`${R.idx + 1}번째 · ${zn.boss.name}`, '#ff9a6a');
+    } else {
+      const L = W.lord;
+      const at = L.id === 'twins' ? [{ x: c.x - 3.5, z: c.z }, { x: c.x + 3.5, z: c.z }] : [c];
+      at.forEach((q, i) => { const m = this.raidMob(L.type, L.id === 'twins' ? `${L.name} ${i ? '서' : '동'}` : L.name, RAID.lordHp / at.length, q, { tint: L.tint }); if (m) { m.raidBoss = true; m.lord = L.id; m.twinI = i; m.actor.setGlow(0x402010); } });
+      if (L.id === 'maw') R.mawR = 14;
+      this.ui.toast(`원정 군주 · ${L.name}`, '#ff5a3a'); sfx('error');
+    }
+    R.state = 'fight'; sfx('boom', 0.6);
+  }
+  raidBossDown(m) {
+    const R = this.dungeon.raid;
+    if (this.monsters.some((x) => x !== m && !x.dead && x.raidBoss)) return; // 쌍둥이: 둘 다
+    for (const x of this.monsters) if (!x.dead && x.raid) { x.noLoot = true; x.exp = 0; this.later(0.2, () => { if (!x.dead) this.hitMonster(x, 1e15, { src: 'none' }); }); }
+    R.idx++;
+    if (R.idx >= 4) { this.raidClear(); return; }
+    R.state = 'rest'; R.restT = RAID.rest;
+    // 축복 셋 중 하나 (이번 원정 동안)
+    const pool = [...BLESS_IDS], pick = []; while (pick.length < 3) pick.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    this.ui.choose(`정비 · 다음 ${R.idx < 3 ? `${R.idx + 1}번째 보스` : '원정 군주'}`, '축복 하나를 고르세요', pick.map((id) => ({ label: BLESS[id].name, sub: BLESS[id].text })), (i) => {
+      if (i < 0 || !this.dungeon?.raid || this.dungeon.raid !== R) return;
+      R.bless.push(pick[i]); this.d = derive(this.st, this.buffValues()); this.ui.toast(BLESS[pick[i]].name, '#ffd060'); sfx('buff');
+    });
+  }
+  raidStep(dt) {
+    const dg = this.dungeon, R = dg?.raid;
+    let el = document.getElementById('raidHud');
+    if (!R || R.done) { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement('div'); el.id = 'raidHud'; document.body.appendChild(el); }
+    const left = RAID.limit - (this.time - R.t0), W = R.W;
+    const lordM = this.monsters.find((m) => !m.dead && m.lord === 'colossus' && m.gauge);
+    const ph = R.state === 'rest' ? `정비 ${Math.ceil(R.restT)}` : R.idx < 3 ? `보스 ${R.idx + 1} / 4` : W.lord.name;
+    const gauge = lordM ? `<i class="rg"><i style="width:${Math.min(100, (lordM.gauge.got / lordM.gauge.need) * 100)}%"></i></i>` : R.mawR ? `<small>전장 ${R.mawR.toFixed(1)}</small>` : '';
+    const key = ph + Math.ceil(left) + gauge; if (el.dataset.k !== key) { el.dataset.k = key; el.innerHTML = `<b>왕좌 원정 ${R.G.name}</b><span>${ph}</span>${gauge}<small>${fmtTime(Math.max(0, left))}</small>`; }
+    if (this.dead) return;
+    if (left <= 0) { R.done = true; this.ui.toast('시간이 다 되었습니다 — 원정 실패', '#ff6a5a'); this.later(2, () => this.leaveDungeon()); return; }
+    if (R.state === 'rest') { if ((R.restT -= dt) <= 0) this.raidSpawnBoss(); return; }
+    const boss = this.monsters.find((m) => !m.dead && m.raidBoss);
+    if (W.rule === 'quake' && boss && (R.qT = (R.qT ?? 10) - dt) <= 0) { // 무너지는 왕좌
+      R.qT = 10; const P = this.player.pos;
+      for (let i = 0; i < 3; i++) { const a = Math.random() * 6.28, r = i ? 3 + Math.random() * 4 : 0; this.danger(boss, P.x + Math.cos(a) * r, P.z + Math.sin(a) * r, 2.6, 1.5, 1.2, 0x9a6a3a); }
+    }
+    for (const m of this.monsters) if (!m.dead && m.lord) this.raidLord(m, dt);
+  }
+  // 원정 군주 6종의 고유 기믹
+  raidLord(m, dt) {
+    const R = this.dungeon.raid, P = this.player.pos, c = this.raidCenter();
+    if (m.stunT > this.time) return;
+    switch (m.lord) {
+      case 'twins': { // 둘의 체력 차이가 15%를 넘으면 둘 다 회복
+        if (m.twinI) return;
+        const o = this.monsters.find((x) => x !== m && !x.dead && x.lord === 'twins'); if (!o) return;
+        if (Math.abs(m.hp / m.maxHp - o.hp / o.maxHp) > 0.15) {
+          for (const x of [m, o]) x.hp = Math.min(x.maxHp, x.hp + x.maxHp * 0.03 * dt);
+          if ((R.twT || 0) < this.time) { R.twT = this.time + 5; this.ui.toast('쌍둥이 왕이 서로를 살립니다 — 번갈아 치세요', '#9ad0ff'); this.fx.pillar(m.pos.x, m.pos.z, 0x9ad0ff, 0.8, 4, 1); this.fx.pillar(o.pos.x, o.pos.z, 0x9ad0ff, 0.8, 4, 1); }
+        }
+        return;
+      }
+      case 'mirror': { // 내 퀵슬롯 스킬을 베껴 쓴다
+        if ((m.mT = (m.mT ?? 6) - dt) > 0) return; m.mT = 9;
+        const ids = (this.st.quick || []).filter((id) => id && SKILLS[id] && SKILLS[id].type !== 'passive'); if (!ids.length) return;
+        const id = ids[Math.floor(Math.random() * ids.length)], sk = SKILLS[id], role = sk.role || (sk.type === 'buff' ? 'util' : 'boss');
+        this.ui.toast(`거울 군주가 「${sk.name}」을(를) 베꼈습니다`, '#d8d8ff');
+        if (role === 'util') { m.shieldT = this.time + 3.5; this.fx.ring(m.pos.x, m.pos.z, 2.4, 0xd8d8ff, 3.5); }
+        else if (role === 'hunt') { this.danger(m, P.x, P.z, 4.5, 1.3, 1.6, 0xd8d8ff); this.danger(m, m.pos.x, m.pos.z, 4, 1.6, 1.2, 0xd8d8ff); }
+        else { const dx = P.x - m.pos.x, dz = P.z - m.pos.z, l = Math.hypot(dx, dz) || 1; this.dangerLane(m, m.pos.x, m.pos.z, m.pos.x + dx / l * 18, m.pos.z + dz / l * 18, 2.6, 1.1, 2.2, 0xd8d8ff); }
+        return;
+      }
+      case 'maw': { // 전장이 줄어든다 · 졸개를 잡으면 넓어진다
+        R.mawR = Math.max(5, (R.mawR || 14) - 0.22 * dt);
+        if ((R.ringT = (R.ringT || 0) - dt) <= 0) { R.ringT = 1; this.fx.ring(c.x, c.z, R.mawR, 0x7a3aff, 1.05); }
+        if (Math.hypot(P.x - c.x, P.z - c.z) > R.mawR && (R.mawHit = (R.mawHit || 0) - dt) <= 0) { R.mawHit = 1; this.hurtPlayer(this.d.maxHp * 0.06, m, { sure: true }); }
+        if ((m.adT = (m.adT ?? 6) - dt) <= 0) { m.adT = 8; for (let i = 0; i < 3; i++) { const a = Math.random() * 6.28, q = { x: c.x + Math.cos(a) * (R.mawR - 1), z: c.z + Math.sin(a) * (R.mawR - 1) }; const ad = this.raidMob(null, null, 0.08, q, { tier: 'normal' }); if (ad) ad.mawAdd = true; } }
+        return;
+      }
+      case 'time': { // 30초마다 되감기 (10초 전 체력) · 직전 3초에 최대 체력 6%를 깎으면 끊긴다
+        if ((m.hT = (m.hT || 0) - dt) <= 0) { m.hT = 1; (m.hist ||= []).push(m.hp); if (m.hist.length > 12) m.hist.shift(); }
+        m.twT = (m.twT ?? 30) - dt;
+        if (m.twT <= 3 && !m.rw) { m.rw = { got: 0 }; this.ui.toast('시간의 군주가 시간을 되감습니다 — 몰아치세요', '#ffe08a'); this.fx.ring(m.pos.x, m.pos.z, 3, 0xffe08a, 3); }
+        if (m.twT <= 0) {
+          if (m.rw.got >= m.maxHp * 0.06) { this.ui.toast('되감기를 끊었습니다', '#9fe39f'); sfx('rankup', 0.5); }
+          else { const back = m.hist?.[0]; if (back > m.hp) { m.hp = Math.min(m.maxHp, back); this.fx.pillar(m.pos.x, m.pos.z, 0xffe08a, 1.2, 6, 1.3); this.ui.toast('시간이 되감겼습니다', '#ffe08a'); } }
+          m.rw = null; m.twT = 30;
+        }
+        return;
+      }
+      case 'chain': { // 사슬로 묶어 끌어당김 · 1.5초 안에 보조기로 끊는다
+        if ((m.cT = (m.cT ?? 10) - dt) > 0) return; m.cT = 12;
+        this.fx.lane(m.pos.x, m.pos.z, P.x, P.z, 0.8, 1.5, 0xb0b0b0); R.chainT = this.time + 1.5;
+        this.ui.toast('사슬! 보조기로 끊으세요', '#d0d0d0');
+        this.later(1.5, () => {
+          if (m.dead || !this.dungeon?.raid || R.chainT <= 0 || this.dead) return;
+          R.chainT = 0; const dx = P.x - m.pos.x, dz = P.z - m.pos.z, l = Math.hypot(dx, dz) || 1;
+          this.player.pos.x = m.pos.x + dx / l * 2; this.player.pos.z = m.pos.z + dz / l * 2; this.player.lock = Math.max(this.player.lock || 0, 1.2); this.moveTo = null;
+          this.hurtPlayer(randRange(m.dmg[0], m.dmg[1]) * 1.5, m, { sure: true }); this.fx.shake(0.4); sfx('boom', 0.6);
+        });
+        return;
+      }
+      case 'colossus': { // 무력화 게이지: 6초 안에 최대 체력 10% → 6초 쓰러짐(받는 피해 ×2), 못 채우면 큰 내려찍기
+        if (m.gauge) {
+          if (m.gauge.got >= m.gauge.need) { m.gauge = null; m.stunT = this.time + 6; this.ui.toast('종말의 거신이 쓰러졌습니다!', '#9fe39f'); this.fx.pillar(m.pos.x, m.pos.z, 0xffd060, 1.4, 6, 1.5); sfx('rankup'); }
+          else if (this.time > m.gauge.until) { m.gauge = null; this.danger(m, m.pos.x, m.pos.z, 9, 1.2, 3, 0xff5a3a); this.ui.toast('대지 붕괴!', '#ff5a3a'); }
+          return;
+        }
+        if ((m.gT = (m.gT ?? 15) - dt) <= 0) { m.gT = 25; m.gauge = { need: m.maxHp * 0.1, got: 0, until: this.time + 6 }; this.ui.toast('무력화 — 6초 안에 큰 피해를!', '#ffb060'); }
+        return;
+      }
+    }
+  }
+  // 원정 보상 (주 3번): 원정 문장 + 군주 상자 하나 (장비 · 파편 반반, 등급이 상자에 남는다)
+  raidReward(R) {
+    const st = this.st, rd = raidOf(st, R.W.wk);
+    if (rd.claims >= RAID.claims) { this.ui.toast('이번 주 원정 보상은 모두 받았습니다', '#a09080'); return; }
+    rd.claims++;
+    resAdd(st, 'raid_emblem', R.G.emb);
+    const box = this.makeRaidBox(Math.random() < 0.5 ? 'box_gear' : 'box_shard', R.grade);
+    if (!addItem(st, box)) { const P = this.player.pos; this.dropGround({ kind: 'item', item: box }, P.x, P.z + 1); }
+    this.ui.toast(`원정 문장 +${R.G.emb} · ${BASES[box.base].name}`, '#ffd060');
+  }
+  makeRaidBox(base, grade) { const b = makeItem(base, { qty: 1 }, this.st); delete b.qty; b.g = grade; return b; }
+  // 군주 상자 열기: 장비(내 무기 · 갈래에 맞춰) 또는 파편 3 ~ 5개 + 상품 스킬북 1권 확정
+  openRaidBox(it) {
+    const st = this.st, g = it.g ?? 2, L = this.hordeLevel() + this.tierOffset, P = this.player.pos, got = [];
+    const i = st.inv.indexOf(it); if (i < 0) return; st.inv.splice(i, 1);
+    if (it.base === 'box_gear') {
+      const r = Math.random(), rarity = r < (g >= 4 ? 0.15 : 0.05) ? 'myth' : r < (g >= 4 ? 0.5 : 0.4) ? 'legend' : 'hero';
+      // 무기면 지금 무기와 같은 종류, 아니면 방어구 · 장신구 (옵션은 makeItem이 내 갈래에 맞춰 뽑는다)
+      const wcls = st.equip.weapon ? BASES[st.equip.weapon.base]?.cls : null;
+      let base = null;
+      for (let k = 0; k < 40 && !base; k++) { const b = rollBase(L); const B = BASES[b]; if (B.slot === 'weapon' ? (!wcls || B.cls === wcls) : true) base = b; }
+      got.push(makeItem(base || rollBase(L), { rarity, ilvl: L }, st));
+    } else {
+      const n = 3 + Math.floor(Math.random() * 3), lo = 0.7 + 0.05 * g;
+      const ids = Object.keys(AFFIXES).filter((id) => !AFFIXES[id].legendOnly && !AFFIXES[id].retired && !AFFIXES[id].mythOnly), myth = Object.keys(AFFIXES).filter((id) => AFFIXES[id].mythOnly);
+      for (let k = 0; k < n; k++) {
+        const id = k === 0 && Math.random() < 0.1 && myth.length ? myth[Math.floor(Math.random() * myth.length)] : ids[Math.floor(Math.random() * ids.length)], A = AFFIXES[id];
+        const max = Math.max(A.min, A.max(L) * RARITY[A.mythOnly ? 'myth' : 'legend'].mult), v = Math.max(A.min, Math.round(max * (lo + Math.random() * (1 - lo))));
+        got.push(makeShard({ id, v }, st));
+      }
+    }
+    { const bk = rollBook({ level: L, tier: 'boss' }, st, Math.random, 3); if (bk) got.push(bk); }
+    for (const x of got) if (!addItem(st, x)) this.dropGround({ kind: 'item', item: x }, P.x + Math.random() * 2 - 1, P.z + 1);
+    this.fx.pillar(P.x, P.z, 0xffd060, 1.2, 5, 1.2); sfx('rare');
+    globalThis.__game?.windows?.notice?.([{ title: BASES[it.base].name, rows: got.map((x) => ({ img: itemIcon(x), name: itemName(x), color: itemColor(x) })) }]);
+    this.ui.dirty();
+  }
+  raidClear() {
+    const st = this.st, dg = this.dungeon, R = dg.raid, sec = this.time - R.t0, rd = raidOf(st, R.W.wk);
+    R.done = true; dg.cleared = true;
+    (st.raidLords ||= {})[R.W.lord.id] = 1; // 칭호 · 각인을 살 수 있다
+    const g = R.grade, prev = rd.best[g];
+    if (!prev || sec < prev) rd.best[g] = Math.round(sec * 10) / 10;
+    this.ui.toast(`왕좌 원정 ${R.G.name} 완료 · ${fmtTime(sec)}`, '#ffd060'); sfx('awaken');
+    const c = this.raidCenter(); this.fx.pillar(c.x, c.z, 0xffd060, 2.2, 9, 2);
+    this.raidReward(R);
+    cloud.raidSubmit(R.W.wk, g, sec, st).then((r) => { const W = globalThis.__game?.windows; if (W?.raidRank) delete W.raidRank[`${R.W.wk}|${g}`]; if (r?.error === 'no_nick' || (!r?.ok && st.guest)) this.ui.log('순위에는 계정 · 닉네임이 있어야 올라갑니다', '#a09080'); }).catch(() => {});
     this.ui.dirty();
   }
   // 던전 나가기: 묻고 나간다
@@ -1522,6 +1720,8 @@ export class World {
     if (this.dead) return;
     const st = this.st, d = this.d;
     if (d.dmgReduce) raw *= 1 - d.dmgReduce / 100;
+    { const R = this.dungeon?.raid; if (R) raw *= (R.W.rule === 'glass' ? 1.3 : 1) * 0.85 ** R.bless.filter((x) => x === 'guard').length; } // v0.50 원정
+    if (this.engChainT > this.time) raw *= 0.7; // v0.50 사슬 왕 각인
     const rf = rewardFactor(st, m.level);
     const apMult = rf.ap * this.autoMult;
     const head = this.player.pos.clone().setY(2.4);
@@ -1602,6 +1802,7 @@ export class World {
     if (cat === 'book') return f['book' + (SKILLS[it.book]?.tier || 1)] ?? f.book !== false; // v0.49.25 스킬북은 등급마다
     return f[cat] !== false;
   }
+  get engr() { if (this.engAt !== this.st.equip) { this.engAt = this.st.equip; } if ((this.engT || 0) < this.time) { this.engT = this.time + 1; const e = engraves(this.st); this.engC = Object.keys(e).length ? e : null; } return this.engC; } // v0.50 각인 (1초마다 다시 센다)
   get autoMult() { return this.auto ? CONFIG.autoPenalty : 1; }
 
   rollWeapon() {
@@ -1638,6 +1839,17 @@ export class World {
     if (m.dungeon && this.dungeon?.muts && ctx?.id) { const sc = SKILLS[ctx.id]?.school; if (Object.entries(MUT_RESIST).some(([k, v]) => v === sc && this.mut(k))) raw *= 0.5; } // v0.47 원소 변이
     if (m.vulnT > 0) raw *= this.art('soulmark') ? 1.25 : 1.15;
     if (m.bvulnT > this.time) raw *= 1.35; // v0.50 보스기에 맞은 대상: 4초 동안 받는 피해 +35% (모든 피해)
+    { const E = this.engr; if (E) { // v0.50 원정 군주 각인 (신화 장비)
+      if (E.twins && ctx?.role === 'boss') raw *= 1 + 0.15 * E.twins;
+      if (E.maw && ctx?.role === 'hunt') raw *= 1 + 0.12 * E.maw;
+      if (E.colossus && (m.tier === 'boss' || m.tier === 'named')) raw *= 1 + 0.1 * E.colossus;
+      if (E.mirror && this.engMirrorT > this.time) raw *= 1 + 0.2 * E.mirror; } }
+    { const R = this.dungeon?.raid; if (R && m.raid) { // v0.50 원정 규칙 · 축복 · 군주
+      if (R.W.rule === 'glass') raw *= 1.3;
+      if (R.W.rule === 'nocrit') { if (crit) { raw /= this.d.critMult || 1; crit = false; } raw *= 1.4; }
+      if (ctx?.role === 'boss') raw *= 1.25 ** R.bless.filter((x) => x === 'bossSk').length;
+      if (m.shieldT > this.time) raw *= 0.3;
+      if (m.stunT > this.time) raw *= 2; } }
     if (m.markT > this.time) raw *= 1 + (m.markV || 0) / 100; // v0.49.21 칭호 특성 「약점 표시」
     if (this.art('sniper') && (src === 'ranged' || ctx) && Math.hypot(m.pos.x - this.player.pos.x, m.pos.z - this.player.pos.z) > 8) raw *= 1.15;
     if (this.art('huntertrap') && m.rootT > 0) raw *= 1.1;
@@ -1651,6 +1863,7 @@ export class World {
     }
     const dmg = Math.max(1, Math.round(raw * (1 - red)));
     m.hp -= dmg;
+    if (m.gauge) m.gauge.got += dmg; if (m.rw) m.rw.got += dmg; // v0.50 원정 군주: 무력화 · 되감기 끊기
     if (ctx?.role === 'boss') m.bvulnT = this.time + 4;
     if (ctx?.bleed) { m.dotV = Math.max(m.dotV || 0, dmg * 0.1); m.dotT = 3; }
     if (ctx?.mixFx) for (const f of ctx.mixFx) {
@@ -1803,7 +2016,8 @@ export class World {
       if (addItem(st, makeItem('dungeon_key', { qty: 1 }, st))) { this.ui.toast('던전 열쇠를 얻었습니다', '#ffd84a'); sfx('rare', 0.7); }
     }
     if (m.horde && this.dungeon?.horde) this.hordeKill(m);
-    if (m.dungeon && m.tier === 'boss' && this.dungeon) { if (this.dungeon.horde) this.hordeCleared(m); else this.dungeonCleared(m); }
+    if (this.dungeon?.raid) { if (m.raidBoss) this.raidBossDown(m); else if (m.mawAdd) { const R = this.dungeon.raid; R.mawR = Math.min(14, (R.mawR || 14) + 0.8); } }
+    if (m.dungeon && m.tier === 'boss' && this.dungeon) { if (this.dungeon.horde) this.hordeCleared(m); else if (!this.dungeon.raid) this.dungeonCleared(m); }
     if (!m.noLoot) this.dailyDone(dailyProgress(st, { kind: 'kill', zone: m.dungeon ? null : m.sp?.zone?.id, tier: m.tier }));
     // 강화석: 강한 몬스터는 가끔, 일반 몬스터는 아주 가끔
     if (!m.noLoot) {
@@ -2314,7 +2528,7 @@ export class World {
     const st = this.st; if (!st.quickSets) return;
     i = ((i % st.quickSets.length) + st.quickSets.length) % st.quickSets.length;
     if (i === st.quickSet) return;
-    st.quickSet = i; st.quick = st.quickSets[i];
+    st.quickSet = i; st.quick = st.quickSets[i]; this.engMirrorT = this.time + 5; // v0.50 거울 군주 각인
     this.actCd = Math.max(this.actCd || 0, 0.3); this.pendingSkill = null;
     sfx('click'); this.ui.toast?.(`스킬 세트 ${i + 1}`, '#ffd84a'); this.ui.dirty();
   }
@@ -2403,6 +2617,11 @@ export class World {
     st.mp -= v.mp;
     this.perk(sk.type === 'buff' ? 'buff' : sk.ap === 'int' ? 'spell' : 'skill', this.target?.pos);
     this.cds[id] = v.cd * (1 - (this.d.cdr || 0) / 100) * (this.art('vanguard') && sk.type === 'dash' ? 0.7 : 1) * (this.mut('slowcd') ? 1.3 : 1);
+    { const R = this.dungeon?.raid; if (R) { this.cds[id] *= 0.9 ** R.bless.filter((x) => x === 'cdr').length * (R.W.rule === 'utilcd' && sk.role === 'util' ? 0.7 : 1);
+      if ((sk.role === 'util' || sk.type === 'buff' || sk.type === 'evade') && R.chainT > this.time) { R.chainT = 0; this.ui.toast('사슬을 끊었습니다', '#9fe39f'); sfx('buff'); } } } // v0.50 원정 규칙 · 축복 · 사슬 끊기
+    { const E = this.engr; if (E && (sk.role === 'util' || sk.type === 'buff' || sk.type === 'evade')) { // v0.50 각인: 시간의 군주 · 사슬 왕
+      if (E.time) for (const k in this.cds) if (k !== id) this.cds[k] = Math.max(0, this.cds[k] - E.time);
+      if (E.chain) this.engChainT = this.time + 2; } }
     if (!v.echoed) {
       if (v.mp > 0) { this.artEv('mpSpent', v.mp); if (this.art('manaflow')) st.mp = Math.min(this.d.maxMp, st.mp + v.mp * 0.05); }
       if (st.mp < this.d.maxMp * 0.2) this.artEv('lowMpSkill');
@@ -2937,6 +3156,7 @@ export class World {
     this.rumorStep(dt);
     this.dungeonStep(dt);
     this.hordeStep(dt);
+    this.raidStep(dt);
     this.debuffStep(dt);
     this.petStep(dt);
     this.skyStep(dt);
@@ -3253,7 +3473,7 @@ export class World {
       this.zone = id;
       if (zn && !dg) this.zoneGate(zn);
       if (zn) st.lastZone = zn.id;
-      this.ui.zone(dg?.horde ? { name: `${dg.zone.name} 군세 토벌`, levels: [dg.L + this.tierOffset, dg.L + this.tierOffset] } : dg?.hidden ? { name: `${dg.zone.name} 숨은 던전${dg.plus ? ` +${dg.plus}` : ''}`, levels: [dg.zone.levels[1] + 5 + this.tierOffset, dg.zone.levels[1] + 5 + this.tierOffset] } : dg ? { name: `${dg.zone.name} 던전 ${dg.stage}단계`, levels: [dungeonLevel(dg.zone, dg.stage) + this.tierOffset, dungeonLevel(dg.zone, dg.stage) + this.tierOffset] } : id === 'town' ? TOWN : zn);
+      this.ui.zone(dg?.raid ? { name: `왕좌 원정 ${dg.raid.G.name}`, levels: [dg.L + this.tierOffset, dg.L + this.tierOffset] } : dg?.horde ? { name: `${dg.zone.name} 군세 토벌`, levels: [dg.L + this.tierOffset, dg.L + this.tierOffset] } : dg?.hidden ? { name: `${dg.zone.name} 숨은 던전${dg.plus ? ` +${dg.plus}` : ''}`, levels: [dg.zone.levels[1] + 5 + this.tierOffset, dg.zone.levels[1] + 5 + this.tierOffset] } : dg ? { name: `${dg.zone.name} 던전 ${dg.stage}단계`, levels: [dungeonLevel(dg.zone, dg.stage) + this.tierOffset, dungeonLevel(dg.zone, dg.stage) + this.tierOffset] } : id === 'town' ? TOWN : zn);
     }
     this.musicT = (this.musicT || 0) - dt;
     if (this.musicT <= 0) {
@@ -3272,6 +3492,14 @@ export class World {
     if (!it) return;
     if (it.base === 'unknown_gate') { if (this.dungeon) { this.ui.toast('던전 밖에서 쓸 수 있습니다'); return; } if (Date.now() > (it.until || 0)) { st.inv.splice(st.inv.indexOf(it), 1); this.ui.toast('길이 닫혔습니다'); this.ui.dirty(); return; } this.enterDungeon(it.zi, 1, { unknown: true, gate: it }); globalThis.__game?.windows?.close?.(); return; }
     if (it.base === 'unknown_map') { if (this.dungeon) { this.ui.toast('던전 밖에서 펼칠 수 있습니다'); return; } this.enterUnknown(); globalThis.__game?.windows?.close?.(); return; } // v0.44.47
+    if (it.base === 'box_gear' || it.base === 'box_shard') { this.openRaidBox(it); return; } // v0.50 군주 상자
+    if (it.base === 't_book') { // v0.50 상급 스킬북 고르기권: 지금 차수의 상품 스킬북 하나 (갈래마다)
+      const rec = (st.awakenings || 0), c = Math.max(1, [20, 60, 150, 300, 500].filter((lv) => rec >= lv).length);
+      const ids = Object.keys(SKILLS).filter((id) => SKILLS[id].chasu === c && SKILLS[id].q === 3 && Object.keys(SKILLS[id].req || {}).length === 1);
+      this.ui.choose(`상급 스킬북 고르기 · ${c}차`, '하나를 고르세요', ids.map((id) => ({ label: SKILLS[id].name, sub: `${STAT_NAMES[Object.keys(SKILLS[id].req)[0]] || ''}${st.skills[id] ? ' · 배움' : ''}` })), (i) => {
+        if (i < 0 || !st.inv.includes(it)) return; takeOne(st, 't_book'); const bk = makeBook(ids[i], st); if (!addItem(st, bk)) st.inv.push(bk); this.ui.toast(`${SKILLS[ids[i]].name} 스킬북`, '#ffd060'); sfx('rare'); this.ui.dirty();
+      }); return; }
+    if (BASES[it.base]?.type === 'raid') { this.ui.toast(it.base === 'whetstone' ? '대장간 강화에서 씁니다' : '대장간에서 씁니다'); return; }
     this.d = derive(st, this.buffValues());
     if (BASES[it.base]?.type === 'pet') { takeOne(st, it.base); const cat = BASES[it.base].pet === 'pet_cat'; st.pet = { kind: cat ? 'pet_cat' : 'pet_dog', name: cat ? '고양이' : '강아지' }; this.makePet(); this.ui.toast(`${st.pet.name}가 함께합니다! 물건을 주워 오고 함께 싸웁니다`, '#7fe07a'); sfx('learn'); this.ui.dirty(); return; }
     if (isBook(it)) {

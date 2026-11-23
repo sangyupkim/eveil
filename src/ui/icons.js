@@ -48,6 +48,7 @@ export function itemIcon(it) {
   if (it.base === 'ore2') return iconUrl(71, '#5aa8ff', 'grayscale(1) sepia(1) hue-rotate(170deg) saturate(2.4) brightness(0.8)'); // 상급: 푸른 돌
   if (it.base === 'ore3') return iconUrl(71, '#c070ff', 'grayscale(1) sepia(1) hue-rotate(230deg) saturate(2.6) brightness(0.8)'); // 최상급: 보랏빛 돌
   if (/^ess\d$/.test(it.base)) return iconUrl(1010, ESS_COLOR[BASES[it.base].grade]); // 정수: 마력 구슬 그림 + 단계 색 테두리
+  if (BASES[it.base]?.type === 'raid') return iconUrl(BASES[it.base].icon, '#ffc85a'); // v0.50 원정 물건: 금빛 테두리
   if (BASES[it.base]?.type === 'mat') return iconUrl(BASES[it.base].icon, '#9ad06a');
   const L = ITEM_LOOK[it.base];
   if (L) return iconUrl(L.icon);
