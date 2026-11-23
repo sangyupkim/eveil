@@ -1,6 +1,7 @@
 import { awakenOk } from '../data/awaken_skills.js';
 // 스킬 습득(스킬북)과 숙련(쓸수록 강해짐).
 import { CONFIG } from '../data/config.js';
+import { muganK } from '../data/mugan.js';
 import { SKILLS, SKILL_MOVED } from '../data/skills.js';
 
 // 랭크 제한 없음. 10까지는 빠르게, 그 뒤 완만히, 50을 넘으면 가파르게
@@ -163,4 +164,29 @@ export function linkQuick(st, n = 8) {
   st.quickSet = Math.max(0, Math.min(QUICK_SETS - 1, st.quickSet || 0));
   st.quick = st.quickSets[st.quickSet];
   return st;
+}
+
+// v0.49.81 마나 소모: 그 각성의 기준 최대 마나 × 0.75% × 재사용 시간 (예전엔 스킬마다 고정 5 ~ 40이라 후반엔 닳지 않았다)
+//  스킬 6개를 쉬지 않고 돌리면 1분쯤 뒤 바닥 → 마나 물약이 쓰인다. 기준이 내 최대 마나가 아니라 각성 기준이라 마나를 키운 캐릭터가 오래 버틴다.
+//  마나 비례 스킬(정신 비전)은 1.5배. 버프처럼 재사용이 긴 스킬도 기준의 25%까지만. 아낌 변형(frugal)은 0.55배
+// 무간지옥 배율은 각성이 아니라 낀 장비의 평균 아이템 레벨로 (최대 마나도 장비를 따라 커진다 — 각성만 높고 장비가 혼돈이면 스킬을 못 쓰게 된다)
+const gearLv = (st) => { const L = Object.values(st?.equip || {}).filter(Boolean).map((it) => it.ilvl || 1); return L.length ? L.reduce((a, b) => a + b, 0) / L.length : 1; };
+export const mpRefAt = (aw, st = null) => (100 + 12.8 * Math.min(500, Math.max(0, aw || 0))) * muganK(gearLv(st));
+export function mpCost(st, id, v) {
+  const sk = SKILLS[id]; if (!sk) return 0;
+  const ref = mpRefAt(st?.awakenings || 0, st), fr = modsOf(st?.skills?.[id]).includes('frugal');
+  const c = Math.min(ref * 0.25, ref * 0.0075 * (v?.cd || sk.cd || 1)) * (sk.scale === 'mp' ? 1.5 : 1);
+  return Math.max(1, Math.round(c * (fr ? 0.55 : 1)));
+}
+// v0.49.81 스킬 특성 설명 (스킬 창 · 스킬북): 자원 비례 · 걸리는 효과 · 메아리
+export function skillTraits(sk) {
+  const out = [];
+  if (sk.scale === 'mp') out.push('최대 마나가 많을수록 강해진다 (각성 기준보다 많으면 최대 2배) · 마나를 1.5배 쓴다');
+  if (sk.scale === 'hp') out.push('최대 체력이 많을수록 강해진다 (각성 기준보다 많으면 최대 2배)');
+  if (sk.scale === 'armor') out.push('방어력이 높을수록 강해진다 (최대 2배)');
+  if (sk.slow) out.push(`맞은 적이 ${sk.slow}초 느려진다`);
+  if (sk.root) out.push(`맞은 적을 ${sk.root}초 묶는다 (보스 제외)`);
+  if (sk.echo) out.push(`${Math.round(sk.echo * 100)}% 위력으로 한 번 더 터진다`);
+  if (sk.type === 'buff' && sk.duration) out.push(`${sk.duration}초 지속`);
+  return out;
 }

@@ -43,7 +43,7 @@ import { takeOne, countOf, needAwaken } from '../game/inventory.js';
 import { uiSettings, applyUi, editUi } from './layout.js';
 
 import { TITLE_AT, titleKey, titleName, UNIQUES, perkChoices } from '../data/titles.js';
-import { variantsOf, VARIANT_RANKS, modsOf, skillEff } from '../game/skills.js';
+import { variantsOf, VARIANT_RANKS, modsOf, skillEff, mpCost, skillTraits } from '../game/skills.js';
 import { SCHOOL_NAMES } from '../data/skills.js';
 import { awakenOk, skillGrade, QUALITY, gradeName } from '../data/awaken_skills.js';
 import { ROLE_NAMES } from '../data/skill_roster.js';
@@ -235,7 +235,7 @@ export class Windows {
     if (isBook(it)) {
       const sk = SKILLS[it.book];
       const gr = skillGrade(sk), qn = QUALITY[sk.q || 2], awk = `${BOOK_TIERS[sk.tier].name} 스킬북 · ${gradeName(gr)} · <span style="color:${qn.color}">${qn.name}</span>`;
-      h += `<div class="sub">${awk} · MP ${sk.mp} · 재사용 ${sk.cd}초</div><div>${sk.desc.replace(/\s*\(근접 무기\)/, '')}</div>${mixFxOf(sk.lines || Object.keys(sk.req || {})).map((f) => `<div class="aff" style="color:#e0b0ff">혼합 효과 · ${f.name}: ${f.text}</div>`).join('')}`;
+      h += `<div class="sub">${awk} · MP ${mpCost(st, it.book, skillValues(it.book, 1, [])).toLocaleString()} · 재사용 ${sk.cd}초</div><div>${sk.desc.replace(/\s*\(근접 무기\)/, '')}</div>${skillTraits(sk).map((x) => `<div class="aff" style="color:#9fd0ff">${x}</div>`).join('')}${mixFxOf(sk.lines || Object.keys(sk.req || {})).map((f) => `<div class="aff" style="color:#e0b0ff">혼합 효과 · ${f.name}: ${f.text}</div>`).join('')}`;
       if (gr) { const SN = { str: '힘', dex: '민첩', int: '지능', wis: '정신', vit: '체력' }; const a = awakenOk(st, sk); const lab = sk.awaken === 4 ? `4차 각성 · 갈래에 ${SN[sk.line]}` : `${gr}차 각성 필요`; h += `<div class="aff" style="color:${a.ok ? '#7fe07a' : '#ff8a7a'}">${lab}${a.ok || a.why === lab ? '' : ` — ${a.why}`}</div>`; } // v0.49.27 같은 말이 두 번 나오지 않게
       if (sk.needs) { const bad = this.w.weaponWhy?.(sk); h += `<div class="aff" style="color:${bad ? '#ff8a7a' : '#d8c8a0'}">무기: ${NEED_NAMES[sk.needs]}</div>`; } // v0.50
       if (sk.grip) { const g = this.w.gripWhy?.(sk); h += `<div class="aff"><b class="gripTag">${GRIP_NAMES[sk.grip]}</b>${g ? ` <span style="color:#ff8a7a">— ${g}</span>` : ''}</div>`; } // v0.49.38
@@ -822,7 +822,7 @@ export class Windows {
       const kv = [];
       if (!isBuff) kv.push(['위력', pw(v.power)], ['다음 랭크', pw(nx.power)]);
       else kv.push(['효과', `${Math.round(v.power)}${/Pct$/.test(sk.buff || '') ? '%' : ''}`], ['다음 랭크', `${Math.round(nx.power)}${/Pct$/.test(sk.buff || '') ? '%' : ''}`]);
-      kv.push(['MP', this.w.manaGrip?.(sk) ? `${Math.ceil(v.mp * 1.5)} (대홀)` : v.mp], ['재사용', `${v.cd.toFixed(1)}초`]);
+      { const mc = mpCost(st, id, v); kv.push(['MP', this.w.manaGrip?.(sk) ? `${Math.ceil(mc * 1.5).toLocaleString()} (대홀)` : mc.toLocaleString()], ['재사용', `${v.cd.toFixed(1)}초`]); } // v0.49.81 실제로 닳는 마나
       if (sk.grip) { const g = this.w.gripWhy?.(sk); kv.push(['무기', `<b class="gripTag">${GRIP_NAMES[sk.grip]}</b>${g ? ` <span style="color:#ff8a7a">${g}</span>` : ''}`]); }
       if (sk.needs) { const bad = this.w.weaponWhy?.(sk); kv.push(['무기', `<b style="color:${bad ? '#ff8a7a' : ''}" title="${NEED_NAMES[sk.needs]}">${sk.needs === 'bow' ? '활' : '근접 무기'}</b>`]); } // v0.50 근접 · 활 스킬
       if (e.range) kv.push(['사거리', e.range.toFixed(1)]);
@@ -846,7 +846,7 @@ export class Windows {
       det = `<div class="row" style="border:0">${sicon(id)}<div class="grow"><div class="nm" style="color:${QUALITY[sk.q || 2].color}">${sk.name}</div>
           <div class="sub">${cOf(sk)}차 ${roleTag(sk)}${QUALITY[sk.q || 2].name} · 랭크 ${s.rank}</div></div>
           <div class="btns">${this.skAssign ? '<button class="btn on" data-skassign>취소</button>' : `<button class="btn gold" data-skassign>넣기</button>`}${inSet >= 0 ? '<button class="btn" data-qs="-1">빼기</button>' : ''}</div></div>
-        <div>${sk.desc.replace(/\s*\([^)]*\)/g, '')}</div>${mixFxOf(sk.lines || Object.keys(sk.req || {})).map((f) => `<div class="aff" style="color:#e0b0ff">혼합 효과 · ${f.name}: ${f.text}</div>`).join('')}
+        <div>${sk.desc.replace(/\s*\([^)]*\)/g, '')}</div>${skillTraits(sk).map((x) => `<div class="aff" style="color:#9fd0ff">${x}</div>`).join('')}${mixFxOf(sk.lines || Object.keys(sk.req || {})).map((f) => `<div class="aff" style="color:#e0b0ff">혼합 효과 · ${f.name}: ${f.text}</div>`).join('')}
         <div class="kv" style="margin-top:6px">${kv.map(([k, x]) => `<span>${k}</span><b>${x}</b>`).join('')}</div>${unl}
         ${reqLine(sk.req, stats)}${meetsReq(st, sk.req, stats) ? '' : '<div class="bad">조건 부족</div>'}
         <h3 style="margin-top:8px">변형</h3>${vars}`;

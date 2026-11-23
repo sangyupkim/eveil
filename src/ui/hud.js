@@ -16,7 +16,7 @@ import { townOf } from '../game/town.js';
 import { PLOTS, BUILDINGS, VAULT_SPOT } from '../data/buildings.js';
 import { expNeeded, powerLevel, recAwaken } from '../game/growth.js';
 import { countOf } from '../game/inventory.js';
-import { skillValues, modsOf } from '../game/skills.js';
+import { skillValues, modsOf, mpCost } from '../game/skills.js';
 import { ELIXIRS } from '../data/potions.js';
 import { bust, faceClose, portrait, chestIcon, bookIcon, coinIcon, swordIcon, itemIcon, skillIcon, homeIcon, duelIcon, scrollIcon, townIcon, oreIcon, itemIconCut, glyphIcon, uiIcon } from './icons.js';
 
@@ -213,7 +213,7 @@ export class HUD {
       const v = skillValues(id, st.skills[id].rank, modsOf(st.skills[id]));
       const cd = Math.max(0, w.cds[id] || 0);
       el.querySelector('.cd').style.setProperty('--cd', (cd / v.cd).toFixed(3));
-      el.classList.toggle('nomp', st.mp < v.mp);
+      el.classList.toggle('nomp', st.mp < mpCost(st, id, v) * (w.manaGrip?.(SKILLS[id]) ? 1.5 : 1)); // v0.49.81 실제로 닳는 마나
       el.classList.toggle('nogrip', !!(w.gripWhy?.(SKILLS[id]) || w.weaponWhy?.(SKILLS[id]))); // v0.49.38 지금 무기로 못 쓰는 스킬 (v0.50 근접 · 활도)
     }
 

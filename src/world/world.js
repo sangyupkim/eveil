@@ -28,7 +28,7 @@ import { relicBonus, rollRelic, RELIC, RELIC_GRADES } from '../data/relics.js';
 import { nextFloodAt, FLOOD, FLOOD_AFFIX, FLOOD_AFFIX_IDS } from '../data/flood.js';
 import { ELIXIRS, ELIXIR_TIME, HERBS, HP_POTIONS, MP_POTIONS } from '../data/potions.js';
 import { addAP, gainExp, rewardFactor, recAwaken } from '../game/growth.js';
-import { addSkillExp, skillValues, skillEff, modsOf, meetsReq, canLearn, learn, bookAbsorbExp } from '../game/skills.js';
+import { addSkillExp, skillValues, skillEff, modsOf, meetsReq, canLearn, learn, bookAbsorbExp, mpCost } from '../game/skills.js';
 import { rollLoot, rollDeathDrop, rollBook } from '../game/loot.js';
 import { HORDE, hordePen, conqLeft, hordeGap } from '../data/horde.js';
 import { MUGAN, karmaNeed } from '../data/mugan.js';
@@ -2591,7 +2591,7 @@ export class World {
     if (!s) return { ok: false, why: '배우지 않은 스킬' };
     const sk = SKILLS[id];
     const v = skillValues(id, s.rank, modsOf(s));
-    if (sk.mpPct) v.mp = Math.max(v.mp, Math.ceil(this.d.maxMp * sk.mpPct * (modsOf(s).includes('frugal') ? 0.55 : 1))); // 비전: 최대 MP의 %
+    v.mp = mpCost(this.st, id, v); // v0.49.81 각성 기준 마나 소모 (예전 비전 스킬의 최대 MP % 소모는 없앰)
     if (this.manaGrip(sk)) v.mp = Math.ceil(v.mp * 1.5); // v0.49.38 대홀: 양손 주문은 마나를 1.5배 쓰고 더 세게
     if ((this.cds[id] || 0) > 0) return { ok: false, why: '재사용 대기 중' };
     { const g = this.gripWhy(sk); if (g) return { ok: false, why: g, grip: true }; } // v0.49.38 한손 · 양손 스킬
