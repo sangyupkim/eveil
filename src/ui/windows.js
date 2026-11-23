@@ -1460,6 +1460,7 @@ export class Windows {
         <div class="setRow"><span>타겟 고정</span><div class="opts">${onoff('targetLock', set.targetLock !== false)}</div></div>
         <div class="setRow"><span>떠다니는 조이스틱</span><div class="opts">${onoff('joyFloat', set.joyFloat !== false)}</div></div>
         <div class="setRow"><span>화면 흔들림</span><div class="opts">${onoff('shake', set.shake !== false)}</div></div>
+        <div class="setRow"><span>수동 사냥 물약</span><div class="opts">${onoff('potManual', set.potManual !== false)}</div></div>
         <div class="setRow"><span>자동 물약</span><div class="opts">${[0.3, 0.4, 0.5, 0.6].map((v) => `<button class="btn${set.autoPotion === v ? ' on' : ''}" data-pot="${v}">${v * 100}%</button>`).join('')}</div></div>
         <div class="setRow"><span>자동 사냥 필드 보스</span><div class="opts"><button class="btn${set.autoBoss ? ' on' : ''}" data-autoboss="1">잡기</button><button class="btn${!set.autoBoss ? ' on' : ''}" data-autoboss="0">피하기</button></div></div>
         <div class="setRow pickRow"><span>자동 사냥 줍기</span><div class="pickGrid">${[['common', '일반'], ['magic', '마법'], ['rare', '희귀'], ['hero', '영웅'], ['legend', '전설'], ['potion', '물약'], ['gem', '보석'], ['mat', '재료 · 파편'], ...Object.entries(BOOK_TIERS).map(([t, b]) => ['book' + t, `${b.name} 스킬북`])].map(([k, n]) => `<label class="pickChk"><input type="checkbox" data-apick="${k}" ${((set.autoPick || {})[k] ?? (k.startsWith('book') ? (set.autoPick || {}).book : true)) !== false ? 'checked' : ''} /><span>${n}</span></label>`).join('')}</div></div>

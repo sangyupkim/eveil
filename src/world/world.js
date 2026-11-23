@@ -3376,8 +3376,8 @@ export class World {
       return;
     }
     this.autoPause -= dt;
-    // 자동 물약: 직접 조작 중(autoPause)에도 자동 사냥이 켜져 있으면 늘 확인한다
-    if (this.auto && !this.dead) {
+    // 자동 물약: 직접 조작 중(autoPause)에도 자동 사냥이 켜져 있으면 늘 확인한다 · v0.49.79 수동 사냥 중에도 (설정 「수동 사냥 물약」, 기본 켜짐 · 마을에서는 안 먹는다)
+    if (!this.dead && (this.auto || (this.st.settings.potManual !== false && !this.inTown))) {
       const st2 = this.st, d2 = this.d;
       if (st2.hp / d2.maxHp < (st2.settings.autoPotion ?? 0.4) && this.potionCd <= 0) this.usePotion('hp', true);
       if (st2.mp / d2.maxMp < 0.2 && this.potionCd <= 0) this.usePotion('mp', true);
