@@ -910,3 +910,4 @@ body.ui-edit #qsets { display: none; }
 .tuneRow .btn { padding: 2px 8px; font-size: .8em; }
 .skRole.wNeed { background: rgba(200, 180, 140, .15); color: #d8c8a0; }
 .skRole.wNeed.bad { background: rgba(230, 80, 60, .22); color: #ff8a7a; }
+.kv > span { white-space: nowrap; } /* v0.49.73 이름 칸이 글자마다 세로로 쪼개지지 않게 */

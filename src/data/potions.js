@@ -43,6 +43,13 @@ export const ELIXIRS = {
   el_haste2: { name: '폭풍 주문서', buff: 'haste', v: 25, text: '공격 속도 +25%', color: '#a0ffd0' },
   el_focus2: { name: '독수리 눈 주문서', buff: 'focus', v: 15, text: '치명타 확률 +15%', color: '#fff0a0' },
   el_luck2: { name: '대행운의 주문서', buff: 'luck', v: 80, text: '좋은 아이템 발견 +80%', color: '#ffe890' },
+  // v0.49.73 농축 주문서: 1시간 · 아래 주문서 효과의 70% (자동 사냥 중에도 쓸 만하게)
+  el_c_might: { name: '농축 분노 주문서', buff: 'might', v: 14, dur: 3600, text: '피해 +14% · 1시간', color: '#d02030' },
+  el_c_haste: { name: '농축 신속 주문서', buff: 'haste', v: 10, dur: 3600, text: '공격 속도 +10% · 1시간', color: '#7fe0b0' },
+  el_c_focus: { name: '농축 매의 눈 주문서', buff: 'focus', v: 6, dur: 3600, text: '치명타 확률 +6% · 1시간', color: '#ffe680' },
+  el_c_armor: { name: '농축 강철 피부 주문서', buff: 'armorPct', v: 18, dur: 3600, text: '방어력 +18% · 1시간', color: '#b0b8c8' },
+  el_c_swift: { name: '농축 바람걸음 주문서', buff: 'swift', v: 14, dur: 3600, text: '이동 속도 +14% · 1시간', color: '#9fe8ff' },
+  el_c_luck: { name: '농축 행운 주문서', buff: 'luck', v: 28, dur: 3600, text: '좋은 아이템 발견 +28% · 1시간', color: '#ffd860' },
 };
 
 // 제작소 조합법: 제작소 단계(lv)부터. herbs = 필요한 약초, gold = 금화, n = 한 번에 나오는 수
@@ -77,7 +84,28 @@ export const RECIPES = [
   { id: 'el_luck2', lv: 9, herbs: { dragon: 2, gold: 3 }, mats: { mat_inferno: 3, ess3: 1 }, gold: 2000, n: 1 },
   { id: 'hp_potion_5', lv: 10, herbs: { world: 1, red: 10 }, mats: { mat_inferno: 3, ess4: 1 }, gold: 2000, n: 2 },
   { id: 'mp_potion_5', lv: 10, herbs: { world: 1, blue: 10 }, mats: { mat_inferno: 3, ess4: 1 }, gold: 2000, n: 2 },
+  // v0.49.73 제작소 11 ~ 16단계 · 식량 · 공사 촉진제
+  { id: 'ration', lv: 3, herbs: { red: 3, iron: 2 }, gold: 20, n: 1 },
+  { id: 'build_rush', lv: 5, herbs: { sun: 20, moon: 20, gold: 10 }, gold: 2000, n: 1 },
+  { id: 'hp_potion_6', lv: 11, herbs: { frost: 3, red: 12, myriad: 1 }, mats: { mat_inferno: 3, ess4: 1 }, gold: 3000, n: 2 },
+  { id: 'mp_potion_6', lv: 11, herbs: { frost: 3, blue: 12, myriad: 1 }, mats: { mat_inferno: 3, ess4: 1 }, gold: 3000, n: 2 },
+  { id: 'el_c_might', lv: 12, herbs: { sun: 10, blood: 3 }, mats: { ess4: 1 }, gold: 2500, n: 1 },
+  { id: 'el_c_haste', lv: 12, herbs: { wind: 10, blood: 3 }, mats: { ess4: 1 }, gold: 2500, n: 1 },
+  { id: 'el_c_focus', lv: 12, herbs: { sun: 6, wind: 6, star: 2 }, mats: { ess4: 1 }, gold: 2500, n: 1 },
+  { id: 'el_c_armor', lv: 12, herbs: { iron: 12, frost: 3 }, mats: { ess4: 1 }, gold: 2500, n: 1 },
+  { id: 'el_c_swift', lv: 12, herbs: { wind: 8, moon: 6, frost: 2 }, mats: { ess4: 1 }, gold: 2500, n: 1 },
+  { id: 'el_c_luck', lv: 12, herbs: { gold: 6, dragon: 2 }, mats: { ess4: 1 }, gold: 4000, n: 1 },
+  { id: 'hp_potion_7', lv: 12, herbs: { blood: 3, red: 14, myriad: 1 }, mats: { mat_inferno: 4, ess4: 2 }, gold: 5000, n: 2 },
+  { id: 'mp_potion_7', lv: 12, herbs: { blood: 3, blue: 14, myriad: 1 }, mats: { mat_inferno: 4, ess4: 2 }, gold: 5000, n: 2 },
+  { id: 'hp_potion_8', lv: 13, herbs: { star: 3, red: 16, myriad: 2 }, mats: { mat_inferno: 5, ess5: 1 }, gold: 8000, n: 2 },
+  { id: 'mp_potion_8', lv: 13, herbs: { star: 3, blue: 16, myriad: 2 }, mats: { mat_inferno: 5, ess5: 1 }, gold: 8000, n: 2 },
+  { id: 'whet2', lv: 14, herbs: { iron: 10 }, mats: { ore2: 20 }, gold: 10000, n: 1 },
+  { id: 'ward_scroll', lv: 14, herbs: { myriad: 2 }, mats: { ore3: 5, ess5: 1 }, gold: 30000, n: 1 },
+  { id: 'hp_potion_9', lv: 14, herbs: { dragon: 3, red: 18, myriad: 2 }, mats: { mat_inferno: 6, ess5: 1 }, gold: 12000, n: 2 },
+  { id: 'mp_potion_9', lv: 14, herbs: { dragon: 3, blue: 18, myriad: 2 }, mats: { mat_inferno: 6, ess5: 1 }, gold: 12000, n: 2 },
+  { id: 'hp_potion_10', lv: 15, herbs: { world: 3, red: 20, myriad: 3 }, mats: { mat_inferno: 8, ess5: 2 }, gold: 18000, n: 2 },
+  { id: 'mp_potion_10', lv: 15, herbs: { world: 3, blue: 20, myriad: 3 }, mats: { mat_inferno: 8, ess5: 2 }, gold: 18000, n: 2 },
 ];
 // 물약 단계 (큰 것부터)
-export const HP_POTIONS = ['hp_potion_5', 'hp_potion_4', 'hp_potion_3', 'hp_potion_2', 'hp_potion_l', 'hp_potion'];
-export const MP_POTIONS = ['mp_potion_5', 'mp_potion_4', 'mp_potion_3', 'mp_potion_2', 'mp_potion_l', 'mp_potion'];
+export const HP_POTIONS = ['hp_potion_10', 'hp_potion_9', 'hp_potion_8', 'hp_potion_7', 'hp_potion_6', 'hp_potion_5', 'hp_potion_4', 'hp_potion_3', 'hp_potion_2', 'hp_potion_l', 'hp_potion'];
+export const MP_POTIONS = ['mp_potion_10', 'mp_potion_9', 'mp_potion_8', 'mp_potion_7', 'mp_potion_6', 'mp_potion_5', 'mp_potion_4', 'mp_potion_3', 'mp_potion_2', 'mp_potion_l', 'mp_potion'];

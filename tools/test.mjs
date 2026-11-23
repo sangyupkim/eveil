@@ -683,4 +683,38 @@ test('왕좌 원정: 주간 구성은 모두 같고 · 상점 한도 · 장비 �
   assert.ok(sx.ok && sx.shard.shard.id === a1.id && sx.shard.shard.v === a1.v && !s2.inv.includes(it));
 });
 
+test('마을 20단계: 11단계부터 정수 · 강화석 · 높은 약초, 저장 24 ~ 44시간, 연구 10단계 · 두 개, 향로 · 비료 · 증류 · 식량 · 촉진제 · 납품', async () => {
+  const T = await import('../src/game/town.js'), { BUILDINGS: B } = await import('../src/data/buildings.js');
+  const { newPlayer: NP } = await import('../src/game/player.js'), IT2 = await import('../src/game/items.js');
+  const st = NP(); st.gold = 1e13; st.awakenings = 2000; const t = T.townOf(st);
+  assert.ok(T.build(st, 'p1', 'herb').ok && T.build(st, 'p2', 'lab').ok && T.build(st, 'p3', 'altar').ok && T.build(st, 'p4', 'workshop').ok && T.build(st, 'p5', 'guild').ok);
+  T.finishBuilds(st, Date.now() + 1e9);
+  for (const p of ['p1', 'p2', 'p3', 'p4']) T.buildingAt(st, p).lv = 10;
+  assert.equal(T.upgrade(st, 'p1').ok, false); // 재료 없음
+  const give = (b, n) => T.resAdd(st, b, n); give('ess5', 100); give('ore2', 100); t.herbs.frost = 40;
+  const r = T.upgrade(st, 'p1'); assert.ok(r.ok, r.why); assert.equal(T.highHerbs(st), 10); T.finishBuilds(st, Date.now() + 1e9); assert.equal(T.buildingAt(st, 'p1').lv, 11);
+  assert.equal(B.mine.store(10), 66 * 24); assert.equal(B.herb.store(20), 260 * 44);
+  // 연구: 연구소 15단계면 10단계 · 두 개
+  T.buildingAt(st, 'p2').lv = 15; assert.equal(T.researchMax(st), 10); assert.equal(T.labSlots(st), 2);
+  t.mats.field = 1e4; give('ess5', 100); give('ore2', 200); t.herbs.world = 1e4;
+  assert.ok(T.researchStart(st, 'censer').ok && T.researchStart(st, 'store').ok); assert.equal(T.researchStart(st, 'away').ok, false);
+  // 향로: 연구 1단계 = 하나 · 타는 동안 효과 · 모자라면 꺼짐
+  (t.research ||= {}).censer = 1; assert.equal(T.censerSlotsOf(st), 1); t.herbs.red = 10; t.herbs.blue = 10;
+  assert.ok(T.censerSet(st, 0, 'plenty').ok); assert.equal(T.censerSet(st, 1, 'vigor').ok, false);
+  const now = Date.now(); t.last = now; T.tick(st, now + 1800e3); assert.ok(T.burning(st, 'plenty'));
+  t.last = now; T.tick(st, now + 3 * 3600e3); assert.equal(T.burning(st, 'plenty'), false);
+  // 약초밭: 주력 · 비료 · 증류
+  const hb = T.buildingAt(st, 'p1'); hb.lv = 18; assert.ok(T.setHerbFocus(st, ['red']).ok);
+  hb.stock = 100; const before = t.herbs.red || 0; T.collect(st, 'p1'); assert.ok((t.herbs.red || 0) - before >= 50);
+  give('ore', 100); assert.ok(T.fertilize(st, 'ore').ok && t.fertUntil > Date.now());
+  const e5 = T.resCount ? T.resCount(st, 'ess5') : 0; assert.ok(T.distill(st, 'ess5').ok);
+  // 공사 촉진제 · 납품 · 지역 재료
+  const lb = T.buildingAt(st, 'p4'); lb.lv = 16; lb.bld = { to: 17, from: Date.now(), until: Date.now() + 3600e3 };
+  st.inv.push(IT2.makeItem('build_rush', { qty: 1 }, st)); assert.ok(T.rushBuild(st, 'p4').ok && lb.bld.until - Date.now() < 1900e3);
+  assert.ok(T.convertMats(st, 'field', 2).ok && t.mats.forest >= 2);
+  const os = T.herbOrders(st); assert.equal(os.length >= 1, true); t.herbs[os[0].h] = 1e4; const g0 = st.gold; assert.ok(T.herbDeliver(st, 0).ok && st.gold > g0); assert.equal(T.herbDeliver(st, 0).ok, false);
+  // 용병 식량은 챙길 물건
+  assert.equal(T.RATION.deep, 10);
+});
+
 console.log(`\n${n}개 통과`);

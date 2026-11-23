@@ -183,6 +183,28 @@ export const BASES = {
   mp_potion_4: { name: '최상급 마나 물약', type: 'potion', restore: { mp: 1500 }, price: 700, stack: true, icon: 'i_potion_mp_l', itint: 0x3a78ff },
   hp_potion_5: { name: '세계수 체력 물약', type: 'potion', restore: { hp: 6000 }, price: 1500, stack: true, icon: 'i_potion_hp_l', itint: 0xff3040 },
   mp_potion_5: { name: '세계수 마나 물약', type: 'potion', restore: { mp: 3000 }, price: 1500, stack: true, icon: 'i_potion_mp_l', itint: 0x3a78ff },
+  // v0.49.73 제작소 11 ~ 15단계 물약 (높은 약초 · 만년 약초)
+  hp_potion_6: { name: '만년 체력 물약', type: 'potion', restore: { hp: 12000 }, price: 3000, stack: true, icon: 'i_potion_hp_l', itint: 0xff3040 },
+  mp_potion_6: { name: '만년 마나 물약', type: 'potion', restore: { mp: 6000 }, price: 3000, stack: true, icon: 'i_potion_mp_l', itint: 0x3a78ff },
+  hp_potion_7: { name: '천년 체력 물약', type: 'potion', restore: { hp: 20000 }, price: 5000, stack: true, icon: 'i_potion_hp_l', itint: 0xff3040 },
+  mp_potion_7: { name: '천년 마나 물약', type: 'potion', restore: { mp: 10000 }, price: 5000, stack: true, icon: 'i_potion_mp_l', itint: 0x3a78ff },
+  hp_potion_8: { name: '영겁의 체력 물약', type: 'potion', restore: { hp: 30000 }, price: 8000, stack: true, icon: 'i_potion_hp_l', itint: 0xff3040 },
+  mp_potion_8: { name: '영겁의 마나 물약', type: 'potion', restore: { mp: 15000 }, price: 8000, stack: true, icon: 'i_potion_mp_l', itint: 0x3a78ff },
+  hp_potion_9: { name: '태초의 체력 물약', type: 'potion', restore: { hp: 44000 }, price: 12000, stack: true, icon: 'i_potion_hp_l', itint: 0xff3040 },
+  mp_potion_9: { name: '태초의 마나 물약', type: 'potion', restore: { mp: 22000 }, price: 12000, stack: true, icon: 'i_potion_mp_l', itint: 0x3a78ff },
+  hp_potion_10: { name: '창세의 체력 물약', type: 'potion', restore: { hp: 60000 }, price: 18000, stack: true, icon: 'i_potion_hp_l', itint: 0xff3040 },
+  mp_potion_10: { name: '창세의 마나 물약', type: 'potion', restore: { mp: 30000 }, price: 18000, stack: true, icon: 'i_potion_mp_l', itint: 0x3a78ff },
+  // v0.49.73 농축 주문서 (1시간, 효과 70%) · 용병 식량 · 공사 촉진제 · 정련 숫돌 · 보호 주문서
+  el_c_might: { name: '농축 분노 주문서', type: 'elixir', price: 300, stack: true },
+  el_c_haste: { name: '농축 신속 주문서', type: 'elixir', price: 300, stack: true },
+  el_c_focus: { name: '농축 매의 눈 주문서', type: 'elixir', price: 300, stack: true },
+  el_c_armor: { name: '농축 강철 피부 주문서', type: 'elixir', price: 300, stack: true },
+  el_c_swift: { name: '농축 바람걸음 주문서', type: 'elixir', price: 300, stack: true },
+  el_c_luck: { name: '농축 행운 주문서', type: 'elixir', price: 300, stack: true },
+  ration: { name: '용병 식량', type: 'food', price: 30, stack: true, text: '파견 때 챙기면 체력 소모 -40% · 사망 -25% (용병마다 짧은 사냥 1 ~ 깊은 원정 10개)' },
+  build_rush: { name: '공사 촉진제', type: 'tool', price: 500, stack: true, text: '공사 중인 건물의 남은 시간 절반' },
+  whet2: { name: '정련 숫돌', type: 'tool', price: 500, stack: true, text: '+11 ~ +20 강화 한 번 성공 확률 +3%' },
+  ward_scroll: { name: '보호 주문서', type: 'tool', price: 500, stack: true, text: '초월 강화(+21~) 실패 때 장인의 기운이 두 배로 쌓임' },
 
   // 영약: 제작소에서 약초로만 만든다 (상점 판매 없음)
   el_str: { name: '힘의 주문서', type: 'elixir', price: 80, stack: true },

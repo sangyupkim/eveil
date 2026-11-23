@@ -29,6 +29,7 @@ import { MATERIALS, SETS, SET_SLOTS, craftCost, upgradeMats, upgradeNeed } from 
 import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, mercUngear, mercById, recruits, assignMerc, SKILL_OF, SKILLS_ALL, BONUS, bonusOf, awakenMerc, awakenCost, dismiss, staMax, SKILL_NAMES, GRADES, MERC, EXP_STA, deathChance, salvage, salvageValue, reforge, reforgeCost, resCount, resTake, resAdd, ORE_RECIPES, oreRecipeOk, craftOre, KEY_RECIPES, craftKey, ESS_RECIPES, craftEss, INN_BEDS, innRestK, stopRepeat, MYTH_MARKS, mythMarks, mythLvMax, craftMyth, FRESH, freshK, isVet, herbSwap, herbSwapGold } from '../game/town.js';
 import { RESEARCH, researchCost } from '../data/buildings.js';
 import { AFFIXES } from '../data/items.js';
+import { rushBuild, convertMats, herbOrders, herbDeliver, findBuilding } from '../game/town.js';
 import { highHerbs, storeCap, essRecipe, researchMax, labSlots, labJobs, censerSlotsOf, censerSet, setHerbFocus, fertilize, distill, FERT, DISTILL } from '../game/town.js';
 import { CENSERS, CENSER_IDS } from '../data/censer.js';
 import { PLOTS, BUILDINGS, EXPEDITIONS, townOf, buildingAt, build, upgrade, collect, enhance, enhanceCap, enhanceCost, hire, mercSlots, dispatch, claim, tick } from '../game/town.js';
@@ -330,7 +331,7 @@ export class Windows {
     Q.mercs = `<h3>용병 <small>${P.ids.length} / ${partyMax(st)} · 체력 ${staNeed}</small></h3>`;
     Q.mercs += t.mercs.filter((m) => !m.job && !m.work).map((m) => { const on = P.ids.includes(m.id), weak = Math.max(0, 1 - m.sta / Math.max(1, staNeed)), dc = zn ? Math.min(0.75, deathChance(m, zn, P.exp, st, boost) * (1 + 2 * weak)) : 0;
       return `<div class="row mrow pick ${on ? 'on' : ''}" data-pm="${m.id}">${this.mercLine(m, 'hunt')}<div class="note" style="min-width:5.5em;color:${dc > 0.15 ? '#ff7060' : ''}">사망 ${Math.round(dc * 100)}%${m.sta < staNeed ? ` · <b style="color:#ff7060">지침 ${Math.floor(m.sta)} / ${staNeed}</b>` : ''}${m.rest ? ' · 여관' : ''}${freshK(m) ? ` · <b style="color:#7fe07a">기운 +${Math.round(freshK(m) * 100)}%</b>` : ''}</div></div>`; }).join('') || '<div class="note">쉬는 용병 없음</div>';
-    const goods = [...new Set([...st.inv, ...vault().items].filter((x) => ['potion', 'elixir'].includes(BASES[x?.base]?.type)).map((x) => x.base))].map((base) => ({ base, qty: resCount(st, base) })); // 가방 + 창고
+    const goods = [...new Set([...st.inv, ...vault().items].filter((x) => ['potion', 'elixir', 'food'].includes(BASES[x?.base]?.type)).map((x) => x.base))].map((base) => ({ base, qty: resCount(st, base) })); // v0.49.73 용병 식량도 // 가방 + 창고
     const tot = pack.reduce((a, p) => a + p.qty, 0);
     Q.pack = `<h3>챙길 물건 <small>${tot} / ${packMax(st)} · 안전 +${Math.round(boost.safe * 100)}% · 힘 +${Math.round(boost.pow * 100)}%</small></h3>`;
     Q.pack += goods.map((x) => `<div class="row packrow"><div class="cell shopIco">${ico(x)}</div><div class="grow">${BASES[x.base].name} <small class="note">${x.qty}</small></div><button class="btn" data-ppack="${x.base}|-1">-</button><b style="min-width:1.6em;text-align:center">${P.pack[x.base] || 0}</b><button class="btn" data-ppack="${x.base}|1">+</button></div>`).join('') || '<div class="note">물약 · 영약 없음</div>';
@@ -361,7 +362,7 @@ export class Windows {
     P.recipes = '<h3>만들기</h3>';
     for (const rc of RECIPES) {
       const open = rc.lv <= b.lv, can = (k) => open && Object.entries(rc.herbs).every(([h, q]) => (t.herbs[h] || 0) >= q * k) && Object.entries(rc.mats || {}).every(([id, q]) => resCount(st, id) >= q * k) && st.gold >= brewGold(st, rc) * k;
-      const it = { base: rc.id }, E = ELIXIRS[rc.id], fx = E ? E.text : BASES[rc.id].restore.hp ? `HP ${BASES[rc.id].restore.hp}` : `MP ${BASES[rc.id].restore.mp}`;
+      const it = { base: rc.id }, E = ELIXIRS[rc.id], RS = BASES[rc.id].restore, fx = E ? E.text : RS ? (RS.hp ? `HP ${RS.hp.toLocaleString()}` : `MP ${RS.mp.toLocaleString()}`) : BASES[rc.id].text || '';
       P.recipes += `<div class="row" style="${open ? '' : 'opacity:.45'}"><div class="cell shopIco">${ico(it)}</div><div class="grow"><b>${BASES[rc.id].name}${rc.n > 1 ? ` ×${rc.n}` : ''}</b> <small class="note">${fx}</small>
         <div class="note">${open ? Object.entries(rc.herbs).map(([h, q]) => `${HERBS[h].name} ${q}`).concat(Object.entries(rc.mats || {}).map(([id, q]) => `${BASES[id].name} ${q}`)).join(' · ') + ` · ${brewGold(st, rc)} G · ${brewTime(rc) / 1000}초` : `제작소 ${rc.lv}단계`}</div></div>
         ${open ? `<button class="btn" data-brew="${rc.id}|1" ${can(1) ? '' : 'disabled'}>만들기</button><button class="btn" data-brew="${rc.id}|5" ${can(5) ? '' : 'disabled'}>×5</button><button class="btn ${t.autoBrew === rc.id ? 'on' : ''}" data-autobrew="${rc.id}">반복</button>` : ''}</div>`;
@@ -471,7 +472,7 @@ export class Windows {
         // 오른쪽: 가진 재료 (약초 · 강화석 · 정수)
         const mats = ['ore', ...ORE_RECIPES.map((r) => r.id), ...new Set(ESS_RECIPES.flatMap((r) => [r.id, ...Object.keys(r.need)]))].filter((id, i, a) => BASES[id] && a.indexOf(id) === i);
         const inv = P.herbs + `<h3>재료</h3><div class="herbList">${mats.map((id) => `<span class="hb">${ico({ base: id })}${BASES[id].name} <b>${resCount(st, id).toLocaleString()}</b></span>`).join('')}</div>`;
-        return [P.swap + P.ess, inv];
+        return [P.swap + P.ess + (b.lv >= 16 ? `<h3>지역 재료 바꾸기 <small>5 → 위 지역 1</small></h3>` + Object.keys(MATERIALS).slice(0, -1).map((z, i) => { const to = Object.keys(MATERIALS)[i + 1], have = t.mats[z] || 0; return `<div class="row"><div class="grow"><b>${MATERIALS[z].name}</b> → ${MATERIALS[to].name} <small class="note">${have}</small></div><button class="btn" data-mconv="${z}|1" ${have >= 5 ? '' : 'disabled'}>×1</button><button class="btn" data-mconv="${z}|10" ${have >= 50 ? '' : 'disabled'}>×10</button></div>`; }).join('') : ''), inv];
       }
       return this.mercTab(b, sel);
     });
@@ -482,7 +483,7 @@ export class Windows {
     const right = `<h3>장비 <span class="cnt">${list.length}</span></h3>` + this.itemCells(list, this.enhSel, 'esel');
     const cur = list.find((x) => x[0] === this.enhSel);
     if (!cur) return [`<h3>강화</h3><div class="forgeSlot empty"></div>`, right];
-    const [key, it, where] = cur, cap = enhanceCap(st), n = it.plus || 0, max = n >= cap, c = enhanceCost(it, st, this.useWhet && n >= 20 && countOf(st, 'whetstone') > 0), b = BASES[it.base];
+    const [key, it, where] = cur, cap = enhanceCap(st), n = it.plus || 0, max = n >= cap, c = enhanceCost(it, st, this.useWhet && n >= 20 && countOf(st, 'whetstone') > 0, this.useWhet2 && n >= 10 && n < 20 && countOf(st, 'whet2') > 0), b = BASES[it.base];
     const nx = { ...it, plus: n + 1 };
     const stat = b.dmg ? (() => { const a = scaledDmg(it), z = scaledDmg(nx); return `<span>${WEAPON_CLASSES[b.cls]?.kind === 'magic' ? '마법 공격력' : '물리 공격력'}</span><b>${a[0]}~${a[1]}${max ? '' : ` <i class="arw">▶</i> <em>${z[0]}~${z[1]}</em>`}</b>`; })() : b.armor ? `<span>방어력</span><b>${scaledArmor(it)}${max ? '' : ` <i class="arw">▶</i> <em>${scaledArmor(nx)}</em>`}</b>` : ''
     // v0.49.34 기본 옵션 · 장신구 기본 효과도 강화만큼
@@ -492,7 +493,7 @@ export class Windows {
     const have = resCount(st, c.oreId), okGold = st.gold >= c.gold, okOre = have >= c.ore;
     let L = `<div class="forgeTop"><div class="cell forgeSlot${rar(it)}">${ico(it)}</div><div><div class="nm" style="color:${itemColor(it)}">${esc(itemName(it))}</div><div class="note">${where} · Lv ${it.ilvl}</div><div class="plusBig${plusCls(n)}">+${n}${max ? ' <small>상한</small>' : ` <i class="arw">▶</i> <em>+${n + 1}</em>`}</div></div></div>`;
     if (!max) L += `<div class="kv">${stat}${bmRows}${afRows}<span>성공 확률</span><b class="${c.jang >= 1 ? 'goldTxt' : ''}">${c.jang >= 1 ? '100%' : `${+(c.chance * 100).toFixed(1)}%`}</b><span>장인의 기운</span><b>${+(c.jang * 100).toFixed(1)}%</b><span>금화</span><b style="${okGold ? '' : 'color:#ff7060'}">${c.gold.toLocaleString()} G</b><span>${c.oreName}</span><b style="${okOre ? '' : 'color:#ff7060'}">${c.ore} <small class="note">/ ${have}</small></b></div>
-      ${n >= 20 && countOf(st, 'whetstone') ? `<div class="btns"><button class="btn${this.useWhet ? ' on' : ''}" data-whet="1">왕좌의 숫돌 ${countOf(st, 'whetstone')} · +5%</button></div>` : ''}
+      <div class="btns">${n >= 20 && countOf(st, 'whetstone') ? `<button class="btn${this.useWhet ? ' on' : ''}" data-whet="1">왕좌의 숫돌 ${countOf(st, 'whetstone')} · +5%</button>` : ''}${n >= 10 && n < 20 && countOf(st, 'whet2') ? `<button class="btn${this.useWhet2 ? ' on' : ''}" data-whet2="1">정련 숫돌 ${countOf(st, 'whet2')} · +3%</button>` : ''}${n >= 20 && countOf(st, 'ward_scroll') ? `<button class="btn${this.useWard ? ' on' : ''}" data-ward="1">보호 주문서 ${countOf(st, 'ward_scroll')} · 기운 ×2</button>` : ''}</div>
       <div class="btns forgeGo"><button class="btn gold big" data-enh="${key}" ${okGold && okOre ? '' : 'disabled'}>강화</button></div>`;
     else L += `<div class="kv">${stat}${bmRows}${afRows}</div>`;
     return [L, right];
@@ -1216,7 +1217,7 @@ export class Windows {
         const g = def.cost(lv), m = lv ? upgradeNeed(lv) : null, aw = lv ? def.up?.[lv - 1] ?? 0 : def.need || 0;
         return `<span${b.lv === lv + 1 ? ' style="color:#ffd84a"' : ''}>${lv + 1}단계</span><b>${g.toLocaleString()} G${m && needTxt(m) ? ` · ${needTxt(m)}` : ''} · 각성 ${aw} · ${fmtT(buildTime(lv + 1))}</b>`;
       }).join('') + '</div>';
-      if (b.bld) right = `<h3>${def.name} · ${b.bld.to === 1 ? '짓는 중' : `${b.bld.to}단계로 올리는 중`} <small class="note">${fmtT(Math.max(60000, b.bld.until - Date.now()))}</small></h3>${gauge(b.bld.from, b.bld.until, 60000, '#ffd84a')}` + (bmode ? costTable : '');
+      if (b.bld) right = `<h3>${def.name} · ${b.bld.to === 1 ? '짓는 중' : `${b.bld.to}단계로 올리는 중`} <small class="note">${fmtT(Math.max(60000, b.bld.until - Date.now()))}</small></h3>${gauge(b.bld.from, b.bld.until, 60000, '#ffd84a')}` + (countOf(st, 'build_rush') ? `<div class="btns"><button class="btn gold" data-rush="1">공사 촉진제 ${countOf(st, 'build_rush')} · 남은 시간 절반</button></div>` : '') + (bmode ? costTable : '');
       else right = `<h3>${def.name} · ${b.lv}단계</h3>` + (one ? '' : `<div class="btns" style="margin:0 0 8px"><button class="btn" data-upgrade="1" ${up == null || st.gold < up || !umOk || !anOk ? 'disabled' : ''}>${up == null ? '최고 단계' : !anOk ? `각성 ${an} 필요` : `단계 올리기 ${up.toLocaleString()} G${un && needTxt(un) ? ` · ${needTxt(un)}` : ''}`}</button></div><div class="note">${def.desc}</div>`);
       if (bmode && !b.bld) right += costTable;
       if (one && !b.bld) { const v = this.buildingView(b, sel); if (v) return v; } // v0.45 건물 창: 기능별 탭 · 두 쪽
@@ -1336,8 +1337,9 @@ export class Windows {
     if (this.sel?.from === 'equip') this.sel = null;
     const goods = Object.keys(BASES).filter((id) => BASES[id].shop && BASES[id].type !== 'gem'); // 보석은 보석상에서
     // v0.45 상점: 구매 (오른쪽 물건 → 왼쪽 정보 · 사기) | 판매 (오른쪽 가방 → 왼쪽 정보 · 팔기)
-    return this.tabView('상인 오르텐', 'shop', [['buy', '구매'], ['sell', '판매'], ...(raidOpen(st) ? [['raid', '원정']] : [])], (k) => {
+    return this.tabView('상인 오르텐', 'shop', [['buy', '구매'], ['sell', '판매'], ...(findBuilding(st, 'herb') ? [['order', '납품']] : []), ...(raidOpen(st) ? [['raid', '원정']] : [])], (k) => {
       if (k === 'raid') return this.raidShop(st);
+      if (k === 'order') return this.herbOrderTab(st);
       if (k === 'sell') {
         if (this.shopSrc !== 'v') { if (!this.sellPick && !this.cur()) { const f = st.inv.find((x) => BASES[x.base]?.type !== 'mat'); if (f) this.sel = { from: 'inv', uid: f.uid }; } const cur = this.cur(); return [this.describe(cur, cur ? 'inv' : null), this.bagHead() + this.bagGrid()]; }
         const V = vault().items; if (!this.vPick && !V.some((x) => x?.uid === this.vSel)) this.vSel = V.find(Boolean)?.uid ?? null; const it = V.find((x) => x?.uid === this.vSel);
@@ -1361,6 +1363,13 @@ export class Windows {
     (this.raidLoading ||= {})[k] = true;
     cloud.raidList(wk, g).then((list) => { this.raidRank[k] = list || []; this.raidLoading[k] = false; if (this.kind === 'raid') this.render(); });
   }
+  // v0.49.73 약초 납품 의뢰: 왼쪽 = 오늘의 납품 | 오른쪽 = 가진 약초
+  herbOrderTab(st) {
+    const t = townOf(st), L = `<h3>오늘의 납품</h3>` + herbOrders(st).map((o, i) => `<div class="row${o.done ? ' fin' : ''}"><img src="${herbIcon(o.h)}" alt="" style="width:28px" /><div class="grow"><b>${HERBS[o.h].name} ${o.n}</b> <small class="note">가진 ${Math.floor(t.herbs[o.h] || 0)}</small><div class="note">${o.gold.toLocaleString()} G · ${BASES[o.ess].name} ${o.essN}</div></div>
+      <button class="btn gold" data-hord="${i}" ${o.done || (t.herbs[o.h] || 0) < o.n ? 'disabled' : ''}>${o.done ? '완료' : '납품'}</button></div>`).join('');
+    const R = `<h3>가진 약초</h3><div class="herbList herbCards">${HERB_IDS.filter((h) => (t.herbs[h] || 0) >= 1).map((h) => `<span class="hb"><img src="${herbIcon(h)}" alt="" />${HERBS[h].name} <b>${Math.floor(t.herbs[h])}</b></span>`).join('')}</div>`;
+    return [L, R];
+  }
   // v0.49.73 약초밭 재배 (11단계~): 왼쪽 = 주력 재배 · 비료 | 오른쪽 = 증류 · 가진 약초
   herbGrow(st, t, b) {
     const now = Date.now(), F = t.herbFocus || [], ids = herbsAt(b.lv), fl = Math.max(0, (t.fertUntil || 0) - now);
@@ -1370,7 +1379,7 @@ export class Windows {
       <div class="btns"><button class="btn gold" data-fert="ore" ${resCount(st, 'ore') >= FERT.ore ? '' : 'disabled'}>강화석 ${FERT.ore}</button><button class="btn gold" data-fert="ore2" ${resCount(st, 'ore2') >= FERT.ore2 ? '' : 'disabled'}>상급 강화석 ${FERT.ore2}</button></div>` : lock(13));
     L += `<h3 style="margin-top:8px">변이 약초</h3>` + (b.lv >= 15 ? `<div class="kv"><span>${HERBS.myriad.name}</span><b>${Math.floor(t.herbs.myriad || 0)} · 거둘 때 ${(0.4 + 0.1 * (b.lv - 15)).toFixed(1)}%</b></div>` : lock(15));
     const hh = highHerbs(st);
-    let R = `<h3>증류 <small>높은 약초 → 정수</small></h3>` + (b.lv >= 18 ? Object.entries(DISTILL).map(([id, n]) => `<div class="row"><div class="grow">${ico({ base: id })} ${BASES[id].name} <span class="note">높은 약초 ${n}</span></div><button class="btn gold" data-distill="${id}" ${hh >= n ? '' : 'disabled'}>증류</button></div>`).join('') : lock(18));
+    let R = `<h3>증류 <small>높은 약초 → 정수</small></h3>` + (b.lv >= 18 ? Object.entries(DISTILL).map(([id, n]) => `<div class="row"><img src="${itemIcon({ base: id })}" alt="" style="width:28px" /><div class="grow">${BASES[id].name} <span class="note">높은 약초 ${n}</span></div><button class="btn gold" data-distill="${id}" ${hh >= n ? '' : 'disabled'}>증류</button></div>`).join('') : lock(18));
     R += `<h3 style="margin-top:8px">가진 약초 <small>높은 약초 ${Math.floor(hh)}</small></h3><div class="herbList herbCards">${HERB_IDS.filter((h) => (t.herbs[h] || 0) >= 1).map((h) => `<span class="hb"><img src="${herbIcon(h)}" alt="" />${HERBS[h].name} <b>${Math.floor(t.herbs[h])}</b></span>`).join('')}</div>`;
     return [L, R];
   }
@@ -1532,6 +1541,8 @@ export class Windows {
       w.ui.dirty();
       this.render();
     });
+    on('[data-mconv]', (el) => { const [z, n] = el.dataset.mconv.split('|'), r = convertMats(st, z, Number(n)); if (!r.ok) { w.ui.toast(r.why || '바꿀 수 없습니다'); audio.play('error'); } else audio.play('coin'); w.ui.dirty(); this.render(); });
+    on('[data-hord]', (el) => { const r = herbDeliver(st, Number(el.dataset.hord)); if (!r.ok) { w.ui.toast(r.why); audio.play('error'); } else { audio.play('coin'); w.ui.toast(`납품 · ${r.gold.toLocaleString()} G · ${BASES[r.ess].name} ${r.essN}`, '#ffd84a'); } w.ui.dirty(); this.render(); });
     on('[data-hfocus]', (el) => { const h = el.dataset.hfocus, F = [...(townOf(st).herbFocus || [])]; const i = F.indexOf(h); if (i >= 0) F.splice(i, 1); else { if (F.length >= 2) F.shift(); F.push(h); } setHerbFocus(st, F); audio.play('click'); this.render(); });
     on('[data-fert]', (el) => { const r = fertilize(st, el.dataset.fert); if (!r.ok) { w.ui.toast(r.why); audio.play('error'); } else audio.play('buff'); w.ui.dirty(); this.render(); });
     on('[data-distill]', (el) => { const r = distill(st, el.dataset.distill); if (!r.ok) { w.ui.toast(r.why); audio.play('error'); } else { audio.play('coin'); w.ui.toast(`${BASES[el.dataset.distill].name} +1`, '#ffd84a'); } w.ui.dirty(); this.render(); });
@@ -1547,6 +1558,9 @@ export class Windows {
       resTake(st, 'raid_emblem', price); audio.play('coin'); w.ui.dirty(); this.render();
     });
     on('[data-whet]', () => { this.useWhet = !this.useWhet; audio.play('click'); this.render(); });
+    on('[data-whet2]', () => { this.useWhet2 = !this.useWhet2; audio.play('click'); this.render(); });
+    on('[data-ward]', () => { this.useWard = !this.useWard; audio.play('click'); this.render(); });
+    on('[data-rush]', () => { const r = rushBuild(st, this.townSel); if (!r.ok) { w.ui.toast(r.why); audio.play('error'); } else { audio.play('buff'); w.ui.toast('공사 시간이 절반으로 줄었습니다', '#ffd84a'); } w.ui.dirty(); this.render(); });
     on('[data-tsel]', (el) => { this.tuneSel = el.dataset.tsel; audio.play('click'); this.render(); });
     const tuneDone = (r, key, msg) => { if (!r?.ok) { if (r?.why) w.ui.toast(r.why); audio.play('error'); } else { if (String(key).startsWith('v:')) vaultSave(); audio.play('rankup'); if (msg) w.ui.toast(msg, '#ffd84a'); w.refreshGear(); w.ui.dirty(); } this.render(); };
     ask('[data-treroll]', () => ['옵션 다시 굴림', '이 옵션을 다른 옵션으로 바꿉니다', '굴리기'], (el) => { const [k, i] = el.dataset.treroll.split('|'), it = gearAt(st, k); const r = rerollAffix(st, it, Number(i)); tuneDone(r, k, r.ok ? `${affixText(r.before)} → ${affixText(r.after)}` : null); });
@@ -1627,7 +1641,7 @@ export class Windows {
     on('[data-enh]', (el) => {
       const it = gearAt(st, el.dataset.enh), b0 = BASES[it.base], before = b0.dmg ? scaledDmg(it).join('~') : b0.armor ? scaledArmor(it) : null, p0 = it.plus || 0;
       const affA = (it.affixes || []).map((a) => affixText({ ...a, v: affixV(it, a) })); // v0.49.59 장신구 옵션 바뀐 값
-      const r = enhance(st, it, Math.random, !!this.useWhet); if (el.dataset.enh.startsWith('v:')) vaultSave();
+      const r = enhance(st, it, Math.random, !!this.useWhet, { whet2: !!this.useWhet2, ward: !!this.useWard }); if (el.dataset.enh.startsWith('v:')) vaultSave();
       if (!r.ok) { w.ui.toast(r.why); audio.play('error'); }
       else if (r.success) {
         audio.play('awaken'); w.fx.pillar(w.player.pos.x, w.player.pos.z, 0xffd060, 0.8); w.refreshGear();

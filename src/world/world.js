@@ -2420,9 +2420,9 @@ export class World {
     takeOne(st, id);
     st.elix ||= {};
     for (const k of Object.keys(st.elix)) if (st.elix[k].buff === E.buff) delete st.elix[k]; // 같은 효과는 겹치지 않고 바뀐다
-    st.elix[id] = { buff: E.buff, v, t: ELIXIR_TIME };
+    st.elix[id] = { buff: E.buff, v, t: E.dur || ELIXIR_TIME };
     this.d = derive(st, this.buffValues());
-    this.ui.toast(`${E.name}${quiet ? ' (자동)' : ''}: ${E.stat ? `${E.text.split(' ')[0]} +${v}` : E.text} · 5분`, E.color);
+    this.ui.toast(`${E.name}${quiet ? ' (자동)' : ''}: ${E.stat ? `${E.text.split(' ')[0]} +${v}` : E.text}${E.dur ? '' : ' · 5분'}`, E.color);
     sfx('buff');
     this.fx.ring(this.player.pos.x, this.player.pos.z, 2.2, new THREE.Color(E.color).getHex(), 0.7);
     this.ui.dirty();
@@ -3504,6 +3504,7 @@ export class World {
       this.ui.choose(`상급 스킬북 고르기 · ${c}차`, '하나를 고르세요', ids.map((id) => ({ label: SKILLS[id].name, sub: `${STAT_NAMES[Object.keys(SKILLS[id].req)[0]] || ''}${st.skills[id] ? ' · 배움' : ''}` })), (i) => {
         if (i < 0 || !st.inv.includes(it)) return; takeOne(st, 't_book'); const bk = makeBook(ids[i], st); if (!addItem(st, bk)) st.inv.push(bk); this.ui.toast(`${SKILLS[ids[i]].name} 스킬북`, '#ffd060'); sfx('rare'); this.ui.dirty();
       }); return; }
+    if (['food', 'tool'].includes(BASES[it.base]?.type)) { this.ui.toast({ ration: '파견할 때 챙겨 보냅니다', build_rush: '공사 중인 건물 창에서 씁니다', whet2: '대장간 강화에서 씁니다', ward_scroll: '대장간 강화에서 씁니다' }[it.base] || '쓸 곳에서 씁니다'); return; }
     if (BASES[it.base]?.type === 'raid') { this.ui.toast(it.base === 'whetstone' ? '대장간 강화에서 씁니다' : '대장간에서 씁니다'); return; }
     this.d = derive(st, this.buffValues());
     if (BASES[it.base]?.type === 'pet') { takeOne(st, it.base); const cat = BASES[it.base].pet === 'pet_cat'; st.pet = { kind: cat ? 'pet_cat' : 'pet_dog', name: cat ? '고양이' : '강아지' }; this.makePet(); this.ui.toast(`${st.pet.name}가 함께합니다! 물건을 주워 오고 함께 싸웁니다`, '#7fe07a'); sfx('learn'); this.ui.dirty(); return; }
