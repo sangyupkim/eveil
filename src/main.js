@@ -12,7 +12,7 @@ import { GAME_VERSION } from './data/patchnotes.js';
 import { checkUpdate } from './update.js';
 import { syncVault, vault, vaultSave } from './game/vault.js';
 import { capAll } from './game/items.js';
-import { moveRetiredSkills } from './game/skills.js';
+import { moveRetiredSkills, linkQuick } from './game/skills.js';
 import { setupInput } from './input.js';
 import { newPlayer } from './game/player.js';
 import { CONFIG } from './data/config.js';
@@ -44,6 +44,7 @@ function fixSave(s) {
     const base = newPlayer(s.name, s.look);
     for (const k in base) if (s[k] === undefined) s[k] = base[k];
     s.settings = { ...base.settings, ...s.settings };
+    linkQuick(s, CONFIG.quickSlots); // v0.50 퀵슬롯 세 벌
     moveRetiredSkills(s); // v0.44.38 정리된 스킬 옮기기
     return s;
   } catch { return null; }
@@ -260,7 +261,7 @@ export function showNotices(list) {
 
 function startGame(stage, st) {
   if (window.__started) return; window.__started = true; // 한 번만
-  packShards(st.inv); packBooks(st.inv); fixHands(st); // v0.49.58 활 아닌 무기 + 화살통 // v0.49.11 흩어진 파편을 옵션마다 한 칸으로 · v0.49.25 같은 스킬북도 한 칸으로
+  linkQuick(st, CONFIG.quickSlots); packShards(st.inv); packBooks(st.inv); fixHands(st); // v0.49.58 활 아닌 무기 + 화살통 // v0.49.11 흩어진 파편을 옵션마다 한 칸으로 · v0.49.25 같은 스킬북도 한 칸으로
   for (const t of st.titles || []) if (t.perk?.text) t.perk.text = t.perk.text.replace(/주문 피해 (\d+) (원소 폭발|파동|번개)/, '피해 $1% $2'); // v0.49.22 예전 칭호 글을 새 계산에 맞게
   const vaultP = syncVault().then(() => { const fixed = capAll(vault().items) | packShards(vault().items); const moved = moveRetiredSkills({ skills: {}, inv: [] }, vault().items); if (packBooks(vault().items) || moved || fixed) vaultSave(); }); // v0.44.62 예전 옵션 상한 정리 // 계정 공용 창고: 서버와 맞춘다 (v0.44.38 빠진 스킬북 옮기기)
   // 접속할 때마다 새 세상: 씨앗으로 지역 자리 · 지형 · 던전을 새로 만든다.

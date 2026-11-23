@@ -133,8 +133,20 @@ export function moveRetiredSkills(st, vaultItems = []) {
   for (const [old, to] of Object.entries(SKILL_MOVED)) {
     const had = st.skills?.[old];
     if (had) { const cur = st.skills[to]; if (!cur || (cur.rank || 0) < (had.rank || 0)) st.skills[to] = had; delete st.skills[old]; n++; }
-    if (st.quick) st.quick = st.quick.map((q) => (q === old ? to : q));
+    for (const set of st.quickSets || (st.quick ? [st.quick] : [])) for (let i = 0; i < set.length; i++) if (set[i] === old) set[i] = to; // v0.50 세 벌 모두 (제자리 바꿈 — st.quick이 지금 세트를 가리킨다)
   }
   for (const it of [...(st.inv || []), ...vaultItems]) if (it?.book && SKILL_MOVED[it.book]) { it.book = SKILL_MOVED[it.book]; n++; }
   return n;
+}
+
+// v0.50 퀵슬롯 세 벌: st.quickSets[0~2] · st.quickSet(지금 세트). st.quick은 지금 세트 배열을 가리킨다 (저장하면 끊기므로 불러올 때 다시 잇는다)
+export const QUICK_SETS = 3;
+export function linkQuick(st, n = 8) {
+  const fit = (a) => { const r = Array.isArray(a) ? a.slice(0, n) : []; while (r.length < n) r.push(null); return r; };
+  if (!Array.isArray(st.quickSets)) st.quickSets = [fit(st.quick)];
+  while (st.quickSets.length < QUICK_SETS) st.quickSets.push(fit(null));
+  st.quickSets = st.quickSets.slice(0, QUICK_SETS).map(fit);
+  st.quickSet = Math.max(0, Math.min(QUICK_SETS - 1, st.quickSet || 0));
+  st.quick = st.quickSets[st.quickSet];
+  return st;
 }

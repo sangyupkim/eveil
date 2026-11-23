@@ -158,6 +158,13 @@ export class HUD {
   buildQuick() {
     const q = $('#quick');
     q.innerHTML = '';
+    // v0.50 스킬 세트 1 · 2 · 3 단추 (스킬 칸 옆)
+    if (!document.getElementById('qsets')) {
+      const b = document.createElement('div'); b.id = 'qsets';
+      b.innerHTML = [0, 1, 2].map((i) => `<button class="btn qset" data-qset="${i}">${i + 1}</button>`).join('');
+      q.parentNode.insertBefore(b, q.nextSibling);
+      b.querySelectorAll('[data-qset]').forEach((el) => el.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.world?.setQuickSet(Number(el.dataset.qset)); }));
+    }
     for (let i = 0; i < CONFIG.quickSlots; i++) {
       const s = document.createElement('div');
       s.className = 'slot empty';
@@ -176,6 +183,7 @@ export class HUD {
     this.dailyT = (this.dailyT || 0) - dt; // v0.49.56 0.5초마다 (매 프레임 오늘 날짜 · 목록 문자열을 새로 만들었다)
     const dl = this.dailyT <= 0 ? ((this.dailyT = 0.5), dailyOf(st)) : null, dk = dl ? dl.list.map((q) => q.have + (q.done ? 'd' : '') + (q.got ? 'g' : '')).join('|') : this.dailyKey;
     if (dl && dk !== this.dailyKey) { this.dailyKey = dk; $('#dailyBox').innerHTML = dl.list.filter((q) => !q.got).map((q) => `<div class="dq${q.done ? ' fin' : ''}">${dailyText(q)} <b>${q.done ? '완료' : `${q.have} / ${q.need}`}</b></div>`).join(''); }
+    if (this.qsetShown !== st.quickSet) { this.qsetShown = st.quickSet; document.querySelectorAll('#qsets [data-qset]').forEach((el) => el.classList.toggle('on', Number(el.dataset.qset) === (st.quickSet || 0))); }
     tfm($('.bar.hp i'), `scaleX(${Math.max(0, st.hp / d.maxHp)})`);
     txt($('.bar.hp span'), `${Math.ceil(Math.max(0, st.hp))} / ${d.maxHp}`);
     tfm($('.bar.mp i'), `scaleX(${Math.max(0, st.mp / d.maxMp)})`);

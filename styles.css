@@ -847,3 +847,11 @@ body.ui-edit #chatBox { pointer-events: auto; outline: 2px dashed rgba(255,213,7
 #autoSaver .asBar i { display: block; height: 100%; background: linear-gradient(90deg, #b88a2a, #ffd860); }
 #btnHideScreen { position: absolute; left: 50%; top: calc(60% + var(--u) * 2.2); transform: translateX(-50%); pointer-events: auto; font-size: calc(var(--u) * 0.85); padding: calc(var(--u) * 0.25) calc(var(--u) * 0.9); opacity: 0.85; }
 #btnHideScreen[hidden] { display: none; }
+
+/* v0.50 스킬 세트 1 · 2 · 3 */
+#qsets { position: absolute; left: calc(50% + var(--u) * 17.5); bottom: calc(var(--u) * 2.6 + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 3px; pointer-events: auto; }
+#qsets .qset { min-width: calc(var(--u) * 1.8); height: calc(var(--u) * 1.25); padding: 0 calc(var(--u) * 0.3); font-size: calc(var(--u) * 0.8); line-height: 1; opacity: 0.75; }
+#qsets .qset.on { opacity: 1; color: #ffd84a; border-color: #ffd84a; box-shadow: 0 0 6px rgba(255, 216, 74, 0.6); }
+body.touch #qsets { left: auto; right: calc(10px + env(safe-area-inset-right) + var(--u) * 21.5); bottom: calc(var(--u) * 1.2 + env(safe-area-inset-bottom)); flex-direction: row; }
+body.touch #qsets .qset { min-width: calc(var(--u) * 2.4); height: calc(var(--u) * 2); font-size: calc(var(--u) * 1); }
+body.ui-edit #qsets { display: none; }

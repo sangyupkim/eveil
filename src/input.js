@@ -78,7 +78,7 @@ export function setupInput(world, stage, windows) {
   let holding = null;
   // v0.49.63 휴대폰: 스킬 · 행동 단추 사이 빈틈을 누르면 땅을 누른 것으로 쳐 오른쪽 아래로 걸어가던 것
   //  → 단추 묶음 근처면 가장 가까운 단추(단추 크기의 반만큼 넉넉히)를 누른 것으로, 그래도 멀면 아무것도 하지 않는다
-  const PAD_SEL = '#quick .slot, #btnAttack, #btnHp, #btnMp, #btnAuto, #btnRecall';
+  const PAD_SEL = '#quick .slot, #qsets .qset, #btnAttack, #btnHp, #btnMp, #btnAuto, #btnRecall';
   const padHit = (x, y) => {
     const els = [...document.querySelectorAll(PAD_SEL)].filter((el) => el.offsetParent !== null);
     let best = null, bd = Infinity, L = Infinity, T = Infinity, R = -Infinity, B = -Infinity, size = 0;
@@ -237,6 +237,7 @@ export function setupInput(world, stage, windows) {
     if (a === 'hp') world.usePotion('hp');
     if (a === 'mp') world.usePotion('mp');
     if (a === 'auto') world.toggleAuto();
+    if (a === 'qset') { e.preventDefault?.(); world.setQuickSet((world.st.quickSet || 0) + 1); }
     if (a === 'recall') world.recall();
     if (a === 'attack') { e.preventDefault(); attackOrInteract(); }
     if (a === 'interact') { const t = interactTarget(); if (t) t.go(); }

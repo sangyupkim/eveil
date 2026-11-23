@@ -771,7 +771,7 @@ export class Windows {
         <h3 style="margin-top:10px">변형</h3>${VARIANT_RANKS.map((r) => `<div class="note">랭크 ${r}</div><div class="btns" style="flex-wrap:wrap;margin:2px 0 6px">${V[r].map((x) => {
           const on = s.mod?.[r] === x.key, can = s.rank >= r && !s.mod?.[r];
           return `<button class="btn${on ? ' on' : ''}" data-var="${r}|${x.key}" ${can ? '' : 'disabled'}>${x.name.split(': ')[1]}<small style="display:block;font-size:.7em;opacity:.8">${x.text}</small></button>`; }).join('')}</div>`).join('')}
-        <h3 style="margin-top:14px">퀵슬롯</h3><div class="qsRow">`;
+        <h3 style="margin-top:14px">퀵슬롯 <span class="btns" style="display:inline-flex;margin-left:6px">${[0, 1, 2].map((k) => `<button class="btn${(st.quickSet || 0) === k ? ' on' : ''}" data-qsetw="${k}">세트 ${k + 1}</button>`).join('')}</span></h3><div class="qsRow">`;
       for (let i = 0; i < CONFIG.quickSlots; i++) {
         const q = st.quick[i];
         det += `<button class="btn qs${q === id ? ' on' : ''}" data-qs="${i}"><small>${i + 1}</small>${q ? `<img src="${skillIcon(q)}" alt="" />` : ''}</button>`;
@@ -1290,6 +1290,7 @@ export class Windows {
         <div class="setRow"><span>조이스틱 크기</span><div class="opts">${uiSlider('joy', 0.6, 1.6)}</div></div>
         <div class="setRow"><span>단추 크기</span><div class="opts">${uiSlider('btn', 0.6, 1.6)}</div></div>
         <div class="setRow"><span>단추 투명도</span><div class="opts">${uiSlider('alpha', 0.3, 1)}</div></div>
+        <div class="setRow"><span>자동 사냥 스킬 세트</span><div class="opts"><button class="btn${set.autoSet === false ? '' : ' on'}" data-autoset="1">상황별 (보스 2 · 버프 3)</button><button class="btn${set.autoSet === false ? ' on' : ''}" data-autoset="0">지금 세트만</button></div></div>
         <div class="setRow"><span>휴대폰 스킬 배치</span><div class="opts"><button class="btn${set.skillLayout === 'grid' ? '' : ' on'}" data-qlay="ring">원형</button><button class="btn${set.skillLayout === 'grid' ? ' on' : ''}" data-qlay="grid">사각</button></div></div>
         <div class="setRow"><span>UI 위치</span><div class="opts"><button class="btn" data-uiedit="1">위치 편집</button><button class="btn" data-uireset="1">처음대로</button></div></div>
         <div class="setRow"><span>세계 단계</span><div class="opts">${TIER_NAMES.map((n, i) => `<button class="btn${(st.worldTier || 1) === i + 1 ? ' on' : ''}" data-tier="${i + 1}" ${i + 1 > (st.maxTier || 1) ? 'disabled' : ''}>${n}</button>`).join('')}</div></div>
@@ -1349,6 +1350,8 @@ export class Windows {
       w.ui.toast(`계정 ${r.id}에 연동했습니다`, '#ffd84a'); audio.play('rankup');
       this.render();
     });
+    on('[data-autoset]', (el) => { st.settings.autoSet = el.dataset.autoset === '1'; audio.play('click'); this.render(); });
+    on('[data-qsetw]', (el) => { w.setQuickSet(Number(el.dataset.qsetw)); this.render(); }); // v0.50 스킬 창에서 세트 고르기
     on('[data-ringcmp]', (el) => { this.ringCmp = el.dataset.ringcmp; audio.play('click'); this.render(); });
     on('[data-eq]', (el) => { if (st.equip[el.dataset.eq]) { this.sel = { from: 'equip', slot: el.dataset.eq }; audio.play('click'); this.render(); } });
     on('[data-act]', async (el) => {

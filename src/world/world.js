@@ -2178,6 +2178,15 @@ export class World {
     if (n) { st.gold += g; this.ui.log(`자동 판매: 장비 ${n}개 +${g.toLocaleString()}G`, '#ffd84a'); sfx('coin'); this.ui.dirty(); }
   }
 
+  // v0.50 퀵슬롯 세트 바꾸기 (0~2). 바꾼 뒤 0.3초는 스킬을 못 쓴다
+  setQuickSet(i) {
+    const st = this.st; if (!st.quickSets) return;
+    i = ((i % st.quickSets.length) + st.quickSets.length) % st.quickSets.length;
+    if (i === st.quickSet) return;
+    st.quickSet = i; st.quick = st.quickSets[i];
+    this.actCd = Math.max(this.actCd || 0, 0.3); this.pendingSkill = null;
+    sfx('click'); this.ui.toast?.(`스킬 세트 ${i + 1}`, '#ffd84a'); this.ui.dirty();
+  }
   toggleAuto(on = !this.auto) {
     this.auto = on;
     this.autoPause = 0;
@@ -2718,7 +2727,13 @@ export class World {
     }
     this.moveTo = null;
     // 스킬: 퀵슬롯 순서대로 쓸 수 있는 것
-    for (const id of st.quick) {
+    // v0.50 세 벌: 보통 몬스터는 세트 1, 보스 · 네임드는 세트 2(비었으면 1), 세트 3의 버프는 꺼지면 다시 건다 (설정 「자동 세트 전환」을 끄면 지금 세트만)
+    let list = st.quick;
+    if (st.quickSets && st.settings.autoSet !== false) {
+      const [s1, s2, s3] = st.quickSets, boss = ['boss', 'named'].includes(this.target?.tier);
+      list = [...(boss && s2.some(Boolean) ? s2 : s1), ...s3.filter((id) => id && SKILLS[id]?.type === 'buff')];
+    }
+    for (const id of list) {
       if (!id || !st.skills[id]) continue;
       const sk = SKILLS[id];
       const r = this.skillReady(id);
