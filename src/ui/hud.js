@@ -1,3 +1,4 @@
+import { cleanNum, cleanTree } from './numfmt.js';
 import { HP_POTIONS, MP_POTIONS } from '../data/potions.js';
 import { bagSize } from '../game/inventory.js';
 // 화면 위 정보: HP/MP · EXP · 퀵슬롯 · 미니맵 · 이름표 · 알림 · 각성 연출 · 사망 화면
@@ -22,7 +23,7 @@ import { bust, faceClose, portrait, chestIcon, bookIcon, coinIcon, swordIcon, it
 // v0.49.56 HUD는 매 프레임 같은 칸을 찾고 써서: 찾은 칸은 기억하고(문서에 붙어 있는 동안), 값이 바뀔 때만 쓴다
 const $cache = new Map();
 const $ = (s, r = document) => { if (r !== document) return r.querySelector(s); let el = $cache.get(s); if (!el || !el.isConnected) { el = r.querySelector(s); if (el) $cache.set(s, el); } return el; };
-const txt = (el, v) => { if (el && el._t !== v) { el._t = v; el.textContent = v; } };
+const txt = (el, v) => { if (el && el._t !== v) { el._t = v; el.textContent = cleanNum(String(v)); } }; // v0.49.77 긴 소수 정리
 const tfm = (el, v) => { if (el && el._f !== v) { el._f = v; el.style.transform = v; } };
 
 export class HUD {
@@ -59,6 +60,7 @@ export class HUD {
   dirty() { this.isDirty = true; this.onDirty(); }
 
   toast(msg, color) {
+    msg = cleanNum(msg);
     const box0 = $('#toasts');
     for (const old of box0.children) if (old.textContent === msg) { old.remove(); }
     const el = document.createElement('div');
@@ -72,6 +74,7 @@ export class HUD {
   }
 
   log(msg, color, keep = true) {
+    msg = cleanNum(msg);
     const el = document.createElement('div');
     el.textContent = msg;
     if (color) el.style.color = color;
@@ -118,6 +121,7 @@ export class HUD {
     let el = $('#askBox');
     if (!el) { el = document.createElement('div'); el.id = 'askBox'; document.body.appendChild(el); }
     el.innerHTML = `<div class="tpBox"><h1 style="font-size:1.6em">${title}</h1><div style="margin:.4em 0 1em">${text}</div><div class="tpList" style="justify-content:center">${yes ? `<button class="plate gold" data-a="1">${yes}</button>` : ''}<button class="plate" data-a="0">${yes ? '아니오' : '닫기'}</button></div></div>`;
+    cleanTree(el); // v0.49.77
     el.hidden = false;
     const t0 = performance.now();
     el.querySelectorAll('[data-a]').forEach((b) => b.addEventListener('pointerup', () => { if (performance.now() - t0 < 300) return; el.hidden = true; done(b.dataset.a === '1'); }));
@@ -128,6 +132,7 @@ export class HUD {
     let el = $('#askBox');
     if (!el) { el = document.createElement('div'); el.id = 'askBox'; document.body.appendChild(el); }
     el.innerHTML = `<div class="tpBox"><h1 style="font-size:1.6em">${title}</h1><div style="margin:.4em 0 1em">${text}</div><div class="tpList" style="justify-content:center;flex-wrap:wrap">${opts.map((o, i) => `<button class="plate${o.off ? '' : ' gold'}" data-a="${i}" ${o.off ? 'disabled' : ''}><b>${o.label}</b>${o.sub ? `<br><small>${o.sub}</small>` : ''}</button>`).join('')}<button class="plate" data-a="-1">닫기</button></div></div>`;
+    cleanTree(el); // v0.49.77
     el.hidden = false;
     const t0 = performance.now();
     el.querySelectorAll('[data-a]').forEach((b) => b.addEventListener('pointerup', () => { if (performance.now() - t0 < 300 || b.disabled) return; el.hidden = true; done(Number(b.dataset.a)); }));

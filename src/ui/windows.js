@@ -1,3 +1,4 @@
+import { cleanTree } from './numfmt.js';
 import { FACES } from '../data/flareWorld.js';
 import { bagSize } from '../game/inventory.js';
 import { gameConfirm, gamePick } from './ask.js';
@@ -206,7 +207,7 @@ export class Windows {
     // 창 내용을 만들다 오류가 나도 빈 창이 되지 않게: 알리고 기록을 보낸다
     let html;
     try { html = this[this.kind](); } catch (e) { console.error(e); this.bTab = {}; /* v0.49.76 고장 난 탭을 기억하면 창이 계속 깨진다 → 다음엔 첫 탭으로 */ cloud.reportError(`[win:${this.kind}] ${e?.message}`, e?.stack, GAME_VERSION); html = `<div class="frame" style="flex:1"><div class="note">창을 여는 중 오류가 났습니다 · ${esc(e?.message || '')}</div></div>`; }
-    body.innerHTML = html;
+    body.innerHTML = html; cleanTree(body); // v0.49.77 긴 소수 정리
     const wc = body.querySelector('.wmc');
     if (wc && this.kind === 'map') { const mf = body.querySelector('.mapFrame'), me = body.querySelector('.pin.me'); if (mf && me && (this.mapCenter !== false)) { requestAnimationFrame(() => { mf.scrollLeft = me.offsetLeft - mf.clientWidth / 2; mf.scrollTop = me.offsetTop - mf.clientHeight / 2; }); this.mapCenter = false; } }
     if (wc) { const g = wc.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(terrain, 0, 0, wc.width, wc.height); g.imageSmoothingEnabled = true; g.drawImage(fogCan, 0, 0, wc.width, wc.height); }
@@ -634,7 +635,7 @@ export class Windows {
     const el = document.createElement('div'); el.id = 'forgeFx'; el.className = ok ? 'ok' : 'fail';
     el.innerHTML = `<div class="ffBox"><div class="ffGlow"></div><div class="ffRing"></div>${Array.from({ length: 10 }, (_, i) => `<i class="ffOrb" style="--a:${i * 36}deg;--d:${(i % 3) * 0.08}s"></i>`).join('')}<div class="cell ffIco${rar(it)}">${ico(it)}</div>
       <div class="ffName" style="color:${itemColor(it)}">${esc(itemName(it))}</div><div class="ffTitle">${title}</div><div class="ffLines">${lines.join('')}</div><button class="btn gold" data-ffok="1">확인</button></div>`;
-    document.body.appendChild(el);
+    document.body.appendChild(el); cleanTree(el);
     const close = () => el.remove();
     el.querySelector('[data-ffok]').onclick = close;
     setTimeout(() => el.addEventListener('click', (e) => { if (e.target === el) close(); }), 400);
@@ -1075,7 +1076,7 @@ export class Windows {
     if (strict) el.dataset.strict = '1';
     el.innerHTML = `<div class="${wide ? 'popWide' : ''}"><button class="popX" title="닫기">×</button><b>${esc(title)}</b>${html}<button class="plate gold popClose">${strict ? '닫기' : '확인'}</button></div>`;
     closable(el, strict);
-    document.body.appendChild(el);
+    document.body.appendChild(el); cleanTree(el);
     if (strict) new MutationObserver((_, ob) => { if (!document.body.contains(el)) { ob.disconnect(); const q = this.popWait || []; this.popWait = []; for (const a of q) this.popup(...a); } }).observe(document.body, { childList: true });
   }
   // v0.44.15 완료 알림: 파견 귀환 · 제작 · 수확 · 연구 · 공사. sections = [{ title, rows: [{ img, name, qty, color, item }] }]

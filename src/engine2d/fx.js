@@ -1,3 +1,4 @@
+import { cleanNum } from '../ui/numfmt.js';
 // 2D 효과: Flare 효과 그림(화염구 · 얼음 · 화살 · 폭발 · 낙뢰 · 룬 …) + 캔버스로 그린 검기 · 예고판 · 충격파 · 입자
 // 예전 3D FX와 같은 쓰임새 (hit · burst · ring · cone · slash · circle · telegraph · lane · pillar · lightning · meteor · projectile · text)
 import * as THREE from 'three';
@@ -374,7 +375,7 @@ export class FX {
   text(pos, str, cls = '') {
     const el = document.createElement('div');
     el.className = 'dmg ' + cls;
-    el.textContent = str;
+    el.textContent = cleanNum(String(str)); // v0.49.77
     this.layer.appendChild(el);
     this.texts.push({ el, x: pos.x, y: pos.y, z: pos.z, t: 0, dx: (Math.random() - 0.5) * 30 });
   }

@@ -3239,7 +3239,7 @@ export class World {
         }
       }
     }
-    this.scrollT = (this.scrollT || 0) - dt; if (this.scrollT <= 0) { this.scrollT = 1; this.autoScrolls(); this.floodStep(); }
+    this.scrollT = (this.scrollT || 0) - dt; if (this.scrollT <= 0) { this.scrollT = 1; this.autoScrolls(); this.floodStep(); if (this.st.gold % 1) this.st.gold = Math.floor(this.st.gold); } // v0.49.77 금화는 정수로
     for (const k in this.st.elix || {}) { const e = this.st.elix[k]; e.t -= dt; if (e.t <= 0) { delete this.st.elix[k]; buffChanged = true; this.ui.dirty(); } }
     for (const k in this.pbuffs || {}) { const b = this.pbuffs[k]; if (b.t > 0) { b.t -= dt; if (b.t <= 0) buffChanged = true; } }
     if (buffChanged) this.d = derive(st, this.buffValues());
