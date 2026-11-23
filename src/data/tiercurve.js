@@ -1,9 +1,9 @@
 // v0.50 세계 단계 곡선: 악몽 · 지옥 · 혼돈의 지역은 「평온 종말의 왕좌」에 이어 지역마다
-//   몬스터 체력 ×1.12 · 공격 ×1.10 · 경험치 ×1.15 (목표값). 지역마다 몬스터 원래 체력이 20배까지 달라 배율이 아니라 목표값으로 맞춘다.
+//   몬스터 체력 ×1.12 · 공격 ×1.035 · 경험치 ×1.15 (목표값). 지역마다 몬스터 원래 체력이 20배까지 달라 배율이 아니라 목표값으로 맞춘다.
 // 예전: 악몽 푸리에 들판 몬스터 체력이 평온 끝의 1% · 경험치 0.04% (지역 배율이 1번 지역 값으로 다시 시작해서)
 import { ZONES, MONSTERS, TIER_STEP } from './world.js';
 import { CHAPTER } from './chapters.js';
-export const CURVE = { hp: 1.12, dmg: 1.1, exp: 1.15 };
+export const CURVE = { hp: 1.12, dmg: 1.035, exp: 1.15 }; // v0.49.72 공격 1.10 → 1.035 (1.10은 60지역에 ×304라 혼돈에서 고스펙도 한 방에 죽었다 — tools/sim/survive · farm)
 const OFF = { 1: 0, 2: TIER_STEP, 3: TIER_STEP * 2, 4: 380 };
 const lvHp = (L) => 1 + 0.4 * (L - 1), lvDmg = (L) => 1 + 0.27 * (L - 1), lvExp = (L) => 1 + 0.3 * (L - 1);
 const avg = (zn) => { const ts = Object.keys(zn.spawns); let h = 0, d = 0, e = 0; for (const t of ts) { const m = MONSTERS[t]; h += m.hp; d += (m.dmg[0] + m.dmg[1]) / 2; e += m.exp; } return { hp: h / ts.length, dmg: d / ts.length, exp: e / ts.length }; };
