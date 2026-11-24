@@ -59,26 +59,34 @@ export const animImage = (def, name) => def.images[name] || def.images.default;
 // 색 입힌 그림 (같은 그림 · 색이면 한 번만 만든다)
 // 색 입힌 동작 칸 하나 (그림 전체를 칠하면 몬스터가 처음 나올 때 멈칫하고 메모리를 크게 먹었다)
 const tintRects = new Map();
+// v0.50.4 떼어 둔 동작 칸: 픽셀 예산 안에서 오래 안 쓴 것부터 버린다 (예전: 3000 · 4000칸이 넘으면 통째로 비워서
+//  몬스터 종류 · 색이 많은 지역(고대 협곡 · 무너진 성채 · 오크 요새)에서 매번 모두 다시 떼어 내며 끊겼다).
+//  큰 칸은 긴 쪽 TR_MAX px로 줄여 둔다 (rect[6] = 줄인 비율, drawRect가 되돌린다)
+const TR_MAX = 220, TR_BUDGET = 14e6; // 약 56MB
+let trPx = 0;
 export function tintedRect(path, color, rect) {
   if (!rect) return null;
   const key = path + '|' + color + '|' + rect[0] + ',' + rect[1];
   let v = tintRects.get(key);
-  if (v) return v;
+  if (v) { tintRects.delete(key); tintRects.set(key, v); return v; } // 최근에 쓴 것을 뒤로
   const src = image(path);
   if (!src.ok) return null;
   const [x, y, w, h, ox, oy] = rect;
   if (w <= 1 || h <= 1) return null;
-  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const k = Math.min(1, TR_MAX / Math.max(w, h)), cw = Math.max(2, Math.round(w * k)), ch = Math.max(2, Math.round(h * k));
+  const c = document.createElement('canvas'); c.width = cw; c.height = ch;
   const g = c.getContext('2d');
-  g.drawImage(src.im, x, y, w, h, 0, 0, w, h);
-  if (color == null) { v = [c, [0, 0, w, h, ox, oy]]; if (tintRects.size > 3000) tintRects.clear(); tintRects.set(key, v); return v; }
-  g.globalCompositeOperation = 'multiply';
-  g.fillStyle = '#' + color.toString(16).padStart(6, '0');
-  g.fillRect(0, 0, w, h);
-  g.globalCompositeOperation = 'destination-in';
-  g.drawImage(src.im, x, y, w, h, 0, 0, w, h);
-  v = [c, [0, 0, w, h, ox, oy]];
-  if (tintRects.size > 4000) tintRects.clear();
+  g.drawImage(src.im, x, y, w, h, 0, 0, cw, ch);
+  if (color != null) {
+    g.globalCompositeOperation = 'multiply';
+    g.fillStyle = '#' + color.toString(16).padStart(6, '0');
+    g.fillRect(0, 0, cw, ch);
+    g.globalCompositeOperation = 'destination-in';
+    g.drawImage(src.im, x, y, w, h, 0, 0, cw, ch);
+  }
+  v = [c, [0, 0, cw, ch, ox * k, oy * k, k]];
+  trPx += cw * ch;
+  for (const [k2, old] of tintRects) { if (trPx <= TR_BUDGET) break; trPx -= old[0].width * old[0].height; old[0].width = old[0].height = 0; tintRects.delete(k2); }
   tintRects.set(key, v);
   return v;
 }
@@ -121,6 +129,7 @@ export function drawRect(ctx, src, rect, sx, sy, s = 1) {
   if (!src || !rect) return;
   const x = rect[0], y = rect[1], w = rect[2], h = rect[3], ox = rect[4], oy = rect[5]; // v0.49.56 배열 분해는 매번 반복자를 만들었다
   if (w <= 1 || h <= 1) return;
+  if (rect[6]) s /= rect[6]; // 줄여 둔 칸
   ctx.drawImage(src, x, y, w, h, sx - ox * s, sy - oy * s, w * s, h * s);
 }
 
