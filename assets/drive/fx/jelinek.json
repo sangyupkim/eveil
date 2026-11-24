@@ -1,0 +1,52 @@
+{
+ "jel_blackExplosion": {
+  "w": 50,
+  "h": 47,
+  "n": 19
+ },
+ "jel_blue_topEffect": {
+  "w": 98,
+  "h": 203,
+  "n": 22
+ },
+ "jel_swordFire": {
+  "w": 186,
+  "h": 83,
+  "n": 35
+ },
+ "jel_fireBall": {
+  "w": 184,
+  "h": 85,
+  "n": 20
+ },
+ "jel_sign_of_fire": {
+  "w": 177,
+  "h": 156,
+  "n": 20
+ },
+ "jel_fire_scissors": {
+  "w": 133,
+  "h": 169,
+  "n": 13
+ },
+ "jel_eaterFire": {
+  "w": 168,
+  "h": 148,
+  "n": 20
+ },
+ "jel_energyBall": {
+  "w": 80,
+  "h": 67,
+  "n": 32
+ },
+ "jel_lighteningBall": {
+  "w": 56,
+  "h": 65,
+  "n": 20
+ },
+ "jel_rainOnGround": {
+  "w": 65,
+  "h": 63,
+  "n": 30
+ }
+}
