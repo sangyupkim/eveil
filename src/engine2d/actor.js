@@ -129,7 +129,7 @@ export class Actor {
     if (alpha <= 0.01) return;
     // 그림자: 미리 만든 타원 그림 (경로 채우기는 몬스터가 많으면 무거웠다)
     ctx.globalAlpha = 0.35 * alpha;
-    const sw = this.shadowW ??= shadowWidth(this.def);
+    const sw = this.shadowW ??= (this.layers ? 0 : shadowWidth(this.def)); // v0.50.2 사람(아바타) 그림에는 그림자가 그려져 있어 타원을 겹치지 않는다
     if (sw) ctx.drawImage(shadowImg(), p.x - sw / 2 * s, p.y - sw * 0.21 * s, sw * s, sw * 0.42 * s);
 
     ctx.globalAlpha = alpha;
