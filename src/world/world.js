@@ -2479,7 +2479,12 @@ export class World {
     const fit = ids.filter((i) => amt(i) >= missing * 0.8).reverse();
     const order = pick ? [pick] : [...fit, ...ids.filter((i) => !fit.includes(i))];
     const id = order.find((i) => countOf(st, i) > 0);
-    if (!id) { if (!quiet) this.ui.toast(kind === 'hp' ? '체력 물약이 없습니다' : '마나 물약이 없습니다'); else this.potionCd = 3; return false; }
+    if (!id) {
+      if (!quiet) this.ui.toast(kind === 'hp' ? '체력 물약이 없습니다' : '마나 물약이 없습니다'); else this.potionCd = 3;
+      // v0.49.98 자동사냥 중 물약이 떨어지면 자동사냥을 멈추고 마을로 (자리 비운 사이 스킬 없이 버티다 쓰러지지 않게)
+      if (quiet && this.auto) { this.toggleAuto(false); const msg = `${kind === 'hp' ? '체력' : '마나'} 물약이 떨어져 자동사냥을 멈췄습니다`; this.ui.toast(msg, '#ff9a6a'); this.ui.log(msg, '#ff9a6a'); if (!this.inTown && !this.dungeon) this.recall(); }
+      return false;
+    }
     takeOne(st, id);
     const r = BASES[id].restore;
     const rk = 1 + researchK(st, 'potion');

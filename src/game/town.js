@@ -357,7 +357,7 @@ export const GRADES = [{ name: '평범', color: '#c8c0b0', k: 1 }, { name: '숙�
 export const MYTH_CHANCE = (lv) => (lv > 10 ? Math.min(0.12, 0.05 + 0.007 * (lv - 10)) : [0, 0, 0, 0, 0, 0, 0, 0.01, 0.02, 0.03, 0.05][lv] || 0);
 // 용병 값: 고용비 = 값 × 10, 하루 품삯 = 값 × 1.2 × (1 + 레벨당 4%)
 export const mercValue = (m) => (m.mine + m.herb + m.craft + m.lore + (m.care || 0) + m.hunt * 1.5 + (m.vit || 0)) * 20 * (GRADES[m.grade || 0]?.k || 1);
-export const mercWage = (m) => Math.round(mercValue(m) * 1.2 * (1 + 0.04 * ((m.lv || 1) - 1)));
+export const mercWage = (m) => Math.round(mercValue(m) * 12 * (1 + 0.04 * ((m.lv || 1) - 1))); // v0.49.98 품삯 ×10 (금화 사용처)
 export const wageTotal = (st) => townOf(st).mercs.reduce((a, m) => a + mercWage(m), 0);
 const NA = ['브', '셀', '오', '이', '케', '도', '미', '하', '유', '바', '로', '카', '테', '루', '자', '에', '실', '아', '고', '네'], NB = ['란', '마', '덴', '라', '일', '르', '나', '스', '크', '린', '온', '벨', '렌', '드', '아', '토'];
 // v0.44.15 여관에서 쉬기: 지친(또는 체력이 반 아래인) 놀거나 지친 용병이 여관 침대에 눕는다. 여관 단계 = 침대 수 · 회복 속도

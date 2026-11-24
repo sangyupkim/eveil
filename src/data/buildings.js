@@ -155,7 +155,8 @@ export const researchCost = (lv, id) => {
   const ess = L >= 4 ? { id: L >= 11 ? 'ess5' : L >= 8 ? 'ess4' : L >= 6 ? 'ess3' : 'ess2', n: 2 * (lv + 1) } : null;
   // v0.49.73 6 ~ 10단계 연구 · 연구소 11단계 연구는 상급 강화석 · 높은 약초도 든다
   const hi = lv >= 5 || L >= 11 ? Math.max(1, lv - 3) : 0;
-  return { gold: Math.round(500 * (lv + 1) ** 2 * k), min: Math.round(20 * (lv + 1) ** 2 * Math.min(k, 4)), /* v0.49.73 시간은 연구소 6단계 연구 수준까지만 */ mats: Math.round(8 * (lv + 1) * k), ess, ore2: hi ? 6 * hi : 0, herbs: hi ? 25 * hi : 0 };
+  const gk = Math.min(10, 1 + 0.9 * (L - 1)); // v0.49.98 금화 사용처: 늦게 열리는 연구일수록 금화 ×(최대 10배) — 연구소 1단계 연구는 그대로
+  return { gold: Math.round(500 * (lv + 1) ** 2 * k * gk), min: Math.round(20 * (lv + 1) ** 2 * Math.min(k, 4)), /* v0.49.73 시간은 연구소 6단계 연구 수준까지만 */ mats: Math.round(8 * (lv + 1) * k), ess, ore2: hi ? 6 * hi : 0, herbs: hi ? 25 * hi : 0 };
 };
 // 건물 단계마다 늘어나는 꾸밈 (상자 · 통 · 횃불 · 석상)
 export const LEVEL_DECOR = [[], [], [['grassland', 96, 1.8, -1.2], ['ruins', 287, -1.8, -1.0]], [['dungeon', 167, 2.2, 1.6], ['dungeon', 167, -2.2, 1.6]], [['ruins', 241, -2.4, 0.4]], [['grassland', 98, 2.4, -0.4], ['ruins', 289, -2.6, -0.2]]];
