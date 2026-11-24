@@ -480,26 +480,7 @@ function drawTile(stage, ctx, set, id, sx, sy, s) {
   if (!t) return;
   const src = image(def.imgs[t[0]]);
   if (!src.ok) return;
-  if (set === 'drocks' || CAST_SHADOW.has(set + '|' + id)) castShadow(ctx, set, id, src.im, t, sx, sy, s * (t[7] || 1));
   drawRect(ctx, src.im, t._r || (t._r = t.slice(1)), sx, sy, s * (t[7] || 1)); // t[7]: 그림 배율 (드라이브 나무) · v0.49.56 잘라 둔 칸을 다시 쓴다
-}
-// v0.50.2 그림에 그림자가 없는 바위 · 돌기둥: 검은 실루엣을 땅에 눕혀 나무 그림자와 같은 쪽(오른쪽 아래)으로 드리운다
-const CAST_SHADOW = new Set(['desert|120', 'desert|121', 'desert|122', 'desert|123', 'desert|124', 'desert|125', 'desert|126', 'desert|127']);
-const shadowCache = new Map();
-function castShadow(ctx, set, id, im, t, sx, sy, s) {
-  const key = set + '|' + id;
-  let c = shadowCache.get(key);
-  if (!c) {
-    c = document.createElement('canvas'); c.width = t[3]; c.height = t[4];
-    const g = c.getContext('2d'); g.drawImage(im, t[1], t[2], t[3], t[4], 0, 0, t[3], t[4]);
-    g.globalCompositeOperation = 'source-in'; g.fillStyle = '#000'; g.fillRect(0, 0, t[3], t[4]);
-    shadowCache.set(key, c);
-  }
-  // 그림 안 점 (x, y; 기준점 아래 0, 위로 음수) → 땅: 오른쪽으로 0.75, 아래로 0.2만큼 눕는다
-  ctx.save(); ctx.globalAlpha = 0.32;
-  ctx.translate(sx, sy); ctx.transform(s, 0, -0.75 * s, -0.2 * s, 0, 0); // 기존 변환(화면 배율) 위에 더한다
-  ctx.drawImage(c, -t[5], -t[6]);
-  ctx.restore();
 }
 
 // 물 타일: Flare 물은 거의 검어서 푸르게 물들인 사본을 한 번 만들어 쓴다
