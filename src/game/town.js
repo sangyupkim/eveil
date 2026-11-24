@@ -208,7 +208,10 @@ export function tick(st, now = Date.now()) {
       if (def.rate) {
         const eff = crew.reduce((a, m) => a + workEff(m, b.type), 0) / b.lv;
         const rk = (b.type === 'herb' ? (1 + researchK(st, 'herb')) * ((t.fertUntil || 0) > simT ? 1 + FERT.k : 1) : b.type === 'mine' ? (1 + researchK(st, 'mine')) * (burning(st, 'plenty') ? 1.25 : 1) : 1) * floodPenalty(st).prod * (1 + relicBonus(st, 'prod') / 100); // v0.44.43 범람 불이익 · v0.44.47 유물
-        b.stock = Math.min(storeCap(st, b), (b.stock || 0) + def.rate(b.lv) * rk * awayK * Math.min(2, eff) * h);
+        const s0 = b.stock || 0; b.stock = Math.min(storeCap(st, b), s0 + def.rate(b.lv) * rk * awayK * Math.min(2, eff) * h);
+        // v0.49.95 명인 용병: 솜씨 30을 넘는 용병이 일하는 동안 만년 약초 · 상급 강화석 몫이 따로 쌓인다 (거둘 때 받음)
+        const mb = masterBonus(crew, b.type) / 100, made = b.stock - s0;
+        if (mb > 0 && made > 0 && (b.type === 'mine' || b.lv >= 11)) { b.bx = (b.bx || 0) + made * mb; if (b.type === 'mine') b.bx3 = (b.bx3 || 0) + made * mb / 6; }
       }
       for (const m of crew) { m.sta -= MERC.workSta * save * h; growSkill(m, SKILL_OF[b.type], h); gainExp(m, MERC.workExp * h); if (m.sta <= 0) { m.sta = 0; m.tired = true; } }
     }
@@ -230,18 +233,23 @@ export function collect(st, plot) {
     // v0.44.27 높은 광산은 가끔 상위 강화석: 6단계부터 상급 (단계마다 0.4%p, 10단계 2%) · 9단계부터 최상급 (0.15%p, 10단계 0.3%) + 연구 「광맥 감별」
     const p2 = b.lv >= 6 ? (b.lv - 5) * 0.004 + researchK(st, 'oreUp') : 0, p3 = b.lv >= 9 ? (b.lv - 8) * 0.0015 + researchK(st, 'oreUp') / 6 : 0;
     let o2 = 0, o3 = 0; for (let i = 0; i < n; i++) { const r = Math.random(); if (r < p3) o3++; else if (r < p3 + p2) o2++; }
+    { const e2 = Math.floor(b.bx || 0), e3 = Math.floor(b.bx3 || 0); b.bx = (b.bx || 0) - e2; b.bx3 = (b.bx3 || 0) - e3; o2 += e2; o3 += e3; } // v0.49.95 명인 몫 (강화석 대신)
+    if (o2 + o3 > n) { const k = n / (o2 + o3); o2 = Math.floor(o2 * k); o3 = Math.floor(o3 * k); }
     townOf(st).ore += n - o2 - o3; if (o2) resAdd(st, 'ore2', o2); if (o3) resAdd(st, 'ore3', o3); b.stock -= n;
     return { n, what: '강화석', o2, o3 };
   }
   if (b.type === 'herb') {
-    const ids = herbsAt(b.lv), tw = ids.reduce((a, id) => a + HERBS[id].w, 0), hs = townOf(st).herbs, got = {};
+    const mb = plotMaster(st, plot), hiK = 1 + 0.1 * mb; // v0.49.95 명인: 보너스 1%p마다 고급 약초 비중 +10%
+    const W = (id) => HERBS[id].w * (HIGH_HERBS.includes(id) ? hiK : 1);
+    const ids = herbsAt(b.lv), tw = ids.reduce((a, id) => a + W(id), 0), hs = townOf(st).herbs, got = {};
     // v0.49.73 주력 재배(11단계): 고른 약초가 절반 · 변이 약초(15단계): 가끔 만년 약초
     const F = b.lv >= 11 ? (townOf(st).herbFocus || []).filter((h) => ids.includes(h)) : [];
     const nF = F.length ? Math.round(n * 0.5) : 0;
     F.forEach((h, i) => { const q = i === F.length - 1 ? nF - Math.round(nF / F.length) * (F.length - 1) : Math.round(nF / F.length); if (q > 0) { hs[h] = (hs[h] || 0) + q; got[h] = (got[h] || 0) + q; } });
     let left = n - nF; const n2 = left;
-    ids.forEach((id, i) => { const k = i === ids.length - 1 ? left : Math.round((n2 * HERBS[id].w) / tw); const q = Math.min(left, k); left -= q; if (q > 0) { hs[id] = (hs[id] || 0) + q; got[id] = (got[id] || 0) + q; } });
-    if (b.lv >= 15) { const mq = Math.floor(n * (0.004 + 0.001 * (b.lv - 15)) + Math.random()); if (mq > 0) { hs.myriad = (hs.myriad || 0) + mq; got.myriad = mq; } }
+    ids.forEach((id, i) => { const k = i === ids.length - 1 ? left : Math.round((n2 * W(id)) / tw); const q = Math.min(left, k); left -= q; if (q > 0) { hs[id] = (hs[id] || 0) + q; got[id] = (got[id] || 0) + q; } });
+    { let mq = b.lv >= 15 ? Math.floor(n * (0.004 + 0.001 * (b.lv - 15)) + Math.random()) : 0; const ex = Math.floor(b.bx || 0); b.bx = (b.bx || 0) - ex; mq += ex; // v0.49.95 명인 몫 (11단계부터)
+      if (mq > 0) { hs.myriad = (hs.myriad || 0) + mq; got.myriad = mq; } }
     b.stock -= n;
     return { n, what: '약초', got };
   }
@@ -370,6 +378,11 @@ export const VETERAN = 0.05;
 export const isVet = (m) => (m.lv || 1) >= MERC.lvMax;
 export const workEff = (m, type) => (m[SKILL_OF[type]] || 0) / 10 * (isVet(m) ? 1 + VETERAN : 1);  // 솜씨 10 = 한 자리 몫
 // v0.49.9 상한보다 이미 높은 솜씨(등급 · 각성으로 받은 값)는 깎지 않는다 (예전엔 일하면 상한 30으로 깎였다)
+// v0.49.95 명인 보너스 (%p): 솜씨(약초밭 재배 · 광산 채광) 30을 넘는 만큼 × 0.05, 한 명 최대 1.5, 합 최대 5
+export const MASTER = { from: 30, per: 0.05, one: 1.5, max: 5 };
+export const masterOne = (m, type) => Math.min(MASTER.one, Math.max(0, ((m[SKILL_OF[type]] || 0) - MASTER.from) * MASTER.per));
+export const masterBonus = (crew, type) => (type === 'herb' || type === 'mine' ? Math.min(MASTER.max, crew.reduce((a, m) => a + masterOne(m, type), 0)) : 0);
+export const plotMaster = (st, pid) => { const t = townOf(st), b = t.plots[pid]; return b ? masterBonus(t.mercs.filter((m) => m.work === pid && !m.tired && !m.job), b.type) : 0; };
 const growSkill = (m, k, h) => { m[k] ??= 1; const cap = 30 + (m.aw || 0) * 6; if (m[k] >= cap) return; m[k] = Math.min(cap, m[k] + 0.12 * h * (1 - m[k] / (cap + 5))); };
 function gainExp(m, n) {
   if (m.lv >= MERC.lvMax) { m.exp = 0; return; }

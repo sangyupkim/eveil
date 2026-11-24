@@ -58,7 +58,7 @@ import { GEMS, GEM_GRADES, gemId } from '../data/legends.js';
 import { fuseMany, fuseCount, greatCount, greatSlots, applyShard, canApply, lockMax, shardCost, shardVals, shardGrade, gradeName as sgName, gradeColor, useGrade, pullGrade, pullResearch, pullCost as sgCost, pullPool, dustOf, grindShard, fuseShard, pullShard } from '../game/shards.js';
 import { HERBS, HERB_IDS, GROW_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
 import { RARITY_IDS, junkCount, discardJunk } from '../game/town.js';
-import { wsStoreN, wsStoreCap, wsTake, MYTH_CHANCE, wageTotal, mercWage, buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, brewQueue, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
+import { plotMaster, masterOne, wsStoreN, wsStoreCap, wsTake, MYTH_CHANCE, wageTotal, mercWage, buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, brewQueue, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
 import { RESEARCH_MAX, SHELTER } from '../data/buildings.js';
 import { herbIcon, homeIcon, uiIcon } from './icons.js';
 import { vault, vaultSize, vaultPut, vaultTake, vaultAdd, vaultSave, vaultReady } from '../game/vault.js';
@@ -384,7 +384,9 @@ export class Windows {
     const st = this.w.st, t = townOf(st), def = BUILDINGS[b.type], MT = ['merc', '용병'], now = Date.now();
     const mercRow = (m, btn = '') => `<div class="row mrow">${this.mercLine(m)}${btn}</div>`;
     const prod = () => { const eff = Math.min(1, t.mercs.filter((m) => m.work === sel && !m.tired).reduce((a, m) => a + (m[b.type] || 0) / 10, 0) / b.lv);
-      return `<h3>${def.name} · ${b.lv}단계</h3><div class="kv"><span>생산</span><b>시간당 ${Math.round(def.rate(b.lv) * eff)}</b><span>쌓인 양</span><b>${Math.floor(b.stock)} / ${storeCap(st, b)}</b></div><div class="mini" style="margin:6px 0"><i style="width:${(b.stock / storeCap(st, b)) * 100}%;background:linear-gradient(#ffe7a0,#c99a3a)"></i></div><div class="btns forgeGo"><button class="btn gold big" data-collect="1" ${b.stock < 1 ? 'disabled' : ''}>거두기</button></div>`; };
+      return `<h3>${def.name} · ${b.lv}단계</h3><div class="kv"><span>생산</span><b>시간당 ${Math.round(def.rate(b.lv) * eff)}</b><span>쌓인 양</span><b>${Math.floor(b.stock)} / ${storeCap(st, b)}</b>${(() => { const mb = plotMaster(st, sel); /* v0.49.95 명인 */
+        if (b.type === 'herb') { const base = b.lv >= 15 ? 0.4 + 0.1 * (b.lv - 15) : 0; return b.lv >= 11 || mb ? `<span>만년 약초</span><b>${(base + (b.lv >= 11 ? mb : 0)).toFixed(1)}% <small class="note">기본 ${base.toFixed(1)} · 용병 +${(b.lv >= 11 ? mb : 0).toFixed(1)}${mb ? ` · 고급 약초 +${Math.round(mb * 10)}%` : ''}</small></b>` : ''; }
+        if (b.type === 'mine') return `<span>명인 몫</span><b>상급 강화석 +${mb.toFixed(1)}%</b>`; return ''; })()}</div><div class="mini" style="margin:6px 0"><i style="width:${(b.stock / storeCap(st, b)) * 100}%;background:linear-gradient(#ffe7a0,#c99a3a)"></i></div><div class="btns forgeGo"><button class="btn gold big" data-collect="1" ${b.stock < 1 ? 'disabled' : ''}>거두기</button></div>`; };
     switch (b.type) {
       case 'smithy': return this.smithyView(b, sel);
       case 'workshop': return this.workshopView(b, sel);
@@ -620,7 +622,7 @@ export class Windows {
     const by = (a, c) => (c[sk] || 0) - (a[sk] || 0);
     const idle = t.mercs.filter((m) => !m.work && !m.job).sort(by), other = t.mercs.filter((m) => m.work && m.work !== sel && t.plots[m.work] && !m.job).sort(by);
     const L = `<h3>일하는 용병 <span class="cnt">${crew.length} / ${b.lv}</span> <small>${SKILL_NAMES[sk]}${BONUS[b.type] ? ' · ' + BONUS[b.type].text(bonusOf(st, b.type)) : ''}</small></h3>`
-      + (crew.sort(by).map((m) => `<div class="row mrow">${this.mercLine(m, sk)}<button class="btn" data-mwork="${m.id}|">쉬게</button></div>`).join('') || '<div class="note">없음</div>');
+      + (crew.sort(by).map((m) => { const mo = masterOne(m, b.type); return `<div class="row mrow">${this.mercLine(m, sk)}${mo > 0 ? `<span class="note" style="color:#ffd84a;min-width:4.5em">${b.type === 'herb' ? '만년' : '상급'} +${mo.toFixed(2)}%</span>` : ''}<button class="btn" data-mwork="${m.id}|">쉬게</button></div>`; }).join('') || '<div class="note">없음</div>');
     // v0.45.7 오른쪽은 쉬는 용병 | 다른 건물 작은 탭으로 (긴 목록 끝까지 내리지 않게)
     const side = this.mercSide === 'other' ? 'other' : 'idle';
     const sw = `<span class="srcBtns"><button class="btn${side === 'idle' ? ' on' : ''}" data-mside="idle">쉬는 용병 ${idle.length}</button><button class="btn${side === 'other' ? ' on' : ''}" data-mside="other">다른 건물 ${other.length}</button></span>`;

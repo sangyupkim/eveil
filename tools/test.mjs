@@ -872,4 +872,15 @@ test('v0.49.93 제작소 보관함: 다 된 제작품은 보관함으로 · 반�
   const c0 = countOf(st, r.id), got = T.wsTake(st, r.id, 30); assert.ok(got.ok && got.n === 30 && countOf(st, r.id) === c0 + 30);
 });
 
+test('v0.49.95 명인 용병: 솜씨 30을 넘는 용병이 일하면 만년 약초 · 상급 강화석이 더 나온다 (11단계부터, 한 명 1.5 · 합 5%p)', async () => {
+  const T = await import('../src/game/town.js');
+  assert.equal(T.masterOne({ herb: 30 }, 'herb'), 0); assert.ok(Math.abs(T.masterOne({ herb: 45 }, 'herb') - 0.75) < 1e-9); assert.equal(T.masterOne({ herb: 99 }, 'herb'), 1.5);
+  assert.equal(T.masterBonus([{ herb: 99 }, { herb: 99 }, { herb: 99 }, { herb: 99 }], 'herb'), 5);
+  const run = (skill) => { const st = newPlayer(); st.gold = 1e12; st.awakenings = 999; T.build(st, 'p1', 'herb'); T.finishBuilds(st, Date.now() + 1e9); const b = T.buildingAt(st, 'p1'); b.lv = 12; b.stock = 0;
+    const t = T.townOf(st); for (let i = 0; i < 3; i++) { const m = T.rollMerc(Math.random, 1); m.herb = skill; m.sta = 1e9; m.work = 'p1'; t.mercs.push(m); }
+    t.last = Date.now() - 3 * 3600e3; T.tick(st, Date.now()); const r = T.collect(st, 'p1'); return r?.got?.myriad || 0; };
+  assert.equal(run(20), 0, '12단계 · 명인 없음 → 만년 약초 없음');
+  assert.ok(run(70) > 0, '명인이 일하면 11단계부터 나온다');
+});
+
 console.log(`\n${n}개 통과`);
