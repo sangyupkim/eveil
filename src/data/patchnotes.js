@@ -1,6 +1,11 @@
 // 패치 노트 (게임 안 [메뉴 → 패치 노트]에서 본다). 새 버전이 나오면 맨 위에 더한다.
-export const GAME_VERSION = '0.49.90';
+export const GAME_VERSION = '0.49.91';
 export const PATCH_NOTES = [
+  {
+    ver: '0.49.91', date: '2026-11-24',
+    head: '탁월 옵션은 장비 하나에 최대 5줄까지 붙습니다.',
+    items: ['1. 탁월 칸도 최대 5칸입니다.'],
+  },
   {
     ver: '0.49.90', date: '2026-11-24',
     head: '현자 창 파편 칸에 파편 그림이 보입니다.',

@@ -23,6 +23,7 @@ export const namedOf = (zoneId) => NAMED_LEGENDS[zoneId] || [];
 const uid = (st) => (st ? st.nextUid++ : Math.floor(Math.random() * 1e9));
 
 // favor: 능력치 옵션을 이 능력치 위주로 (퀘스트 보상, v0.49.2) · mix: 혼합 전용 장비가 되면 이 조합으로
+export const GREAT_MAX = 5; // v0.49.91 한 장비에 붙는 탁월 최대 수 (= 탁월 칸 최대)
 export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1, favor = null, mix = null } = {}, st = null, rng = R) {
   const base = BASES[baseId];
   if (!base) throw new Error('없는 아이템: ' + baseId);
@@ -52,7 +53,7 @@ export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1, favor =
     const max = Math.max(a.min, a.max(ilvl) * r.mult);
     let v = Math.max(a.min, Math.round(a.min + (rarity === 'myth' ? 0.5 + rng() * 0.5 : rng()) * (max - a.min))); // 신화는 옵션이 범위의 위쪽 절반에서만
     // 탁월한 옵션 (영웅 · 전설, 옵션마다 8%): 최대치의 110 ~ 130% — 같은 전설이라도 눈에 띄는 장비가 나오게 (v0.39.6)
-    const great = (rarity === 'hero' || rarity === 'legend' || rarity === 'myth') && rng() < (rarity === 'myth' ? 0.2 : 0.08);
+    const great = (rarity === 'hero' || rarity === 'legend' || rarity === 'myth') && rng() < (rarity === 'myth' ? 0.2 : 0.08) && it.affixes.filter((x) => x.great).length < GREAT_MAX; // v0.49.91 탁월은 장비마다 최대 5줄
     if (great) v = Math.max(v + 1, Math.round(max * (1.1 + rng() * 0.2)));
     if (ilvl > 500 && MUGAN_FLAT.has(id)) v = Math.round(v * muganK(ilvl)); // v0.49.75 무간지옥 장비: 고정값 옵션은 층마다 ×1.15
     it.affixes.push(great ? { id, v, great: true } : { id, v });

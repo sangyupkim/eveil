@@ -43,7 +43,7 @@ export function takeShardVal(list, it, vi = 0) {
 export const makeShard = (a, st = null) => ({ uid: st ? st.nextUid++ : Math.floor(Math.random() * 1e9), base: 'shard', shard: a.great ? { id: a.id, v: a.v, great: true } : { id: a.id, v: a.v } }); // v0.49.84 탁월 줄 → 탁월 파편
 // v0.49.84 탁월 칸: 떨어질 때 붙은 탁월 수(없으면 1). 바꾸기 전에 it.gs로 남겨 둔다 (예전 장비는 지금 붙은 탁월 수)
 export const greatCount = (it) => (it?.affixes || []).filter((a) => a.great).length;
-export const greatSlots = (it) => Math.max(1, it?.gs || 0, greatCount(it));
+export const greatSlots = (it) => Math.min(5, Math.max(1, it?.gs || 0, greatCount(it))); // 최대 5 (GREAT_MAX)
 export const keepSlots = (it) => { const n = greatSlots(it); if (n > 1) it.gs = n; };
 export const isShard = (it) => !!it?.shard;
 
