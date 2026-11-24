@@ -61,7 +61,7 @@ const sfx = (n, k, fam) => audio.play(n, k, fam);
 
 const ACTIVE_RADIUS = 58;
 // 후딜(초): 공격 뒤 · 스킬 뒤 다음 행동까지
-const RECOVER = { attack: 0.42, skill: 0.55 };
+const RECOVER = { attack: 0, skill: 0.2 }; // v0.49.99 후딜 없앰: 평타는 누르면 바로 · 이동 · 스킬로 바로 끊긴다 (스킬 뒤는 아주 짧게)
 const LEASH_TIME = 4; // v0.49.60 원 밖에서 어그로 게이지가 다 주는 시간(초)
 const SPAWN_NEAR = 72;   // 이 안의 자리에만 몬스터를 만든다
 const DESPAWN_FAR = 92;  // 이보다 멀어진 한가한 몬스터는 치운다 (다시 오면 새로 만든다)
@@ -3005,7 +3005,7 @@ export class World {
     const d = this.d, P = this.player;
     const interval = 1 / d.atkRate;
     this.atkCd = interval;
-    this.actCd = Math.min(RECOVER.attack, interval * 0.7);
+    this.actCd = 0; // v0.49.99 평타 후딜 없음
     P.face(t.pos.x, t.pos.z);
     const cls = d.cls;
     let anim;
@@ -3017,7 +3017,7 @@ export class World {
     else anim = ['attack', 'attack2', 'attack3'][this.combo % 3];
     const clipDur = P.action(anim)?.getClip().duration || 1;
     const speed = Math.max(0.9, Math.min(2.6, clipDur / (interval * 0.92)));
-    P.act(anim, speed, 0.9);
+    P.act(anim, speed, 0); // v0.49.99 평타 동작은 몸을 묶지 않는다 (이동 · 스킬 입력이 바로 먹는다)
     sfx(cls.kind === 'ranged' ? 'shoot' : cls.kind === 'magic' ? 'magic' : d.two ? 'heavy' : 'swing', cls.kind === 'magic' ? 0.6 : 0.8);
     this.swing = interval * 0.5;
     this.later(interval * 0.42, () => {
