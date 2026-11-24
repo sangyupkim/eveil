@@ -27,7 +27,7 @@ import { CAMPS, inCamp } from '../engine2d/stage.js';
 import { TIER_NAMES } from '../world/world.js';
 import { entranceOf } from '../data/dungeons.js';
 import { MATERIALS, SETS, SET_SLOTS, craftCost, upgradeMats, upgradeNeed } from '../data/crafting.js';
-import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, mercUngear, mercById, recruits, assignMerc, SKILL_OF, SKILLS_ALL, BONUS, bonusOf, awakenMerc, awakenCost, dismiss, staMax, SKILL_NAMES, GRADES, MERC, EXP_STA, deathChance, salvage, salvageValue, reforge, reforgeCost, resCount, resTake, resAdd, ORE_RECIPES, oreRecipeOk, craftOre, KEY_RECIPES, craftKey, ESS_RECIPES, craftEss, INN_BEDS, innRestK, stopRepeat, MYTH_MARKS, mythMarks, mythLvMax, craftMyth, FRESH, freshK, isVet, herbSwap, herbSwapGold } from '../game/town.js';
+import { craft, craftZones, setCounts, setBase, isLiberated, LIBERATE_NEED, researchStart, researchLv, mercGear, mercUngear, mercById, recruits, assignMerc, SKILL_OF, SKILLS_ALL, BONUS, bonusOf, awakenMerc, awakenCost, dismiss, staMax, SKILL_NAMES, GRADES, MERC, EXP_STA, deathChance, salvage, salvageValue, reforge, reforgeCost, resCount, resTake, resAdd, ORE_RECIPES, oreRecipeOk, craftOre, KEY_RECIPES, craftKey, ESS_RECIPES, craftEss, INN_BEDS, innRestK, stopRepeat, FRESH, freshK, isVet, herbSwap, herbSwapGold } from '../game/town.js';
 import { RESEARCH, researchCost } from '../data/buildings.js';
 import { AFFIXES } from '../data/items.js';
 import { rushBuild, convertMats, herbOrders, herbDeliver, findBuilding } from '../game/town.js';
@@ -48,7 +48,7 @@ import { SCHOOL_NAMES } from '../data/skills.js';
 import { awakenOk, skillGrade, QUALITY, gradeName } from '../data/awaken_skills.js';
 import { ROLE_NAMES } from '../data/skill_roster.js';
 import { hordePen } from '../data/horde.js';
-import { rerollAffix, addSocket, engrave, extractEngrave, extractShard, inherit, inheritCheck, inheritRange } from '../game/raidgear.js';
+import { rerollAffix, addSocket, engrave, extractEngrave, extractShard, inherit, inheritCheck, inheritRange, MARK_TICKETS, craftTicket, qRange, polishQuality, rerollMyth, slotTickets, expandGreat } from '../game/raidgear.js';
 import { RAID, RAID_GRADES, RAID_RULES, RAID_SHOP, ENGRAVE, LORDS, raidWeek, raidOf, raidOpen, fmtTime, shopPrice, shopBought, lordName } from '../data/raid.js';
 import { MUTS as MUTS_ } from '../data/mutators.js';
 const NEED_NAMES = { melee: '근접 무기 (검 · 도끼 · 둔기 · 단검 · 대방패)', bow: '활' }; // v0.50 스킬이 쓰는 무기
@@ -122,7 +122,7 @@ const vcatOf = (it) => { const b = BASES[it?.base] || {}; return !it ? null : it
 const vcatRow = (from, list) => { const has = new Set(list.filter((x) => x && !x.lock).map(vcatOf)); return `<div class="vcats">${VCATS.filter(([k]) => has.has(k)).map(([k, n]) => `<button class="btn" data-vcat="${from}|${k}">${n}</button>`).join('')}</div>`; };
 const gearList = (st, ok) => [...SLOTS.filter((sl) => st.equip[sl] && ok(st.equip[sl])).map((sl) => ['e:' + sl, st.equip[sl], '착용']), ...st.inv.filter((x) => BASES[x.base]?.slot && ok(x)).map((x) => ['b:' + x.uid, x, '가방']), ...vault().items.filter((x) => x && BASES[x.base]?.slot && ok(x)).map((x) => ['v:' + x.uid, x, '창고'])];
 // 강화 · 극한 던전 열쇠 제작 (제작소 3 · 6단계, v0.42)
-const KEY_PANEL = (st, b) => { const mx = mythLvMax(st), lv = Math.max(10, Math.min(mx, globalThis.__mythLv ?? mx)), need = mythMarks(st, lv); return `<h3>신화 교환</h3><div class="row"><div class="cell shopIco r-myth">${ico({ base: 'myth_mark' })}</div><div class="grow"><b style="color:#ff4a8a">신화 장비 · 레벨 ${lv}</b><div class="note">신화의 흔적 ${need} (${resCount(st, 'myth_mark')}) · 최대 ${mx}</div></div><button class="btn" data-mythlv="-10">-10</button><button class="btn" data-mythlv="-1">-1</button><button class="btn" data-mythlv="1">+1</button><button class="btn" data-mythlv="10">+10</button><button class="btn gold" data-mythcraft="1" ${resCount(st, 'myth_mark') >= need ? '' : 'disabled'}>교환</button></div><h3>던전 열쇠 제작</h3>` + KEY_RECIPES.map((r) => { const ok = oreRecipeOk(st, r); const need = Object.entries(r.need).map(([id, q]) => `${BASES[id].name} ${q} (${resCount(st, id)})`).join(' · ');
+const KEY_PANEL = (st, b) => { const mk = resCount(st, 'myth_mark'); return `<h3>흔적 교환 <span class="cnt">신화의 흔적 ${mk.toLocaleString()}</span></h3>` + MARK_TICKETS.map((T) => `<div class="row"><div class="cell shopIco">${ico({ base: T.id })}</div><div class="grow"><b>${BASES[T.id].name}</b><div class="note">신화의 흔적 ${T.marks} · 가진 ${countOf(st, T.id)}</div></div><button class="btn" data-mtk="${T.id}|1" ${mk >= T.marks ? '' : 'disabled'}>1개</button><button class="btn" data-mtk="${T.id}|5" ${mk >= T.marks * 5 ? '' : 'disabled'}>5개</button></div>`).join('') + `<h3>던전 열쇠 제작</h3>` + KEY_RECIPES.map((r) => { const ok = oreRecipeOk(st, r); const need = Object.entries(r.need).map(([id, q]) => `${BASES[id].name} ${q} (${resCount(st, id)})`).join(' · ');
   return `<div class="row"><div class="cell shopIco">${ico({ base: r.id })}</div><div class="grow"><b>${BASES[r.id].name}</b><div class="note">${b.lv < r.lv ? `제작소 ${r.lv}단계` : `${need} · 지역 재료 ${r.zoneMats} · ${r.gold.toLocaleString()} G`}</div></div><button class="btn" data-keycraft="${r.id}" ${ok.ok ? '' : 'disabled'}>만들기</button></div>`; }).join('') };
 const ico = (it) => `<img src="${itemIcon(it)}" alt="" draggable="false" />`;
 const sicon = (id) => `<div class="sicon" style="background:radial-gradient(circle at 35% 30%, ${SKILLS[id].color}, #17111f 90%)"><img src="${skillIcon(id)}" alt="" /></div>`;
@@ -468,7 +468,7 @@ export class Windows {
   }
   smithyView(b, sel) {
     const st = this.w.st;
-    const tune = raidOpen(st) || ['t_reroll', 't_socket', 't_engx', 't_shardx', 't_engrave', 'eng_stone'].some((id) => countOf(st, id)); // v0.50 원정 상점 물건이 있으면 손질 탭
+    const tune = raidOpen(st) || ['t_reroll', 't_socket', 't_engx', 't_shardx', 't_engrave', 'eng_stone', 't_qpolish', 't_mythroll', 't_greatslot'].some((id) => countOf(st, id)) || resCount(st, 'myth_mark') > 0; // v0.50 원정 상점 물건이 있으면 손질 탭
     return this.tabView(b, 'smithy', [['enh', '강화'], ['inh', '계승'], ['ref', '제련'], ...(tune ? [['tune', '손질']] : []), ['salv', '분해'], ['merc', '용병']], (k) => k === 'enh' ? this.smithEnh(st) : k === 'inh' ? this.smithInherit(st) : k === 'ref' ? this.smithRef(st, b) : k === 'tune' ? this.smithTune(st) : k === 'salv' ? this.smithSalv(st) : this.mercTab(b, sel));
   }
   workshopView(b, sel) {
@@ -530,7 +530,7 @@ export class Windows {
     const [key, it, where] = cur, n = (id) => countOf(st, id);
     const tk = (id) => `<span class="tkN">${BASES[id].name} ${n(id)}</span>`;
     const aff = (it.affixes || []).map((a, i) => `<div class="row tuneRow"><div class="grow" style="color:${AFFIXES[a.id]?.mythOnly ? '#ff7aa8' : ''}">${affixText(a)}</div>
-      <button class="btn" data-treroll="${key}|${i}" ${n('t_reroll') ? '' : 'disabled'}>다시 굴림</button><button class="btn" data-tshard="${key}|${i}" ${n('t_shardx') && !it.lock && where !== '착용' ? '' : 'disabled'}>파편 추출</button></div>`).join('') || '<div class="note">옵션 없음</div>';
+      ${AFFIXES[a.id]?.mythOnly ? `<button class="btn" data-tmyth="${key}|${i}" ${n('t_mythroll') ? '' : 'disabled'}>신화 굴림</button>` : `<button class="btn" data-treroll="${key}|${i}" ${n('t_reroll') ? '' : 'disabled'}>다시 굴림</button>`}<button class="btn" data-tshard="${key}|${i}" ${n('t_shardx') && !it.lock && where !== '착용' ? '' : 'disabled'}>파편 추출</button></div>`).join('') || '<div class="note">옵션 없음</div>';
     const stones = st.inv.filter((x) => x.base === 'eng_stone');
     const lords = LORDS.filter((L) => (st.raidLords || {})[L.id]);
     const eng = it.rarity === 'myth' ? `<h3 style="margin-top:6px">각인 ${it.eng ? `<span class="goldTxt">${lordName(it.eng)} · ${ENGRAVE[it.eng].text}</span>` : '<span class="note">없음</span>'}</h3>
@@ -538,7 +538,9 @@ export class Windows {
       ${stones.map((x) => `<button class="btn gold" data-tstone="${key}|${x.uid}">각인석 · ${lordName(x.eng)}</button>`).join('')}
       ${it.eng ? `<button class="btn" data-tengx="${key}" ${n('t_engx') ? '' : 'disabled'}>각인 추출</button>` : ''}</div>` : '';
     const L = `<div class="forgeTop"><div class="cell forgeSlot${rar(it)}">${ico(it)}</div><div><div class="nm" style="color:${itemColor(it)}">${esc(itemName(it))}</div><div class="note">${where} · Lv ${it.ilvl}</div></div></div>
-      <div class="tkRow">${['t_reroll', 't_shardx', 't_socket', 't_engrave', 't_engx'].map(tk).join('')}</div>
+      <div class="tkRow">${['t_reroll', 't_shardx', 't_socket', 't_engrave', 't_engx', 't_qpolish', 't_mythroll', 't_greatslot'].filter((id) => n(id) || !['t_qpolish', 't_mythroll', 't_greatslot'].includes(id)).map(tk).join('')}</div>
+      ${it.q != null ? `<h3 style="margin-top:4px">품질 <span class="cnt">${Math.round(it.q * 100)}% <small class="note">${qRange(it).map((x) => Math.round(x * 100)).join(' ~ ')}%</small></span> <button class="btn" data-tpol="${key}" style="margin-left:auto" ${n('t_qpolish') && it.q < qRange(it)[1] ? '' : 'disabled'}>다듬기</button></h3>` : ''}
+      ${it.affixes?.length ? `<h3 style="margin-top:4px">탁월 칸 <span class="cnt">${greatCount(it)} / ${greatSlots(it)}</span> <button class="btn" data-tgs="${key}" style="margin-left:auto" ${greatSlots(it) < 5 && n('t_greatslot') >= slotTickets(greatSlots(it)) ? '' : 'disabled'}>${greatSlots(it) < 5 ? `확장 · 권 ${slotTickets(greatSlots(it))}` : '최대'}</button></h3>` : ''}
       <h3>옵션</h3>${aff}
       <h3 style="margin-top:6px">보석 구멍 <span class="cnt">${it.sockets || 0} / 3</span> <button class="btn" data-tsock="${key}" style="margin-left:auto" ${n('t_socket') && (it.sockets || 0) < 3 ? '' : 'disabled'}>구멍 뚫기</button></h3>${eng}`;
     return [L, right];
@@ -1640,6 +1642,9 @@ export class Windows {
     });
     on('[data-tsel]', (el) => { this.tuneSel = el.dataset.tsel; audio.play('click'); this.render(); });
     const tuneDone = (r, key, msg) => { if (!r?.ok) { if (r?.why) w.ui.toast(r.why); audio.play('error'); } else { if (String(key).startsWith('v:')) vaultSave(); audio.play('rankup'); if (msg) w.ui.toast(msg, '#ffd84a'); w.refreshGear(); w.ui.dirty(); } this.render(); };
+    ask('[data-tpol]', () => ['품질 다듬기', '품질을 다시 굴립니다 (낮게 나오면 그대로)', '다듬기'], (el) => { const k = el.dataset.tpol, it = gearAt(st, k); const r = polishQuality(st, it); tuneDone(r, k, r.ok ? (r.up ? `품질 ${Math.round(r.before * 100)}% → ${Math.round(r.after * 100)}%` : `품질 ${Math.round(r.rolled * 100)}% — 그대로 ${Math.round(r.after * 100)}%`) : null); });
+    ask('[data-tmyth]', () => ['신화 옵션 다시 굴림', '이 신화 옵션을 다시 굴립니다', '굴리기'], (el) => { const [k, i] = el.dataset.tmyth.split('|'), it = gearAt(st, k); const r = rerollMyth(st, it, Number(i)); tuneDone(r, k, r.ok ? `${affixText(r.before)} → ${affixText(r.after)}` : null); });
+    ask('[data-tgs]', () => ['탁월 칸 확장', '탁월 칸을 하나 늘립니다', '늘리기'], (el) => { const k = el.dataset.tgs, it = gearAt(st, k); const r = expandGreat(st, it); tuneDone(r, k, r.ok ? `탁월 칸 ${r.slots}` : null); });
     ask('[data-treroll]', () => ['옵션 다시 굴림', '이 옵션을 다른 옵션으로 바꿉니다', '굴리기'], (el) => { const [k, i] = el.dataset.treroll.split('|'), it = gearAt(st, k); const r = rerollAffix(st, it, Number(i)); tuneDone(r, k, r.ok ? `${affixText(r.before)} → ${affixText(r.after)}` : null); });
     ask('[data-tshard]', () => ['장비 파편 추출', '이 옵션을 파편으로 뽑습니다. 장비는 사라집니다', '뽑기'], (el) => { const [k, i] = el.dataset.tshard.split('|'), it = gearAt(st, k);
       const r = extractShard(st, it, Number(i), () => { const L = k.startsWith('v:') ? vault().items : st.inv, j = L.indexOf(it); if (j >= 0) L.splice(j, 1); }); if (r.ok) this.tuneSel = null; tuneDone(r, k, r.ok ? `파편: ${affixText(r.shard.shard)}` : null); });
@@ -1727,8 +1732,7 @@ export class Windows {
       } else { audio.play('error'); this.forgeFx(false, it, '강화 실패', [`<div><span>장인의 기운</span><em>${+((r.jang || 0) * 100).toFixed(1)}%</em></div>`]); }
       w.ui.dirty(); this.render();
     });
-    on('[data-mythlv]', (el) => { const mx = mythLvMax(st); globalThis.__mythLv = Math.max(10, Math.min(mx, (globalThis.__mythLv ?? mx) + Number(el.dataset.mythlv))); audio.play('click'); this.render(); });
-    ask('[data-mythcraft]', () => ['신화 제작', '신화 장비를 만듭니다', '제작'], () => { const r = craftMyth(st, Math.random, globalThis.__mythLv); if (r.ok) { audio.play('awaken'); w.fx.pillar(w.player.pos.x, w.player.pos.z, 0xff4a8a, 3, 8, 2.5); } townDone(r, r.ok ? `${itemName(r.item)}을(를) 얻었습니다` : null); });
+    on('[data-mtk]', (el) => { const [id, n] = el.dataset.mtk.split('|'), r = craftTicket(st, id, Number(n)); if (!r.ok) { w.ui.toast(r.why || '만들 수 없습니다'); audio.play('error'); } else { audio.play('rankup'); w.ui.toast(`${BASES[id].name} +${n}`, '#ffd84a'); w.ui.dirty(); } this.render(); }); // v0.49.92 흔적 교환
     on('[data-keycraft]', (el) => { const r = craftKey(st, el.dataset.keycraft); if (r.ok) audio.play('rankup'); townDone(r, `${BASES[el.dataset.keycraft].name}을(를) 만들었습니다`); });
     on('[data-esscraft]', (el) => { const [rid, n] = el.dataset.esscraft.split('|'); const r = craftEss(st, rid, Number(n)); if (r.ok) audio.play('coin'); townDone(r, r.ok ? `${BASES[r.id].name} ${r.n}개를 얻었습니다` : null); });
     on('[data-orecraft]', (el) => { const [id, n] = el.dataset.orecraft.split('|'); const r = craftOre(st, id, Number(n)); if (r.ok) audio.play('rankup'); townDone(r, `${BASES[id].name} ${n}개를 만들었습니다`); });

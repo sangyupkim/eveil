@@ -168,6 +168,10 @@ export const BASES = {
   box_shard: { name: '군주의 파편 상자', type: 'raid', price: 0, icon: 2014, text: '좋은 능력치 파편 3 ~ 5개' },
   t_inherit: { name: '계승권', type: 'raid', price: 0, stack: true, icon: 2035, text: '대장간 강화 계승에 하나 (강화 단계 50 ~ 80%를 넘김)' },
   t_inherit2: { name: '계승 축복석', type: 'raid', price: 0, stack: true, icon: 2036, text: '계승권과 함께 쓰면 80 ~ 95%를 넘김' },
+  // v0.49.92 신화의 흔적으로 만드는 권 (제작소 「흔적 교환」 · 대장간 「손질」)
+  t_qpolish: { name: '품질 다듬기권', type: 'raid', price: 0, stack: true, icon: 2076, text: '장비의 기본 피해 · 방어 품질을 다시 굴립니다 (낮게 나오면 그대로)' },
+  t_mythroll: { name: '신화 옵션 다시 굴림권', type: 'raid', price: 0, stack: true, icon: 2124, text: '신화 전용 옵션 한 줄을 다시 굴립니다' },
+  t_greatslot: { name: '탁월 칸 확장권', type: 'raid', price: 0, stack: true, icon: 2080, text: '장비의 탁월 칸을 늘립니다 (최대 5)' },
   t_book: { name: '상급 스킬북 고르기권', type: 'raid', price: 0, stack: true, icon: 2087, text: '지금 차수의 상품 스킬북 하나를 고릅니다' }, // v0.42.10 강화 · 극한 돌파마다 1개, 100개로 신화 장비
   dungeon_key2: { name: '강화 던전 열쇠', type: 'key', price: 6000, stack: true }, dungeon_key3: { name: '극한 던전 열쇠', type: 'key', price: 20000, stack: true }, // v0.42 제작소에서 // 상점에서 팔지 않는다: 오늘의 의뢰 · 보스에게서만
   pet_egg: { name: '강아지', type: 'pet', pet: 'pet_dog', price: 3000, stack: true, shop: true },

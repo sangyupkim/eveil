@@ -45,7 +45,8 @@ export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1, favor =
   const pref = statPref(base), fav = favOf(base), S5 = ['str', 'dex', 'int', 'wis', 'vit'];
   const wOf = (id) => (fav?.includes(id) ? 2 : !pref || !S5.includes(id) ? 1 : id === pref[0] ? 3 : id === pref[1] ? 2 : 0.5);
   const draw = () => { let t = 0; for (const id of pool) t += wOf(id); let r = rng() * t; for (let k = 0; k < pool.length; k++) { r -= wOf(pool[k]); if (r <= 0) return pool.splice(k, 1)[0]; } return pool.pop(); };
-  for (let i = 0; i < n - (rarity === 'myth' ? it.affixes.length : 0) && pool.length; i++) {
+  const want = n - (rarity === 'myth' ? it.affixes.length : 0); // v0.49.92 줄 수는 한 번만 센다 (예전엔 붙일 때마다 다시 빼서 신화 일반 옵션이 절반만 붙었다)
+  for (let i = 0; i < want && pool.length; i++) {
     let id = draw();
     if (UTILITY_AFFIX.has(id)) for (let k = pool.length - 1; k >= 0; k--) if (UTILITY_AFFIX.has(pool[k])) pool.splice(k, 1);
     if (favor && ['str', 'dex', 'int', 'wis', 'vit'].includes(id) && !favor.includes(id) && rng() < 0.7) { const alt = pool.filter((x) => favor.includes(x)); if (alt.length) { pool.push(id); id = alt[Math.floor(rng() * alt.length)]; pool.splice(pool.indexOf(id), 1); } }
@@ -88,7 +89,25 @@ export function capAffixes(it) {
   }
   return n;
 }
-export function capAll(list) { let n = 0; for (const it of list || []) if (it) n += capAffixes(it); return n; }
+export function capAll(list) { let n = 0; for (const it of list || []) if (it) n += capAffixes(it) + fixMythLines(it); return n; }
+// v0.49.92 예전 신화 보정: 일반 옵션이 (6 − 신화 줄)보다 적으면 그만큼 채운다 (신화 범위 위쪽 절반, 잡옵션은 한 줄까지)
+export function fixMythLines(it, rng = R) {
+  if (it?.rarity !== 'myth' || !it.affixes || it.named) return 0;
+  const b = BASES[it.base]; if (!b?.slot) return 0;
+  const mythN = it.affixes.filter((a) => AFFIXES[a.id]?.mythOnly).length, need = 6 - mythN - (it.affixes.length - mythN);
+  if (need <= 0) return 0;
+  const have = new Set(it.affixes.map((a) => a.id)), hasUtil = it.affixes.some((a) => UTILITY_AFFIX.has(a.id)), ilvl = it.ilvl || 1;
+  const pool = Object.keys(AFFIXES).filter((id) => { const a = AFFIXES[id]; return !a.mythOnly && !a.retired && !have.has(id) && !(hasUtil && UTILITY_AFFIX.has(id)) && affixFits(a, b) && (!it.mix || !it.mixReq?.[id]); });
+  let n = 0;
+  for (let i = 0; i < need && pool.length; i++) {
+    const id = pool.splice(Math.floor(rng() * pool.length), 1)[0], a = AFFIXES[id], max = Math.max(a.min, a.max(ilvl) * RARITY.myth.mult);
+    let v = Math.max(a.min, Math.round(a.min + (0.5 + rng() * 0.5) * (max - a.min)));
+    if (ilvl > 500 && MUGAN_FLAT.has(id)) v = Math.round(v * muganK(ilvl));
+    it.affixes.push({ id, v }); n++;
+    if (UTILITY_AFFIX.has(id)) for (let k = pool.length - 1; k >= 0; k--) if (UTILITY_AFFIX.has(pool[k])) pool.splice(k, 1);
+  }
+  return n;
+}
 
 export function makeBook(skillId, st = null) {
   return { uid: uid(st), book: skillId, qty: 1 };

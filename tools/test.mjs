@@ -838,4 +838,24 @@ test('v0.49.87 파편 여러 개 합치기: 같은 등급끼리 셋씩, 남는 �
   assert.ok(S.shardVals(st.inv.find((x) => x.shard?.id === 'vit')).includes(30), '고르지 않은 최고 값은 남는다');
 });
 
+test('v0.49.92 신화: 일반 옵션 줄이 (6~7 − 신화 줄) · 예전 신화 보정 · 흔적 권 (품질 다듬기 · 신화 옵션 굴림 · 탁월 칸)', async () => {
+  const I = await import('../src/game/items.js'), G = await import('../src/game/raidgear.js'), S = await import('../src/game/shards.js'), T = await import('../src/game/town.js');
+  const st = newPlayer(), armor = Object.keys(BASES).find((k) => BASES[k].slot === 'armor' && /^h499_/.test(k));
+  for (let i = 0; i < 200; i++) { const it = makeItem(armor, { rarity: 'myth', ilvl: 500 }, st); if (it.mix) continue; const m = it.affixes.filter((a) => AFFIXES[a.id].mythOnly).length; const r = it.affixes.length - m; assert.ok(r >= 6 - m && r <= 7 - m, `일반 ${r} 신화 ${m}`); }
+  // 예전 신화(일반 2줄) → 6 − 신화 줄까지 채움, 두 번 해도 그대로
+  const old = makeItem(armor, { rarity: 'myth', ilvl: 500 }, st); const mN = old.affixes.filter((a) => AFFIXES[a.id].mythOnly).length; old.affixes = old.affixes.filter((a) => AFFIXES[a.id].mythOnly).concat(old.affixes.filter((a) => !AFFIXES[a.id].mythOnly).slice(0, 2)); delete old.mix;
+  assert.equal(I.fixMythLines(old), 6 - mN - 2); assert.equal(old.affixes.length, 6); assert.equal(I.fixMythLines(old), 0);
+  // 흔적 → 권
+  T.resAdd(st, 'myth_mark', 50 + 150 + 250 * 2);
+  assert.ok(G.craftTicket(st, 't_qpolish').ok && G.craftTicket(st, 't_mythroll').ok && G.craftTicket(st, 't_greatslot', 2).ok); assert.equal(T.resCount(st, 'myth_mark'), 0); assert.ok(!G.craftTicket(st, 't_qpolish').ok);
+  // 품질 다듬기: 내려가지 않는다
+  const w = makeItem(Object.keys(BASES).find((k) => BASES[k].slot === 'weapon' && /^h499_/.test(k)), { rarity: 'rare', ilvl: 500 }, st); w.q = 0.9; const p = G.polishQuality(st, w, () => 0); assert.ok(p.ok && w.q === 0.9 && !p.up);
+  // 신화 옵션 다시 굴림: 신화 줄만, 신화 범위 위쪽 절반
+  const mi = old.affixes.findIndex((a) => AFFIXES[a.id].mythOnly); const r = G.rerollMyth(st, old, mi); assert.ok(r.ok && AFFIXES[r.after.id].mythOnly);
+  assert.ok(!G.rerollMyth(st, old, old.affixes.findIndex((a) => !AFFIXES[a.id].mythOnly)).ok);
+  // 탁월 칸: 1 → 2 (1장) → 3 (1장)
+  const g = makeItem(armor, { rarity: 'legend', ilvl: 500 }, st); g.affixes.forEach((a) => delete a.great); delete g.gs;
+  assert.ok(G.expandGreat(st, g).ok && S.greatSlots(g) === 2); assert.ok(G.expandGreat(st, g).ok && S.greatSlots(g) === 3); assert.ok(!G.expandGreat(st, g).ok, '권이 모자라다');
+});
+
 console.log(`\n${n}개 통과`);

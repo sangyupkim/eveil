@@ -796,21 +796,7 @@ export function craftKey(st, id, times = 1) {
   return { ok: true, n: times };
 }
 
-// 신화 교환 (v0.42.10): 신화의 흔적 100개 → 지금 각성에 맞는 레벨의 신화 장비 하나 (불운 보정)
-// v0.44.16 각성이 높을수록 신화 교환에 흔적이 더 든다: 100 + 각성 25마다 10 (각성 100 → 140 · 300 → 220 · 500 → 300)
-export const mythMarks = (st, lv = st?.awakenings || 0) => 100 + 10 * Math.floor(Math.max(0, lv) / 25); // v0.44.18 고른 레벨 기준
-export const mythLvMax = (st) => Math.max(10, Math.min(500, st.awakenings || 1));
-export const MYTH_MARKS = 100;
-export function craftMyth(st, rng = Math.random, pickLv = null) {
-  const lv0 = Math.max(10, Math.min(mythLvMax(st), Math.round(pickLv ?? mythLvMax(st)))); // 내가 고른 레벨 (내 각성보다 높게는 안 된다)
-  const need = mythMarks(st, lv0);
-  if (resCount(st, 'myth_mark') < need) return { ok: false, why: `신화의 흔적 ${need}개가 필요합니다` };
-  const lv = lv0;
-  const it = makeItem(rollBase(lv, rng), { rarity: 'myth', ilvl: lv }, st, rng);
-  if (!addItem(st, it)) return { ok: false, why: '가방이 가득 찼습니다' };
-  resTake(st, 'myth_mark', need);
-  return { ok: true, item: it };
-}
+// v0.49.92 신화 교환은 없앴다 — 신화의 흔적은 제작소 「흔적 교환」의 권으로 (game/raidgear.js MARK_TICKETS)
 
 // ── v0.44.15 자동화: 반복 파견 · 반복 제작 ──
 // 반복 파견: 같은 무리가 모두 돌아와 체력이 찼으면(필요 체력 이상) 같은 지역 · 기간으로 다시 보낸다. 챙길 물건은 남은 만큼

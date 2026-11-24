@@ -1,10 +1,11 @@
 // v0.50 왕좌 원정 상점 물건으로 장비 손질 (대장간 「손질」 탭): 옵션 다시 굴림 · 구멍 뚫기 · 각인 새기기 · 각인 추출 · 장비 파편 추출
 import { BASES, AFFIXES, RARITY, affixFits, UTILITY_AFFIX } from '../data/items.js';
 import { ENGRAVE } from '../data/raid.js';
-import { makeShard, keepSlots } from './shards.js';
+import { makeShard, keepSlots, greatSlots } from './shards.js';
 import { makeItem } from './items.js';
 import { countOf, takeOne, addItem } from './inventory.js';
 import { R } from './rng.js';
+import { resCount, resTake } from './town.js';
 
 const fits = (it, id) => { const a = AFFIXES[id], b = BASES[it.base]; if (!a || a.retired) return false; if (a.mythOnly) return it.rarity === 'myth' && (!a.slots || a.slots.includes(b.slot)); if (a.legendOnly && it.rarity !== 'legend' && it.rarity !== 'myth') return false; return affixFits(a, b); };
 // 옵션 한 줄 다시 굴리기: 같은 장비에 붙을 수 있는 다른 옵션(이미 있는 옵션 · 잡옵션 둘째 줄 제외), 값은 그 장비 레벨 · 등급 범위 안
@@ -80,4 +81,47 @@ export function inherit(st, src, dst, boost, remove, rng = R) {
   remove();
   dst.plus = Math.max(before, m); dst.jang = 0; dst.fails = 0;
   return { ok: true, from: src.plus || 0, before, plus: dst.plus };
+}
+
+// ── v0.49.92 신화의 흔적 권 (신화 교환을 없애고) ──
+// 제작소에서 흔적으로 만든다: 품질 다듬기권 50 · 신화 옵션 다시 굴림권 150 · 탁월 칸 확장권 250
+export const MARK_TICKETS = [{ id: 't_qpolish', marks: 50 }, { id: 't_mythroll', marks: 150 }, { id: 't_greatslot', marks: 250 }];
+export function craftTicket(st, id, n = 1) {
+  const T = MARK_TICKETS.find((x) => x.id === id); if (!T) return { ok: false };
+  const need = T.marks * n; if (resCount(st, 'myth_mark') < need) return { ok: false, why: `신화의 흔적 ${need}개가 필요합니다` };
+  const it = makeItem(id, { qty: n }, st); if (!addItem(st, it)) return { ok: false, why: '가방이 가득 찼습니다' };
+  resTake(st, 'myth_mark', need);
+  return { ok: true };
+}
+// 품질 범위 (makeItem과 같다): 신화 115 ~ 130%, 나머지 85 ~ 115%
+export const qRange = (it) => (it.rarity === 'myth' ? [1.15, 1.3] : [0.85, 1.15]);
+export function polishQuality(st, it, rng = R) {
+  if (it?.q == null) return { ok: false, why: '품질이 있는 장비가 아닙니다' };
+  const [lo, hi] = qRange(it); if (it.q >= hi) return { ok: false, why: '이미 최고 품질입니다' };
+  if (countOf(st, 't_qpolish') < 1) return { ok: false, why: '품질 다듬기권이 없습니다' };
+  takeOne(st, 't_qpolish');
+  const before = it.q, q = Math.round((lo + rng() * (hi - lo)) * 100) / 100;
+  if (q > it.q) it.q = q;
+  return { ok: true, before, after: it.q, rolled: q, up: it.q > before };
+}
+// 신화 옵션 한 줄 다시 굴림: 부위에 맞는 다른 신화 옵션 (없으면 값만), 값은 신화 범위 위쪽 절반
+export function rerollMyth(st, it, idx, rng = R) {
+  const cur = it?.affixes?.[idx]; if (!cur || !AFFIXES[cur.id]?.mythOnly) return { ok: false, why: '신화 옵션이 아닙니다' };
+  if (countOf(st, 't_mythroll') < 1) return { ok: false, why: '신화 옵션 다시 굴림권이 없습니다' };
+  const slot = BASES[it.base]?.slot, have = new Set(it.affixes.map((a) => a.id));
+  const pool = Object.keys(AFFIXES).filter((id) => AFFIXES[id].mythOnly && !have.has(id) && (!AFFIXES[id].slots || AFFIXES[id].slots.includes(slot)));
+  const id = pool.length ? pool[Math.floor(rng() * pool.length)] : cur.id, a = AFFIXES[id], mx = a.max(it.ilvl || 1) * RARITY.myth.mult;
+  takeOne(st, 't_mythroll');
+  const before = { ...cur }; it.affixes[idx] = { id, v: Math.max(a.min, Math.round(a.min + (0.5 + rng() * 0.5) * (mx - a.min))), myth: true };
+  return { ok: true, before, after: it.affixes[idx] };
+}
+// 탁월 칸 확장: 2칸 1장 · 3칸 1장 · 4칸 2장 · 5칸 3장
+export const slotTickets = (cur) => [0, 0, 1, 1, 2, 3][cur + 1] || 0;
+export function expandGreat(st, it) {
+  if (!it?.affixes?.length) return { ok: false, why: '옵션이 있는 장비가 아닙니다' };
+  const cur = greatSlots(it); if (cur >= 5) return { ok: false, why: '탁월 칸이 이미 5칸입니다' };
+  const need = slotTickets(cur); if (countOf(st, 't_greatslot') < need) return { ok: false, why: `탁월 칸 확장권 ${need}장이 필요합니다` };
+  for (let i = 0; i < need; i++) takeOne(st, 't_greatslot');
+  it.gs = cur + 1;
+  return { ok: true, slots: it.gs };
 }
