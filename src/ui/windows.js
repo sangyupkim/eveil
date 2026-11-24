@@ -58,7 +58,7 @@ import { GEMS, GEM_GRADES, gemId } from '../data/legends.js';
 import { fuseMany, fuseCount, greatCount, greatSlots, applyShard, canApply, lockMax, shardCost, shardVals, shardGrade, gradeName as sgName, gradeColor, useGrade, pullGrade, pullResearch, pullCost as sgCost, pullPool, dustOf, grindShard, fuseShard, pullShard } from '../game/shards.js';
 import { HERBS, HERB_IDS, GROW_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
 import { RARITY_IDS, junkCount, discardJunk } from '../game/town.js';
-import { MYTH_CHANCE, wageTotal, mercWage, buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, brewQueue, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
+import { wsStoreN, wsStoreCap, wsTake, MYTH_CHANCE, wageTotal, mercWage, buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, brewQueue, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
 import { RESEARCH_MAX, SHELTER } from '../data/buildings.js';
 import { herbIcon, homeIcon, uiIcon } from './icons.js';
 import { vault, vaultSize, vaultPut, vaultTake, vaultAdd, vaultSave, vaultReady } from '../game/vault.js';
@@ -363,7 +363,7 @@ export class Windows {
     P.ess = `<h3>정수 교환</h3>` + ESS_RECIPES.map((r0) => { const r = essRecipe(st, r0); const [from, q] = Object.entries(r.need)[0], ok = oreRecipeOk(st, r);
         return `<div class="row"><div class="cell shopIco">${ico({ base: r.id })}</div><div class="grow"><b>${BASES[r.id].name} ${r.out}</b><div class="note">${BASES[from].name} ${q} (${resCount(st, from)}) · ${r.gold.toLocaleString()} G</div></div><button class="btn" data-esscraft="${r.rid}|1" ${ok.ok ? '' : 'disabled'}>1번</button><button class="btn" data-esscraft="${r.rid}|5" ${oreRecipeOk(st, r, 5).ok ? '' : 'disabled'}>5번</button></div>`; }).join('');
     const q = t.brew || [], ready = q.filter((x) => x.until <= Date.now()).length;
-    P.queue = !q.length ? '' : `<h3>제작 중 <span class="cnt">${q.length} / ${brewQueue(st)}</span>${ready ? '<button class="btn gold" data-brewget="bag" style="margin-left:auto">가방으로</button><button class="btn gold" data-brewget="vault">창고로</button>' : ''}</h3>` + q.map((x) => `<div class="row"><div class="cell shopIco">${ico({ base: x.id })}</div><div class="grow"><b>${BASES[x.id].name} ×${x.n}</b> <small class="note">${x.until <= Date.now() ? '완성' : `${Math.ceil((x.until - Date.now()) / 1000)}초`}</small>${gauge(x.from, x.until, 60000, '#7fe07a')}</div></div>`).join('');
+    P.queue = !q.length ? '' : `<h3>제작 중 <span class="cnt">${q.length} / ${brewQueue(st)}</span></h3>` + q.map((x) => `<div class="row"><div class="cell shopIco">${ico({ base: x.id })}</div><div class="grow"><b>${BASES[x.id].name} ×${x.n}</b> <small class="note">${x.until <= Date.now() ? '완성' : `${Math.ceil((x.until - Date.now()) / 1000)}초`}</small>${gauge(x.from, x.until, 60000, '#7fe07a')}</div></div>`).join('');
     P.recipes = '<h3>만들기</h3>';
     for (const rc of RECIPES) {
       const open = rc.lv <= b.lv, can = (k) => open && Object.entries(rc.herbs).every(([h, q]) => (t.herbs[h] || 0) >= q * k) && Object.entries(rc.mats || {}).every(([id, q]) => resCount(st, id) >= q * k) && st.gold >= brewGold(st, rc) * k;
@@ -474,7 +474,13 @@ export class Windows {
   workshopView(b, sel) {
     const st = this.w.st, t = townOf(st), P = this.workshopParts(st, b, t);
     return this.tabView(b, 'workshop', [['make', '제작'], ['swap', '교환'], ['merc', '용병']], (k) => {
-      if (k === 'make') return [P.queue || `<h3>제작 중 <span class="cnt">0 / ${brewQueue(st)}</span></h3><div class="note">없음</div>`, P.recipes + P.ore];
+      if (k === 'make') {
+        // v0.49.93 보관함: 다 된 제작품이 저절로 쌓인다 · 칸을 누르면 가방으로
+        const ws = Object.entries(t.wstore || {}).filter(([id, n]) => n > 0 && BASES[id]);
+        const box = `<h3 style="margin-top:6px">보관함 <span class="cnt">${wsStoreN(st).toLocaleString()} / ${wsStoreCap(st).toLocaleString()}</span>${ws.length ? '<button class="btn" data-wsall="bag" style="margin-left:auto">모두 가방</button><button class="btn" data-wsall="vault">모두 창고</button>' : ''}</h3>`
+          + (ws.length ? `<div class="grid fGrid">${ws.map(([id, n]) => `<div class="cell" data-wstake="${id}" title="${esc(BASES[id].name)}">${ico({ base: id })}<span class="q">${n.toLocaleString()}</span></div>`).join('')}</div>` : '<div class="note">없음</div>');
+        return [(P.queue || `<h3>제작 중 <span class="cnt">0 / ${brewQueue(st)}</span></h3><div class="note">없음</div>`) + box, P.recipes + P.ore];
+      }
       if (k === 'swap') {
         // 오른쪽: 가진 재료 (약초 · 강화석 · 정수)
         const mats = ['ore', ...ORE_RECIPES.map((r) => r.id), ...new Set(ESS_RECIPES.flatMap((r) => [r.id, ...Object.keys(r.need)]))].filter((id, i, a) => BASES[id] && a.indexOf(id) === i);
@@ -1936,6 +1942,8 @@ export class Windows {
     on('[data-dexm]', (el) => { this.dexMon = el.dataset.dexm; audio.play('click'); this.render(); });
     on('[data-hswap]', (el) => { const [h, k] = el.dataset.hswap.split('|'), r = herbSwap(st, h, Number(k)); if (r.ok) audio.play('click'); townDone(r); });
     on('[data-brew]', (el) => { const [id, k] = el.dataset.brew.split('|'), r = brew(st, id, Number(k)); if (r.ok) audio.play('click'); townDone(r); });
+    on('[data-wstake]', (el) => { const r = wsTake(st, el.dataset.wstake, 1e9); if (!r.ok) { w.ui.toast(r.why); audio.play('error'); } else { audio.play('potion'); w.ui.toast(`${BASES[el.dataset.wstake].name} ${r.n.toLocaleString()}개를 가방에 넣었습니다`, '#7fe07a'); w.ui.dirty(); } this.render(); });
+    on('[data-wsall]', (el) => { const v = el.dataset.wsall === 'vault'; let n = 0, why = ''; for (const id of Object.keys(townOf(st).wstore || {})) { const r = wsTake(st, id, 1e9, v ? vaultAdd : null); if (r.ok) n += r.n; else why = r.why; } if (n) { audio.play('potion'); w.ui.toast(`${n.toLocaleString()}개를 ${v ? '창고' : '가방'}에 넣었습니다`, '#7fe07a'); w.ui.dirty(); } else if (why) { w.ui.toast(why); audio.play('error'); } this.render(); });
     on('[data-brewget]', (el) => { const v = el.dataset.brewget === 'vault', r = brewCollect(st, Date.now(), v ? vaultAdd : null); if (r.n) { audio.play('potion'); w.ui.toast(`${r.n}개를 ${v ? '창고' : '가방'}에 넣었습니다`, '#7fe07a'); } townDone(r); });
     on('[data-pm]', (el) => { const id = el.dataset.pm, P = (this.party ||= { ids: [], pack: {} }); const i = P.ids.indexOf(id); if (i >= 0) P.ids.splice(i, 1); else if (P.ids.length < partyMax(st)) P.ids.push(id); audio.play('click'); this.render(); });
     on('[data-pzone]', (el) => { (this.party ||= { ids: [], pack: {} }).zone = el.dataset.pzone; audio.play('click'); this.render(); });

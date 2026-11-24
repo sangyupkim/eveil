@@ -21,7 +21,7 @@ const ext = (a, n = 20, k = 2.2) => { const r = [...a]; while (r.length < n) r.p
 const UP_MORE = [70, 100, 150, 220, 300, 360, 420, 480, 550, 620, 700, 780, 870, 960, 1050]; // 6 ~ 20단계로 올리는 데 필요한 각성
 export const BLD_MAX = 20;
 // 1 ~ 10단계 표 + 11 ~ 20단계 표
-const T20 = (a, b) => (lv) => [...a, ...b][lv];
+const T20 = (a, b, k = 1) => (lv) => Math.round([...a, ...b][lv] * k);
 const storeOf = (rate, lv) => Math.round(rate * (24 + 2 * Math.max(0, lv - 10)));
 // cost(lv): 다음 단계 금화 · max: 최고 단계 · need: 짓는 데 필요한 각성 · up: 2~5단계로 올리는 데 필요한 각성
 export const BUILDINGS = {
@@ -33,13 +33,13 @@ export const BUILDINGS = {
   },
   mine: {
     name: '광산', up: [...[10, 22, 38, 55], ...UP_MORE], need: 6, desc: '강화석 생산', max: BLD_MAX, cost: (lv) => ext([1200, 5400, 18000, 54000, 144000])[lv] ?? null,
-    rate: T20([0, 2, 4, 7, 11, 16, 22, 30, 40, 52, 66], [74, 83, 92, 101, 110, 122, 134, 146, 158, 170]),      // 시간당 강화석
+    rate: T20([0, 2, 4, 7, 11, 16, 22, 30, 40, 52, 66], [74, 83, 92, 101, 110, 122, 134, 146, 158, 170], 2), // v0.49.93 생산 ×2      // 시간당 강화석
     store: (lv) => storeOf(BUILDINGS.mine.rate(lv), lv), // v0.49.73 시간당 생산 × 24시간 (11단계부터 +2시간씩, 20단계 44시간)
     look: [['cave', 130, 0, 0], ['cave', 131, 1.5, 0.4], ['cave', 151, -1.4, 0.6]],
   },
   herb: {
     name: '약초밭', up: [...[3, 10, 25, 45], ...UP_MORE], need: 0, desc: '약초 재배', max: BLD_MAX, cost: (lv) => ext([900, 4200, 15000, 48000, 120000])[lv] ?? null,
-    rate: T20([0, 6, 10, 15, 22, 32, 44, 58, 74, 92, 112], [124, 138, 152, 166, 180, 196, 212, 228, 244, 260]),      // 시간당 약초
+    rate: T20([0, 6, 10, 15, 22, 32, 44, 58, 74, 92, 112], [124, 138, 152, 166, 180, 196, 212, 228, 244, 260], 2), // v0.49.93 생산 ×2      // 시간당 약초
     store: (lv) => storeOf(BUILDINGS.herb.rate(lv), lv),
     look: [['grassland', 120, -1, 0], ['grassland', 121, 0.4, 0.6], ['grassland', 122, 1.4, -0.2], ['grassland', 123, -0.2, -0.9]],
   },
@@ -113,6 +113,8 @@ export const SHELTER = {
 export const RESEARCH_MAX = 5;
 // v0.49.73 연구 최고 단계: 연구소 10단계까지 5, 11단계부터 하나씩 늘어 15단계에 10
 export const researchMaxAt = (labLv) => Math.min(10, Math.max(5, (labLv || 0) - 5));
+// v0.49.93 제작소 보관함: 처음 100개, 연구 「제작품 보관」 단계마다 늘어난다 (10단계 3,000)
+export const wsCap = (lv) => [100, 200, 350, 500, 700, 1000, 1400, 1800, 2200, 2600, 3000][Math.min(10, lv || 0)];
 export const RESEARCH = {
   potion: { lab: 1, name: '물약 정제', text: (lv) => `물약 회복량 +${lv * 10}%`, k: 0.1 },
   mats: { lab: 1, name: '채집 요령', text: (lv) => `재료 얻을 확률 +${lv * 10}%`, k: 0.1 },
@@ -141,6 +143,7 @@ export const RESEARCH = {
   hordeUp: { lab: 16, name: '군세 대비', text: (lv) => `군세 토벌 보상 +${(lv * 2.5).toFixed(1)}%`, k: 0.025 },
   alch: { lab: 17, name: '연금 공학', text: (lv) => `물약 · 영약 · 식량이 더 나올 확률 +${lv * 3}%`, k: 0.03 },
   shardLab: { lab: 6, max: 5, name: '파편 연성', text: (lv) => `현자 파편 뽑기 ${['평온', '악몽', '지옥', '혼돈', '무간'][lv - 1]} 등급까지`, k: 0 }, // v0.49.83 (뽑기는 연 세계 단계까지만)
+  wsStore: { lab: 2, name: '제작품 보관', text: (lv) => `제작소 보관함 ${wsCap(lv).toLocaleString()}개`, k: 0 }, // v0.49.93
   mercSafe: { lab: 18, name: '용병 정예화', text: (lv) => `파견 사망 확률 -${lv * 4}%`, k: 0.04 },
 };
 // v0.49.73 향로 수: 향로 연금술 1 · 4 · 7 · 10단계에 하나씩

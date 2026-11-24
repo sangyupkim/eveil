@@ -3346,10 +3346,10 @@ export class World {
     }
     // v0.49.23 광산 · 약초밭 · 제작소는 직접 건물에서 거둔다 (자동으로 가방에 넣지 않는다). 다 찼거나 완성되면 기록에 한 줄만
     const ntf = (this.townFullNote ||= {});
-    const readyN = (t.brew || []).filter((b) => b.until <= now).length;
-    if (readyN && !ntf.brew) this.ui.log(`제작소 · 완성품 ${readyN}개를 받을 수 있습니다`, '#7fe07a');
-    ntf.brew = readyN > 0;
-    autoBrewTick(st, now);
+    autoBrewTick(st, now); // v0.49.93 다 된 제작품은 제작소 보관함으로
+    const wsFull = (t.brew || []).some((b) => b.until <= now); // 보관함이 차서 줄에 남은 것
+    if (wsFull && !ntf.brew) this.ui.log('제작소 보관함이 가득 찼습니다 · 꺼내야 다시 만듭니다', '#ffc860');
+    ntf.brew = wsFull;
     for (const names of repeatTick(st, now)) this.ui.toast(`반복 파견 출발: ${names}`, '#ffc860');
     for (const [pid, b] of Object.entries(t.plots)) {
       const def = BUILDINGS[b.type];

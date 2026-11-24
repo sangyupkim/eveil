@@ -2,7 +2,7 @@ import { relicBonus } from '../data/relics.js';
 import { floodPenalty } from '../data/flood.js';
 // 마을 규칙 (화면과 무관): 짓기 · 단계 올리기 · 생산 쌓기 · 강화 · 용병 파견
 import { CENSERS } from '../data/censer.js';
-import { BUILDINGS, PLOTS, ENHANCE, EXPEDITIONS, RESEARCH, RESEARCH_MAX, researchMaxAt, censerSlots, SHELTER, researchCost } from '../data/buildings.js';
+import { BUILDINGS, PLOTS, ENHANCE, EXPEDITIONS, RESEARCH, RESEARCH_MAX, researchMaxAt, censerSlots, wsCap, SHELTER, researchCost } from '../data/buildings.js';
 import { HERBS, herbsAt, RECIPES } from '../data/potions.js';
 import { ZONES } from '../data/world.js';
 import { rollLoot } from './loot.js';
@@ -817,13 +817,38 @@ export function repeatTick(st, now = Date.now()) {
   return sent;
 }
 export const stopRepeat = (st, key) => { for (const m of townOf(st).mercs) if (m.repeat?.key === key) m.repeat = null; };
-// 반복 제작: 고른 물건을 줄이 빌 때마다 하나씩 (약초 · 금화가 있는 만큼)
+// v0.49.93 제작소 보관함: 다 된 제작품은 저절로 보관함(t.wstore {물건: 개수})으로, 꺼내서 쓴다. 보관함이 차면 줄에 남고 줄이 차면 멈춘다
+export const wsStoreCap = (st) => wsCap(researchLv(st, 'wsStore'));
+export const wsStoreN = (st) => Object.values(townOf(st).wstore || {}).reduce((a, n) => a + n, 0);
+function storeFinished(st, now) {
+  const t = townOf(st); t.wstore ||= {}; let last = null;
+  while (t.brew?.length && t.brew[0].until <= now) {
+    const b = t.brew[0]; if (b.extra == null) { const k = researchK(st, 'alch'); b.extra = Math.floor(b.n * k + Math.random()); }
+    const q = b.n + b.extra; if (wsStoreN(st) + q > wsStoreCap(st)) break;
+    t.wstore[b.id] = (t.wstore[b.id] || 0) + q; last = b.until; t.brew.shift(); lifeProgress(st, 'brew');
+  }
+  return last;
+}
+// 반복 제작: 줄이 빌 때마다 하나씩 (약초 · 금화가 있는 만큼). 꺼 둔 동안에도 끝난 시각부터 이어서 돈다
 export function autoBrewTick(st, now = Date.now()) {
-  const t = townOf(st);
-  if (!t.autoBrew) return 0;
-  let n = 0;
-  while ((t.brew?.length || 0) < brewQueue(st) && brew(st, t.autoBrew, 1, now).ok) n++;
+  const t = townOf(st); let n = 0, at = null;
+  for (let guard = 0; guard < 5000; guard++) {
+    const f = storeFinished(st, now); if (f != null) at = f;
+    if (!t.autoBrew || (t.brew?.length || 0) >= brewQueue(st)) break;
+    const start = t.brew?.length ? now : Math.min(now, at ?? now); // 줄이 비었으면 마지막으로 끝난 때부터
+    if (!brew(st, t.autoBrew, 1, start).ok) break;
+    n++;
+    if (t.brew[t.brew.length - 1].until > now) { if (t.brew.length >= brewQueue(st)) break; }
+  }
   return n;
+}
+// 보관함에서 꺼내기 (가방 또는 창고로)
+export function wsTake(st, id, n, put = null) {
+  const t = townOf(st), have = t.wstore?.[id] || 0; n = Math.min(n, have); if (n <= 0) return { ok: false, why: '없습니다' };
+  const it = makeItem(id, { qty: n }, st);
+  if (!(put ? put(st, it) : addItem(st, it))) return { ok: false, why: put ? '창고가 가득 찼습니다' : '가방이 가득 찼습니다' };
+  t.wstore[id] = have - n; if (!t.wstore[id]) delete t.wstore[id];
+  return { ok: true, n };
 }
 
 // v0.44.29 약초 교환 (제작소): 다른 약초 3개 → 원하는 약초 1개 + 금화. 가장 많이 남은 약초부터 쓴다

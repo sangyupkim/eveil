@@ -693,7 +693,7 @@ test('마을 20단계: 11단계부터 정수 · 강화석 · 높은 약초, 저�
   assert.equal(T.upgrade(st, 'p1').ok, false); // 재료 없음
   const give = (b, n) => T.resAdd(st, b, n); give('ess5', 100); give('ore2', 100); t.herbs.frost = 40;
   const r = T.upgrade(st, 'p1'); assert.ok(r.ok, r.why); assert.equal(T.highHerbs(st), 10); T.finishBuilds(st, Date.now() + 1e9); assert.equal(T.buildingAt(st, 'p1').lv, 11);
-  assert.equal(B.mine.store(10), 66 * 24); assert.equal(B.herb.store(20), 260 * 44);
+  assert.equal(B.mine.store(10), 132 * 24); assert.equal(B.herb.store(20), 520 * 44); // v0.49.93 생산 ×2
   // 연구: 연구소 15단계면 10단계 · 두 개
   T.buildingAt(st, 'p2').lv = 15; assert.equal(T.researchMax(st), 10); assert.equal(T.labSlots(st), 2);
   t.mats.field = 1e4; give('ess5', 100); give('ore2', 200); t.herbs.world = 1e4;
@@ -856,6 +856,20 @@ test('v0.49.92 신화: 일반 옵션 줄이 (6~7 − 신화 줄) · 예전 신�
   // 탁월 칸: 1 → 2 (1장) → 3 (1장)
   const g = makeItem(armor, { rarity: 'legend', ilvl: 500 }, st); g.affixes.forEach((a) => delete a.great); delete g.gs;
   assert.ok(G.expandGreat(st, g).ok && S.greatSlots(g) === 2); assert.ok(G.expandGreat(st, g).ok && S.greatSlots(g) === 3); assert.ok(!G.expandGreat(st, g).ok, '권이 모자라다');
+});
+
+test('v0.49.93 제작소 보관함: 다 된 제작품은 보관함으로 · 반복 제작은 꺼 둔 동안에도 이어서 · 보관함이 차면 멈춘다', async () => {
+  const T = await import('../src/game/town.js'), { RECIPES } = await import('../src/data/potions.js');
+  const st = newPlayer(); st.gold = 1e12; st.awakenings = 999; assert.ok(T.build(st, 'p1', 'workshop').ok); T.finishBuilds(st, Date.now() + 1e9); const w = T.buildingAt(st, 'p1'); w.lv = 10;
+  const t = T.townOf(st), r = RECIPES.find((x) => x.lv <= 1 && !x.mats);
+  for (const h of Object.keys(r.herbs)) t.herbs[h] = 1e6;
+  t.autoBrew = r.id; const now = Date.now();
+  T.autoBrewTick(st, now); assert.ok(t.brew.length > 0);
+  T.autoBrewTick(st, now + 6 * 3600e3); // 여섯 시간 뒤
+  const made = T.wsStoreN(st); assert.ok(made > 5 * r.n, '줄 크기보다 많이 만들어졌다 ' + made);
+  assert.ok(made <= T.wsStoreCap(st));
+  T.autoBrewTick(st, now + 400 * 3600e3); assert.ok(T.wsStoreN(st) <= T.wsStoreCap(st) && T.wsStoreN(st) > T.wsStoreCap(st) - 50, '보관함 가득');
+  const c0 = countOf(st, r.id), got = T.wsTake(st, r.id, 30); assert.ok(got.ok && got.n === 30 && countOf(st, r.id) === c0 + 30);
 });
 
 console.log(`\n${n}개 통과`);
