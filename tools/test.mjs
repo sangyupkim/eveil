@@ -816,7 +816,7 @@ test('v0.49.84 탁월 파편 · 탁월 칸: 탁월은 따로 묶고, 칸이 찬 
   assert.ok(!S.canApply(it, g2.shard, [gi]).ok, '탁월 줄을 잠그면 못 붙는다');
   const r2 = S.applyShard(st, it, g2.uid, [], 5); assert.ok(r2.ok, r2.why); assert.equal(S.greatCount(it), 1); assert.ok(it.affixes.some((a) => a.id === 'maxHp' && a.great));
   // 탁월 두 줄로 떨어진 장비: 칸 2, 탁월 줄을 일반으로 덮어도 칸은 남는다
-  const it2 = makeItem(armor, { rarity: 'legend', ilvl: 100 }, st); it2.affixes.slice(0, 2).forEach((a) => (a.great = true)); it2.affixes.slice(2).forEach((a) => delete a.great); st.inv.push(it2);
+  const it2 = makeItem(armor, { rarity: 'legend', ilvl: 100 }, st); it2.affixes.slice(0, 2).forEach((a) => (a.great = true)); it2.affixes.slice(2).forEach((a) => delete a.great); delete it2.gs; st.inv.push(it2); // 무작위로 탁월이 더 붙어 나온 칸 기록은 지운다
   assert.equal(S.greatSlots(it2), 2);
   const n2 = S.makeShard({ id: it2.affixes[0].id, v: 1 }, st); st.inv.push(n2);
   assert.ok(S.applyShard(st, it2, n2.uid, [], 5).ok); assert.equal(S.greatCount(it2), 1); assert.equal(S.greatSlots(it2), 2);
