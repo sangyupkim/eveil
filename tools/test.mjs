@@ -807,7 +807,7 @@ test('v0.49.84 탁월 파편 · 탁월 칸: 탁월은 따로 묶고, 칸이 찬 
   // 탁월 등급은 130% 몫을 덜어 같은 레벨대
   const cap0 = S.gradeCap('str', 0); assert.equal(S.shardGrade('str', Math.round(cap0 * 1.25), true), 0); assert.ok(S.shardGrade('str', Math.round(cap0 * 1.25)) > 0);
   // 탁월 없는 장비: 1칸 → 탁월 파편 하나는 붙고 탁월로 남는다
-  const it = makeItem(armor, { rarity: 'legend', ilvl: 100 }, st); it.affixes = it.affixes.filter((a) => a.id !== 'vit').map((a) => ({ id: a.id, v: a.v })); st.inv.push(it);
+  const it = makeItem(armor, { rarity: 'legend', ilvl: 100 }, st); it.affixes = it.affixes.filter((a) => a.id !== 'vit' && a.id !== 'maxHp').map((a) => ({ id: a.id, v: a.v })); st.inv.push(it);
   assert.equal(S.greatSlots(it), 1);
   const r1 = S.applyShard(st, it, g1.uid, [], 5, Math.random, 0); assert.ok(r1.ok, r1.why); assert.equal(S.greatCount(it), 1);
   // 칸이 찼다: 다른 옵션 탁월 파편은 기존 탁월 줄만 바꾼다 (탁월 수 그대로)
@@ -827,20 +827,15 @@ test('v0.49.84 탁월 파편 · 탁월 칸: 탁월은 따로 묶고, 칸이 찬 
   assert.ok(multi && multi.gs === multi.affixes.filter((a) => a.great).length);
 });
 
-test('v0.49.85 파편 한꺼번에 정리: 등급 · 종류 · 높은 값 남기기 · 탁월은 고를 때만', async () => {
+test('v0.49.87 파편 여러 개 합치기: 같은 등급끼리 셋씩, 남는 것은 그대로', async () => {
   const S = await import('../src/game/shards.js');
   const st = newPlayer(); st.maxTier = 4; st.awakenings = 400;
-  const add = (id, v, great) => { const sh = S.makeShard({ id, v, great }, st); if (!S.mergeShard(st.inv, sh)) st.inv.push(sh); };
-  for (let i = 1; i <= 20; i++) { add('str', i * 3); add('vit', i * 3); }
-  add('str', 50, true); add('str', 40, true);
-  const cnt = (id, g = false) => st.inv.filter((x) => x.shard?.id === id && !!x.shard.great === g).reduce((a, x) => a + S.shardVals(x).length, 0);
-  const F = { grades: [0], ids: ['str'], keep: 3, great: false };
-  assert.equal(S.bulkPlan(st, F)[0].picks.length, 17);
-  const r = S.bulkGrind(st, F); assert.ok(r.ok && r.n === 17 && st.shardDust === r.dust);
-  assert.equal(cnt('str'), 3); assert.deepEqual(S.shardVals(st.inv.find((x) => x.shard?.id === 'str' && !x.shard.great)), [60, 57, 54]);
-  assert.equal(cnt('vit'), 20); assert.equal(cnt('str', true), 2, '탁월은 그대로');
-  const f2 = S.bulkFuse(st, { grades: [0], ids: ['vit'], keep: 0, great: false }); assert.ok(f2.ok && f2.fuses === 6 && cnt('vit') === 20 - 18 + 6);
-  assert.ok(S.bulkGrind(st, { grades: [0], ids: ['str'], keep: 0, great: true }).ok); assert.equal(cnt('str', true), 0);
+  for (let i = 1; i <= 10; i++) { const sh = S.makeShard({ id: 'vit', v: i * 3 }, st); if (!S.mergeShard(st.inv, sh)) st.inv.push(sh); }
+  const it = st.inv.find((x) => x.shard?.id === 'vit'), vis = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  assert.equal(S.fuseCount('vit', false, vis.map((i) => S.shardVals(it)[i])), 3);
+  const r = S.fuseMany(st, it.uid, vis); assert.ok(r.ok && r.fuses === 3 && r.used === 9);
+  assert.equal(st.inv.filter((x) => x.shard?.id === 'vit').reduce((a, x) => a + S.shardVals(x).length, 0), 4);
+  assert.ok(S.shardVals(st.inv.find((x) => x.shard?.id === 'vit')).includes(30), '고르지 않은 최고 값은 남는다');
 });
 
 console.log(`\n${n}개 통과`);

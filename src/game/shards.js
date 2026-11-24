@@ -185,29 +185,7 @@ export function fuseShard(st, uid, vis, rng = R) {
   return { ok: true, v, id, great: gr, grade: shardGrade(id, v, gr), from: xs };
 }
 
-// ── v0.49.85 한꺼번에 정리 (현자 「정리」 탭) ──
-// f = { grades: [등급], ids: [옵션], keep: 옵션마다 높은 값 몇 개를 남기나, great: 탁월도 포함 }
-//  묶음(가방 · 창고, 옵션 + 탁월 여부)마다 남길 값을 빼고 조건에 맞는 값을 고른다
-export function bulkPlan(st, f) {
-  const G = new Set(f.grades || []), I = new Set(f.ids || []), keep = Math.max(0, f.keep || 0), out = [];
-  const groups = new Map();
-  for (const list of [st.inv, vault().items]) for (const item of list) {
-    if (!item?.shard || !I.has(item.shard.id) || (item.shard.great && !f.great)) continue;
-    const k = item.shard.id + (item.shard.great ? '*' : '');
-    if (!groups.has(k)) groups.set(k, []);
-    groups.get(k).push({ list, item });
-  }
-  for (const [, parts] of groups) {
-    // 높은 값 keep개는 묶음들을 합쳐서 센다
-    const all = parts.flatMap((p) => shardVals(p.item).map((v, i) => ({ p, i, v }))).sort((a, b) => b.v - a.v);
-    const pick = all.slice(keep).filter((x) => G.has(shardGrade(x.p.item.shard.id, x.v, x.p.item.shard.great)));
-    if (!pick.length) continue;
-    const great = !!parts[0].item.shard.great, id = parts[0].item.shard.id;
-    out.push({ id, great, total: all.length, picks: pick, dust: pick.reduce((a, x) => a + dustOf(shardGrade(id, x.v, great), great), 0) });
-  }
-  return out;
-}
-// 고른 값들을 묶음에서 빼기 (한 번에)
+// v0.49.87 고른 값들을 한 번에 합치기: 같은 등급끼리 낮은 값부터 셋씩 (남는 한두 개는 그대로)
 function dropPicks(st, picks) {
   const by = new Map(); for (const x of picks) { if (!by.has(x.p.item)) by.set(x.p.item, { p: x.p, idx: new Set() }); by.get(x.p.item).idx.add(x.i); }
   let vch = false;
@@ -218,25 +196,20 @@ function dropPicks(st, picks) {
   }
   if (vch) vaultSave();
 }
-export function bulkGrind(st, f) {
-  const plan = bulkPlan(st, f); let dust = 0, n = 0;
-  for (const g of plan) { dust += g.dust; n += g.picks.length; dropPicks(st, g.picks); }
-  st.shardDust = (st.shardDust || 0) + dust;
-  return { ok: n > 0, n, dust, why: n ? '' : '정리할 파편이 없습니다' };
+export function fuseMany(st, uid, vis, rng = R) {
+  const f = findShard(st, uid); if (!f) return { ok: false, why: '파편을 고르세요' };
+  const vs = shardVals(f.item), id = f.item.shard.id, gr = !!f.item.shard.great, p = { list: f.list, item: f.item };
+  const byG = new Map();
+  for (const i of new Set(vis || [])) { if (vs[i] == null) continue; const g = shardGrade(id, vs[i], gr); if (!byG.has(g)) byG.set(g, []); byG.get(g).push({ p, i, v: vs[i] }); }
+  const take = [], made = [];
+  for (const xs of byG.values()) { xs.sort((a, b) => a.v - b.v); for (let k = 0; k + 3 <= xs.length; k += 3) { const t = xs.slice(k, k + 3); take.push(...t); made.push(fuseValue(st, id, gr, t.map((x) => x.v), rng)); } }
+  if (!made.length) return { ok: false, why: '같은 등급 셋이 필요합니다' };
+  dropPicks(st, take);
+  for (const v of made) putShard(st, makeShard({ id, v, great: gr }, st));
+  return { ok: true, id, great: gr, fuses: made.length, used: take.length, best: Math.max(...made) };
 }
-// 자동 합치기: 고른 값들을 같은 등급끼리 낮은 값부터 셋씩 합친다 (남는 한두 개는 그대로)
-export function bulkFuse(st, f, rng = R) {
-  const plan = bulkPlan(st, f); let fuses = 0, used = 0;
-  for (const g of plan) {
-    const byG = new Map(); for (const x of g.picks) { const gr = shardGrade(g.id, x.v, g.great); if (!byG.has(gr)) byG.set(gr, []); byG.get(gr).push(x); }
-    const take = [], made = [];
-    for (const xs of byG.values()) { xs.sort((a, b) => a.v - b.v); for (let k = 0; k + 3 <= xs.length; k += 3) { const t = xs.slice(k, k + 3); take.push(...t); made.push(fuseValue(st, g.id, g.great, t.map((x) => x.v), rng)); } }
-    if (!made.length) continue;
-    dropPicks(st, take); fuses += made.length; used += take.length;
-    for (const v of made) putShard(st, makeShard({ id: g.id, v, great: g.great }, st));
-  }
-  return { ok: fuses > 0, fuses, used, why: fuses ? '' : '셋씩 합칠 파편이 없습니다' };
-}
+// 고른 수 중 합쳐지는 수 (같은 등급 셋씩)
+export function fuseCount(id, great, vals) { const c = new Map(); for (const v of vals) { const g = shardGrade(id, v, great); c.set(g, (c.get(g) || 0) + 1); } let n = 0; for (const x of c.values()) n += Math.floor(x / 3); return n; }
 // 뽑기: 가루로 고른 등급의 무작위 옵션 파편 (등급 범위 안, 낮은 값이 더 잘 나온다)
 export function pullShard(st, g, rng = R) {
   if (g > pullGrade(st)) return { ok: false, why: pullResearch(st) ? '아직 뽑을 수 없는 등급입니다' : '연구소 「파편 연성」이 필요합니다' };
