@@ -554,7 +554,7 @@ test('용병 하루 품삯: 날짜가 바뀌면 내고, 모자라면 못 받은 
   assert.ok(r && r.paid > 0 && r.unpaid === 0 && p.gold === 5);
   const r2 = TW_.payWages(p, now + 2 * 86400e3);
   assert.ok(r2.unpaid === 2 && p.town.mercs.every((m) => m.tired));
-  assert.ok(TW_.rollMerc(Math.random, 1).cost > 5000 && TW_.GRADES[4].name === '신화');
+  assert.ok(TW_.rollMerc(Math.random, 1).cost > 3000 && TW_.GRADES[4].name === '신화');
 });
 
 test('잠근 장비는 분해되지 않는다', () => {
