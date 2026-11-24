@@ -57,6 +57,7 @@ export function makeItem(baseId, { rarity = 'common', ilvl = 1, qty = 1, favor =
     if (ilvl > 500 && MUGAN_FLAT.has(id)) v = Math.round(v * muganK(ilvl)); // v0.49.75 무간지옥 장비: 고정값 옵션은 층마다 ×1.15
     it.affixes.push(great ? { id, v, great: true } : { id, v });
   }
+  { const g = it.affixes.filter((x) => x.great).length; if (g > 1) it.gs = g; } // v0.49.84 탁월 칸 (탁월 파편으로 다시 채울 수 있는 수)
   if (rarity === 'legend' || rarity === 'myth') { it.title = pick(rarity === 'myth' ? MYTH_NAMES : LEGEND_NAMES, rng); it.unique = Math.floor(rng() * UNIQUE_BASE); }
   // v0.44.41 혼합 전용 장비: 무기 · 보조 · 장신구 전설 · 신화의 20%는 두 스탯 전용 (두 스탯 조건 · 두 스탯 옵션 · 조합 고유 효과)
   if ((rarity === 'legend' || rarity === 'myth') && ['weapon', 'offhand', 'amulet', 'ring'].includes(slot) && mix !== 'none' && rng() < 0.2) {
@@ -106,7 +107,7 @@ export function itemName(it) {
 const HIGH_WORDS = new Set(HIGH_TIERS.map((x) => x[1]));
 const bname = (it) => { const n = BASES[it.base].name; if (!(it.ilvl > 500)) return n; const w = n.split(' '), M = muganName(it.ilvl); const rest = HIGH_WORDS.has(w[0]) ? w.slice(1).join(' ') : n; return `${M.name} ${rest}${M.roman ? ' ' + M.roman : ''}`; };
 function baseName(it) {
-  if (it.shard) return `능력치 파편: ${AFFIXES[it.shard.id].text.replace('{v}', it.shard.v)}`;
+  if (it.shard) return `${it.shard.great ? '탁월 ' : ''}능력치 파편: ${AFFIXES[it.shard.id].text.replace('{v}', it.shard.v)}`;
   if (it.book) return `스킬북: ${SKILLS[it.book].name}`;
   const base = BASES[it.base];
   if (base.type === 'potion' || base.stack) return base.name;
@@ -118,7 +119,7 @@ function baseName(it) {
 }
 
 export function itemColor(it) {
-  if (it.shard) return '#c58cff';
+  if (it.shard) return it.shard.great ? '#ffb84a' : '#c58cff';
   if (it.book) return BOOK_TIERS[SKILLS[it.book].tier].color;
   if (!it.rarity) return '#e8e2d4';
   return RARITY[it.rarity].color;

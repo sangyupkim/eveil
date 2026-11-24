@@ -3,7 +3,7 @@
 import { BASES } from '../data/items.js';
 import { addItem, bagSize } from './inventory.js';
 import { cloud } from '../net/cloud.js';
-import { mergeShard } from './shards.js';
+import { mergeShard, sameShard } from './shards.js';
 import { isStack, sameStack } from './items.js';
 
 export const VAULT_BASE = 100;
@@ -58,7 +58,7 @@ export function vaultPut(st, uid) {
   if (i < 0) return { ok: false };
   const it = st.inv[i];
   if (it.rarity === 'myth') it.owner ||= st.cid; // v0.44.18 신화 장비는 넣은 캐릭터만 다시 꺼낼 수 있다
-  const same = stack(it) && V.items.find((x) => sameStack(x, it)), shSame = it.shard && V.items.some((x) => x?.shard?.id === it.shard.id);
+  const same = stack(it) && V.items.find((x) => sameStack(x, it)), shSame = it.shard && V.items.some((x) => sameShard(x, it));
   if (!same && !shSame && V.items.length >= vaultSize(st)) return { ok: false, why: '창고가 가득 찼습니다' };
   st.inv.splice(i, 1);
   if (shSame) mergeShard(V.items, it); else if (same) same.qty = (same.qty || 1) + (it.qty || 1); else V.items.push(it);
@@ -84,7 +84,7 @@ export function vaultTake(st, idx) {
   if (it.rarity === 'myth' && it.owner && it.owner !== st.cid) return { ok: false, why: '다른 캐릭터의 신화 장비는 꺼낼 수 없습니다' };
   const copy = { ...it, uid: st.nextUid++ };
   delete copy.loot; // 창고에서 꺼낸 것은 자동 판매하지 않는다
-  if (!stack(it) && !(it.shard && st.inv.some((x) => x.shard?.id === it.shard.id)) && st.inv.length >= bagSize(st)) return { ok: false, why: '가방이 가득 찼습니다' };
+  if (!stack(it) && !(it.shard && st.inv.some((x) => sameShard(x, it))) && st.inv.length >= bagSize(st)) return { ok: false, why: '가방이 가득 찼습니다' };
   if (!addItem(st, copy)) return { ok: false, why: '가방이 가득 찼습니다' };
   V.items.splice(idx, 1);
   save();

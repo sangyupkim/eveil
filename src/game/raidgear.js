@@ -1,7 +1,7 @@
 // v0.50 왕좌 원정 상점 물건으로 장비 손질 (대장간 「손질」 탭): 옵션 다시 굴림 · 구멍 뚫기 · 각인 새기기 · 각인 추출 · 장비 파편 추출
 import { BASES, AFFIXES, RARITY, affixFits, UTILITY_AFFIX } from '../data/items.js';
 import { ENGRAVE } from '../data/raid.js';
-import { makeShard } from './shards.js';
+import { makeShard, keepSlots } from './shards.js';
 import { makeItem } from './items.js';
 import { countOf, takeOne, addItem } from './inventory.js';
 import { R } from './rng.js';
@@ -19,7 +19,7 @@ export function rerollAffix(st, it, idx, rng = R) {
   takeOne(st, 't_reroll');
   const id = pool[Math.floor(rng() * pool.length)], a = AFFIXES[id], mult = RARITY[it.rarity]?.mult || 1, max = Math.max(a.min, a.max(it.ilvl || 1) * mult);
   const v = Math.max(a.min, Math.round(a.min + (it.rarity === 'myth' ? 0.5 + rng() * 0.5 : rng()) * (max - a.min)));
-  const before = { ...cur }; it.affixes[idx] = mythLine ? { id, v, myth: true } : { id, v };
+  const before = { ...cur }; keepSlots(it); it.affixes[idx] = mythLine ? { id, v, myth: true } : { id, v };
   return { ok: true, before, after: it.affixes[idx] };
 }
 // 구멍 뚫기 (장비마다 최대 3)
@@ -52,7 +52,7 @@ export function extractShard(st, it, idx, remove) {
   const a = it.affixes?.[idx]; if (!a) return { ok: false, why: '옵션이 없습니다' };
   if (it.lock) return { ok: false, why: '잠근 장비입니다' };
   if (countOf(st, 't_shardx') < 1) return { ok: false, why: '장비 파편 추출권이 없습니다' };
-  const sh = makeShard({ id: a.id, v: a.v }, st);
+  const sh = makeShard({ id: a.id, v: a.v, great: !!a.great }, st); // v0.49.84 탁월 줄은 탁월 파편
   takeOne(st, 't_shardx'); remove(); if (!addItem(st, sh)) st.inv.push(sh);
   return { ok: true, shard: sh };
 }

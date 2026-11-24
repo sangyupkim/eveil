@@ -796,4 +796,35 @@ test('v0.49.83 파편 등급: 수치로 등급 · 뽑기는 연구와 세계 단
   const ap = S.applyShard(st, it, hi.uid, [], 5); assert.ok(!ap.ok && /등급/.test(ap.why), ap.why);
 });
 
+test('v0.49.84 탁월 파편 · 탁월 칸: 탁월은 따로 묶고, 칸이 찬 장비에는 탁월을 늘리지 못한다', async () => {
+  const S = await import('../src/game/shards.js');
+  const st = newPlayer(); st.maxTier = 4; st.awakenings = 400; st.gold = 1e12; st.town = st.town || {}; st.town.ore = 1e9;
+  const armor = Object.keys(BASES).find((k) => BASES[k].slot === 'armor' && !BASES[k].req?.int);
+  // 탁월 줄 → 탁월 파편, 일반과 다른 칸
+  const g1 = S.makeShard({ id: 'vit', v: 50, great: true }, st), n1 = S.makeShard({ id: 'vit', v: 40 }, st);
+  st.inv.push(g1); assert.ok(!S.mergeShard(st.inv, n1)); st.inv.push(n1);
+  assert.ok(S.mergeShard(st.inv, S.makeShard({ id: 'vit', v: 45, great: true }, st)) && S.shardVals(g1).length === 2);
+  // 탁월 등급은 130% 몫을 덜어 같은 레벨대
+  const cap0 = S.gradeCap('str', 0); assert.equal(S.shardGrade('str', Math.round(cap0 * 1.25), true), 0); assert.ok(S.shardGrade('str', Math.round(cap0 * 1.25)) > 0);
+  // 탁월 없는 장비: 1칸 → 탁월 파편 하나는 붙고 탁월로 남는다
+  const it = makeItem(armor, { rarity: 'legend', ilvl: 100 }, st); it.affixes = it.affixes.filter((a) => a.id !== 'vit').map((a) => ({ id: a.id, v: a.v })); st.inv.push(it);
+  assert.equal(S.greatSlots(it), 1);
+  const r1 = S.applyShard(st, it, g1.uid, [], 5, Math.random, 0); assert.ok(r1.ok, r1.why); assert.equal(S.greatCount(it), 1);
+  // 칸이 찼다: 다른 옵션 탁월 파편은 기존 탁월 줄만 바꾼다 (탁월 수 그대로)
+  const g2 = S.makeShard({ id: 'maxHp', v: 300, great: true }, st); st.inv.push(g2);
+  const gi = it.affixes.findIndex((a) => a.great);
+  assert.ok(!S.canApply(it, g2.shard, [gi]).ok, '탁월 줄을 잠그면 못 붙는다');
+  const r2 = S.applyShard(st, it, g2.uid, [], 5); assert.ok(r2.ok, r2.why); assert.equal(S.greatCount(it), 1); assert.ok(it.affixes.some((a) => a.id === 'maxHp' && a.great));
+  // 탁월 두 줄로 떨어진 장비: 칸 2, 탁월 줄을 일반으로 덮어도 칸은 남는다
+  const it2 = makeItem(armor, { rarity: 'legend', ilvl: 100 }, st); it2.affixes.slice(0, 2).forEach((a) => (a.great = true)); it2.affixes.slice(2).forEach((a) => delete a.great); st.inv.push(it2);
+  assert.equal(S.greatSlots(it2), 2);
+  const n2 = S.makeShard({ id: it2.affixes[0].id, v: 1 }, st); st.inv.push(n2);
+  assert.ok(S.applyShard(st, it2, n2.uid, [], 5).ok); assert.equal(S.greatCount(it2), 1); assert.equal(S.greatSlots(it2), 2);
+  // 갈기: 탁월은 가루 2배
+  const d0 = st.shardDust || 0, gg = st.inv.find((x) => x.shard?.great), gv = S.shardVals(gg)[0], want = S.dustOf(S.shardGrade(gg.shard.id, gv, true), true); const gr = S.grindShard(st, gg.uid, [0]); assert.ok(gr.ok && gr.dust === want && want === 2 * S.dustOf(S.shardGrade(gg.shard.id, gv, true))); assert.equal(st.shardDust, d0 + want);
+  // 떨어질 때 탁월 두 줄 이상이면 칸이 저장된다
+  let multi = null; for (let i = 0; i < 4000 && !multi; i++) { const x = makeItem(armor, { rarity: 'myth', ilvl: 300 }, st); if (x.affixes.filter((a) => a.great).length > 1) multi = x; }
+  assert.ok(multi && multi.gs === multi.affixes.filter((a) => a.great).length);
+});
+
 console.log(`\n${n}개 통과`);

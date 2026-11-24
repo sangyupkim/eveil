@@ -20,9 +20,11 @@ export const shardCost = (it) => ({ gold: Math.round(300 * (1 + (it.ilvl || 1) /
 export const shardVals = (it) => (it?.vals?.length ? it.vals : it?.shard ? [it.shard.v] : []);
 const setVals = (it, vs) => { vs.sort((a, b) => b - a); if (vs.length > 1) it.vals = vs; else delete it.vals; it.shard.v = vs[0]; };
 // list 안에 같은 옵션 묶음이 있으면 거기에 더한다 (더했으면 true)
+// v0.49.84 같은 묶음 = 같은 옵션 · 같은 탁월 여부 (탁월 파편은 따로)
+export const sameShard = (a, b) => !!a?.shard && !!b?.shard && a.shard.id === b.shard.id && !!a.shard.great === !!b.shard.great;
 export function mergeShard(list, it) {
   if (!it?.shard) return false;
-  const same = list.find((x) => x && x !== it && x.shard && x.shard.id === it.shard.id);
+  const same = list.find((x) => x && x !== it && sameShard(x, it));
   if (!same) return false;
   setVals(same, [...shardVals(same), ...shardVals(it)]);
   return true;
@@ -30,7 +32,7 @@ export function mergeShard(list, it) {
 // 예전 저장: 흩어진 파편을 옵션마다 한 칸으로 (바뀌었으면 true)
 export function packShards(list) {
   let ch = false;
-  for (let i = list.length - 1; i >= 0; i--) { const it = list[i]; if (it?.shard && list.slice(0, i).some((x) => x?.shard?.id === it.shard.id)) { mergeShard(list.slice(0, i), it); list.splice(i, 1); ch = true; } }
+  for (let i = list.length - 1; i >= 0; i--) { const it = list[i]; if (it?.shard && list.slice(0, i).some((x) => sameShard(x, it))) { mergeShard(list.slice(0, i), it); list.splice(i, 1); ch = true; } }
   return ch;
 }
 // 묶음에서 값 하나 빼기 (vi번째) · 다 쓰면 칸을 비운다
@@ -38,7 +40,11 @@ export function takeShardVal(list, it, vi = 0) {
   const vs = [...shardVals(it)]; vs.splice(vi, 1);
   if (!vs.length) { const i = list.indexOf(it); if (i >= 0) list.splice(i, 1); } else setVals(it, vs);
 }
-export const makeShard = (a, st = null) => ({ uid: st ? st.nextUid++ : Math.floor(Math.random() * 1e9), base: 'shard', shard: { id: a.id, v: a.v } });
+export const makeShard = (a, st = null) => ({ uid: st ? st.nextUid++ : Math.floor(Math.random() * 1e9), base: 'shard', shard: a.great ? { id: a.id, v: a.v, great: true } : { id: a.id, v: a.v } }); // v0.49.84 탁월 줄 → 탁월 파편
+// v0.49.84 탁월 칸: 떨어질 때 붙은 탁월 수(없으면 1). 바꾸기 전에 it.gs로 남겨 둔다 (예전 장비는 지금 붙은 탁월 수)
+export const greatCount = (it) => (it?.affixes || []).filter((a) => a.great).length;
+export const greatSlots = (it) => Math.max(1, it?.gs || 0, greatCount(it));
+export const keepSlots = (it) => { const n = greatSlots(it); if (n > 1) it.gs = n; };
 export const isShard = (it) => !!it?.shard;
 
 // 장비의 옵션 중 하나로 파편 만들기 (옵션이 없으면 null)
@@ -65,6 +71,11 @@ export function canApply(it, sh, locks = []) {
   const same = it.affixes.findIndex((x) => x.id === sh.id);
   if (same >= 0 && locks.includes(same)) return { ok: false, why: '잠근 옵션과 같은 옵션입니다' };
   if (same < 0 && it.affixes.every((_, i) => locks.includes(i))) return { ok: false, why: '모든 옵션이 잠겨 있습니다' };
+  // v0.49.84 탁월 파편: 탁월 칸이 남았거나, 바꿀 탁월 줄이 있어야 (같은 옵션 줄이 탁월이면 그 줄)
+  if (sh.great && !(same >= 0 && it.affixes[same].great) && greatCount(it) >= greatSlots(it)) {
+    if (same >= 0 || !it.affixes.some((a, i) => a.great && !locks.includes(i))) return { ok: false, why: '탁월 칸이 가득 찼습니다' };
+    return { ok: true, same, greatOnly: true };
+  }
   return { ok: true, same };
 }
 
@@ -73,20 +84,21 @@ export function applyShard(st, it, shardUid, locks = [], smithLv = 0, rng = R, v
   // 가방 · 창고 어디의 파편이든 (v0.41.3)
   const V = vault().items, inInv = st.inv.some((x) => x.uid === shardUid), list = inInv ? st.inv : V;
   const i = list.findIndex((x) => x?.uid === shardUid);
-  const item = list[i], vals = shardVals(item), sh = item?.shard && vals[vi] != null ? { id: item.shard.id, v: vals[vi] } : null;
+  const item = list[i], vals = shardVals(item), sh = item?.shard && vals[vi] != null ? { id: item.shard.id, v: vals[vi], great: !!item.shard.great } : null;
   if (!sh) return { ok: false, why: '파편이 없습니다' };
   if (locks.length > lockMax(smithLv)) return { ok: false, why: '대장간 단계를 올려야 더 잠글 수 있습니다' };
   const c = canApply(it, sh, locks);
   if (!c.ok) return c;
-  if (shardGrade(sh.id, sh.v) > useGrade(st)) return { ok: false, why: `${gradeName(shardGrade(sh.id, sh.v))} 등급은 아직 쓸 수 없습니다` }; // v0.49.83
+  if (shardGrade(sh.id, sh.v, sh.great) > useGrade(st)) return { ok: false, why: `${gradeName(shardGrade(sh.id, sh.v, sh.great))} 등급은 아직 쓸 수 없습니다` }; // v0.49.83
   const cost = shardCost(it), t = st.town;
   if (st.gold < cost.gold) return { ok: false, why: '금화가 모자랍니다' };
   if ((t?.ore || 0) < cost.ore) return { ok: false, why: '강화석이 모자랍니다' };
   st.gold -= cost.gold; t.ore -= cost.ore;
-  const free = it.affixes.map((_, k) => k).filter((k) => !locks.includes(k));
+  const free = it.affixes.map((_, k) => k).filter((k) => !locks.includes(k) && (!c.greatOnly || it.affixes[k].great));
   const k = c.same >= 0 ? c.same : pick(free, rng);
   const old = it.affixes[k];
-  it.affixes[k] = { id: sh.id, v: sh.v };
+  keepSlots(it);
+  it.affixes[k] = sh.great ? { id: sh.id, v: sh.v, great: true } : { id: sh.id, v: sh.v };
   capAffixes(it); // v0.44.62 예전 파편도 지금 상한까지
   takeShardVal(list, item, vi); if (!inInv) vaultSave();
   return { ok: true, old, now: it.affixes[k] };
@@ -108,7 +120,7 @@ export function gradeCap(id, g) {
   const L = gradeLv(g);
   return Math.round(a.max(L) * RARITY.myth.mult * (MUGAN_FLAT.has(id) ? muganK(L) : 1));
 }
-export function shardGrade(id, v) { for (let g = 0; g < 2000; g++) if (v <= gradeCap(id, g)) return g; return 2000; }
+export function shardGrade(id, v, great = false) { if (great) v = v / 1.3; /* v0.49.84 탁월은 최대치 130%까지라 그만큼 덜어 같은 레벨대 등급 */ for (let g = 0; g < 2000; g++) if (v <= gradeCap(id, g)) return g; return 2000; }
 export const gradeName = (g) => (g < 4 ? SG_NAMES[g] : `무간 ${g - 3}층`);
 const SG_COLOR = ['#a8d880', '#6cb0ff', '#c58cff', '#ffa84a', '#ff5a6a'];
 export const gradeColor = (g) => SG_COLOR[Math.min(4, Math.max(0, g))];
@@ -123,7 +135,7 @@ export function levelCap(id, st) {
   return Math.max(a.min, Math.round(a.max(L) * RARITY.legend.mult * (MUGAN_FLAT.has(id) ? muganK(L) : 1)));
 }
 // 가루: 갈면 나오는 양 · 뽑기 값
-export const dustOf = (g) => (g < 4 ? [2, 5, 12, 30][g] : Math.round(30 * Math.pow(1.25, g - 3)));
+export const dustOf = (g, great = false) => (g < 4 ? [2, 5, 12, 30][g] : Math.round(30 * Math.pow(1.25, g - 3))) * (great ? 2 : 1); // 탁월은 2배
 export const pullCost = (g) => dustOf(g) * 4;
 export const SHARD_PULL_IDS = Object.keys(AFFIXES).filter((id) => { const a = AFFIXES[id]; return !a.retired && !a.legendOnly && !a.mythOnly; });
 // 이 등급에서 뽑을 수 있는 옵션과 수치 범위 [lo, hi]
@@ -147,7 +159,8 @@ export function grindShard(st, uid, vis) {
   const sel = [...new Set(vis)].filter((i) => vs[i] != null).sort((a, b) => b - a);
   if (!sel.length) return { ok: false, why: '파편을 고르세요' };
   let dust = 0;
-  for (const i of sel) { dust += dustOf(shardGrade(id, shardVals(f.item)[i])); takeShardVal(f.list, f.item, i); }
+  const gr = !!f.item.shard.great;
+  for (const i of sel) { dust += dustOf(shardGrade(id, shardVals(f.item)[i], gr), gr); takeShardVal(f.list, f.item, i); }
   st.shardDust = (st.shardDust || 0) + dust; if (f.inVault) vaultSave();
   return { ok: true, dust, n: sel.length };
 }
@@ -160,12 +173,12 @@ export function fuseShard(st, uid, vis, rng = R) {
   if (xs.some((x) => x == null)) return { ok: false, why: '같은 옵션 셋을 고르세요' };
   const avg = xs.reduce((s, x) => s + x, 0) / 3, mx = Math.max(...xs), mn = Math.min(...xs), r = rng(), u = rng();
   let v = r < 0.6 ? avg * (0.9 + 0.2 * u) : r < 0.85 ? avg + (mx - avg) * u : r < 0.95 ? mx * (1.05 + 0.1 * u) : mn * (0.75 + 0.25 * u);
-  const cap = Math.max(mx, Math.min(gradeCap(id, useGrade(st)), levelCap(id, st)));
+  const gr = !!f.item.shard.great, gk = gr ? 1.3 : 1, cap = Math.max(mx, Math.round(Math.min(gradeCap(id, useGrade(st)), levelCap(id, st)) * gk)); // 탁월끼리 합치면 탁월
   v = Math.max(a.min, Math.min(cap, Math.round(v)));
   for (const i of sel.sort((x, y) => y - x)) takeShardVal(f.list, f.item, i);
   if (f.inVault) vaultSave();
-  const sh = makeShard({ id, v }, st); putShard(st, sh);
-  return { ok: true, v, id, grade: shardGrade(id, v), from: xs };
+  const sh = makeShard({ id, v, great: gr }, st); putShard(st, sh);
+  return { ok: true, v, id, great: gr, grade: shardGrade(id, v, gr), from: xs };
 }
 // 뽑기: 가루로 고른 등급의 무작위 옵션 파편 (등급 범위 안, 낮은 값이 더 잘 나온다)
 export function pullShard(st, g, rng = R) {
