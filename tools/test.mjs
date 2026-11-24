@@ -808,7 +808,7 @@ test('v0.49.84 탁월 파편 · 탁월 칸: 탁월은 따로 묶고, 칸이 찬 
   const cap0 = S.gradeCap('str', 0); assert.equal(S.shardGrade('str', Math.round(cap0 * 1.25), true), 0); assert.ok(S.shardGrade('str', Math.round(cap0 * 1.25)) > 0);
   // 탁월 없는 장비: 1칸 → 탁월 파편 하나는 붙고 탁월로 남는다
   const it = makeItem(armor, { rarity: 'legend', ilvl: 100 }, st); it.affixes = it.affixes.filter((a) => a.id !== 'vit' && a.id !== 'maxHp').map((a) => ({ id: a.id, v: a.v })); st.inv.push(it);
-  assert.equal(S.greatSlots(it), 1);
+  delete it.gs; assert.equal(S.greatSlots(it), 1); // 무작위 장비가 탁월 두 줄로 나오면 칸(gs)이 남아 있어서
   const r1 = S.applyShard(st, it, g1.uid, [], 5, Math.random, 0); assert.ok(r1.ok, r1.why); assert.equal(S.greatCount(it), 1);
   // 칸이 찼다: 다른 옵션 탁월 파편은 기존 탁월 줄만 바꾼다 (탁월 수 그대로)
   const g2 = S.makeShard({ id: 'maxHp', v: 300, great: true }, st); st.inv.push(g2);
