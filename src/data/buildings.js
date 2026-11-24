@@ -140,6 +140,7 @@ export const RESEARCH = {
   essFlow: { lab: 15, name: '정수 순환', text: (lv) => `정수 올리기 재료 ${5 - Math.floor(lv / 5)}개`, k: 0 },
   hordeUp: { lab: 16, name: '군세 대비', text: (lv) => `군세 토벌 보상 +${(lv * 2.5).toFixed(1)}%`, k: 0.025 },
   alch: { lab: 17, name: '연금 공학', text: (lv) => `물약 · 영약 · 식량이 더 나올 확률 +${lv * 3}%`, k: 0.03 },
+  shardLab: { lab: 6, max: 5, name: '파편 연성', text: (lv) => `현자 파편 뽑기 ${['평온', '악몽', '지옥', '혼돈', '무간'][lv - 1]} 등급까지`, k: 0 }, // v0.49.83 (뽑기는 연 세계 단계까지만)
   mercSafe: { lab: 18, name: '용병 정예화', text: (lv) => `파견 사망 확률 -${lv * 4}%`, k: 0.04 },
 };
 // v0.49.73 향로 수: 향로 연금술 1 · 4 · 7 · 10단계에 하나씩

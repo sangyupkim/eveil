@@ -769,4 +769,31 @@ test('여관 침대: 한 번 누운 용병은 다 쉴 때까지 그대로 (목�
   assert.ok(changes < 15, '침대 주인이 너무 자주 바뀜 ' + changes);
 });
 
+test('v0.49.83 파편 등급: 수치로 등급 · 뽑기는 연구와 세계 단계 중 낮은 쪽 · 내 레벨을 넘는 수치는 나오지 않는다', async () => {
+  const S = await import('../src/game/shards.js');
+  // 등급은 수치로: 레벨 옵션은 세계 단계 레벨, 일찍 끝나는 % 옵션(치명타)은 최고치를 나눠서
+  assert.equal(S.shardGrade('str', 10), 0);
+  assert.ok(S.shardGrade('str', S.gradeCap('str', 1) + 1) === 2);
+  assert.ok(S.SG_CAPPED.has('crit') && !S.SG_CAPPED.has('str'));
+  assert.ok(S.shardGrade('crit', 10) === 0 && S.shardGrade('crit', 20) === 1 && S.shardGrade('crit', 30) === 3);
+  assert.ok(S.shardGrade('str', S.gradeCap('str', 3) + 1) === 4, '혼돈 위는 무간');
+  // 연구가 없으면 못 뽑는다 · 연구가 높아도 연 세계 단계까지만
+  const st = newPlayer(); st.awakenings = 60; st.maxTier = 1; st.shardDust = 10000;
+  assert.equal(S.pullGrade(st), -1); assert.ok(!S.pullShard(st, 0).ok);
+  st.town = st.town || {}; st.town.research = { shardLab: 5 };
+  assert.equal(S.pullGrade(st), 0); assert.ok(!S.pullShard(st, 1).ok);
+  // 낮은 각성: 아무리 뽑아도 내 레벨 상한(전설 장비 값)을 넘지 않는다
+  let rng = 1; const R = () => ((rng = (rng * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 300; i++) { const r = S.pullShard(st, 0, R); assert.ok(r.ok, r.why); assert.ok(r.v <= S.levelCap(r.id, st), `${r.id} ${r.v} > ${S.levelCap(r.id, st)}`); }
+  // 갈기 → 가루, 합치기는 같은 옵션 셋 · 상한을 넘지 않는다
+  const sh = st.inv.find((x) => x.shard && S.shardVals(x).length >= 3);
+  const r = S.fuseShard(st, sh.uid, [0, 1, 2], R); assert.ok(r.ok, r.why);
+  assert.ok(r.v <= Math.max(...r.from, Math.min(S.gradeCap(r.id, S.useGrade(st)), S.levelCap(r.id, st))));
+  const d0 = st.shardDust, g = st.inv.find((x) => x.shard); const gr = S.grindShard(st, g.uid, [0]); assert.ok(gr.ok && st.shardDust === d0 + gr.dust && gr.dust > 0);
+  // 쓸 수 있는 등급보다 높은 파편은 장비에 붙지 않는다 (창고로 넘겨받은 높은 파편)
+  const it = makeItem(Object.keys(BASES).find((k) => BASES[k].slot === 'armor'), { rarity: 'rare', ilvl: 10 }, st); st.inv.push(it);
+  const hi = S.makeShard({ id: 'str', v: S.gradeCap('str', 2) }, st); st.inv.push(hi); st.gold = 1e9; st.town.ore = 1e6;
+  const ap = S.applyShard(st, it, hi.uid, [], 5); assert.ok(!ap.ok && /등급/.test(ap.why), ap.why);
+});
+
 console.log(`\n${n}개 통과`);

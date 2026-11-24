@@ -666,7 +666,7 @@ export function setBonus(equip) {
 // ── 연구소 ── 한 번에 하나, 끝나는 시각으로 흐른다 (꺼 둔 동안에도)
 export const researchLv = (st, id) => townOf(st).research?.[id] || 0;
 export const researchK = (st, id) => researchLv(st, id) * RESEARCH[id].k;
-export const researchMax = (st) => researchMaxAt(findBuilding(st, 'lab')?.lv || 0);
+export const researchMax = (st, id = null) => Math.min(researchMaxAt(findBuilding(st, 'lab')?.lv || 0), RESEARCH[id]?.max ?? 99); // v0.49.83 연구마다 최고 단계(max)가 있을 수 있다
 // v0.49.73 연구소 15단계부터 두 개를 함께 (t.lab · t.lab2)
 export const labSlots = (st) => ((findBuilding(st, 'lab')?.lv || 0) >= 15 ? 2 : 1);
 export const labJobs = (st) => [townOf(st).lab, townOf(st).lab2].filter(Boolean);
@@ -678,7 +678,7 @@ export function researchStart(st, id, now = Date.now()) {
   if (labJobs(st).some((j) => j.id === id)) return { ok: false, why: '그 연구는 이미 하는 중입니다' };
   const lv = researchLv(st, id), R = RESEARCH[id];
   if (!R || lab.lv < R.lab) return { ok: false, why: `연구소 ${R?.lab}단계에서 열립니다` };
-  if (lv >= researchMax(st)) return { ok: false, why: '최고 단계입니다' };
+  if (lv >= researchMax(st, id)) return { ok: false, why: '최고 단계입니다' };
   const c = researchCost(lv, id);
   if (st.gold < c.gold) return { ok: false, why: '금화가 모자랍니다' };
   if (zoneMatTotal(st) < c.mats) return { ok: false, why: '지역 재료가 모자랍니다' };

@@ -37,7 +37,7 @@ export function setupInput(world, stage, windows) {
   const talk = (npc) => {
     if (npc === world.npc) windows.talkTo(['shop'], 'shop');
     else if (npc === world.guard) windows.talkTo(['town'], 'quest', 'build');
-    else if (npc === world.sage) windows.show('dex');
+    else if (npc === world.sage) windows.talkTo(['sage'], 'sage'); // v0.49.83 현자 창 (도감 · 파편 · 뽑기)
     else if (npc === world.gemNpc) windows.talkTo(['gems'], 'gems');
     else windows.talkTo(['shop'], 'shop');
   };

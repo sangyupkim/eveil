@@ -55,7 +55,7 @@ const NEED_NAMES = { melee: '근접 무기 (검 · 도끼 · 둔기 · 단검 ·
 // v0.50 초월 강화 숫자 색: +21 금색 · +50 붉은 금 · +100 무지개
 const plusCls = (n) => n >= 100 ? ' plusRb' : n >= 50 ? ' plusRg' : n > 20 ? ' plusG' : '';
 import { GEMS, GEM_GRADES, gemId } from '../data/legends.js';
-import { applyShard, canApply, lockMax, shardCost, shardVals } from '../game/shards.js';
+import { applyShard, canApply, lockMax, shardCost, shardVals, shardGrade, gradeName as sgName, gradeColor, useGrade, pullGrade, pullResearch, pullCost as sgCost, pullPool, dustOf, grindShard, fuseShard, pullShard } from '../game/shards.js';
 import { HERBS, HERB_IDS, GROW_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
 import { RARITY_IDS, junkCount, discardJunk } from '../game/town.js';
 import { MYTH_CHANCE, wageTotal, mercWage, buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, brewQueue, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
@@ -93,7 +93,7 @@ export function showNotes() {
 }
 const repickCost = (t) => 2000 * (t.tier + 1) ** 2;
 const nextTitle = (st) => { const i = TITLE_AT.findIndex((n) => st.awakenings < n); return i < 0 ? '' : ` · ${i + 1}차 각성 ${titleName(titleKey(st.stats, 10, i), i)}까지 ${TITLE_AT[i] - st.awakenings}`; };
-const TITLES = { raid: '왕좌 원정', arts: '수련 비전', gems: '보석상', map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', news: '공지 · 패치', menu: '메뉴', rank: '랭킹', log: '기록' };
+const TITLES = { sage: '현자 에라', raid: '왕좌 원정', arts: '수련 비전', gems: '보석상', map: '월드맵', inv: '가방 · 장비', skills: '스킬', char: '능력 · 성향', quest: '퀘스트', dex: '도감 · 기록', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', news: '공지 · 패치', menu: '메뉴', rank: '랭킹', log: '기록' };
 // 진행 게이지 (시작 ~ 끝 시각). 예전 저장은 시작 시각이 없어 dur로 어림
 const gauge = (from, until, dur = 3600000, color = '#7ad0ff') => { const f = from || until - dur, k = Math.max(0, Math.min(1, (Date.now() - f) / Math.max(1, until - f))); return `<div class="mini" style="margin-top:3px"><i style="width:${(k * 100).toFixed(1)}%;background:linear-gradient(#bfe8ff,${color})"></i></div>`; };
 // 보석 합치기 · 빼기 값
@@ -108,8 +108,8 @@ const COL = '<!--COL-->';
 // 칸 위 작은 글: 능력치 파편은 옵션을 보여 준다
 const lk = (it) => (it?.lock ? '<span class="lk"></span>' : ''); // v0.45 잠근 아이템 표시
 const cellTag = (it) => { if (!it?.shard) return ''; const t = affixText(it.shard), v = t.match(/[+-]?[\d.]+%?/), n = it.vals?.length || 1; return `<span class="ctag">${t.split(' ')[0].slice(0, 2)}<br>${v ? v[0] : ''}</span>${n > 1 ? `<span class="q">${n}</span>` : ''}`; }; // v0.49.11 묶음이면 개수 // v0.45 칸 안에 들어가게 짧게 (골드 획득 +367% → 골드+367%)
-const NPC_ONLY = ['shop', 'town', 'vault', 'gems', 'raid'];
-const TAB_ORDER = ['raid', 'gems', 'map', 'inv', 'vault', 'skills', 'char', 'arts', 'quest', 'log', 'dex', 'rank', 'town', 'shop', 'guide', 'news', 'menu'];
+const NPC_ONLY = ['shop', 'town', 'vault', 'gems', 'raid', 'sage'];
+const TAB_ORDER = ['raid', 'sage', 'gems', 'map', 'inv', 'vault', 'skills', 'char', 'arts', 'quest', 'log', 'dex', 'rank', 'town', 'shop', 'guide', 'news', 'menu'];
 const rar = (it) => (it.rarity && it.rarity !== 'common' ? ` r-${it.rarity}` : '');
 // 장비 찾기 (v0.41.3): 'e:부위' 착용 · 'b:uid' 가방 · 'v:uid' 창고 — 대장간 · 보석상은 세 곳 모두에서 고른다
 const gearAt = (st, key) => { const [k, v] = String(key || '').split(':'); return k === 'e' ? st.equip[v] : k === 'v' ? vault().items.find((x) => x.uid === Number(v)) : st.inv.find((x) => x.uid === Number(v)); };
@@ -192,7 +192,7 @@ export class Windows {
     $('h2', this.el).textContent = (this.kind === 'town' && this.townMode === 'one' && BUILDINGS[townOf(this.w.st).plots[this.townSel]?.type]?.name) || TITLES[this.kind];
     const tabs = $('.tabs', this.el);
     // 탭은 그림 없이 같은 모양의 글자 단추로
-    const TAB_TXT = { raid: '원정', arts: '비전', gems: '보석', map: '지도', inv: '가방', skills: '스킬', char: '능력', quest: '퀘스트', dex: '도감', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '설정', news: '공지', rank: '랭킹', log: '기록' };
+    const TAB_TXT = { sage: '현자', raid: '원정', arts: '비전', gems: '보석', map: '지도', inv: '가방', skills: '스킬', char: '능력', quest: '퀘스트', dex: '도감', town: '마을', vault: '창고', shop: '상점', guide: '가이드북', menu: '설정', news: '공지', rank: '랭킹', log: '기록' };
     // 상인 · 건물 창은 그 상인의 탭만, 탭이 하나면 탭 줄을 숨긴다
     const list = this.talk ? TAB_ORDER.filter((k) => this.talk.includes(k) || k === this.talkFirst) : TAB_ORDER.filter((k) => !NPC_ONLY.includes(k) && (!['guide', 'news'].includes(k) || k === this.kind)); // 공지 · 가이드북은 설정 창에서 연다
     tabs.style.visibility = list.length < 2 ? 'hidden' : '';
@@ -242,7 +242,7 @@ export class Windows {
       h += reqLine(sk.req, totalStats(st));
       if (st.skills[it.book]) h += `<div class="aff">아는 스킬 — 숙련 EXP로 흡수</div>`;
     } else if (it.shard) {
-      { const vs = shardVals(it); h += `<div class="sub">능력치 파편${vs.length > 1 ? ` ×${vs.length}` : ''} · 대장간</div><div class="aff">${affixText(it.shard)}</div>${vs.length > 1 ? `<div class="note shVals">${vs.map((v) => affixText({ id: it.shard.id, v }).match(/[+-]?[\d.]+%?/)?.[0] || v).join(' · ')}</div>` : ''}`; } // v0.49.11 묶음: 가진 값 모두
+      { const vs = shardVals(it); h += `<div class="sub">능력치 파편${vs.length > 1 ? ` ×${vs.length}` : ''} · <span style="color:${gradeColor(shardGrade(it.shard.id, vs[0]))}">${sgName(shardGrade(it.shard.id, vs[0]))}</span></div><div class="aff">${affixText(it.shard)}</div>${vs.length > 1 ? `<div class="note shVals">${vs.map((v) => affixText({ id: it.shard.id, v }).match(/[+-]?[\d.]+%?/)?.[0] || v).join(' · ')}</div>` : ''}`; } // v0.49.11 묶음: 가진 값 모두
     } else if (b.type === 'gem') {
       h += `<div class="sub">보석 ×${it.qty}</div><div>${STAT_NAMES[GEMS[b.gem].stat]} +${GEM_GRADES[b.grade].v}</div>`;
     } else if (b?.type === 'pet') {
@@ -395,10 +395,10 @@ export class Windows {
         if (k === 'merc') return this.mercTab(b, sel);
         if (k === 'map') return this.labMap(st, t, now);
         const ids = Object.keys(RESEARCH); if (!ids.includes(this.labSel)) this.labSel = ids[0];
-        const R = ids.map((id) => { const r = RESEARCH[id], lv = researchLv(st, id), open = b.lv >= r.lab; return `<div class="row pick${id === this.labSel ? ' on' : ''}" data-labsel="${id}" style="${open ? '' : 'opacity:.45'}"><div class="grow"><b>${r.name}</b> <small>${lv} / ${researchMax(st)}</small><div class="note">${open ? (lv ? r.text(lv) : '없음') : `연구소 ${r.lab}단계`}</div></div></div>`; }).join('');
-        const id = this.labSel, r = RESEARCH[id], lv = researchLv(st, id), c = researchCost(lv, id), max = lv >= researchMax(st), open = b.lv >= r.lab, jobs = labJobs(st), full = jobs.length >= labSlots(st);
+        const R = ids.map((id) => { const r = RESEARCH[id], lv = researchLv(st, id), open = b.lv >= r.lab; return `<div class="row pick${id === this.labSel ? ' on' : ''}" data-labsel="${id}" style="${open ? '' : 'opacity:.45'}"><div class="grow"><b>${r.name}</b> <small>${lv} / ${researchMax(st, id)}</small><div class="note">${open ? (lv ? r.text(lv) : '없음') : `연구소 ${r.lab}단계`}</div></div></div>`; }).join('');
+        const id = this.labSel, r = RESEARCH[id], lv = researchLv(st, id), c = researchCost(lv, id), max = lv >= researchMax(st, id), open = b.lv >= r.lab, jobs = labJobs(st), full = jobs.length >= labSlots(st);
         let L = `<h3>연구 중 <span class="cnt">${jobs.length} / ${labSlots(st)}</span></h3>` + (jobs.map((j) => `<div class="row"><div class="grow"><b>${RESEARCH[j.id].name}</b> <small class="note">${Math.max(1, Math.ceil((j.until - now) / 60000))}분</small>${gauge(j.from, j.until)}</div></div>`).join('') || '<div class="note">없음</div>');
-        L += `<h3 style="margin-top:10px">${r.name} <small>${lv} / ${researchMax(st)}</small></h3><div class="kv"><span>지금</span><b>${lv ? r.text(lv) : '없음'}</b>${max ? '' : `<span>다음</span><b><em>${r.text(lv + 1)}</em></b><span>금화</span><b style="${st.gold < c.gold ? 'color:#ff7060' : ''}">${c.gold.toLocaleString()} G</b><span>재료</span><b>${c.mats}${c.ess ? ` · ${BASES[c.ess.id].name} ${c.ess.n}` : ''}${c.ore2 ? ` · 상급 강화석 ${c.ore2}` : ''}${c.herbs ? ` · 높은 약초 ${c.herbs}` : ''}</b><span>시간</span><b>${c.min}분</b>`}</div>`;
+        L += `<h3 style="margin-top:10px">${r.name} <small>${lv} / ${researchMax(st, id)}</small></h3><div class="kv"><span>지금</span><b>${lv ? r.text(lv) : '없음'}</b>${max ? '' : `<span>다음</span><b><em>${r.text(lv + 1)}</em></b><span>금화</span><b style="${st.gold < c.gold ? 'color:#ff7060' : ''}">${c.gold.toLocaleString()} G</b><span>재료</span><b>${c.mats}${c.ess ? ` · ${BASES[c.ess.id].name} ${c.ess.n}` : ''}${c.ore2 ? ` · 상급 강화석 ${c.ore2}` : ''}${c.herbs ? ` · 높은 약초 ${c.herbs}` : ''}</b><span>시간</span><b>${c.min}분</b>`}</div>`;
         L += open ? `<div class="btns forgeGo"><button class="btn gold big" data-research="${id}" ${max || full || jobs.some((j) => j.id === id) || st.gold < c.gold ? 'disabled' : ''}>${max ? '완료' : '연구'}</button></div>` : `<div class="note">연구소 ${r.lab}단계</div>`;
         return [L, `<h3>연구</h3>` + R]; });
       case 'inn': return this.tabView(b, 'inn', [['hire', '고용'], ['mine', '내 용병'], ['rest', '휴식'], MT], (k) => {
@@ -457,7 +457,9 @@ export class Windows {
   tabView(b, key, tabs, pages) {
     const st = this.w.st, cur = this.bTab?.[key] && tabs.some((x) => x[0] === this.bTab[key]) ? this.bTab[key] : tabs[0][0];
     const head = `<div class="stabs">${tabs.map(([k, n]) => `<button class="tab txt${k === cur ? ' on' : ''}" data-stab="${key}|${k}"><span>${n}</span></button>`).join('')}${b === null ? '' : `<span class="stabInfo">${typeof b === 'string' ? b : `${BUILDINGS[b.type].name} ${b.lv}단계${b.bld ? ` · <span style="color:#ffd84a">${b.bld.to}단계로 올리는 중 ${Math.max(1, Math.ceil((b.bld.until - Date.now()) / 60000))}분</span>${countOf(st, 'build_rush') ? ' <button class="btn" data-rush="1">촉진제</button>' : ''}` : ''}`} · <span class="goldTxt">${st.gold.toLocaleString()} G</span></span>`}</div>`; // null = 오른쪽 위 정보 없음 (랭킹)
-    const [L, R] = pages(cur);
+    const pg = pages(cur);
+    if (typeof pg === 'string') return `<div class="smithWrap">${head}${pg}</div>`; // v0.49.83 탭 하나가 통째로 (현자 도감)
+    const [L, R] = pg;
     return `<div class="smithWrap">${head}<div class="cols"><div class="frame detail fPage">${L}</div><div class="frame detail fPage">${R}</div></div></div>`;
   }
   smithyView(b, sel) {
@@ -549,8 +551,8 @@ export class Windows {
     const sh = shards.find((x) => x.key === this.shardSel)?.shard;
     let L = `<div class="forgeTop"><div class="cell forgeSlot${rar(it)}">${ico(it)}</div><div><div class="nm" style="color:${itemColor(it)}">${esc(itemName(it))}</div><div class="note">${where} · 잠금 ${Lk.length} / ${max}</div></div></div>`;
     L += `<div class="refCols"><div><div class="note">잠글 옵션</div>${it.affixes.map((a, k) => { const on = Lk.includes(k); return `<button class="btn affBtn ${on ? 'on' : ''}" data-slock="${k}" ${!on && Lk.length >= max ? 'disabled' : ''}>${on ? '<b>잠금</b> ' : ''}${affixText(a)}</button>`; }).join('')}</div>`;
-    L += `<div><div class="note">부여할 능력 <span class="cnt">${shards.length}</span></div><div class="shList">${shards.map((x) => { const okk = canApply(it, x.shard, Lk).ok; return `<button class="btn affBtn ${x.key === this.shardSel ? 'on' : ''}" data-shard="${x.key}" style="color:#c58cff;${okk ? '' : 'opacity:.4'}">${affixText(x.shard)}</button>`; }).join('') || '<div class="note">파편 없음</div>'}</div></div></div>`;
-    if (sh) { const c = shardCost(it), ok = canApply(it, sh, Lk); L += `<div class="btns forgeGo"><button class="btn gold big" data-sapply="1" ${!ok.ok || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>${ok.ok ? `제련 · ${c.gold.toLocaleString()} G · 강화석 ${c.ore}` : ok.why}</button></div>`; }
+    L += `<div><div class="note">부여할 능력 <span class="cnt">${shards.length}</span></div><div class="shList">${shards.map((x) => { const okk = canApply(it, x.shard, Lk).ok && shardGrade(x.shard.id, x.shard.v) <= useGrade(st); return `<button class="btn affBtn ${x.key === this.shardSel ? 'on' : ''}" data-shard="${x.key}" style="color:#c58cff;${okk ? '' : 'opacity:.4'}">${affixText(x.shard)}</button>`; }).join('') || '<div class="note">파편 없음</div>'}</div></div></div>`;
+    if (sh) { const c = shardCost(it), sg = shardGrade(sh.id, sh.v), ok = sg > useGrade(st) ? { ok: false, why: `${sgName(sg)} 등급은 아직 쓸 수 없습니다` } : canApply(it, sh, Lk); L += `<div class="btns forgeGo"><button class="btn gold big" data-sapply="1" ${!ok.ok || st.gold < c.gold || t.ore < c.ore ? 'disabled' : ''}>${ok.ok ? `제련 · ${c.gold.toLocaleString()} G · 강화석 ${c.ore}` : ok.why}</button></div>`; }
     return [L, right];
   }
   // v0.49.7 기록 창: 지난 기록 (최근 300줄, 새것이 위) — 왼쪽 오늘 기록 전부 | 오른쪽 종류별 개수
@@ -971,7 +973,7 @@ export class Windows {
       ['화면 보기', 'hud', ['체력 · 마나', '내 캐릭터: 칭호 · 이름 · 체력. 체력이 낮으면 깜빡입니다', '퀘스트: 진행 중인 퀘스트와 오늘의 의뢰. 누르면 퀘스트 창, 화살표로 접습니다', '기록: 지역 정보 · 얻은 것 · 완료 알림. 누르면 기록 창', '미니맵', '메뉴: 가방 · 스킬 · 능력 · 퀘스트 · 랭킹 · 설정', '스킬 칸 8개. 휴대폰에서는 원형 · 사각 배치를 설정에서 고릅니다', '공격 버튼', '조이스틱: 만질 때만 보입니다']],
       ['버튼', 'buttons', ['귀환: 마을로 돌아갑니다', '자동 사냥: 켠 지역 안에서만, 가장 가까운 몬스터를 찾아가며 장애물을 돌아갑니다. 얻는 것이 조금 줄어듭니다. 무엇을 주울지는 설정에서 고릅니다', '마나 물약', '체력 물약', '공격. 사람 · 건물 · 포탈 · 창고 앞에서는 그 이름으로 바뀝니다', '스킬. 스킬 창에서 칸을 정합니다']],
       ['미니맵 표시', 'minimap', ['빨간 점: 몬스터 · 주황 점: 정예 · 네임드 · 금색 마름모: 보스 · 하늘색 고리: 포탈 · 초록 세모: 던전 입구 · 노란 테: 마을']],
-      ['NPC와 대화', 'talk', ['경비대장 하겐: 퀘스트 보고 · 오늘의 의뢰 보상 · 건물 짓기', '가까이 가면 공격 버튼이 이름으로 바뀝니다. 누르면 대화. 상인 오르텐은 상점, 보석상 리엔은 보석 끼우기 · 합치기, 현자는 도감']],
+      ['NPC와 대화', 'talk', ['경비대장 하겐: 퀘스트 보고 · 오늘의 의뢰 보상 · 건물 짓기', '가까이 가면 공격 버튼이 이름으로 바뀝니다. 누르면 대화. 상인 오르텐은 상점, 보석상 리엔은 보석 끼우기 · 합치기, 현자 에라는 도감 · 파편 갈기 · 합치기 · 뽑기']],
       ['건물 쓰기', 'building', ['지은 건물', '건물 앞에서 버튼이 건물 이름으로 바뀝니다. 누르면 그 건물 창이 열립니다. 창 위 탭으로 기능을 고릅니다']],
       ['포탈', 'portal', ['마을 · 발견한 야영지의 포탈', '포탈 위에서 버튼을 눌러 갈 곳을 고릅니다. 포탈 둘레에는 몬스터가 생기지 않습니다']],
       ['공용 창고', 'vaultspot', ['상인 옆 공용 창고 상자', '상자 앞에서 버튼을 누르면 창고가 열립니다']],
@@ -1165,6 +1167,43 @@ export class Windows {
   }
 
   // v0.44.41 몬스터 도감: 책처럼. 왼쪽 = 지역 · 몬스터 목록, 오른쪽 = 펼친 책 (초상 | 정보). 많이 잡을수록 정보가 열린다
+  // v0.49.83 현자 에라: 도감 | 파편 (갈기 · 합치기) | 뽑기
+  sage() {
+    const st = this.w.st, dust = st.shardDust || 0, ug = useGrade(st);
+    const gtag = (g) => `<b style="color:${gradeColor(g)}">${sgName(g)}</b>`;
+    return this.tabView(`가루 <b>${dust.toLocaleString()}</b>`, 'sage', [['dex', '도감'], ['shard', '파편'], ['pull', '뽑기']], (k) => {
+      if (k === 'dex') return this.dex();
+      if (k === 'shard') {
+        // 오른쪽: 가진 파편 (옵션마다 한 줄, 가방 · 창고)
+        const stacks = [...st.inv, ...vault().items].filter((x) => x?.shard);
+        if (!stacks.some((x) => x.uid === this.sgSel)) { this.sgSel = stacks[0]?.uid ?? null; this.sgPick = []; }
+        const R = `<h3>파편 <span class="cnt">${stacks.reduce((a, x) => a + shardVals(x).length, 0)}</span></h3>` + (stacks.map((x) => { const vs = shardVals(x), g = shardGrade(x.shard.id, vs[0]);
+          return `<div class="row pick${x.uid === this.sgSel ? ' on' : ''}" data-sgsel="${x.uid}"><div class="grow"><b>${esc(affixText({ id: x.shard.id, v: vs[0] }))}</b> <small style="color:${gradeColor(g)}">${sgName(g)}</small></div><span class="note">${vs.length}개</span></div>`; }).join('') || '<div class="note">파편 없음</div>');
+        const it = stacks.find((x) => x.uid === this.sgSel);
+        if (!it) return [`<h3>파편</h3><div class="note">쓸 수 있는 등급 ${gtag(ug)}</div>`, R];
+        const vs = shardVals(it), pk = (this.sgPick || []).filter((i) => vs[i] != null); this.sgPick = pk;
+        const dustSum = pk.reduce((a, i) => a + dustOf(shardGrade(it.shard.id, vs[i])), 0);
+        let L = `<h3>${esc((AFFIXES[it.shard.id]?.text || '').replace(/\s*[+-]?\{v\}%?/, ''))} <span class="cnt">${vs.length}</span><button class="btn" data-sgall="1" style="margin-left:auto">${pk.length ? '풀기' : '모두 고르기'}</button></h3>`;
+        L += `<div class="shList" style="display:grid;grid-template-columns:1fr 1fr;gap:4px">${vs.map((v, i) => { const g = shardGrade(it.shard.id, v); return `<button class="btn affBtn${pk.includes(i) ? ' on' : ''}" data-sgpick="${i}" style="color:${gradeColor(g)}${g > ug ? ';opacity:.55' : ''}">${esc(affixText({ id: it.shard.id, v }))} <small>${sgName(g)}</small></button>`; }).join('')}</div>`;
+        L += `<div class="kv tight" style="margin-top:8px"><span>고름</span><b>${pk.length}개</b><span>쓸 수 있는 등급</span><b>${gtag(ug)}</b></div>`;
+        L += `<div class="btns forgeGo"><button class="btn" data-sggrind="1" ${pk.length ? '' : 'disabled'}>갈기 · 가루 +${dustSum}</button><button class="btn gold big" data-sgfuse="1" ${pk.length === 3 ? '' : 'disabled'}>합치기 ${pk.length}/3</button></div>`;
+        if (this.sgLast) L += `<div class="note" style="margin-top:6px">${this.sgLast}</div>`;
+        return [L, R];
+      }
+      // 뽑기: 오른쪽 등급 → 왼쪽 뽑기
+      const pg = pullGrade(st), top = Math.max(3, ug);
+      const gs = Array.from({ length: top + 1 }, (_, g) => g);
+      if (!gs.includes(this.sgGrade)) this.sgGrade = Math.max(0, Math.min(pg, top));
+      const why = (g) => (!pullResearch(st) ? '연구 파편 연성' : g > ug ? `세계 ${sgName(g)}` : g > pg ? `파편 연성 ${Math.min(5, g + 1)}단계` : '');
+      const R = `<h3>등급</h3>` + gs.map((g) => { const w = why(g); return `<div class="row pick${g === this.sgGrade ? ' on' : ''}" data-sggrade="${g}" style="${w ? 'opacity:.5' : ''}"><div class="grow">${gtag(g)}</div><span class="note">${w ? `잠김 · ${w}` : `가루 ${sgCost(g)}`}</span></div>`; }).join('');
+      const g = this.sgGrade, cost = sgCost(g), w = why(g), pool = w ? [] : pullPool(st, g);
+      let L = `<h3>${gtag(g)} 파편 뽑기</h3><div class="kv tight"><span>가루</span><b style="${dust < cost ? 'color:#ff7060' : ''}">${cost} <small class="note">/ ${dust.toLocaleString()}</small></b><span>나오는 옵션</span><b>${w ? '-' : `${pool.length}종`}</b></div>`;
+      L += `<div class="btns forgeGo"><button class="btn gold big" data-sgpull="${g}" ${!w && pool.length && dust >= cost ? '' : 'disabled'}>${w ? `잠김 · ${w}` : pool.length ? '뽑기' : '각성 부족'}</button></div>`;
+      if (this.sgPullLast) L += `<div class="aff" style="margin-top:8px;color:${gradeColor(this.sgPullLast.grade)}">${esc(affixText(this.sgPullLast))} · ${sgName(this.sgPullLast.grade)}</div>`;
+      return [L, R];
+    });
+  }
+
   dex() {
     const st = this.w.st, dx = st.dex || {};
     const tier = (n) => (n >= 500 ? 3 : n >= 200 ? 2 : n >= 50 ? 1 : 0);
@@ -1179,7 +1218,7 @@ export class Windows {
     // 펼친 책
     const n = dx[sel] || 0, M = MONSTERS[sel], kind = sel === Z.boss.type ? 'boss' : sel === Z.named.type ? 'named' : 'normal';
     const ms = this.w.monStats(sel, kind, Z), R = monsterRes(sel), k = tier(n);
-    const pr = n ? monPortrait(sel, () => { if (this.kind === 'dex') this.render(); }) : '';
+    const pr = n ? monPortrait(sel, () => { if (this.kind === 'dex' || this.kind === 'sage') this.render(); }) : '';
     const lock = (need, txt) => (n >= need ? txt : `<span class="lockTxt">${need}마리를 잡으면</span>`);
     const pct = (v) => `${v > 0 ? '+' : ''}${Math.round(v * 100)}%`;
     const resTxt = (v) => (v > 0 ? `<b style="color:#1f4f9a">${pct(v)} 저항</b>` : v < 0 ? `<b style="color:#a8321a">${pct(-v)} 약점</b>` : '보통');
@@ -1270,8 +1309,8 @@ export class Windows {
       if (b.type === 'lab') {
         right += COL + '<h3>연구</h3>'; for (const j of labJobs(st)) right += `<div class="note">연구 중: ${RESEARCH[j.id].name} · ${Math.max(1, Math.ceil((j.until - Date.now()) / 60000))}분 남음</div>${gauge(t.lab.from, t.lab.until)}`;
         for (const [id, r] of Object.entries(RESEARCH)) {
-          const lv = researchLv(st, id), c = researchCost(lv, id), max = lv >= researchMax(st), open = b.lv >= r.lab;
-          right += `<div class="row" style="${open ? '' : 'opacity:.45'}"><div class="grow"><b>${r.name}</b> <small>${lv} / ${researchMax(st)}</small><div class="note">${open ? `${lv ? r.text(lv) : '없음'}${max ? '' : ` → ${r.text(lv + 1)}`}` : `연구소 ${r.lab}단계 · ${r.text(1)}`}</div></div>
+          const lv = researchLv(st, id), c = researchCost(lv, id), max = lv >= researchMax(st, id), open = b.lv >= r.lab;
+          right += `<div class="row" style="${open ? '' : 'opacity:.45'}"><div class="grow"><b>${r.name}</b> <small>${lv} / ${researchMax(st, id)}</small><div class="note">${open ? `${lv ? r.text(lv) : '없음'}${max ? '' : ` → ${r.text(lv + 1)}`}` : `연구소 ${r.lab}단계 · ${r.text(1)}`}</div></div>
             ${open ? `<button class="btn" data-research="${id}" ${max || labJobs(st).length >= labSlots(st) || st.gold < c.gold ? 'disabled' : ''}>${max ? '완료' : `${c.gold.toLocaleString()}G · 재료 ${c.mats}${c.ess ? ` · ${BASES[c.ess.id].name} ${c.ess.n}` : ''} · ${c.min}분`}</button>` : ''}</div>`;
         }
       }
@@ -1868,6 +1907,13 @@ export class Windows {
     on('[data-face]', (el) => { if (el.dataset.face === st.look?.face) return; w.changeLook(el.dataset.face); audio.play('click'); this.render(); }); // v0.49.47
     on('[data-artl]', (el) => { this.artLine = el.dataset.artl; audio.play('click'); this.render(); });
     on('[data-arteq]', (el) => { const A = (st.arts ||= { prog: {}, open: {}, equip: [] }), id = el.dataset.arteq; A.equip ||= []; if (A.equip.includes(id)) A.equip = A.equip.filter((x) => x !== id); else if (A.equip.length < artSlots(st) && A.open[id] && artUsable(st, ART[id])) A.equip.push(id); audio.play('click'); w.ui.dirty(); this.render(); });
+    on('[data-sgsel]', (el) => { this.sgSel = Number(el.dataset.sgsel); this.sgPick = []; this.sgLast = null; audio.play('click'); this.render(); });
+    on('[data-sgpick]', (el) => { const i = Number(el.dataset.sgpick), p = (this.sgPick ||= []), j = p.indexOf(i); if (j >= 0) p.splice(j, 1); else p.push(i); audio.play('click'); this.render(); });
+    on('[data-sgall]', () => { const it = [...st.inv, ...vault().items].find((x) => x?.uid === this.sgSel); this.sgPick = this.sgPick?.length || !it ? [] : shardVals(it).map((_, i) => i); audio.play('click'); this.render(); });
+    on('[data-sggrade]', (el) => { this.sgGrade = Number(el.dataset.sggrade); audio.play('click'); this.render(); });
+    ask('[data-sggrind]', () => ['파편 갈기', `파편 ${this.sgPick.length}개를 가루로 만듭니다`, '갈기'], () => { const r = grindShard(st, this.sgSel, this.sgPick); if (!r.ok) { w.ui.toast(r.why); audio.play('error'); } else { this.sgPick = []; this.sgLast = `가루 +${r.dust}`; audio.play('click'); w.ui.dirty(); } this.render(); });
+    on('[data-sgfuse]', () => { const r = fuseShard(st, this.sgSel, this.sgPick); if (!r.ok) { w.ui.toast(r.why); audio.play('error'); } else { this.sgPick = []; const hi = Math.max(...r.from); this.sgLast = `<span style="color:${gradeColor(r.grade)}">${esc(affixText({ id: r.id, v: r.v }))} · ${sgName(r.grade)}</span> ${r.v > hi ? '▲' : r.v < Math.min(...r.from) ? '▼' : ''}`; this.sgSel = [...st.inv, ...vault().items].find((x) => x?.shard?.id === r.id)?.uid ?? this.sgSel; audio.play(r.v > hi ? 'rankup' : 'click'); w.ui.dirty(); } this.render(); });
+    on('[data-sgpull]', (el) => { const r = pullShard(st, Number(el.dataset.sgpull)); if (!r.ok) { w.ui.toast(r.why); audio.play('error'); } else { this.sgPullLast = { id: r.id, v: r.v, grade: r.grade }; audio.play('rankup'); w.ui.dirty(); } this.render(); });
     on('[data-dexm]', (el) => { this.dexMon = el.dataset.dexm; audio.play('click'); this.render(); });
     on('[data-hswap]', (el) => { const [h, k] = el.dataset.hswap.split('|'), r = herbSwap(st, h, Number(k)); if (r.ok) audio.play('click'); townDone(r); });
     on('[data-brew]', (el) => { const [id, k] = el.dataset.brew.split('|'), r = brew(st, id, Number(k)); if (r.ok) audio.play('click'); townDone(r); });
