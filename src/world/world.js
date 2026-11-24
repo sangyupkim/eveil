@@ -2193,6 +2193,7 @@ export class World {
     if (this.dead) return;
     this.dead = true;
     if (this.auto) { const zn = zoneAt(this.player.pos.x, this.player.pos.z); if (zn) (this.autoDeaths ||= []).push({ t: this.time, z: zn.id }); }
+    if (this.auto) { this.toggleAuto(false); this.ui.log('자동사냥 중 쓰러져 자동사냥을 멈췄습니다', '#ff7a6a'); } // v0.49.96 자리 비운 사이 죽고 되살아나기를 되풀이하며 장비를 잃지 않게
     this.st.hp = 0;
     this.target = null; this.moveTo = null; this.pendingSkill = null; this.recallT = 0;
     this.player.play('death', { once: true, force: true, fade: 0.1 });

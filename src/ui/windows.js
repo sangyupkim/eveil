@@ -1052,7 +1052,7 @@ export class Windows {
     const w = this.w, st = w.st;
     if (!cloud.id) { this.alert('우편함', '로그인해야 우편을 받을 수 있습니다'); return; }
     const list = await cloud.mail();
-    const rows = list.map((m) => `<div class="row"><div class="grow"><b>${esc(m.title)}</b><div class="note" style="white-space:pre-wrap">${esc(m.body || '')}</div></div><b class="goldTxt">${Number(m.gold).toLocaleString()} G</b><button class="btn gold" data-mclaim="${m.id}">받기</button></div>`).join('') || '<div class="note">우편이 없습니다</div>';
+    const rows = list.map((m) => `<div class="row"><div class="grow"><b>${esc(m.title)}</b><div class="note" style="white-space:pre-wrap">${esc(m.body || '')}</div></div><b class="goldTxt">${Number(m.gold) ? `${Number(m.gold).toLocaleString()} G` : ''}${(() => { try { const a = JSON.parse(m.items || '[]'); return a.length ? ` · 아이템 ${a.length}` : ''; } catch { return ''; } })()}</b><button class="btn gold" data-mclaim="${m.id}">받기</button></div>`).join('') || '<div class="note">우편이 없습니다</div>';
     this.popup('우편함', `<div class="noticeList">${rows}</div>${list.length > 1 ? '<button class="btn gold" data-mclaim="all">모두 받기</button>' : ''}`);
     const box = document.getElementById('winAlert');
     box.querySelectorAll('[data-mclaim]').forEach((b) => { b.onclick = async () => {
@@ -1060,6 +1060,9 @@ export class Windows {
       const r = await cloud.mailClaim(b.dataset.mclaim === 'all' ? null : [Number(b.dataset.mclaim)]);
       if (!r.ok) { w.ui.toast('받지 못했습니다'); audio.play('error'); return; }
       if (r.gold > 0) { st.gold += r.gold; audio.play('coin'); w.ui.toast(`우편 ${r.n}통 · +${r.gold.toLocaleString()}G`, '#ffd84a'); w.ui.dirty(); this.save?.(true); }
+      // v0.49.96 우편 아이템: 새 번호를 붙여 창고로 (가득 차면 가방, 둘 다 가득이면 돌려받기 목록에 남겨 다음 접속 때)
+      if (r.items?.length) { let n = 0; for (const it0 of r.items) { if (!it0?.base || !BASES[it0.base]) continue; const it = { ...it0, uid: st.nextUid++ }; if (vaultAdd(st, it) || addItem(st, it)) n++; else (st.deathBack ||= []).push(it); }
+        audio.play('rankup'); w.ui.toast(`우편 아이템 ${n}개를 창고로 받았습니다`, '#ffd84a'); w.refreshGear?.(); w.ui.dirty(); this.save?.(true); }
       this.mailbox(); this.render();
     }; });
   }

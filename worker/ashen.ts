@@ -85,6 +85,7 @@ function setup(db: DB): Promise<unknown> {
     // v0.49 전투력 칸 (있으면 그냥 넘어간다)
     .then(() => db.prepare('ALTER TABLE ash_rank ADD COLUMN pw INTEGER').run().catch(() => null))
     .then(() => db.prepare('ALTER TABLE ash_rank ADD COLUMN mg INTEGER').run().catch(() => null)) // v0.49.75 무간지옥 최고 층
+    .then(() => db.prepare('ALTER TABLE ash_mail ADD COLUMN items TEXT').run().catch(() => null)) // v0.49.96 우편에 아이템 (JSON 배열)
     .catch((e) => {
       ready = null;
       throw e;
@@ -222,20 +223,20 @@ export async function ashen(db: DB, d: Record<string, unknown>, ip: string, admi
   // ── 우편함: 내 계정 앞 + 모두에게(계정을 만든 뒤 보낸 것) 중 아직 안 받은 것 ──
   if (type === 'ash_mail' || type === 'ash_mail_claim') {
     const u = await db.prepare('SELECT created FROM ash_users WHERE id = ?').bind(id).first<{ created: number }>();
-    const r = await db.prepare("SELECT id, title, body, gold, at FROM ash_mail m WHERE (uid = ? OR (uid = '*' AND at >= ?)) AND NOT EXISTS (SELECT 1 FROM ash_mail_got g WHERE g.mid = m.id AND g.uid = ?) ORDER BY id DESC LIMIT 50")
+    const r = await db.prepare("SELECT id, title, body, gold, at, items FROM ash_mail m WHERE (uid = ? OR (uid = '*' AND at >= ?)) AND NOT EXISTS (SELECT 1 FROM ash_mail_got g WHERE g.mid = m.id AND g.uid = ?) ORDER BY id DESC LIMIT 50")
       .bind(id, u?.created ?? 0, id).all();
-    let list = (r.results || []) as { id: number; gold: number }[];
+    let list = (r.results || []) as { id: number; gold: number; items?: string | null }[];
     if (type === 'ash_mail') return { ok: true, list };
     const want = Array.isArray(d.ids) ? (d.ids as unknown[]).map(Number) : null;
     if (want) list = list.filter((m) => want.includes(m.id));
     if (!list.length) return { ok: true, gold: 0, n: 0 };
     // 한 번만: 먼저 받은 기록을 넣고(겹치면 무시), 넣어진 것만 금화로 친다
-    let gold = 0, n = 0;
+    let gold = 0, n = 0; const items: unknown[] = [];
     for (const m of list) {
       const ins = await db.prepare('INSERT OR IGNORE INTO ash_mail_got (mid, uid, at) VALUES (?, ?, ?)').bind(m.id, id, Date.now()).run() as { meta?: { changes?: number } };
-      if ((ins?.meta?.changes ?? 1) > 0) { gold += m.gold; n++; }
+      if ((ins?.meta?.changes ?? 1) > 0) { gold += m.gold; n++; if (m.items) { try { const a = JSON.parse(m.items); if (Array.isArray(a)) items.push(...a); } catch { /* 깨진 목록은 건너뛴다 */ } } }
     }
-    return { ok: true, gold, n };
+    return { ok: true, gold, n, items }; // v0.49.96 아이템은 받은 캐릭터의 창고(가득 차면 가방)로
   }
   const th = await sha(String(d.token));
   // 다른 기기가 이 계정을 가져갔는가 (가져간 기기가 없으면 예전 클라이언트도 저장할 수 있다)
