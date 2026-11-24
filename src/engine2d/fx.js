@@ -124,6 +124,7 @@ const FX_BIG = { v_fireburst: 2, h_necrotic: 1.9, b_star_explosion: 2, v_dust: 1
 export class FX {
   constructor(stage, layer) {
     this.stage = stage;
+    this.k = 1; // v0.50.1 스킬 연출 세기: 낮은 차수 스킬은 작게, 높은 차수 · 랭크는 크게 (world.castSkill이 정하고 world.later가 이어 준다)
     this.layer = layer;   // 떠오르는 숫자를 그릴 DOM
     this.items = [];      // 바닥 효과 · 투사체 · 빛기둥 · Flare 효과 그림
     this.texts = [];
@@ -135,7 +136,7 @@ export class FX {
     stage.topLayers.push((ctx, st) => { this.smoke.draw(ctx, st); this.add.draw(ctx, st); this.drawTop(ctx, st); });
   }
 
-  shake(k) { this.onShake?.(k); }
+  shake(k) { this.onShake?.(k * Math.min(1.3, this.k)); }
 
   // ───── Flare 효과 그림 (앞뒤 정렬에 끼어 그려진다) ─────
   play(name, x, z, { y = 0, scale = 1, dur = null, loop = false, dir = 0, alpha = 1, tint = null, fade = false } = {}) {
@@ -180,10 +181,10 @@ export class FX {
   ground(name, x, z, opts = {}) { const it = this.play(name, x, z, opts); if (it) it.drawable.z = z - 50; return it; }
   // 충격파: 큰 것은 흙먼지 고리(quake), 불은 폭발(blast), 그 밖은 빛 알갱이 고리(shield)
   shock(x, z, r, color = 0xffaa40, dur = 0.45) {
-    const kind = flavor(color);
-    if (r >= 2.5) { const q = this.ground('quake', x, z, { scale: Math.min(1.8, r / 3), dur: Math.max(0.35, dur) }); if (q) q.add = false; }
-    if (kind === 'fire') return this.play('blast', x, z, { scale: Math.min(1.6, r / 3), dur: Math.max(0.35, dur) });
-    return this.ground(kind === 'nature' ? 'shield' : 'shield', x, z, { scale: Math.min(2, r / 2.2), dur: Math.max(0.3, dur), tint: color, fade: true });
+    const kind = flavor(color), K = Math.min(1.25, this.k);
+    if (r * K >= 2.5) { const q = this.ground('quake', x, z, { scale: Math.min(1.8, r / 3) * K, dur: Math.max(0.35, dur) }); if (q) q.add = false; }
+    if (kind === 'fire') return this.play('blast', x, z, { scale: Math.min(1.6, r / 3) * K, dur: Math.max(0.35, dur) });
+    return this.ground(kind === 'nature' ? 'shield' : 'shield', x, z, { scale: Math.min(2, r / 2.2) * K, dur: Math.max(0.3, dur), tint: color, fade: true });
   }
   // 땅에 그리는 것: 적 공격 예고(도형)만
   drawGround(ctx, st) {
@@ -216,6 +217,7 @@ export class FX {
 
   // ───── 묶음 ─────
   burst(x, y, z, color = 0xffc070, n = 8, spread = 3, size = 0.35) {
+    const K = this.k; n = Math.max(1, Math.round(n * K)); spread *= Math.sqrt(K); size *= Math.sqrt(K);
     const kind = flavor(color), big = size * 2.2;
     this.add.add({ x, y, z, color, size: big * 1.5, size1: big * 2.2, life: 0.2, cell: 'glow', alpha: 0.9 });
     for (let i = 0; i < n; i++) {
@@ -236,13 +238,13 @@ export class FX {
 
   ring(x, z, radius, color = 0xffaa40, dur = 0.45) {
     this.decal(0, x, z, radius, color, dur);
-    const n = Math.min(26, Math.round(radius * 4));
+    const K = this.k, n = Math.max(4, Math.round(Math.min(26, radius * 4) * K));
     for (let i = 0; i < n; i++) {
       const a = (i / n) * 6.28;
       this.add.add({ x: x + Math.cos(a) * radius * 0.4, y: 0.2, z: z + Math.sin(a) * radius * 0.4, vx: Math.cos(a) * radius * 2, vy: 0.4, vz: Math.sin(a) * radius * 2, color, size: 0.5, size1: 0.1, life: dur, cell: 'spark', drag: 3 });
     }
-    if (radius > 2.5) {
-      { const q = this.play('quake', x, z, { scale: Math.min(1.6, radius / 3), alpha: 0.9 }); if (q) q.add = false; }
+    if (radius * K > 2.5) {
+      { const q = this.play('quake', x, z, { scale: Math.min(1.6, radius / 3) * Math.min(1.2, K), alpha: 0.9 }); if (q) q.add = false; }
       for (let i = 0; i < n / 2; i++) { const a = Math.random() * 6.28; this.smoke.add({ x: x + Math.cos(a) * radius * 0.5, y: 0.3, z: z + Math.sin(a) * radius * 0.5, vx: Math.cos(a) * radius, vy: 0.5, vz: Math.sin(a) * radius, color: 0x9a8670, size: 1.2, size1: 2.6, life: 0.7, cell: 'smoke', alpha: 0.22, drag: 2.5 }); }
     }
   }
@@ -345,14 +347,15 @@ export class FX {
   meteor(x, z, radius, delay, onHit, elem = 'fire') {
     const P = METEOR_PAL[elem] || METEOR_PAL.fire;
     this.telegraph(x, z, radius, delay, P.tele);
-    this.items.push({ kind: 'meteor', x, z, radius, dur: delay, t: 0, onHit, elem, P });
+    this.items.push({ kind: 'meteor', x, z, radius, dur: delay, t: 0, onHit, elem, P, k: this.k });
   }
 
   // 투사체: 불 → 화염구, 얼음 → 얼음 창, 화살 → 화살, 그 밖은 빛 덩이
   projectile({ from, target, color = 0xff8a30, size = 0.8, speed = 22, onHit, bolt = false, trail = true, elem = null }) {
+    size *= Math.min(1.15, Math.sqrt(this.k / 0.72)); // v0.50.1 낮은 차수 투사체는 작게
     const kind = elem === 'lightning' ? 'light' : elem && elem !== 'holy' ? (elem === 'arcane' ? 'arcane' : elem) : flavor(color);
     const sprite = bolt ? 'arrows' : kind === 'fire' ? 'fireball' : kind === 'ice' ? 'icicle' : size > 1.2 ? 'plasmaball' : null;
-    const it = { kind: 'proj', x: from.x, y: from.y ?? 1.4, z: from.z, target, speed, onHit, color, trail, size, bolt, flavor: kind, t: 0, dur: 99,
+    const it = { k: this.k, kind: 'proj', x: from.x, y: from.y ?? 1.4, z: from.z, target, speed, onHit, color, trail, size, bolt, flavor: kind, t: 0, dur: 99,
       last: target.pos ? target.pos.clone() : new THREE.Vector3(target.x, 0, target.z), sprite, def: sprite && DATA.powers[sprite] };
     if (it.def) {
       image(animImage(it.def, 'power'));
@@ -382,8 +385,10 @@ export class FX {
 
   update(dt) {
     this.time += dt;
+    const k0 = this.k;
     for (let i = this.items.length - 1; i >= 0; i--) {
       const it = this.items[i];
+      this.k = it.k ?? 1; // v0.50.1 투사체 · 운석은 쏜 스킬의 연출 세기로 터진다
       it.t += dt;
       if (it.follow) { it.x = it.follow.x; it.z = it.follow.z; if (it.drawable) it.drawable.z = it.z + 0.05; } // 캐릭터를 따라가는 효과
       let done = it.t >= it.dur;
@@ -396,7 +401,7 @@ export class FX {
         if (d <= step || it.t > 3) {
           done = true;
           this.hit(it.x, it.y, it.z, it.color, false);
-          if (it.flavor === 'fire' && !it.bolt) this.play('blast', it.x, it.z, { scale: 0.7 });
+          if (it.flavor === 'fire' && !it.bolt) this.play('blast', it.x, it.z, { scale: 0.7 * Math.min(1.2, this.k) });
           it.onHit?.(it.target);
         } else {
           it.x += (tx / d) * step; it.y += (ty / d) * step; it.z += (tz / d) * step;
@@ -421,9 +426,9 @@ export class FX {
         if (q >= 1) {
           const r = it.radius;
           if (it.elem === 'lightning') { this.play('c_lightningclaw', it.x, it.z, { scale: 2 }); this.add.add({ x: it.x, y: 6, z: it.z, color: P.glow, size: 3, size1: 6, life: 0.2, cell: 'glow' }); }
-          else if (it.elem === 'fire') this.play('blast', it.x, it.z, { scale: 1.6 });
-          else this.play({ ice: 'c_icemultispike', arcane: 'p_mirror', holy: 'p_dharma' }[it.elem] || 'blast', it.x, it.z, { scale: 1.8 });
-          if (it.elem === 'fire') { const q = this.play('quake', it.x, it.z, { scale: 1.5 }); if (q) q.add = false; }
+          else if (it.elem === 'fire') this.play('blast', it.x, it.z, { scale: 1.6 * Math.min(1.2, this.k) });
+          else this.play({ ice: 'c_icemultispike', arcane: 'p_mirror', holy: 'p_dharma' }[it.elem] || 'blast', it.x, it.z, { scale: 1.8 * Math.min(1.2, this.k) });
+          if (it.elem === 'fire' && this.k >= 0.7) { const q = this.play('quake', it.x, it.z, { scale: 1.5 * Math.min(1.2, this.k) }); if (q) q.add = false; }
           this.burst(it.x, 0.6, it.z, P.a, 26, 9, 0.6);
           this.ring(it.x, it.z, r * 1.3, P.ring, 0.55);
           if (it.elem === 'fire') this.scorch(it.x, it.z, r * 0.9);
@@ -439,6 +444,7 @@ export class FX {
     this.add.update(dt);
     this.smoke.update(dt);
     // 떠오르는 숫자
+    this.k = k0;
     for (let i = this.texts.length - 1; i >= 0; i--) {
       const t = this.texts[i];
       t.t += dt;

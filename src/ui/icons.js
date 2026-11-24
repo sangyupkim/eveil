@@ -13,9 +13,10 @@ export const herbIcon = (id) => iconUrl(HERB_ICON[id]?.[0] ?? 2013, HERBS[id].co
 const SHEET = 'icons.webp', S = 64;
 export const ESS_COLOR = { 2: '#8ab0ff', 3: '#c58cff', 4: '#ff9a4a', 5: '#ff4a6a' };
 const cache = new Map();
-export const iconsReady = () => Promise.all([image(SHEET).p, image('icons2.webp').p, image('icons3.webp').p, image('icons4.webp').p]); // 넷째 (2000번부터, v0.49.24) · 둘째 묶음 (256번부터, v0.41) · 셋째 (1000번부터, v0.44.8)
+export const iconsReady = () => Promise.all([image(SHEET).p, image('icons2.webp').p, image('icons3.webp').p, image('icons4.webp').p, image(ENCHANT_SHEET).p]); // 넷째 (2000번부터, v0.49.24) · 둘째 묶음 (256번부터, v0.41) · 셋째 (1000번부터, v0.44.8)
 // 번호 → [묶음 그림, 그 안 번호]
-const sheetOf = (i) => (i >= 2000 ? ['icons4.webp', i - 2000] : i >= 1000 ? ['icons3.webp', i - 1000] : i >= 256 ? ['icons2.webp', i - 256] : [SHEET, i]);
+const ENCHANT_SHEET = '../drive/enchant_icons.webp'; // v0.50.1 마법이 깃든 장비 (3000번부터)
+const sheetOf = (i) => (i >= 3000 ? [ENCHANT_SHEET, i - 3000] : i >= 2000 ? ['icons4.webp', i - 2000] : i >= 1000 ? ['icons3.webp', i - 1000] : i >= 256 ? ['icons2.webp', i - 256] : [SHEET, i]);
 
 // 아이콘 번호 → 그림 주소 (frame: 테두리 색, 없으면 테두리 없음)
 export function iconUrl(index, frame = null, filter = '') {
@@ -36,6 +37,18 @@ export function iconUrl(index, frame = null, filter = '') {
   return url;
 }
 
+// v0.50.1 신화 · 이름 있는 전설 장비: 마법이 깃든 그림 (부위 · 무기 종류에 맞는 것 중 장비마다 하나)
+const ENCHANT = {
+  ring: [0, 6, 14, 20, 22, 28, 34, 42, 48, 56, 62, 70, 76, 84, 90, 98, 104],
+  boots: [7, 21, 35, 43, 49, 57, 63, 71, 77, 91, 105],
+  armor: [13, 27, 41, 55, 68, 69, 82, 83, 96, 97, 110, 111],
+  sword: [5, 8, 10, 11, 12, 24, 26, 37, 38, 40, 44, 46, 51, 60, 74, 79, 80, 88, 93, 99, 102, 107, 108],
+  dagger: [2, 9, 16, 17, 25, 30, 31, 32, 39, 50, 52, 53, 58, 64, 65, 66, 67, 72, 78, 81, 85, 92, 95],
+  wand: [3, 4, 18, 33, 36, 45, 59, 61, 73, 75, 86, 87, 89, 94, 100, 101, 103],
+};
+const enchantKind = (b) => { if (!b?.slot) return null; if (b.slot === 'ring' || b.slot === 'amulet') return 'ring'; if (b.slot === 'boots') return 'boots'; if (b.slot === 'armor') return 'armor';
+  if (b.slot !== 'weapon') return null; return ['dagger'].includes(b.cls) ? 'dagger' : ['wand', 'staff', 'scepter', 'gscepter'].includes(b.cls) ? 'wand' : ['sword', 'greatsword', 'axe', 'mace'].includes(b.cls) ? 'sword' : null; };
+function enchantIcon(it) { const k = enchantKind(BASES[it.base]); if (!k) return null; const L = ENCHANT[k], h = Math.abs((it.uid || 0) * 2654435761 % 4294967296); return 3000 + L[h % L.length]; }
 export function itemIcon(it) {
   if (it.book) return iconUrl(SKILL_ICON[it.book] ?? SCHOOL_ICON[SKILLS[it.book]?.school] ?? 225, BOOK_TIERS[SKILLS[it.book].tier].color, SKILL_FILTER[it.book] || ''); // v0.41 책은 그 스킬 아이콘 + 단계 색 테두리
   if (it.shard) return iconUrl(2097, '#c58cff'); // 능력치 파편: 깨진 돌 조각 (v0.49.25, 보랏빛 수정은 자수정과 같은 그림이라 바꿈) · 모두 같은 그림 + 칸 아래 옵션 글 (cellTag)
@@ -50,6 +63,7 @@ export function itemIcon(it) {
   if (/^ess\d$/.test(it.base)) return iconUrl(1010, ESS_COLOR[BASES[it.base].grade]); // 정수: 마력 구슬 그림 + 단계 색 테두리
   if (BASES[it.base]?.type === 'raid') return iconUrl(BASES[it.base].icon, '#ffc85a'); // v0.50 원정 물건: 금빛 테두리
   if (BASES[it.base]?.type === 'mat') return iconUrl(BASES[it.base].icon, '#9ad06a');
+  if ((it.rarity === 'myth' || it.named) && !it.shard) { const e = enchantIcon(it); if (e != null) { const u = iconUrl(e, it.rarity === 'myth' ? '#ff4a8a' : '#41e07a'); if (u) return u; } }
   const L = ITEM_LOOK[it.base];
   if (L) return iconUrl(L.icon);
   const b = BASES[it.base];

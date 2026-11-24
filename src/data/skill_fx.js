@@ -59,3 +59,7 @@ for (const sk of Object.values(SKILLS)) {
 }
 applyForms(); // v0.49.53 스킬 형상 (원소를 정한 뒤)
 buildRoster(); // v0.50 스킬 정리 (갈래 30 · 차수 · 역할 · 위력) — 형상 · 원소를 정한 뒤
+// v0.50.1 Martin Jelinek 효과 그림 (assets/drive/fx, 무료): 작은 그림이라 낮은 차수 · 그림이 겹치던 스킬에
+export const JEL_FX = { fire_pillar: 'jel_sign_of_fire', aw_int1: 'jel_fireBall', inferno_field: 'jel_eaterFire', flame_lance: 'jel_swordFire', thunder_strike: 'jel_lighteningBall',
+  aw_int4a: 'jel_blue_topEffect', mana_burst: 'jel_energyBall', arcane_surge: 'jel_energyBall', shadow_step: 'jel_blackExplosion' };
+for (const [id, fx] of Object.entries(JEL_FX)) if (SKILLS[id]) SKILLS[id].fx = fx;

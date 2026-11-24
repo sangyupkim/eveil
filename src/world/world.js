@@ -1834,6 +1834,8 @@ export class World {
   // src: melee · ranged · magic(완드 기본공격) · skill
   hitMonster(m, raw, { crit = false, src = 'melee', ctx = null, pierce = 0 } = {}) {
     if (!m || m.dead) return;
+    // v0.50.1 높은 차수 스킬은 맞은 자리에 작은 충격파 · 불꽃을 더 (한 몬스터에 0.3초에 한 번)
+    if (src === 'skill' && this.fx.k >= 1.05 && (m.flourishT || 0) < this.time) { m.flourishT = this.time + 0.3; const c = ctx?.color ?? 0xffd890; this.fx.decal(0, m.pos.x, m.pos.z, 1.2 + this.fx.k, c, 0.35); this.fx.burst(m.pos.x, 1, m.pos.z, c, 10, 4, 0.45); }
     const ccK = this.art('iceheart') ? 1.5 : 1;
     if (ctx?.slow) m.slowT = Math.max(m.slowT || 0, ctx.slow * ccK);
     if (ctx?.root && m.tier !== 'boss') m.rootT = Math.max(m.rootT || 0, ctx.root * ccK);
@@ -2638,7 +2640,11 @@ export class World {
     return true;
   }
 
-  castSkill(id, v) {
+  // v0.50.1 스킬 연출 세기: 차수 1 0.55 → 5 1.25, 랭크 150까지 +15%, 상품 +10% (맞는 범위는 그대로, 불꽃 · 충격파 · 흔들림만)
+  skillVis(id) { const sk = SKILLS[id] || {}, c = Math.max(1, Math.min(5, sk.chasu || sk.tier || 1)), rank = this.st.skills[id]?.rank || 1;
+    return Math.max(0.45, Math.min(1.5, [0.55, 0.55, 0.72, 0.9, 1.08, 1.25][c] * (1 + 0.15 * Math.min(1, rank / 150)) * (sk.q === 3 ? 1.1 : 1))); }
+  castSkill(id, v) { const k0 = this.fx.k; this.fx.k = this.skillVis(id); try { return this.castSkill0(id, v); } finally { this.fx.k = k0; } }
+  castSkill0(id, v) {
     const st = this.st, d = this.d, sk = { ...skillEff(id, modsOf(st.skills[id]), st.skills[id]?.rank || 1) };
     // v0.44.42 비전: 범위 · 발 수
     if (this.art('quake') && (sk.type === 'spin' || sk.type === 'cleave') && sk.radius) sk.radius *= 1.2;
@@ -2711,11 +2717,11 @@ export class World {
     const weaponHit = () => { const v0 = roll(); return { v: v0, crit: lastCrit }; };
     if (sk.hpCost) st.hp = Math.max(1, st.hp - d.maxHp * sk.hpCost); // HP도 쓴다
     if (sk.ap === 'wis' && v.mp > 0) addAP(st, 'wis', v.mp * AP_TABLE.supportPerMp, this.autoMult); // 정신: 쓴 MP만큼
-    const color = new THREE.Color(sk.color).getHex();
+    const color = new THREE.Color(sk.color).getHex(); ctx.color = color;
     if (sk.type !== 'buff') this.fx.circle(P.pos.x, P.pos.z, 1.8, color, 0.9); // 버프는 따로 (보호막 · 오라)
     // v0.41 스킬마다 고유 효과 그림 (sk.fx: powers.json 이름) — 맞은 자리 · 범위 안에 찍는다
-    const FX = (x, z, s = 1) => { if (sk.fx) this.fx.play(sk.fx, x, z, { scale: s * tierK * (sk.fxScale || 1) }); };
-    const FXarea = (x, z, r, n = 6) => { if (!sk.fx) return; FX(x, z, Math.min(1.6, r / 3)); for (let i = 0; i < n; i++) { const a = (i / n) * 6.28 + Math.random() * 0.5, q = r * (0.45 + Math.random() * 0.4); FX(x + Math.cos(a) * q, z + Math.sin(a) * q, 0.8); } };
+    const FX = (x, z, s = 1) => { if (sk.fx) this.fx.play(sk.fx, x, z, { scale: s * tierK * (sk.fxScale || 1) * Math.min(1.1, Math.sqrt(this.fx.k / 0.72)) }); }; // v0.50.1 연출 세기
+    const FXarea = (x, z, r, n = 6) => { if (!sk.fx) return; FX(x, z, Math.min(1.6, r / 3)); n = Math.max(2, Math.round(n * this.fx.k)); for (let i = 0; i < n; i++) { const a = (i / n) * 6.28 + Math.random() * 0.5, q = r * (0.45 + Math.random() * 0.4); FX(x + Math.cos(a) * q, z + Math.sin(a) * q, 0.8); } };
     this.fx.castFlash(P.pos.x, P.pos.z, color);
 
     // v0.49.53 스킬 형상 (data/skill_forms.js): 맞는 모양 · 움직임을 스킬마다 따로
@@ -2854,7 +2860,7 @@ export class World {
         this.later(dur * 0.4, () => {
           sfx('ice');
           this.fx.ring(P.pos.x, P.pos.z, sk.radius, color, 0.7);
-          this.fx.decal(0, P.pos.x, P.pos.z, sk.radius * 1.2, 0xffffff, 0.5, { grow: true });
+          if (this.fx.k >= 1) this.fx.decal(0, P.pos.x, P.pos.z, sk.radius * 1.2, 0xffffff, 0.5, { grow: true }); // v0.50.1 두 겹 충격파는 높은 차수만 (1차 「원소 해방」 도넛이 너무 컸다)
           this.fx.burst(P.pos.x, 1, P.pos.z, color, 40, 12, 0.7);
           this.fx.shake(0.35); FXarea(P.pos.x, P.pos.z, sk.radius, 8);
           for (const m of this.monstersNear(P.pos, sk.radius)) { m.slowT = 4; this.hitMonster(m, spell(), { crit: spellCrit(), src: 'skill', ctx, pierce: 0.5 }); }
@@ -3137,7 +3143,7 @@ export class World {
 
   // ───────── 매 프레임 ─────────
 
-  later(t, fn) { this.timers.push({ t, fn }); }
+  later(t, fn) { this.timers.push({ t, fn, k: this.fx?.k ?? 1 }); } // v0.50.1 스킬 연출 세기를 나중 효과에도
 
   // 마을 울타리를 드나들 때는 가까운 문을 거친다
   waypoint(p, dest) {
@@ -3204,7 +3210,7 @@ export class World {
     for (let i = this.timers.length - 1; i >= 0; i--) {
       const t = this.timers[i];
       t.t -= dt;
-      if (t.t <= 0) { this.timers.splice(i, 1); t.fn(); }
+      if (t.t <= 0) { this.timers.splice(i, 1); const k0 = this.fx.k; this.fx.k = t.k ?? 1; try { t.fn(); } finally { this.fx.k = k0; } }
     }
     // 버프 · 쿨타임 · 회복
     let buffChanged = false;
