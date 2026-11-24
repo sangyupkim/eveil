@@ -2192,6 +2192,7 @@ export class World {
   die() {
     if (this.dead) return;
     this.dead = true;
+    const wasAuto = this.auto;
     if (this.auto) { const zn = zoneAt(this.player.pos.x, this.player.pos.z); if (zn) (this.autoDeaths ||= []).push({ t: this.time, z: zn.id }); }
     if (this.auto) { this.toggleAuto(false); this.ui.log('자동사냥 중 쓰러져 자동사냥을 멈췄습니다', '#ff7a6a'); } // v0.49.96 자리 비운 사이 죽고 되살아나기를 되풀이하며 장비를 잃지 않게
     this.st.hp = 0;
@@ -2201,7 +2202,8 @@ export class World {
     this.player.lock = 99;
     const lost = rollDeathDrop(this.st);
     if (lost) {
-      const g = this.dropGround({ kind: 'item', item: lost }, this.player.pos.x + 1.8, this.player.pos.z, Date.now() + CONFIG.deathItemLifetime * 1000);
+      // v0.49.97 자동사냥 중 쓰러져 떨어뜨린 장비는 사라지지 않는다 (주울 때까지 · 다시 접속하면 창고로)
+      const g = this.dropGround({ kind: 'item', item: lost }, this.player.pos.x + 1.8, this.player.pos.z, Date.now() + (wasAuto ? 3650 * 86400 : CONFIG.deathItemLifetime) * 1000);
       g.deathDrop = true;
       this.refreshGear();
     }
