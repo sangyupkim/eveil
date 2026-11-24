@@ -611,10 +611,42 @@ function drawBank(ctx, set, id, low, top, sx, sy, s) {
   ctx.drawImage(c, sx - t[5] * s, sy - t[6] * s, t[3] * s, t[4] * s);
 }
 
+const GCS = 256, GC_MAX = 70; // 땅 조각 크기(화면 px) · 기억해 둘 조각 수
+const gChunks = new Map();
+function groundChunk(stage, cx, cy, s, camPx, W, H) {
+  const key = cx + ',' + cy + ',' + s + ',' + groundVer + ',' + stage.pr;
+  let c = gChunks.get(key);
+  if (c) { gChunks.delete(key); gChunks.set(key, c); return c; }
+  c = document.createElement('canvas'); const pr = stage.pr, N = Math.ceil(GCS * pr); c.width = N; c.height = N;
+  const g = c.getContext('2d');
+  // 화면 좌표 u = 세계px − 카메라px + W/2 → 조각 좌표 = u + 카메라px − W/2 − cx·GCS
+  const ox = camPx.x - W / 2 - cx * GCS, oy = camPx.y - H / 2 - cy * GCS;
+  g.setTransform(pr, 0, 0, pr, ox * pr, oy * pr);
+  const sx0 = cx * GCS - camPx.x + W / 2, sy0 = cy * GCS - camPx.y + H / 2;
+  drawGround(stage, g, W, H, s, GCS * 2 + 200, [[sx0, sy0, sx0 + GCS, sy0 + GCS]]);
+  gChunks.set(key, c);
+  while (gChunks.size > GC_MAX) { const k0 = gChunks.keys().next().value, o = gChunks.get(k0); o.width = o.height = 0; gChunks.delete(k0); }
+  return c;
+}
+function drawGroundChunks(stage, ctx, W, H, s) {
+  const camPx = { x: stage.cam.x * PX * s, y: stage.cam.z * PZ * s }, pr = stage.pr;
+  const x0 = camPx.x - W / 2, y0 = camPx.y - H / 2;
+  const a0 = Math.floor(x0 / GCS), a1 = Math.floor((x0 + W) / GCS), b0 = Math.floor(y0 / GCS), b1 = Math.floor((y0 + H) / GCS);
+  for (let a = a0; a <= a1; a++) for (let b = b0; b <= b1; b++) {
+    const c = groundChunk(stage, a, b, s, camPx, W, H);
+    const dx = Math.round((a * GCS - x0) * pr) / pr, dy = Math.round((b * GCS - y0) * pr) / pr;
+    ctx.drawImage(c, 0, 0, c.width, c.height, dx, dy, GCS, GCS);
+  }
+  // 둘레 한 줄: 아직 없는 조각 하나만 미리
+  for (let a = a0 - 1; a <= a1 + 1; a++) for (let b = b0 - 1; b <= b1 + 1; b++) {
+    if (a >= a0 && a <= a1 && b >= b0 && b <= b1) continue;
+    if (!gChunks.has(a + ',' + b + ',' + s + ',' + groundVer + ',' + pr)) { groundChunk(stage, a, b, s, camPx, W, H); return; }
+  }
+}
 export let groundVer = 1; // 세상이 바뀌면 올려 땅 판을 다시 그린다
 export const groundDirty = () => { groundVer++; };
 // 땅 타일 그리기 (판에 한 번)
-function drawGround(stage, ctx, W, H, s, M) {
+function drawGround(stage, ctx, W, H, s, M, cull = null) {
   const c0 = stage.toWorld(-100 - M, -100 - M), c1 = stage.toWorld(W + 100 + M, H + 160 + M);
   const ti = (x, z) => [(x + z) / (2 * STEP), (z - x) / (2 * STEP)];
   const pts = [ti(c0.x, c0.z), ti(c1.x, c0.z), ti(c0.x, c1.z), ti(c1.x, c1.z)];
@@ -626,9 +658,10 @@ function drawGround(stage, ctx, W, H, s, M) {
     const x = (i - j) * STEP, z = (i + j) * STEP;
     if (x < c0.x - 4 || x > c1.x + 4 || z < c0.z - 4 || z > c1.z + 4) continue;
     if (!farSide(x) && Math.hypot(x, z) > WORLD_SIZE + 12) continue;
+    const p = stage.toScreen(x, z);
+    if (cull) { let hit = false; for (const r of cull) if (p.x > r[0] - 130 * s && p.x < r[2] + 130 * s && p.y > r[1] - 120 * s && p.y < r[3] + 260 * s) { hit = true; break; } if (!hit) continue; }
     const [set, id, wet, lake] = tileAt(i, j);
     if (set === 'void') continue;
-    const p = stage.toScreen(x, z);
     if (lake && (lake.lava || lake.top)) drawBank(ctx, set, id, lake.lava ? 'lava' : lake.chasm ? 'chasm' : null, lake.top, p.x, p.y, s);
     else if (wet || (set !== 'cave' && id >= wb(set)[0] && id < wb(set)[0] + 24)) drawWater(ctx, set, id, p.x, p.y, s); else drawTile(stage, ctx, set, id, p.x, p.y, s);
     if (false) {
@@ -656,20 +689,9 @@ function render(stage, dt) {
   if (stage.shakeK > 0.001) { const k = stage.shakeK * stage.shakeK * 10; ctx.translate((Math.random() - 0.5) * k, (Math.random() - 0.5) * k); }
   ctx.fillStyle = '#0d0c0b';
   ctx.fillRect(-20, -20, W + 40, H + 40);
-  // 땅: 미리 그려 둔 판(화면 + 둘레 GM px)을 카메라만큼 밀어 붙인다. 판 밖으로 벗어나거나 확대가 바뀌면 다시 그린다
-  const GM = 220, Zs = s;
-  let gc = stage.gcache;
-  const camPx = (c) => ({ x: c.x * PX * s, y: c.z * PZ * s });
-  const now = camPx(stage.cam);
-  if (!gc || gc.ver !== groundVer || gc.s !== Zs || gc.W !== W || gc.H !== H || Math.abs(now.x - gc.px.x) > GM - 20 || Math.abs(now.y - gc.px.y) > GM - 20) {
-    gc = stage.gcache ||= { c: document.createElement('canvas') };
-    gc.c.width = Math.ceil((W + GM * 2) * stage.pr); gc.c.height = Math.ceil((H + GM * 2) * stage.pr);
-    gc.ver = groundVer; gc.s = Zs; gc.W = W; gc.H = H; gc.px = now;
-    const g = gc.c.getContext('2d');
-    g.setTransform(stage.pr, 0, 0, stage.pr, GM * stage.pr, GM * stage.pr);
-    drawGround(stage, g, W, H, s, GM);
-  }
-  ctx.drawImage(gc.c, 0, 0, gc.c.width, gc.c.height, -GM + (gc.px.x - now.x), -GM + (gc.px.y - now.y), W + GM * 2, H + GM * 2);
+  // 땅: v0.50.5 256px 조각 판으로 나눠 기억해 두고 보이는 조각만 붙인다. 새 조각은 화면에 들어올 때 · 둘레 한 줄은 한 프레임에 하나씩 미리
+  //  (예전: 화면 + 둘레 판 하나를 카메라가 200px 움직일 때마다 통째로 다시 그려 걸을 때마다 끊겼다)
+  drawGroundChunks(stage, ctx, W, H, s);
   const c0 = stage.toWorld(-100, -100), c1 = stage.toWorld(W + 100, H + 160);
   for (const f of stage.flats) {
     if (!stage.onScreen(f.x, f.z, 3)) continue;
