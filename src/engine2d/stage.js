@@ -1,6 +1,7 @@
 // 2D 쿼터뷰 화면: 카메라 · 땅 타일 · 배경 물건 · 앞뒤 정렬 · 조명. 게임 규칙의 좌표(x, z)는 그대로 쓴다
 // 투영: 화면 x = x·48, 화면 y = z·24 − 높이·48 (Flare 타일 192×96 하나 = 세계 (2, 2) 대각)
 import { ZONES, TOWN, WORLD_SIZE } from '../data/world.js';
+import { PLOTS } from '../data/buildings.js';
 import { setDungeonSeed, dungeonAt, dungeonBox, DUNGEON_X, entranceOf, layout, cellPos, N, T } from '../data/dungeons.js';
 const farSide = (x) => x > DUNGEON_X - 80;
 import { ZONE_LOOK, ZONE_PROPS, FLAT, DRIVE_TREES, DRIVE_ROCKS } from '../data/flareWorld.js';
@@ -18,6 +19,16 @@ export function zoneAt(x, z) {
   for (const zn of ZONES) if (Math.hypot(x - zn.x, z - zn.z) < zoneRadius(zn, Math.atan2(z - zn.z, x - zn.x))) return zn;
   return null;
 }
+// v0.50.3 마을 돌길: 차원문 광장 · 집터 앞을 도는 고리길 · 고리길에서 집터로 · 사냥터로 나가는 네 길
+export function townRoad(x, z) {
+  // 0 = 풀밭, 1 = 길 가장자리(풀 섞인 돌), 2 = 돌길 한가운데
+  const n = noise(x * 1.7, z * 1.7) * 1.2, d = Math.hypot(x, z);
+  let m = 9 + n - d; // 가장자리까지 남은 거리 (클수록 안쪽)
+  m = Math.max(m, 2.6 + n * 0.5 - Math.abs(d - 18));
+  for (const q of ZONES.slice(0, 4)) m = Math.max(m, 3 + n * 0.6 - distToSeg(x, z, 0, 0, q.x, q.z));
+  for (const p of PLOTS) { const L = Math.hypot(p.x, p.z), k = 17 / L, e = (L - 6.5) / L; m = Math.max(m, 2.4 + n * 0.4 - distToSeg(x, z, p.x * k, p.z * k, p.x * e, p.z * e)); }
+  return m <= 0 ? 0 : m < 1.1 ? 1 : 2;
+}
 function distToSeg(px, pz, ax, az, bx, bz) {
   const dx = bx - ax, dz = bz - az;
   const t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz)));
@@ -32,7 +43,7 @@ function groundAt(i, j) {
   const h = hash(i, j);
   if (farSide(x)) { const di = dungeonBox(x, z); return di >= 0 ? pick(ZONES[di].id, h) : ['void']; } // 던전 바닥은 그 지역 땅 그대로
   const dT = Math.hypot(x, z);
-  if (dT < TOWN.r * 0.75) return pick('town', h);
+  if (dT < TOWN.r * 0.86) { const r = townRoad(x, z); return r === 2 ? ['ruins', h < 0.8 ? 24 + Math.floor(h * 10) : 74 + Math.floor((h - 0.8) * 15)] : r ? pick('town', h) : pick('wild', h); } // v0.50.3 마을: 풀밭에 돌길 (광장 · 고리길 · 집터 길 · 사냥터 길)
   // 지역 경계는 들쭉날쭉하게
   let zn = null;
   for (const z0 of ZONES) if (Math.hypot(x - z0.x, z - z0.z) < zoneRadius(z0, Math.atan2(z - z0.z, x - z0.x)) * (1.02 + (noise(x * 2, z * 2) - 0.5) * 0.08)) { zn = z0; break; }

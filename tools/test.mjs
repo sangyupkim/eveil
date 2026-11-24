@@ -166,6 +166,7 @@ test('퀘스트: 처치 → 보고 → 보상 → 다음 퀘스트, 끝까지 �
     let steps = 0;
     while (nextQuest(p)) {
       const q = currentQuest(p), g = q.goal;
+      if (q.guide) { assert.equal(questKill(p, { type: 'x', tier: 'boss', zone: 'field' }), false); p.quest.n = questNeed(q); p.inv.length = 0; assert.ok(questTurnIn(p, CONFIG.inventorySize).ok, q.id); continue; }
       assert.equal(questKill(p, { type: 'nothing', tier: 'normal', zone: q.zone }), false);
       for (let i = 0; i < questNeed(q); i++) assert.ok(questKill(p, g.kill ? { type: g.kill, tier: 'normal', zone: q.zone } : { type: 'x', tier: g.named ? 'named' : 'boss', zone: q.zone }));
       assert.ok(questDone(p));
@@ -176,7 +177,7 @@ test('퀘스트: 처치 → 보고 → 보상 → 다음 퀘스트, 끝까지 �
       if (q.reward.book) assert.ok(SKILLS[r.items.find((it) => it.book).book], q.id);
       steps++;
     }
-    assert.equal(steps, QUESTS.length);
+    assert.equal(steps, QUESTS.filter((q) => !q.guide).length);
     for (const q of QUESTS) { if (q.goal.kill) assert.ok(ZONES.find((z) => z.id === q.zone).spawns[q.goal.kill], q.id); }
   }
 });
@@ -881,6 +882,42 @@ test('v0.49.95 명인 용병: 솜씨 30을 넘는 용병이 일하면 만년 약
     t.last = Date.now() - 3 * 3600e3; T.tick(st, Date.now()); const r = T.collect(st, 'p1'); return r?.got?.myriad || 0; };
   assert.equal(run(20), 0, '12단계 · 명인 없음 → 만년 약초 없음');
   assert.ok(run(70) > 0, '명인이 일하면 11단계부터 나온다');
+});
+
+test('v0.50.3 한꺼번에 분해: 가방 · 창고 · 용병이 든 전리품에서 고른 등급만 (잠금 · 이름 있는 전설 제외)', async () => {
+  const T = await import('../src/game/town.js'), V = await import('../src/game/vault.js');
+  const st = newPlayer(); st.gold = 1e12; st.awakenings = 999; T.build(st, 'p1', 'inn'); T.finishBuilds(st, Date.now() + 1e9);
+  const t = T.townOf(st), armor = Object.keys(BASES).find((k) => BASES[k].slot === 'armor');
+  const mk = (r) => makeItem(armor, { rarity: r, ilvl: 50 }, st);
+  const keep = mk('rare'); keep.lock = true; st.inv.push(mk('rare'), mk('rare'), mk('hero'), keep);
+  V.vault().items.push(mk('rare'));
+  const m = T.rollMerc(Math.random, 1); m.held = [mk('rare'), mk('legend')]; t.mercs.push(m);
+  const c = T.salvageCount(st, 'rare'); assert.deepEqual([c.bag, c.vault, c.held], [2, 1, 1]);
+  const ore0 = t.ore, r = T.salvageEverywhere(st, ['rare']);
+  assert.equal(r.n, 4); assert.ok(t.ore >= ore0);
+  assert.ok(st.inv.includes(keep) && st.inv.some((x) => x.rarity === 'hero'));
+  assert.equal(m.held.length, 1); assert.equal(m.held[0].rarity, 'legend');
+});
+
+test('v0.50.3 안내 퀘스트: 조건 전엔 건너뛰고 나중에 받는다 · 해 본 것은 넘어간다 · 짓기는 상태로 · 범람은 일로', async () => {
+  const Q = await import('../src/game/quests.js'), T = await import('../src/game/town.js');
+  const st = newPlayer(); st.gold = 1e12; st.awakenings = 0;
+  const upto = (id) => { for (const q of QUESTS) { if (q.id === id) break; if (!q.guide) st.questsDone.push(q.id); } };
+  upto('w1'); // 들판 끝: 대장간 안내가 먼저
+  assert.equal(Q.nextQuest(st).id, 'gd_smithy');
+  assert.equal(Q.questPoll(st), false);
+  T.build(st, 'p1', 'smithy'); assert.ok(Q.questPoll(st)); assert.ok(Q.questDone(st));
+  st.inv.length = 0; assert.ok(Q.questTurnIn(st, 99).ok);
+  assert.equal(Q.currentQuest(st).id, 'gd_enh');
+  // 여관(각성 3)은 각성 전엔 건너뛰었다가 각성하면 다음에 받는다
+  st.quest = null; st.questsDone.push('gd_enh', 'gd_dungeon', 'gd_herb'); upto('g1');
+  const q1 = Q.nextQuest(st); assert.notEqual(q1.id, 'gd_inn'); assert.equal(q1.id, 'gd_horde');
+  assert.equal(Q.questEvent(st, 'flood'), false); assert.ok(Q.questEvent(st, 'horde')); assert.ok(Q.questDone(st));
+  st.quest = null; st.questsDone.push('gd_horde'); st.awakenings = 3; assert.equal(Q.nextQuest(st).id, 'gd_inn');
+  // 예전에 범람을 정화해 봤으면 범람 안내는 넘어간다
+  st.quest = null; st.questsDone.push('gd_inn'); st.flood = { list: [], cleared: 2 }; upto('s1');
+  const q2 = Q.nextQuest(st); assert.notEqual(q2.id, 'gd_flood'); assert.ok(st.questsDone.includes('gd_flood'));
+  assert.equal(Q.goalText(Q.questDef('gd_flood')), '범람지 정화'); assert.equal(Q.goalText(Q.questDef('gd_mine')), '광산 짓기');
 });
 
 console.log(`\n${n}개 통과`);

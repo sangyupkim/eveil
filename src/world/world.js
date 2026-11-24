@@ -34,7 +34,7 @@ import { HORDE, hordePen, conqLeft, hordeGap } from '../data/horde.js';
 import { MUGAN, karmaNeed } from '../data/mugan.js';
 import { muganCurveK } from '../data/tiercurve.js';
 import { RAID, RAID_GRADES, BLESS, BLESS_IDS, RAID_SPOT, raidWeek, raidOf, raidOpen, fmtTime } from '../data/raid.js';
-import { dropMats, liberateAdd, dropEss, resAdd, resCount, claim as claimMerc, lootRoomFull, brewCollect, collect as collectPlot, repeatTick, autoBrewTick } from '../game/town.js';
+import { salvageItem, dropMats, liberateAdd, dropEss, resAdd, resCount, claim as claimMerc, lootRoomFull, brewCollect, collect as collectPlot, repeatTick, autoBrewTick } from '../game/town.js';
 import { vaultAdd } from '../game/vault.js';
 import { itemIcon, iconUrl, coinIcon, oreIcon, herbIcon, townIcon, bookIcon } from '../ui/icons.js';
 import { dailyProgress, dailyReward, dailyText, dayKey, dailyOf, weeklyOf, weekKey } from '../game/daily.js';
@@ -45,7 +45,8 @@ import { seeded, randInt, randRange } from '../game/rng.js';
 import { Actor, makeHero } from '../engine2d/actor.js';
 import { FX, drawPowerFrame } from '../engine2d/fx.js';
 import { zoneRadius, resolveCollision, zoneAt, clearLine, findPath, blockedAt, LAKES, MESAS, CAMPS, inCamp, bossSpot, addGateProps, removeProps } from '../engine2d/stage.js';
-import { rumorsOf, analyzeDone, rumorName, PLUS } from '../game/rumor.js';
+import { rumorsOf, analyzeDone, rumorName, PLUS, pickRumorZone, RUMOR_MAX } from '../game/rumor.js';
+import { currentQuest, questPoll, questEvent, questDone, nextQuest } from '../game/quests.js';
 import { CHAMP, rollChamp } from '../data/champions.js';
 import { combatPower } from '../game/power.js';
 import { MUTS, MUT_AFFIX, MUT_RESIST, COLLAPSE_SEC, mutCount, rollMuts, mutBonus } from '../data/mutators.js';
@@ -250,7 +251,7 @@ export class World {
     const t = townOf(this.st), want = t.mercs.filter((m) => m.work && t.plots[m.work] && !m.job && !m.rest);
     // v0.44.15 여관에서 쉬는 용병: 있던 자리에서 여관 앞까지 걸어가 눕는다
     const innE = Object.entries(t.plots).find(([, b]) => b.type === 'inn'), innPl = innE && PLOTS.find((q) => q.id === innE[0]);
-    const resting = innPl ? t.mercs.filter((m) => m.rest && !m.job) : [];
+    const resting = innPl ? t.mercs.filter((m) => m.rest && !m.job).slice(0, 8) : []; // v0.50.3 누운 용병은 여덟까지만 그린다
     const sig = want.map((m) => m.id + m.work + (m.tired ? 1 : 0)).join(',') + '|' + resting.map((m) => m.id).join(',');
     if (sig === this.workerSig) return;
     this.workerSig = sig;
@@ -269,12 +270,16 @@ export class World {
       this.workers.push({ a, m, kind: 'rest', to, lying, t: 2 + Math.random() * 3 });
     });
     const TOOL = { mine: 'hand_axe', herb: 'dagger', smithy: 'smith_hammer', workshop: 'smith_hammer', lab: 'rod', inn: null, house: null };
-    const SPOT = { herb: (i) => [(i % 3 - 1) * 3.0, (Math.floor(i / 3) - 0.5) * 2.2], mine: (i) => [-2.0 + i * 1.6, 4.6], lab: (i) => [-1.2 + i * 1.2, 2.2], smithy: (i) => [5.2 + (i % 2) * 1.2, 2.4 + i * 1.0], inn: (i) => [5.6 + (i % 2) * 1.2, 2.6 + i * 1.0] };
+    // v0.50.3 건물마다 보이는 용병은 여섯까지 (셋씩 두 줄) — 용병이 많으면 한 줄로 길게 늘어서 다른 건물 · 길을 덮었다
+    const g3 = (x0, z0, dx = 1.6, dz = 1.3) => (i) => [x0 + (i % 3) * dx, z0 + Math.floor(i / 3) * dz];
+    const SPOT = { herb: (i) => [(i % 3 - 1) * 3.0, (Math.floor(i / 3) - 0.5) * 2.2], mine: g3(-1.6, 4.6), lab: g3(-1.6, 2.4, 1.6, 1.2), smithy: (i) => [5.2 + (i % 2) * 1.2, 2.4 + Math.floor(i / 2) * 1.0], inn: (i) => [5.6 + (i % 2) * 1.2, 2.6 + Math.floor(i / 2) * 1.0] };
+    const SHOW = 6;
     const count = {};
     for (const m of want) {
       const b = t.plots[m.work], pl = PLOTS.find((q) => q.id === m.work); if (!pl) continue;
       const i = (count[m.work] = (count[m.work] ?? -1) + 1);
-      const [dx, dz] = (SPOT[b.type] || ((k) => [-2.4 + k * 1.6, 5.6]))(i);
+      if (i >= SHOW) continue;
+      const [dx, dz] = (SPOT[b.type] || g3(-1.6, 5.6))(i);
       const a = this.mercActor(m);
       const tool = TOOL[b.type];
       if (a.setLook) a.setLook({ layers: { ...(tool ? { main: tool } : {}), ...(b.type === 'lab' ? { chest: 'mage_vest', legs: 'mage_skirt' } : b.type === 'smithy' || b.type === 'mine' ? { chest: 'leather_chest' } : {}) } });
@@ -913,6 +918,7 @@ export class World {
     // 정복지 7일 · 다음 군세
     H.done = true; st.horde.conq[zn.id] = Date.now() + HORDE.conqMs; st.horde.zone = null; st.horde.at = 0; st.horde.next = Date.now() + hordeGap();
     st.horde.cleared = (st.horde.cleared || 0) + 1;
+    this.questEv('horde');
     this.fx.pillar(P.x, P.z, 0xffd060, 2, 8, 2); sfx('awaken');
     this.ui.toast(`군세 토벌 완료 — ${zn.name}이(가) 7일 동안 정복지가 됩니다`, '#ffd060');
     this.ui.log(`정수 ${'ⅠⅡⅢⅣⅤ'[g - 1] || g} +${Math.round(4 * mult)} · ${zn.name} 재료`, '#ffd060');
@@ -1100,6 +1106,7 @@ export class World {
     const st = this.st, dg = this.dungeon, R = dg.raid, sec = this.time - R.t0, rd = raidOf(st, R.W.wk);
     R.done = true; dg.cleared = true;
     (st.raidLords ||= {})[R.W.lord.id] = 1; // 칭호 · 각인을 살 수 있다
+    this.questEv('raid');
     const g = R.grade, prev = rd.best[g];
     if (!prev || sec < prev) rd.best[g] = Math.round(sec * 10) / 10;
     this.ui.toast(`왕좌 원정 ${R.G.name} 완료 · ${fmtTime(sec)}`, '#ffd060'); sfx('awaken');
@@ -1135,6 +1142,7 @@ export class World {
     }
     if (dg.hidden) { this.hiddenCleared(m); return; }
     st.dungeons[zn.id] = Math.max(st.dungeons[zn.id] || 0, dg.stage);
+    this.questEv('dungeon');
     this.checkTierUnlock();
     this.dailyDone(dailyProgress(st, { kind: 'dungeon', zone: zn.id }));
     // 보상: 영웅 이상 2개 (단계가 높을수록 전설), 상급 스킬북 하나, 금화
@@ -1187,6 +1195,7 @@ export class World {
     const st = this.st, dg = this.dungeon, zn = dg.zone, pl = PLUS[dg.plus || 0];
     dg.cleared = true;
     const R = rumorsOf(st), i = R.findIndex((r) => r.id === dg.hidden); if (i >= 0) R.splice(i, 1);
+    this.questEv('hidden');
     const MB = mutBonus(dg.muts?.length || 0), gMark = this.ground.length;
     const lv = zn.levels[1] + 6 + pl.lv + this.tierOffset + MB.lv, mf = Math.max(0, this.d.magicFind + researchK(st, 'luck'));
     const myth = Math.random() < Math.min(0.05, pl.myth + (pl.myth ? (mf / 100) * 0.001 : 0)), legend = !myth && Math.random() < (pl.legend + Math.min(0.05, (mf / 100) * 0.003)) * MB.legend;
@@ -2290,6 +2299,33 @@ export class World {
     return this.monsters.filter((m) => !m.dead && dist2(m.pos, pos) <= r);
   }
 
+  // ───── v0.50.3 안내 퀘스트 ─────
+  // 받은 안내 퀘스트가 일을 만들어 준다 (범람 하나 · 군세 · 열쇠 · 소문), 상태로 이루는 것은 여기서 확인
+  questTick() {
+    const st = this.st; if (st.tut < 99) return;
+    const q = st.quest ? currentQuest(st) : nextQuest(st); if (!q?.guide || questDone(st)) return;
+    if (q.start && st.quest.started !== q.id) { st.quest.started = q.id; this.questStart(q); }
+    if (q.start === 'flood' && !st.flood?.list?.length) this.questStart(q); // 범람이 없으면 다시 하나
+    if (questPoll(st)) this.questProgress();
+  }
+  questStart(q) {
+    const st = this.st;
+    if (q.start === 'key') { addItem(st, makeItem('dungeon_key', { qty: 1 }, st)); this.ui.toast('던전 열쇠를 받았습니다', '#ffd84a'); }
+    if (q.start === 'horde') { const H = (st.horde ||= { zone: null, at: 0, next: 0, conq: {} }); if (!H.zone) H.next = 1; }
+    if (q.start === 'rumor') { const R = rumorsOf(st), cl = ALL_ZONES.map((z, i) => (this.bossCleared(z) ? i : -1)).filter((i) => i >= 0), zi = pickRumorZone(cl);
+      if (zi >= 0 && R.length < RUMOR_MAX) { R.push({ id: `q${Date.now().toString(36)}`, zi, plus: 0 }); this.ui.toast(`소문: ${rumorName(R[R.length - 1])}`, '#ffd84a'); } }
+    if (q.start === 'flood') {
+      const F = (st.flood ||= { list: [], next: 0 }), cl = this.floodZones().filter((z) => !F.list.some((x) => x.zone === z.id));
+      if (!cl.length) return;
+      const z = cl[Math.floor(Math.random() * cl.length)]; F.list.push({ zone: z.id, at: Date.now() });
+      this.ui.toast(`${z.name}에 몬스터가 넘쳐났습니다`, '#ff6a5a'); sfx('error');
+    }
+  }
+  questEv(kind) { if (questEvent(this.st, kind)) this.questProgress(); }
+  questProgress() {
+    if (questDone(this.st)) { this.ui.toast(`퀘스트 완료 — ${currentQuest(this.st).name}`, '#ffd84a'); sfx('rankup'); }
+    this.onQuest?.(); this.ui.dirty();
+  }
   // ───── v0.44.43 범람지 ─────
   floodZones() { return ALL_ZONES.filter((z) => this.bossCleared(z)); }
   floodTick() {
@@ -2379,6 +2415,7 @@ export class World {
   floodClear(zid, P, lv) {
     const F = this.st.flood; if (!F?.list?.some((x) => x.zone === zid)) return;
     F.list = F.list.filter((x) => x.zone !== zid);
+    F.cleared = (F.cleared || 0) + 1; this.questEv('flood');
     (this.st.zoneHunt ||= {})[zid] = Date.now();
     if (this.floodOn) delete this.floodOn[zid];
     if (this.floodLock?.zone === zid) this.floodLock = null;
@@ -3318,6 +3355,7 @@ export class World {
       const done = researchTick(st);
       if (done) secs.push({ title: '연구 완료', rows: [{ img: bookIcon(), name: `${RESEARCH[done].name} ${researchLv(st, done)}단계` }] });
       secs.push(...this.townAuto());
+      this.questTick();
       this.floodTick();
       this.hordeTick();
       if (st.dailyNew?.length) { this.dailyDone(st.dailyNew); st.dailyNew = []; }
@@ -3337,6 +3375,9 @@ export class World {
     let gotHeld = 0;
     // v0.44.66에서 가방 칸을 넘겨 담긴 것: 넘친 만큼 떼어 용병 짐으로 (가방이 수천 칸으로 불어나 멈칫했다)
     { const B = bagSize(st); if (st.inv.length > B && t.mercs.length) { const extra = st.inv.splice(B); const m0 = t.mercs[0]; m0.held = [...(m0.held || []), ...extra]; } }
+    // v0.50.3 용병이 들고 있던 장비도 「받을 물건」 설정대로: 분해로 정한 등급은 분해, 버리기는 버림
+    { const drop = t.expDrop || {}; let sv = 0; for (const m of t.mercs) if (m.held?.length) { const keep = []; for (const it of m.held) { const dr = BASES[it.base]?.slot && !it.named && !it.lock ? drop[it.rarity] : null; if (dr === 'salv') { salvageItem(st, it); sv++; } else if (!dr) keep.push(it); } m.held = keep.length ? keep : undefined; }
+      if (sv) secs.push({ title: '용병이 들고 있던 전리품', rows: [{ name: `장비 ${sv}개를 분해했습니다`, color: '#c8c0b0' }] }); }
     for (const m of t.mercs) if (m.held?.length && !lootRoomFull(st)) { const left = []; for (const it of m.held) (put(st, it) ? gotHeld++ : left.push(it)); m.held = left.length ? left : undefined; }
     if (gotHeld) secs.push({ title: '용병이 들고 있던 전리품', rows: [{ name: `장비 ${gotHeld}개를 받았습니다`, color: '#7fe07a' }] });
     const full = lootRoomFull(st);
@@ -3351,6 +3392,7 @@ export class World {
         tot.gold += r.gold; tot.ore += r.ore; tot.mats += r.mats;
         if (r.held?.length) { const mm = t.mercs.find((x) => x.id === m.id); if (mm) mm.held = [...(mm.held || []), ...r.held]; }
         for (const it of r.items) { if (rows.filter((x) => x.item).length >= 40) { tot.more = (tot.more || 0) + 1; continue; } rows.push({ img: itemIcon(it), name: itemName(it), color: itemColor(it), item: it }); } // v0.44.68 알림 줄은 40개까지 (수천 줄이 쌓여 화면이 멈칫했다)
+        if (r.salv) rows.push({ name: `받자마자 분해 ${r.salv}개 · 강화석 +${(r.salvOre || 0).toLocaleString()}`, color: '#c8c0b0' }); // v0.50.3
         if (r.held?.length) rows.push({ name: `자리가 없어 ${r.held.length}개는 용병이 들고 기다림`, color: '#ff9a5a' });
         if (r.mapPiece) rows.push({ name: `알 수 없는 지도 조각 ${r.mapPiece}`, color: '#ffd060' });
       }

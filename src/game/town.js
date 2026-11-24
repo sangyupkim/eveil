@@ -301,12 +301,31 @@ export function salvage(st, uid, fromVault = false) {
   const it = L[i];
   if (it?.lock) return { ok: false, why: '잠근 아이템입니다' };
   if (!it || it.book || !BASES[it.base]?.slot) return { ok: false, why: '분해할 수 없습니다' }; // v0.49.43 이름 있는 전설도 분해할 수 있다
+  L.splice(i, 1); if (fromVault) vaultSave();
+  return { ok: true, ...salvageItem(st, it) };
+}
+// 장비 하나를 분해한 값을 받는다 (어디에 있었는지와 상관없이) — 강화석 · 지역 재료 · 가끔 능력치 파편
+export function salvageItem(st, it) {
   const v = salvageValue(it), t = townOf(st);
-  L.splice(i, 1); if (fromVault) vaultSave(); t.ore += v.ore; t.mats[v.mat] = (t.mats[v.mat] || 0) + v.matN;
+  t.ore += v.ore; t.mats[v.mat] = (t.mats[v.mat] || 0) + v.matN;
   // 분해하면 그 장비의 옵션 하나가 능력치 파편으로 나올 수 있다 (등급이 높을수록 자주)
   let shard = null;
-  if (it.affixes?.length && Math.random() < SALVAGE_SHARD[it.rarity] * (1 + 0.2 * (t.research?.shard || 0))) { shard = shardFrom(it, st); if (shard && !mergeShard(st.inv, shard)) st.inv.push(shard); }
-  return { ok: true, ...v, shard };
+  if (it.affixes?.length && Math.random() < (SALVAGE_SHARD[it.rarity] || 0) * (1 + 0.2 * (t.research?.shard || 0))) { shard = shardFrom(it, st); if (shard && !mergeShard(st.inv, shard) && !mergeShard(vault().items, shard)) st.inv.push(shard); }
+  return { ...v, shard };
+}
+// v0.50.3 한꺼번에 분해: 가방 · 창고 · 용병이 들고 기다리는 전리품에서 고른 등급의 장비를 모두 (잠금 · 이름 있는 전설 · 착용 제외)
+export const salvageable = (x) => !!x && !x.lock && !x.named && !x.book && !!BASES[x.base]?.slot;
+export function salvageCount(st, r) {
+  const ok = (x) => salvageable(x) && x.rarity === r;
+  return { bag: st.inv.filter(ok).length, vault: vault().items.filter(ok).length, held: townOf(st).mercs.reduce((a, m) => a + (m.held || []).filter(ok).length, 0) };
+}
+export function salvageEverywhere(st, rarities) {
+  const want = new Set(rarities), ok = (x) => salvageable(x) && want.has(x.rarity), tot = { n: 0, ore: 0, mats: 0, shards: 0 };
+  const take = (it) => { const r = salvageItem(st, it); tot.n++; tot.ore += r.ore; tot.mats += r.matN; if (r.shard) tot.shards++; };
+  for (const it of st.inv.filter(ok)) { st.inv.splice(st.inv.indexOf(it), 1); take(it); }
+  const V = vault().items, vs = V.filter(ok); if (vs.length) { for (const it of vs) { V.splice(V.indexOf(it), 1); take(it); } vaultSave(); }
+  for (const m of townOf(st).mercs) if (m.held?.length) { const keep = []; for (const it of m.held) (ok(it) ? take(it) : keep.push(it)); m.held = keep.length ? keep : null; }
+  return tot;
 }
 // 재련: 옵션 하나(가장 약한 것)를 다시 굴린다
 export const reforgeCost = (it) => ({ gold: Math.round(200 * (1 + it.ilvl / 5) * (RK[it.rarity] || 1)), ore: 4 + Math.round(it.ilvl / 4) });
@@ -579,7 +598,7 @@ export function claim(st, id, now = Date.now(), rng = Math.random, put = null) {
   for (let k = 0; k < rolls; k++) for (const d of rollLoot({ tier: k % 6 === 5 ? 'elite' : 'normal', level: lvl }, {}, st, rng)) {
     if (d.kind !== 'item' || !d.item.base || d.item.book) continue;
     const b = BASES[d.item.base];
-    if (b?.slot) { if (!drop[d.item.rarity] || d.item.named) out.items.push(d.item); } else if (b?.type === 'gem') out.items.push(d.item);
+    if (b?.slot) { const dr = drop[d.item.rarity]; if (!dr || d.item.named) out.items.push(d.item); else if (dr === 'salv') { const r = salvageItem(st, d.item); out.salv = (out.salv || 0) + 1; out.salvOre = (out.salvOre || 0) + r.ore; } } else if (b?.type === 'gem') out.items.push(d.item); // v0.50.3 'salv' = 받자마자 분해
   }
   { const nSh = Math.min(4, Math.floor(rolls * 0.0004 + rng())); for (let k = 0; k < nSh; k++) out.items.push(rollShard(lvl, st, rng)); }
   { const nKey = Math.min(3, Math.floor(rolls * 0.0003 + rng())); if (nKey > 0) out.items.push(makeItem('dungeon_key', { qty: nKey }, st)); }

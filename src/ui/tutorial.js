@@ -90,6 +90,7 @@ export class Tutorial {
       this.show();
       world.ui.dirty();
     };
+    world.onQuest = () => this.show(); // v0.50.3 안내 퀘스트 진행
     this.coach = new Coach(world, windows);
     this.show();
   }

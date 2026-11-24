@@ -58,7 +58,7 @@ import { GEMS, GEM_GRADES, gemId } from '../data/legends.js';
 import { fuseMany, fuseCount, greatCount, greatSlots, applyShard, canApply, lockMax, shardCost, shardVals, shardGrade, gradeName as sgName, gradeColor, useGrade, pullGrade, pullResearch, pullCost as sgCost, pullPool, dustOf, grindShard, fuseShard, pullShard } from '../game/shards.js';
 import { HERBS, HERB_IDS, GROW_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
 import { RARITY_IDS, junkCount, discardJunk } from '../game/town.js';
-import { plotMaster, masterOne, wsStoreN, wsStoreCap, wsTake, MYTH_CHANCE, wageTotal, mercWage, buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, brewQueue, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
+import { salvageCount, salvageEverywhere, plotMaster, masterOne, wsStoreN, wsStoreCap, wsTake, MYTH_CHANCE, wageTotal, mercWage, buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, brewQueue, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
 import { RESEARCH_MAX, SHELTER } from '../data/buildings.js';
 import { herbIcon, homeIcon, uiIcon } from './icons.js';
 import { vault, vaultSize, vaultPut, vaultTake, vaultAdd, vaultSave, vaultReady } from '../game/vault.js';
@@ -438,10 +438,10 @@ export class Windows {
         if (k === 'merc') return this.mercTab(b, sel);
         if (k === 'loot') {
           const drop = t.expDrop || {}, RN = { common: '일반', magic: '마법', rare: '희귀', hero: '영웅', legend: '전설', myth: '신화' }, V = vault().items;
-          const L = `<h3>받을 장비</h3>` + RARITY_IDS.map((r) => `<div class="row"><div class="grow"><b style="color:${RARITY[r]?.color || ''}">${RN[r]}</b></div><button class="btn${drop[r] ? '' : ' on'}" data-expdrop="${r}|0">받기</button><button class="btn${drop[r] ? ' on' : ''}" data-expdrop="${r}|1">버리기</button></div>`).join('')
-            + `<h3 style="margin-top:8px">받는 물건</h3><div class="kv"><span>장비</span><b>받기로 한 등급만</b><span>보석 · 능력치 파편</span><b>모두</b><span>던전 열쇠 · 지도 조각</span><b>모두</b><span>물약</span><b>없음</b></div>`;
+          const L = `<h3>받을 장비</h3>` + RARITY_IDS.map((r) => `<div class="row"><div class="grow"><b style="color:${RARITY[r]?.color || ''}">${RN[r]}</b></div><button class="btn${drop[r] ? '' : ' on'}" data-expdrop="${r}|0">받기</button><button class="btn${drop[r] === 'salv' ? ' on' : ''}" data-expdrop="${r}|s">분해</button><button class="btn${drop[r] === true ? ' on' : ''}" data-expdrop="${r}|1">버리기</button></div>`).join('')
+            + `<h3 style="margin-top:8px">받는 물건</h3><div class="kv"><span>장비</span><b>받기 · 분해(받자마자 강화석 · 재료로) · 버리기</b><span>보석 · 능력치 파편</span><b>모두</b><span>던전 열쇠 · 지도 조각</span><b>모두</b><span>물약</span><b>없음</b></div>`;
           const potN = [...st.inv, ...V].filter((x) => x && !x.lock && BASES[x.base]?.type === 'potion').length;
-          const R = `<h3>쌓인 물건 정리 <small>잠금 · 이름 있는 전설 · 착용 제외</small></h3>` + RARITY_IDS.map((r) => { const nb = junkCount(st, st.inv, r), nv = junkCount(st, V, r); return `<div class="row"><div class="grow"><b style="color:${RARITY[r]?.color || ''}">${RN[r]} 장비</b><div class="note">가방 ${nb} · 창고 ${nv}</div></div><button class="btn danger" data-junk="${r}" ${nb + nv ? '' : 'disabled'}>버리기</button></div>`; }).join('')
+          const R = `<h3>쌓인 물건 정리 <small>잠금 · 이름 있는 전설 · 착용 제외</small></h3>` + RARITY_IDS.map((r) => { const c = salvageCount(st, r), n = c.bag + c.vault + c.held; return `<div class="row"><div class="grow"><b style="color:${RARITY[r]?.color || ''}">${RN[r]} 장비</b><div class="note">가방 ${c.bag} · 창고 ${c.vault} · 용병 ${c.held}</div></div><button class="btn" data-salvevery="${r}" ${n ? '' : 'disabled'}>분해</button><button class="btn danger" data-junk="${r}" ${n ? '' : 'disabled'}>버리기</button></div>`; }).join('')
             + `<div class="row"><div class="grow"><b>물약</b><div class="note">가방 · 창고 ${potN}칸</div></div><button class="btn danger" data-junk="potion" ${potN ? '' : 'disabled'}>버리기</button></div>`;
           return [L, R];
         }
@@ -638,7 +638,7 @@ export class Windows {
     if (!junk.some((x) => x[0] === this.salvSel)) this.salvSel = junk[0]?.[0] ?? null;
     const rf = `<div class="rarRow"><button class="btn${this.salvR ? '' : ' on'}" data-salvr="">전체</button>${RARITY_IDS.filter((r) => all.some((x) => x[1].rarity === r)).map((r) => `<button class="btn${this.salvR === r ? ' on' : ''}" data-salvr="${r}" style="color:${RARITY[r].color}">${RARITY[r].name}</button>`).join('')}</div>`;
     const cur = junk.find((x) => x[0] === this.salvSel);
-    const R = `<h3>${this.srcBtns('salvsrc', fromV)} <span class="cnt">${junk.length}</span>${fromV ? '' : '<button class="btn" data-salvageall="1" style="margin-left:auto">등급별 분해</button>'}</h3>` + rf + this.itemCells(junk, this.salvSel, 'vsalv');
+    const R = `<h3>${this.srcBtns('salvsrc', fromV)} <span class="cnt">${junk.length}</span>${fromV ? '' : '<button class="btn" data-salvageall="1" style="margin-left:auto">한꺼번에 분해</button>'}</h3>` + rf + this.itemCells(junk, this.salvSel, 'vsalv');
     if (!cur) return [`<h3>분해</h3><div class="forgeSlot empty"></div>`, R];
     const it = cur[1], v = salvageValue(it);
     return [`<div class="salvInfo">${this.describe(it, 'view')}</div><div class="kv"><span>강화석</span><b>${v.ore}</b><span>${MATERIALS[v.mat].name}</span><b>${v.matN}</b></div><div class="btns forgeGo"><button class="btn gold big" data-salvage="${fromV ? 'v:' : ''}${it.uid}" ${it.lock ? 'disabled' : ''}>${it.lock ? '잠김' : '분해'}</button></div>`, R];
@@ -947,7 +947,7 @@ export class Windows {
     let det = '<div class="note">받을 퀘스트가 없습니다</div>';
     if (q) {
       const need = questNeed(q), done = questDone(st);
-      det = `<div class="nm">${q.name}</div><div class="sub">${ZONES.find((z) => z.id === q.zone).name}</div><div>${q.text}</div>
+      det = `<div class="nm">${q.name}</div><div class="sub">${q.guide ? '새 기능' : ZONES.find((z) => z.id === q.zone).name}</div><div>${q.text}</div>
         <h3 style="margin-top:12px">목표</h3><div class="row" style="border:0"><div class="grow">${goalText(q)}<div class="mini" style="height:8px"><i style="width:${Math.min(100, (st.quest.n / need) * 100)}%;background:linear-gradient(#ffe7a0,#c99a3a)"></i></div></div><b>${Math.min(need, st.quest.n)} / ${need}</b></div>
         <h3 style="margin-top:12px">보상</h3><div class="rws">${rewards(q.reward)}</div>
         <div class="btns"><button class="plate gold" data-turnin="1" ${done && this.w.inTown ? '' : 'disabled'}>${done ? (this.w.inTown ? '보상 받기' : '경비대장 하겐에게 보고') : '진행 중'}</button></div>`;
@@ -1759,14 +1759,14 @@ export class Windows {
     ask('[data-salvage]', (el) => { const raw = String(el.dataset.salvage), it = gearAt(st, raw.startsWith('v:') ? raw : 'b:' + raw); return it && !cheap(it) ? ['분해', '되돌릴 수 없습니다', '분해', itemHtml(it)] : null; }, (el) => { const raw = el.dataset.salvage, r = salvage(st, Number(String(raw).replace('v:', '')), String(raw).startsWith('v:')); if (r.ok) { audio.play('coin'); salvReport([r]); } townDone(r); });
     // v0.45.5 등급을 골라 한꺼번에 분해 (가방, 잠근 장비 제외)
     on('[data-salvageall]', async () => {
-      const can = (x) => !x.book && !x.lock && BASES[x.base]?.slot;
-      const cnt = (r) => st.inv.filter((x) => can(x) && x.rarity === r).length;
+      const cnt = (r) => { const c = salvageCount(st, r); return c.bag + c.vault + c.held; }; // v0.50.3 가방 · 창고 · 용병이 든 것까지
       const opts = RARITY_IDS.map((r) => ({ key: r, label: RARITY[r].name, color: RARITY[r].color, sub: `${cnt(r)}개`, on: ['common', 'magic'].includes(r), off: !cnt(r) }));
       if (!opts.some((o) => !o.off)) { w.ui.toast('분해할 장비가 없습니다'); audio.play('error'); return; }
       audio.play('click');
-      const pick = await gamePick('등급별 분해', opts, '분해', '가방의 고른 등급 장비를 모두 분해합니다'); if (!pick?.length) return;
-      const rs = []; for (const x of [...st.inv]) if (can(x) && pick.includes(x.rarity)) rs.push(salvage(st, x.uid));
-      audio.play('coin'); salvReport(rs); townDone({ ok: true }); });
+      const pick = await gamePick('등급별 분해', opts, '분해', '가방 · 창고 · 용병이 든 물건에서 고른 등급 장비를 모두 분해합니다'); if (!pick?.length) return;
+      const r = salvageEverywhere(st, pick); audio.play('coin'); w.ui.toast(`${r.n.toLocaleString()}개 분해 · 강화석 +${r.ore.toLocaleString()}${r.shards ? ` · 파편 ${r.shards}` : ''}`, '#c8c0b0'); w.ui.dirty(); townDone({ ok: true }); });
+    ask('[data-salvevery]', (el) => { const r0 = el.dataset.salvevery, c = salvageCount(st, r0); return ['분해', `${RARITY[r0].name} 장비 ${(c.bag + c.vault + c.held).toLocaleString()}개를 분해합니다\n가방 ${c.bag} · 창고 ${c.vault} · 용병 ${c.held}`, '분해']; }, (el) => {
+      const r = salvageEverywhere(st, [el.dataset.salvevery]); audio.play('coin'); w.ui.toast(`${r.n.toLocaleString()}개 분해 · 강화석 +${r.ore.toLocaleString()}${r.shards ? ` · 파편 ${r.shards}` : ''}`, '#c8c0b0'); w.ui.dirty(); this.render(); });
     on('[data-stab]', (el) => { const [k, v] = el.dataset.stab.split('|'); (this.bTab ||= {})[k] = v; audio.play('click'); this.render(); });
     on('[data-labsel]', (el) => { this.labSel = el.dataset.labsel; audio.play('click'); this.render(); });
     on('[data-innsel]', (el) => { this.innSel = el.dataset.innsel; audio.play('click'); this.render(); });
@@ -1823,7 +1823,7 @@ export class Windows {
       this.popup('등급별 합치기', `<div class="kv"><span>성공</span><b>${ok}번</b><span>실패</span><b>${fail}번 · ${lost}개 잃음</b><span>금화</span><b>${gold.toLocaleString()} G</b></div>` + Object.entries(made).map(([id, n]) => `<div class="aff" style="color:#c0b0ff">${BASES[id].name} +${n}</div>`).join(''));
       w.ui.dirty(); this.render();
     });
-    on('[data-expdrop]', (el) => { const [r, v] = el.dataset.expdrop.split('|'), t = townOf(st); (t.expDrop ||= {})[r] = v === '1'; audio.play('click'); this.render(); });
+    on('[data-expdrop]', (el) => { const [r, v] = el.dataset.expdrop.split('|'), t = townOf(st); (t.expDrop ||= {})[r] = v === 's' ? 'salv' : v === '1'; audio.play('click'); this.render(); });
     on('[data-junk]', async (el) => { const r = el.dataset.junk, nm = { potion: '물약', common: '일반 장비', magic: '마법 장비', rare: '희귀 장비', hero: '영웅 장비', legend: '전설 장비', myth: '신화 장비' }[r];
       if (!(await gameConfirm('버리기', `가방 · 창고의 ${nm}을(를) 모두 버립니다. 되돌릴 수 없습니다`, '버리기'))) return; const n = discardJunk(st, r); audio.play('click'); w.ui.toast(`${nm} ${n}개를 버렸습니다`); w.ui.dirty(); this.render(); });
     on('[data-esel]', (el) => { this.enhSel = el.dataset.esel; audio.play('click'); this.render(); });

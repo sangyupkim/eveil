@@ -107,32 +107,32 @@ export const MONSTERS = {
 };
 
 // 지역: 마을은 원점. levels: 마을에서 가까운 쪽 → 먼 쪽 몬스터 레벨
-export const TOWN = { id: 'town', name: '여명 초소', x: 0, z: 0, r: 30 };
+export const TOWN = { id: 'town', name: '여명 초소', x: 0, z: 0, r: 40 }; // v0.50.3 30 → 40 (가까운 네 지역은 바깥으로 옮겼다)
 
 export const ZONES = [
   {
-    id: 'field', name: '푸리에 들판', x: 0, z: 62, r: 40, levels: [1, 3], count: 17, ground: [0.30, 0.33, 0.17],
+    id: 'field', name: '푸리에 들판', x: 0, z: 80, r: 40, levels: [1, 3], count: 17, ground: [0.30, 0.33, 0.17],
     spawns: { slime: 45, rat: 20, mushnub: 35, wasp: 10 }, // v0.49.74 모든 지역에 원거리 몬스터 하나 이상
     named: { type: 'slime_spiky', name: '가시 개미귀신 군주' },
     boss: { type: 'mushking', name: '고블린 대두목 무르크' },
     props: { tree: 16, trees: 12, n_tree1: 16, n_tree2: 12, n_tree3: 10, n_birch: 10, n_bush: 22, n_bush2: 16, n_berries: 10, n_flowers: 36, n_grass: 30, rock: 14, n_moss1: 10, n_stump: 8, n_log: 6, fence_broken: 6, bone: 6 },
   },
   {
-    id: 'forest', name: '썩은 숲', x: -72, z: -2, r: 40, levels: [4, 7], count: 18, ground: [0.16, 0.22, 0.13],
+    id: 'forest', name: '썩은 숲', x: -86, z: -2, r: 40, levels: [4, 7], count: 18, ground: [0.16, 0.22, 0.13],
     spawns: { wolf: 30, spider: 22, orc_grunt: 22, wasp: 14, tribal: 12 },
     named: { type: 'wolf', name: '정찰대장 송곳니' },
     boss: { type: 'orc', name: '미노타우로스 그라쉬' },
     props: { tree_dead_l: 20, tree_dead_m: 18, tree_pine: 16, n_pine1: 20, n_pine2: 18, n_birch2: 10, n_dead2: 10, n_moss1: 14, n_moss2: 12, n_stump_moss: 10, n_log_moss: 10, n_plant: 20, n_bush2: 14, bone: 8 },
   },
   {
-    id: 'grave', name: '망자의 묘지', x: 0, z: -76, r: 40, levels: [8, 12], count: 20, ground: [0.20, 0.22, 0.19],
+    id: 'grave', name: '망자의 묘지', x: 0, z: -90, r: 40, levels: [8, 12], count: 20, ground: [0.20, 0.22, 0.19],
     spawns: { skel_minion: 18, skel_rogue: 16, skel_warrior: 22, skel_archer: 14, ghost: 16, ghost_skull: 14 },
     named: { type: 'skel_mage', name: '저주받은 사제' },
     boss: { type: 'skel_mage', name: '묘지기 리치', tint: 0x9080c0 },
     props: { grave: 40, gravestone: 40, gravemarker: 30, crypt: 3, coffin: 8, fence_pillar: 20, tree_dead_m: 18, skull_candle: 12, post: 10 },
   },
   {
-    id: 'ruins', name: '무너진 성채', x: 74, z: -4, r: 40, levels: [13, 18], count: 20, ground: [0.25, 0.19, 0.15],
+    id: 'ruins', name: '무너진 성채', x: 88, z: -4, r: 40, levels: [13, 18], count: 20, ground: [0.25, 0.19, 0.15],
     spawns: { raider: 22, fallen_knight: 18, imp: 22, blue_demon: 20, goleling: 18 },
     named: { type: 'blue_demon', name: '약탈단장 하르겐' },
     boss: { type: 'dragon', name: '황혼 대지네 베르크' },

@@ -1,5 +1,6 @@
 // 퀘스트 진행 (화면과 무관한 규칙)
 import { QUESTS, QUEST_BOOKS } from '../data/quests.js';
+import { BUILDINGS } from '../data/buildings.js';
 import { BASES } from '../data/items.js';
 import { MONSTERS, ZONES } from '../data/world.js';
 import { makeItem, makeBook, isStack, sameStack } from './items.js';
@@ -8,24 +9,80 @@ import { totalStats } from './player.js';
 import { addItem } from './inventory.js';
 import { titleKey } from '../data/titles.js';
 import { CONFIG } from '../data/config.js';
+import { townOf, findBuilding } from './town.js';
+import { raidOpen } from '../data/raid.js';
 
 export const questDef = (id) => QUESTS.find((q) => q.id === id) || null;
 export const currentQuest = (st) => (st.quest ? questDef(st.quest.id) : null);
 export const questNeed = (q) => q.goal.n || 1;
 export const questDone = (st) => { const q = currentQuest(st); return !!q && st.quest.n >= questNeed(q); };
 
-// 아직 안 한 다음 퀘스트를 받는다 (없으면 null)
+// v0.50.3 안내 퀘스트 (guide): 받을 조건 · 지금 상태로 이룬 것 · 예전에 해 본 것
+const mercsOf = (st) => townOf(st).mercs || [];
+export function guideReady(st, q) {
+  const n = q.need || {};
+  if (n.aw && (st.awakenings || 0) < n.aw) return false;
+  if (n.bld && !findBuilding(st, n.bld)) return false;
+  if (n.raid && !raidOpen(st)) return false;
+  return true;
+}
+// 지금 상태만 보고 이뤘는가 (짓기 · 고용 · 강화 · 연구 · 파견 중)
+function stateDone(st, g) {
+  const t = townOf(st);
+  if (g.build) return !!findBuilding(st, g.build);
+  if (g.hire) return mercsOf(st).length >= g.hire;
+  if (g.enh) return [...Object.values(st.equip || {}), ...(st.inv || [])].some((it) => (it?.plus || 0) >= g.enh);
+  if (g.research) return !!(t.lab || t.lab2 || Object.keys(t.research || {}).length);
+  if (g.dispatch) return mercsOf(st).some((m) => m.job) || (st.qev?.dispatch || 0) > 0;
+  return false;
+}
+// 예전에 이미 해 본 것 (받자마자 넘어간다)
+function seenBefore(st, g) {
+  const E = st.qev || {};
+  if (g.dungeon) return Object.values(st.dungeons || {}).some((v) => v > 0) || E.dungeon > 0;
+  if (g.horde) return (st.horde?.cleared || 0) > 0;
+  if (g.flood) return (st.flood?.cleared || 0) > 0 || Object.keys(st.floodWeek || {}).length > 0;
+  if (g.hidden) return E.hidden > 0;
+  if (g.raid) return Object.keys(st.raidLords || {}).length > 0;
+  return stateDone(st, g);
+}
+export const isGuide = (q) => !!q?.guide;
+
+// 아직 안 한 다음 퀘스트를 받는다 (없으면 null). 안내 퀘스트는 조건을 못 채우면 건너뛰고(나중에 받는다), 이미 해 본 것은 넘어간다
 export function nextQuest(st) {
   if (st.quest) return currentQuest(st);
-  const q = QUESTS.find((x) => !st.questsDone.includes(x.id));
-  if (q) st.quest = { id: q.id, n: 0 };
-  return q || null;
+  for (const x of QUESTS) {
+    if (st.questsDone.includes(x.id)) continue;
+    if (x.guide) {
+      if (!guideReady(st, x)) continue;
+      if (seenBefore(st, x.goal)) { st.questsDone.push(x.id); continue; }
+    }
+    st.quest = { id: x.id, n: 0 };
+    return x;
+  }
+  return null;
+}
+// 상태로 이루는 안내 퀘스트 (짓기 등) — 이뤘으면 true
+export function questPoll(st) {
+  const q = currentQuest(st);
+  if (!q?.guide || questDone(st)) return false;
+  if (!stateDone(st, q.goal)) return false;
+  st.quest.n = questNeed(q);
+  return true;
+}
+// 일 (던전 · 범람 · 군세 · 숨은 던전 · 원정 · 파견) — 진행이 바뀌면 true
+export function questEvent(st, kind) {
+  (st.qev ||= {})[kind] = (st.qev[kind] || 0) + 1;
+  const q = currentQuest(st);
+  if (!q?.guide || questDone(st) || !q.goal[kind]) return false;
+  st.quest.n++;
+  return true;
 }
 
 // 몬스터를 잡았을 때. mon: { type, tier, zone } — 진행이 바뀌면 true
 export function questKill(st, mon) {
   const q = currentQuest(st);
-  if (!q || questDone(st)) return false;
+  if (!q || q.guide || questDone(st)) return false;
   const g = q.goal;
   const hit = g.kill ? mon.type === g.kill : g.named ? mon.tier === 'named' && mon.zone === g.named : mon.tier === 'boss' && mon.zone === g.boss;
   if (!hit) return false;
@@ -33,8 +90,12 @@ export function questKill(st, mon) {
   return true;
 }
 
+const GUIDE_GOAL = { dungeon: '던전 돌파', horde: '군세 토벌', flood: '범람지 정화', hidden: '숨은 던전 돌파', raid: '왕좌 원정', hire: '용병 고용', dispatch: '용병 파견', research: '연구 시작' };
 export function goalText(q) {
   const g = q.goal;
+  if (g.build) return `${BUILDINGS[g.build]?.name || ''} 짓기`;
+  if (g.enh) return `장비 +${g.enh} 강화`;
+  for (const k in GUIDE_GOAL) if (g[k]) return GUIDE_GOAL[k];
   if (g.kill) return `${MONSTERS[g.kill].name} 처치`;
   const z = ZONES.find((x) => x.id === (g.named || g.boss));
   return `${(g.named ? z.named : z.boss).name} 처치`;
