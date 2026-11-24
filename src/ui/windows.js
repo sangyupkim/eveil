@@ -1191,7 +1191,7 @@ export class Windows {
         L += `<div class="vcats" style="margin:0 0 4px;gap:3px">${chip('all', '모두')}${chip('none', '풀기')}${gsHave.map((g) => chip('g' + g, `${sgName(g)}까지`, false, gradeColor(g))).join('')}${chip('keep', '최고 값 지키기', keepTop)}</div>`;
         L += `<div class="shList" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;max-height:calc(var(--vh) * 30)">${vs.map((v, i) => { const g = shardGrade(it.shard.id, v, gr); return `<button class="btn affBtn${pk.includes(i) ? ' on' : ''}" data-sgpick="${i}" style="color:${gradeColor(g)}${g > ug ? ';opacity:.55' : ''}">${esc(affixText({ id: it.shard.id, v }))} <small>${sgName(g)}</small></button>`; }).join('')}</div>`;
         L += `<div class="kv tight" style="margin-top:6px"><span>고름</span><b>${pk.length}개</b><span>쓸 수 있는 등급</span><b>${gtag(ug)}</b>${this.sgLast ? `<span>결과</span><b>${this.sgLast}</b>` : ''}</div>`;
-        L += `<div class="btns forgeGo"><button class="btn big" data-sggrind="1" ${pk.length ? '' : 'disabled'}>갈기 · 가루 +${dustSum}</button><button class="btn gold big" data-sgfuse="1" ${fuseCount(it.shard.id, gr, pk.map((i) => vs[i])) || pk.length === 3 ? '' : 'disabled'}>합치기${pk.length > 3 ? ` ×${fuseCount(it.shard.id, gr, pk.map((i) => vs[i]))}` : ` ${pk.length}/3`}</button></div>`;
+        L += `<div class="btns forgeGo"><button class="btn" data-sggrind="1" ${pk.length ? '' : 'disabled'}>갈기 · 가루 +${dustSum}</button><button class="btn gold" data-sgfuse="1" ${fuseCount(it.shard.id, gr, pk.map((i) => vs[i])) || pk.length === 3 ? '' : 'disabled'}>합치기${pk.length > 3 ? ` ×${fuseCount(it.shard.id, gr, pk.map((i) => vs[i]))}` : ` ${pk.length}/3`}</button></div>`;
         return [L, R];
       }
       // 뽑기: 오른쪽 등급 → 왼쪽 뽑기
@@ -1202,7 +1202,7 @@ export class Windows {
       const R = `<h3>등급</h3>` + gs.map((g) => { const w = why(g); return `<div class="row pick${g === this.sgGrade ? ' on' : ''}" data-sggrade="${g}" style="${w ? 'opacity:.5' : ''}"><div class="grow">${gtag(g)}</div><span class="note">${w ? `잠김 · ${w}` : `가루 ${sgCost(g)}`}</span></div>`; }).join('');
       const g = this.sgGrade, cost = sgCost(g), w = why(g), pool = w ? [] : pullPool(st, g);
       let L = `<h3>${gtag(g)} 파편 뽑기</h3><div class="kv tight"><span>가루</span><b style="${dust < cost ? 'color:#ff7060' : ''}">${cost} <small class="note">/ ${dust.toLocaleString()}</small></b><span>나오는 옵션</span><b>${w ? '-' : `${pool.length}종`}</b></div>`;
-      L += `<div class="btns forgeGo"><button class="btn gold big" data-sgpull="${g}" ${!w && pool.length && dust >= cost ? '' : 'disabled'}>${w ? `잠김 · ${w}` : pool.length ? '뽑기' : '각성 부족'}</button></div>`;
+      L += `<div class="btns forgeGo"><button class="btn gold" data-sgpull="${g}" ${!w && pool.length && dust >= cost ? '' : 'disabled'}>${w ? `잠김 · ${w}` : pool.length ? '뽑기' : '각성 부족'}</button></div>`;
       if (this.sgPullLast) L += `<div class="aff" style="margin-top:8px;color:${gradeColor(this.sgPullLast.grade)}">${esc(affixText(this.sgPullLast))} · ${sgName(this.sgPullLast.grade)}</div>`;
       return [L, R];
     });

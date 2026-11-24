@@ -1,6 +1,11 @@
 // 패치 노트 (게임 안 [메뉴 → 패치 노트]에서 본다). 새 버전이 나오면 맨 위에 더한다.
-export const GAME_VERSION = '0.49.87';
+export const GAME_VERSION = '0.49.88';
 export const PATCH_NOTES = [
+  {
+    ver: '0.49.88', date: '2026-11-24',
+    head: '현자 창 버튼 크기를 다른 창과 맞췄습니다.',
+    items: ['1. 갈기 · 합치기 · 뽑기 버튼이 보통 크기로 바뀌었습니다.'],
+  },
   {
     ver: '0.49.87', date: '2026-11-24',
     head: '파편 고르기가 쉬워졌습니다.',
