@@ -1188,7 +1188,7 @@ export class Windows {
         let L = `<h3>${gr ? '<b style="color:#ffb84a">탁월</b> ' : ''}${esc((AFFIXES[it.shard.id]?.text || '').replace(/\s*[+-]?\{v\}%?/, ''))} <span class="cnt">${vs.length}</span><button class="btn" data-sgall="1" style="margin-left:auto">${pk.length ? '풀기' : '모두 고르기'}</button></h3>`;
         L += `<div class="shList" style="display:grid;grid-template-columns:1fr 1fr;gap:4px">${vs.map((v, i) => { const g = shardGrade(it.shard.id, v, gr); return `<button class="btn affBtn${pk.includes(i) ? ' on' : ''}" data-sgpick="${i}" style="color:${gradeColor(g)}${g > ug ? ';opacity:.55' : ''}">${esc(affixText({ id: it.shard.id, v }))} <small>${sgName(g)}</small></button>`; }).join('')}</div>`;
         L += `<div class="kv tight" style="margin-top:8px"><span>고름</span><b>${pk.length}개</b><span>쓸 수 있는 등급</span><b>${gtag(ug)}</b></div>`;
-        L += `<div class="btns forgeGo"><button class="btn" data-sggrind="1" ${pk.length ? '' : 'disabled'}>갈기 · 가루 +${dustSum}</button><button class="btn gold big" data-sgfuse="1" ${pk.length === 3 ? '' : 'disabled'}>합치기 ${pk.length}/3</button></div>`;
+        L += `<div class="btns forgeGo"><button class="btn big" data-sggrind="1" ${pk.length ? '' : 'disabled'}>갈기 · 가루 +${dustSum}</button><button class="btn gold big" data-sgfuse="1" ${pk.length === 3 ? '' : 'disabled'}>합치기 ${pk.length}/3</button></div>`;
         if (this.sgLast) L += `<div class="note" style="margin-top:6px">${this.sgLast}</div>`;
         return [L, R];
       }
@@ -1220,7 +1220,7 @@ export class Windows {
     L += row('남기기', [0, 1, 3, 5, 10].map((n) => chip('k', n, F.keep === n, n ? `높은 ${n}개` : '없음')).join('') + chip('t', 1, F.great, '탁월 포함', '#ffb84a'));
     const plan = bulkPlan(st, F), n = plan.reduce((a, g) => a + g.picks.length, 0), dust = plan.reduce((a, g) => a + g.dust, 0);
     L += `<div class="kv tight" style="margin-top:8px"><span>대상</span><b>${n.toLocaleString()}개</b><span>가루</span><b>+${dust.toLocaleString()}</b></div>`;
-    L += `<div class="btns forgeGo"><button class="btn" data-sgbulk="grind" ${n ? '' : 'disabled'}>모두 갈기</button><button class="btn gold big" data-sgbulk="fuse" ${n >= 3 ? '' : 'disabled'}>자동 합치기</button></div>`;
+    L += `<div class="btns forgeGo"><button class="btn big" data-sgbulk="grind" ${n ? '' : 'disabled'}>모두 갈기</button><button class="btn gold big" data-sgbulk="fuse" ${n >= 3 ? '' : 'disabled'}>자동 합치기</button></div>`;
     if (this.sgLast) L += `<div class="note" style="margin-top:6px">${this.sgLast}</div>`;
     const R = `<h3>대상 <span class="cnt">${plan.length}종</span></h3>` + (plan.map((g) => `<div class="row"><div class="grow"><b${g.great ? ' style="color:#ffb84a"' : ''}>${g.great ? '탁월 ' : ''}${nm(g.id)}</b></div><span class="note">${g.picks.length} / ${g.total}개 · 가루 ${g.dust.toLocaleString()}</span></div>`).join('') || '<div class="note">없음</div>');
     return [L, R];
