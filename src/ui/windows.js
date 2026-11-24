@@ -55,7 +55,7 @@ const NEED_NAMES = { melee: '근접 무기 (검 · 도끼 · 둔기 · 단검 ·
 // v0.50 초월 강화 숫자 색: +21 금색 · +50 붉은 금 · +100 무지개
 const plusCls = (n) => n >= 100 ? ' plusRb' : n >= 50 ? ' plusRg' : n > 20 ? ' plusG' : '';
 import { GEMS, GEM_GRADES, gemId } from '../data/legends.js';
-import { greatCount, greatSlots, applyShard, canApply, lockMax, shardCost, shardVals, shardGrade, gradeName as sgName, gradeColor, useGrade, pullGrade, pullResearch, pullCost as sgCost, pullPool, dustOf, grindShard, fuseShard, pullShard } from '../game/shards.js';
+import { bulkPlan, bulkGrind, bulkFuse, greatCount, greatSlots, applyShard, canApply, lockMax, shardCost, shardVals, shardGrade, gradeName as sgName, gradeColor, useGrade, pullGrade, pullResearch, pullCost as sgCost, pullPool, dustOf, grindShard, fuseShard, pullShard } from '../game/shards.js';
 import { HERBS, HERB_IDS, GROW_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
 import { RARITY_IDS, junkCount, discardJunk } from '../game/town.js';
 import { MYTH_CHANCE, wageTotal, mercWage, buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, brewQueue, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
@@ -1172,8 +1172,9 @@ export class Windows {
   sage() {
     const st = this.w.st, dust = st.shardDust || 0, ug = useGrade(st);
     const gtag = (g) => `<b style="color:${gradeColor(g)}">${sgName(g)}</b>`;
-    return this.tabView(`가루 <b>${dust.toLocaleString()}</b>`, 'sage', [['dex', '도감'], ['shard', '파편'], ['pull', '뽑기']], (k) => {
+    return this.tabView(`가루 <b>${dust.toLocaleString()}</b>`, 'sage', [['dex', '도감'], ['shard', '파편'], ['sort', '정리'], ['pull', '뽑기']], (k) => {
       if (k === 'dex') return this.dex();
+      if (k === 'sort') return this.sageSort(st, gtag);
       if (k === 'shard') {
         // 오른쪽: 가진 파편 (옵션마다 한 줄, 가방 · 창고)
         const stacks = [...st.inv, ...vault().items].filter((x) => x?.shard);
@@ -1203,6 +1204,26 @@ export class Windows {
       if (this.sgPullLast) L += `<div class="aff" style="margin-top:8px;color:${gradeColor(this.sgPullLast.grade)}">${esc(affixText(this.sgPullLast))} · ${sgName(this.sgPullLast.grade)}</div>`;
       return [L, R];
     });
+  }
+
+  // v0.49.85 파편 한꺼번에 정리: 왼쪽 조건(등급 · 종류 · 남길 수 · 탁월) + 갈기 · 자동 합치기 | 오른쪽 대상 미리 보기
+  sageSort(st, gtag) {
+    const all = [...st.inv, ...vault().items].filter((x) => x?.shard);
+    const ids = [...new Set(all.map((x) => x.shard.id))], grades = [...new Set(all.flatMap((x) => shardVals(x).map((v) => shardGrade(x.shard.id, v, x.shard.great))))].sort((a, b) => a - b);
+    const F = (this.sgF ||= { grades: [], ids: null, keep: 1, great: false });
+    if (!F.ids) F.ids = [...ids];
+    const nm = (id) => esc((AFFIXES[id]?.text || id).replace(/\s*[+-]?\{v\}%?/, ''));
+    const chip = (key, v, on, label, color = '') => `<button class="btn${on ? ' on' : ''}" data-sgf="${key}|${v}" style="${color ? `color:${color};` : ''}padding:1px 8px;min-height:0;font-size:calc(var(--u) * 0.68)${on ? '' : ';opacity:.5'}">${label}</button>`;
+    const row = (t, h) => `<div style="display:flex;gap:6px;align-items:flex-start;margin-top:4px"><span class="note" style="flex:0 0 3.2em;padding-top:3px">${t}</span><div class="vcats" style="flex:1;min-width:0;margin:0;gap:3px">${h}</div></div>`;
+    let L = row('등급', chip('ga', 1, grades.length && grades.every((g) => F.grades.includes(g)), '전체') + grades.map((g) => chip('g', g, F.grades.includes(g), sgName(g), gradeColor(g))).join(''));
+    L += row('종류', chip('ia', 1, ids.every((id) => F.ids.includes(id)), '전체') + ids.map((id) => chip('i', id, F.ids.includes(id), nm(id))).join(''));
+    L += row('남기기', [0, 1, 3, 5, 10].map((n) => chip('k', n, F.keep === n, n ? `높은 ${n}개` : '없음')).join('') + chip('t', 1, F.great, '탁월 포함', '#ffb84a'));
+    const plan = bulkPlan(st, F), n = plan.reduce((a, g) => a + g.picks.length, 0), dust = plan.reduce((a, g) => a + g.dust, 0);
+    L += `<div class="kv tight" style="margin-top:8px"><span>대상</span><b>${n.toLocaleString()}개</b><span>가루</span><b>+${dust.toLocaleString()}</b></div>`;
+    L += `<div class="btns forgeGo"><button class="btn" data-sgbulk="grind" ${n ? '' : 'disabled'}>모두 갈기</button><button class="btn gold big" data-sgbulk="fuse" ${n >= 3 ? '' : 'disabled'}>자동 합치기</button></div>`;
+    if (this.sgLast) L += `<div class="note" style="margin-top:6px">${this.sgLast}</div>`;
+    const R = `<h3>대상 <span class="cnt">${plan.length}종</span></h3>` + (plan.map((g) => `<div class="row"><div class="grow"><b${g.great ? ' style="color:#ffb84a"' : ''}>${g.great ? '탁월 ' : ''}${nm(g.id)}</b></div><span class="note">${g.picks.length} / ${g.total}개 · 가루 ${g.dust.toLocaleString()}</span></div>`).join('') || '<div class="note">없음</div>');
+    return [L, R];
   }
 
   dex() {
@@ -1913,6 +1934,16 @@ export class Windows {
     on('[data-sgsel]', (el) => { this.sgSel = Number(el.dataset.sgsel); this.sgPick = []; this.sgLast = null; audio.play('click'); this.render(); });
     on('[data-sgpick]', (el) => { const i = Number(el.dataset.sgpick), p = (this.sgPick ||= []), j = p.indexOf(i); if (j >= 0) p.splice(j, 1); else p.push(i); audio.play('click'); this.render(); });
     on('[data-sgall]', () => { const it = [...st.inv, ...vault().items].find((x) => x?.uid === this.sgSel); this.sgPick = this.sgPick?.length || !it ? [] : shardVals(it).map((_, i) => i); audio.play('click'); this.render(); });
+    on('[data-sgf]', (el) => { const [k, v] = el.dataset.sgf.split('|'), F = this.sgF; const tg = (arr, x) => { const i = arr.indexOf(x); if (i >= 0) arr.splice(i, 1); else arr.push(x); };
+      const all = [...st.inv, ...vault().items].filter((x) => x?.shard);
+      if (k === 'g') tg(F.grades, Number(v)); else if (k === 'i') tg(F.ids, v); else if (k === 'k') F.keep = Number(v); else if (k === 't') F.great = !F.great;
+      else if (k === 'ga') { const gs = [...new Set(all.flatMap((x) => shardVals(x).map((y) => shardGrade(x.shard.id, y, x.shard.great))))]; F.grades = gs.every((g) => F.grades.includes(g)) ? [] : gs; }
+      else if (k === 'ia') { const ids = [...new Set(all.map((x) => x.shard.id))]; F.ids = ids.every((id) => F.ids.includes(id)) ? [] : ids; }
+      this.sgLast = null; audio.play('click'); this.render(); });
+    ask('[data-sgbulk]', (el) => { const plan = bulkPlan(st, this.sgF), n = plan.reduce((a, g) => a + g.picks.length, 0); return el.dataset.sgbulk === 'grind' ? ['파편 모두 갈기', `파편 ${n.toLocaleString()}개를 가루로 만듭니다`, '갈기'] : ['자동 합치기', `파편 ${n.toLocaleString()}개를 같은 옵션 · 같은 등급끼리 낮은 값부터 셋씩 합칩니다`, '합치기']; }, (el) => {
+      const r = el.dataset.sgbulk === 'grind' ? bulkGrind(st, this.sgF) : bulkFuse(st, this.sgF);
+      if (!r.ok) { w.ui.toast(r.why); audio.play('error'); } else { this.sgLast = el.dataset.sgbulk === 'grind' ? `${r.n.toLocaleString()}개 · 가루 +${r.dust.toLocaleString()}` : `${r.used.toLocaleString()}개 → ${r.fuses.toLocaleString()}개`; audio.play('rankup'); w.ui.dirty(); }
+      this.render(); });
     on('[data-sggrade]', (el) => { this.sgGrade = Number(el.dataset.sggrade); audio.play('click'); this.render(); });
     ask('[data-sggrind]', () => ['파편 갈기', `파편 ${this.sgPick.length}개를 가루로 만듭니다`, '갈기'], () => { const r = grindShard(st, this.sgSel, this.sgPick); if (!r.ok) { w.ui.toast(r.why); audio.play('error'); } else { this.sgPick = []; this.sgLast = `가루 +${r.dust}`; audio.play('click'); w.ui.dirty(); } this.render(); });
     on('[data-sgfuse]', () => { const r = fuseShard(st, this.sgSel, this.sgPick); if (!r.ok) { w.ui.toast(r.why); audio.play('error'); } else { this.sgPick = []; const hi = Math.max(...r.from); this.sgLast = `<span style="color:${gradeColor(r.grade)}">${r.great ? '탁월 ' : ''}${esc(affixText({ id: r.id, v: r.v }))} · ${sgName(r.grade)}</span> ${r.v > hi ? '▲' : r.v < Math.min(...r.from) ? '▼' : ''}`; this.sgSel = [...st.inv, ...vault().items].find((x) => x?.shard?.id === r.id && !!x.shard.great === !!r.great)?.uid ?? this.sgSel; audio.play(r.v > hi ? 'rankup' : 'click'); w.ui.dirty(); } this.render(); });
