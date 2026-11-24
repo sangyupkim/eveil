@@ -101,6 +101,9 @@ const mergeCost = (k) => 200 * (k + 1) ** 2;
 // 합치기 성공률: 조각난 · 흐린 100%, 그 위로 한 등급마다 -10% (최소 35%)
 const mergeChance = (k) => (k < 2 ? 1 : Math.max(0.35, 1 - 0.1 * (k - 1)));
 // v0.49.11 제련에 쓸 파편 목록: 가방 · 창고 묶음을 값마다 [열쇠 'uid|번호', 파편 {id, v}]
+// v0.49.89 파편 칸 이름: 옵션 이름만 (긴 이름은 줄여서)
+const SHARD_SHORT = { bossDmg: '보스 피해', magicFind: '아이템 발견', skillExp: '숙련 획득', hpRegen: 'HP 회복', mpRegen: 'MP 회복', goldFind: '골드 획득' };
+const shardName = (id) => SHARD_SHORT[id] || (AFFIXES[id]?.text || id).replace(/\s*[+-]?\{v\}%?/, '').trim();
 const shardEntries = (st) => [...st.inv, ...vault().items].filter((x) => x?.shard).flatMap((x) => shardVals(x).map((v, i) => ({ key: `${x.uid}|${i}`, uid: x.uid, vi: i, shard: { id: x.shard.id, v, great: !!x.shard.great } })));
 const pullCost = (g) => 100 * ((BASES[g]?.grade || 0) + 1) ** 2;
 // 건물 창 칸 나눔 표시 (town()의 'one' 모드에서 칸으로 나눈다)
@@ -1178,8 +1181,9 @@ export class Windows {
         // 오른쪽: 가진 파편 (옵션마다 한 줄, 가방 · 창고)
         const stacks = [...st.inv, ...vault().items].filter((x) => x?.shard);
         if (!stacks.some((x) => x.uid === this.sgSel)) { this.sgSel = stacks[0]?.uid ?? null; this.sgPick = []; }
-        const R = `<h3>파편 <span class="cnt">${stacks.reduce((a, x) => a + shardVals(x).length, 0)}</span></h3>` + (stacks.map((x) => { const vs = shardVals(x), gr = !!x.shard.great, g = shardGrade(x.shard.id, vs[0], gr);
-          return `<div class="row pick${x.uid === this.sgSel ? ' on' : ''}" data-sgsel="${x.uid}"><div class="grow"><b${gr ? ' style="color:#ffb84a"' : ''}>${gr ? '탁월 ' : ''}${esc(affixText({ id: x.shard.id, v: vs[0] }))}</b> <small style="color:${gradeColor(g)}">${sgName(g)}</small></div><span class="note">${vs.length}개</span></div>`; }).join('') || '<div class="note">파편 없음</div>');
+        // v0.49.89 오른쪽: 가방처럼 칸으로 — 옵션 이름 · 개수만 (값은 누르면 왼쪽에)
+        const R = `<h3>파편 <span class="cnt">${stacks.reduce((a, x) => a + shardVals(x).length, 0)}</span></h3><div class="grid fGrid">` + (stacks.map((x) => { const gr = !!x.shard.great;
+          return `<div class="cell${x.uid === this.sgSel ? ' sel' : ''}${gr ? ' r-hero' : ''}" data-sgsel="${x.uid}" title="${esc(shardName(x.shard.id))}"><span style="position:absolute;inset:3px 3px 12px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.15;font-size:calc(var(--u) * 0.7);color:${gr ? '#ffb84a' : '#e4cfff'};word-break:keep-all">${gr ? '<small style="font-size:.8em">탁월</small>' : ''}${esc(shardName(x.shard.id))}</span><span class="q">${shardVals(x).length}</span></div>`; }).join('') || '<div class="note">파편 없음</div>') + '</div>';
         const it = stacks.find((x) => x.uid === this.sgSel);
         if (!it) return [`<h3>파편</h3><div class="note">쓸 수 있는 등급 ${gtag(ug)}</div>`, R];
         const vs = shardVals(it), pk = (this.sgPick || []).filter((i) => vs[i] != null); this.sgPick = pk;
