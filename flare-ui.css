@@ -201,3 +201,5 @@ body.touch #targetFrame .thp span { font-size: calc(var(--u) * 0.7); }
 #btnFull { position: static; transform: none; display: block; margin-top: 6px; left: auto; top: auto; }
 /* v0.51 휴대폰 둥근 스킬 칸: 아래 줄(세트 · 귀환 · 자동 · 물약)과 붙어 보이던 것 → 전체를 조금 위로 */
 body.touch:not(.qgrid) #quick { bottom: calc(var(--u) * 3.1 + env(safe-area-inset-bottom)); }
+/* v0.51 휴대폰: 세트 단추(1 · 2 · 3) 줄이 귀환 단추를 살짝 덮던 것 → 왼쪽으로 */
+body.touch #qsets { right: calc(10px + env(safe-area-inset-right) + var(--u) * 23.2); }
