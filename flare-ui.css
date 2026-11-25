@@ -190,3 +190,8 @@ body.touch.qgrid #quick .slot, body.touch.qgrid #quick .slot:nth-child(n) { posi
 body.touch.qgrid #quick .slot .ico { border-radius: 0; width: 80%; height: 80%; }
 body.touch.qgrid #quick .slot .cd { border-radius: 0; }
 body.touch.qgrid #quick .slot .nm { display: block; }
+/* v0.51 PC: 스킬 칸을 조금 올려 이름이 경험치 막대에 겹치지 않게, 세트 단추(1 · 2 · 3)는 스킬 칸 바로 위 가운데에 가로로 */
+body:not(.touch) #quick { bottom: calc(var(--u) * 2.6 + env(safe-area-inset-bottom)); }
+body:not(.touch) #qsets { left: 50%; transform: translateX(-50%); bottom: calc(var(--u) * 7.2 + env(safe-area-inset-bottom)); flex-direction: row; gap: 4px; }
+/* v0.51 휴대폰: 몬스터 체력창을 위 단추줄 아래로 내려 다른 UI와 겹치지 않게 */
+body.touch #targetFrame { top: calc(var(--u) * 5.8 + env(safe-area-inset-top)); width: calc(var(--u) * 22); }
