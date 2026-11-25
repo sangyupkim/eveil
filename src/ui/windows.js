@@ -88,7 +88,7 @@ export function closable(el, strict = false) {
 export function showNotes() {
   let el = document.getElementById('notes');
   if (!el) { el = document.createElement('div'); el.id = 'notes'; document.body.appendChild(el); }
-  el.innerHTML = `<div class="nbox"><button class="btn nclose">닫기</button>${PATCH_NOTES.map((n) => `<h2>${n.ver} <small>${n.date}</small></h2><p>${n.head}</p><ol>${n.items.map((x) => `<li>${x}</li>`).join('')}</ol>`).join('')}</div>`;
+  el.innerHTML = `<div class="nbox"><button class="btn nclose">닫기</button>${PATCH_NOTES.map((n) => `<h2>${n.ver} <small>${n.date}</small></h2><p>${n.head}</p><ul style="list-style:none;padding-left:.6em">${n.items.map((x) => `<li>${x}</li>`).join('')}</ul>`).join('')}</div>`;
   el.hidden = false;
   el.querySelector('.nclose').onclick = () => { el.hidden = true; };
 }
