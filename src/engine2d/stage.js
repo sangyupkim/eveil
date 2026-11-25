@@ -420,7 +420,7 @@ export function buildTerrain() {}
 // 지도 색: 위에서 본 지형 한 점
 export function mapColor(x, z) {
   if (Math.hypot(x, z) > WORLD_SIZE) return null;
-  if (Math.hypot(x, z) < TOWN.r) return [120, 96, 62];
+  if (Math.hypot(x, z) < TOWN.r * 0.86) return townRoad(x, z) ? [150, 140, 118] : [70, 84, 46]; // v0.51 마을 지도: 돌길 · 풀밭
   const lk = inLake(x, z);
   if (lk) return lk.lava ? [200, 80, 20] : lk.chasm ? [8, 8, 12] : [40, 90, 140];
   const zn = zoneAt(x, z), base = zn ? zn.ground.map((v) => Math.round(v * 255 * 0.9 + 20)) : [62, 60, 44];

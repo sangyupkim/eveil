@@ -2253,6 +2253,15 @@ export class World {
     this.cancelRecall();
   }
 
+  // v0.51 마을 지도에서 고른 곳까지 걸어가기 (거리와 상관없이 길을 찾는다)
+  walkTo(x, z) {
+    if (this.dead) return;
+    this.moveTo = { x, z }; this.target = null; this.pendingSkill = null; this.cancelRecall();
+    const P = this.player.pos;
+    this.movePath = clearLine(this.stage, P, this.moveTo, 0.5) ? null : findPath(this.stage, P, this.moveTo, 0.5, 12000);
+    this.manual();
+  }
+
   cmdAttack(m) {
     if (this.dead || !m || m.dead) return;
     this.target = m;

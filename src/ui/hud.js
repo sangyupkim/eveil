@@ -407,6 +407,17 @@ export class HUD {
     c.strokeStyle = 'rgba(0,0,0,0.8)';
     c.lineWidth = 3;
     c.stroke();
+    // v0.51 마을 건물: 지은 건물은 금색 네모, 빈 집터는 흐린 네모 · NPC는 흰 점
+    if (!w.dungeon && Math.hypot(P.x - TOWN.x, P.z - TOWN.z) < TOWN.r + R) {
+      const plots = w.st.town?.plots || {};
+      for (const pl of PLOTS) {
+        const b = plots[pl.id], x = tx(pl.x), y = tz(pl.z), h = b ? 6 : 4;
+        c.fillStyle = b ? (b.bld ? '#a08a5a' : '#e8c36a') : 'rgba(200,190,160,0.35)'; c.fillRect(x - h, y - h, h * 2, h * 2);
+        if (b) { c.strokeStyle = '#2a1c08'; c.lineWidth = 1.5; c.strokeRect(x - h, y - h, h * 2, h * 2); }
+      }
+      c.fillStyle = '#f4efe2';
+      for (const n of [w.npc, w.guard, w.gemNpc, w.sage]) if (n) { c.beginPath(); c.arc(tx(n.pos.x), tz(n.pos.z), 2.6, 0, 7); c.fill(); }
+    }
     // 던전 입구 = 초록 세모 (테두리)
     if (!w.dungeon) for (const z of ZONES) { const e = entranceOf(z); if (!seenAt(e.x, e.z)) continue; const x = tx(e.x), y = tz(e.z); c.beginPath(); c.moveTo(x, y - 6); c.lineTo(x + 6, y + 5); c.lineTo(x - 6, y + 5); c.closePath(); c.fillStyle = w.bossCleared?.(z) ? '#5ee07a' : '#7a8a7e'; c.fill(); /* 보스를 아직 안 잡았으면 회색 (잠김) */ c.strokeStyle = '#0c2a12'; c.lineWidth = 1.5; c.stroke(); }
     // 몬스터: 일반 = 빨간 점, 정예 · 네임드 = 주황 점, 보스 = 큰 금색 마름모 (파란색은 쓰지 않는다)

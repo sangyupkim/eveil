@@ -59,7 +59,9 @@ import { fuseMany, fuseCount, greatCount, greatSlots, applyShard, canApply, lock
 import { HERBS, HERB_IDS, GROW_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
 import { RARITY_IDS, junkCount, discardJunk } from '../game/town.js';
 import { salvageCount, salvageEverywhere, plotMaster, masterOne, wsStoreN, wsStoreCap, wsTake, MYTH_CHANCE, wageTotal, mercWage, buildTime, brew, brewGold, brewCollect, brewTime, BREW_QUEUE, brewQueue, dispatchParty, partyMax, packMax, packBoost, shelterLv, shelterUp } from '../game/town.js';
-import { RESEARCH_MAX, SHELTER } from '../data/buildings.js';
+import { RESEARCH_MAX, SHELTER, VAULT_SPOT } from '../data/buildings.js';
+import { RAID_SPOT } from '../data/raid.js';
+import { TOWN } from '../data/world.js';
 import { herbIcon, homeIcon, uiIcon } from './icons.js';
 import { vault, vaultSize, vaultPut, vaultTake, vaultAdd, vaultSave, vaultReady } from '../game/vault.js';
 import { GAME_VERSION, PATCH_NOTES } from '../data/patchnotes.js';
@@ -184,7 +186,7 @@ export class Windows {
   close() {
     this.talk = null; this.talkAt = null; this.townMode = null; this.vsel = null; this.sellPick = null; this.vPick = null;
     this.waitKey = null;
-    this.portalAt = null; this.mapZoom = null; this.mapCenter = true;
+    this.portalAt = null; this.mapZoom = null; this.mapCenter = true; this.mapMode = null;
     this.el.hidden = true;
     this.kind = null;
     this.sel = null;
@@ -214,6 +216,7 @@ export class Windows {
     body.innerHTML = html; cleanTree(body); // v0.49.77 긴 소수 정리
     const wc = body.querySelector('.wmc');
     if (wc && this.kind === 'map') { const mf = body.querySelector('.mapFrame'), me = body.querySelector('.pin.me'); if (mf && me && (this.mapCenter !== false)) { requestAnimationFrame(() => { mf.scrollLeft = me.offsetLeft - mf.clientWidth / 2; mf.scrollTop = me.offsetTop - mf.clientHeight / 2; }); this.mapCenter = false; } }
+    { const tc = body.querySelector('.tmc'); if (tc) { const g = tc.getContext('2d'), R = +tc.dataset.r; g.imageSmoothingEnabled = true; g.drawImage(terrain, MAP_R - R, MAP_R - R, R * 2, R * 2, 0, 0, tc.width, tc.height); } }
     if (wc) { const g = wc.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(terrain, 0, 0, wc.width, wc.height); g.imageSmoothingEnabled = true; g.drawImage(fogCan, 0, 0, wc.width, wc.height); }
     { const n = {}; body.querySelectorAll(SC).forEach((el) => { const c = el.className, i = (n[c] = (n[c] || 0) + 1), k = keep[scKey(el, i)]; if (k) { el.scrollTop = k[0]; el.scrollLeft = k[1]; } }); }
     this.bind(body);
@@ -1131,8 +1134,31 @@ export class Windows {
       `<span>${nm}</span><button class="btn${this.waitKey === id ? ' gold' : ''}" data-bind="${id}">${this.waitKey === id ? '키 입력…' : keyName(m[id])}</button>`).join('')}</div>`;
   }
 
+  // v0.51 마을 지도: 마을에 있으면 지도를 열 때 마을이 먼저. 건물 · NPC를 누르면 그 앞까지 걸어간다
+  townMap() {
+    const w = this.w, st = w.st, P = w.player.pos, R = TOWN.r + 4;
+    const V = Math.round(Math.max(240, Math.min(560, window.innerHeight - 110, window.innerWidth * 0.5))), X = (x) => (((x + R) / (2 * R)) * V).toFixed(1), Y = X;
+    const front = (x, z, d) => { const L = Math.hypot(x, z) || 1, k = Math.max(0, L - d) / L; return [+(x * k).toFixed(1), +(z * k).toFixed(1)]; }; // 마을 가운데 쪽 앞
+    const dests = [];
+    for (const pl of PLOTS) {
+      const b = st.town?.plots?.[pl.id];
+      dests.push({ name: b ? BUILDINGS[b.type].name : '빈 집터', sub: b ? (b.bld ? '공사 중' : `${b.lv}단계`) : '', x: pl.x, z: pl.z, to: front(pl.x, pl.z, 6.5), kind: b ? 'bld' : 'empty' });
+    }
+    for (const [n, name] of [[w.npc, '상인 오르텐'], [w.guard, '경비대장 하겐'], [w.gemNpc, '보석상 리엔'], [w.sage, '현자 에라']]) if (n) dests.push({ name, x: n.pos.x, z: n.pos.z, to: front(n.pos.x, n.pos.z, 1.8), kind: 'npc' });
+    dests.push({ name: '공용 창고', x: VAULT_SPOT.x, z: VAULT_SPOT.z, to: front(VAULT_SPOT.x, VAULT_SPOT.z, 1.8), kind: 'npc' });
+    dests.push({ name: '왕좌의 문', x: RAID_SPOT.x, z: RAID_SPOT.z, to: [RAID_SPOT.x, RAID_SPOT.z + 1.6], kind: 'npc' });
+    dests.push({ name: '포탈', x: 0, z: -2, to: [0, -2], kind: 'npc' });
+    // 건물은 이름까지, 가운데 모인 NPC · 창고 · 포탈은 점만 (이름이 겹쳐서 — 왼쪽 목록에 있다)
+    const pins = dests.map((d) => `<div class="pin ${d.kind === 'bld' ? 'town' : 'camp'} go${d.kind === 'empty' ? ' off' : ''}" style="left:${X(d.x)}px;top:${Y(d.z)}px" data-walk="${d.to[0]},${d.to[1]}" title="${d.name}">${d.kind === 'bld' ? `<span>${d.name}</span>` : ''}</div>`);
+    pins.push(`<div class="pin me" style="left:${X(P.x)}px;top:${Y(P.z)}px"></div>`);
+    const list = `<h3>마을</h3>` + dests.filter((d) => d.kind !== 'empty').map((d) => `<button class="btn dest" data-walk="${d.to[0]},${d.to[1]}"><b>${d.name}</b><small>${d.sub || ''}</small></button>`).join('')
+      + `<button class="btn" data-mapmode="world" style="margin-top:10px">월드맵</button>`;
+    return `<div class="cols"><div class="frame destList" style="flex:0 0 15em;overflow:auto">${list}</div><div class="frame mapFrame" style="flex:1;overflow:auto;position:relative;display:flex;justify-content:center"><div class="wmap" style="width:${V}px;height:${V}px"><canvas class="tmc" width="${V}" height="${V}" data-r="${R}"></canvas>${pins.join('')}</div></div></div>`;
+  }
+
   map() {
     const w = this.w, st = w.st, P = w.player.pos, here = this.portalAt;
+    if (w.inTown && !here && this.mapMode !== 'world') return this.townMap();
     const zoom = (this.mapZoom ||= here ? 2 : 1.6), V0 = Math.max(240, Math.min(560, window.innerHeight - 110, window.innerWidth * 0.44)) /* 세로로 긴 화면(폴드)에서도 칸 안에 */, V = Math.round(V0 * zoom), k = V / MAP_W, X = (x) => ((x + MAP_R) * k).toFixed(1), Y = (z) => ((z + MAP_R) * k).toFixed(1);
     const pins = [];
     // v0.45 지명이 겹치지 않게: 아래 → 위 → 오른쪽 → 왼쪽 순으로 빈 자리에 둔다
@@ -1162,7 +1188,7 @@ export class Windows {
     // 왼쪽: 포탈로 갈 수 있는 곳 (마을 + 발견한 야영지) — 지도에서 겹쳐도 여기서 고른다
     const dests = [{ id: 'town', name: '여명 초소', lv: '마을' }, ...CAMPS.filter((c) => st.camps?.[c.zone]).map((c) => { const zn = ZONES.find((z) => z.id === c.zone); return { id: c.zone, name: zn.name, lv: `${zn.levels[0]}~${zn.levels[1]}`, l0: zn.levels[0] }; }).sort((a, b) => a.l0 - b.l0)];
     const list = `<h3>${here ? '포탈 목적지' : '발견한 포탈'}</h3>` + dests.map((d) => `<button class="btn dest${d.id === here ? ' on' : ''}" ${here && d.id !== here ? `data-travel="${d.id}"` : 'disabled'}><b>${d.name}</b><small>${d.id === here ? '지금 여기' : d.lv}</small></button>`).join('');
-    const zb = `<div class="mapZoom"><button class="btn" data-mzoom="-1">−</button><span>×${zoom}</span><button class="btn" data-mzoom="1">+</button></div>`;
+    const zb = `<div class="mapZoom"><button class="btn" data-mzoom="-1">−</button><span>×${zoom}</span><button class="btn" data-mzoom="1">+</button>${w.inTown && !here ? '<button class="btn" data-mapmode="town">마을</button>' : ''}</div>`;
     return `<div class="cols"><div class="frame destList" style="flex:0 0 15em;overflow:auto">${list}${side}</div><div class="frame mapFrame" style="flex:1;overflow:auto;position:relative">${zb}<div class="wmap${zoom >= 1.6 ? ' big' : ''}" style="width:${V}px;height:${V}px"><canvas class="wmc" width="${V}" height="${V}"></canvas>${pins.join('')}</div></div></div>`; // v0.45 두 쪽: 왼쪽 포탈 · 야영지 | 오른쪽 지도
   }
 
@@ -1755,6 +1781,8 @@ export class Windows {
     ask('[data-mfire]', () => ['용병 내보내기', '이 용병을 내보냅니다. 되돌릴 수 없습니다', '내보내기'], (el) => townDone(dismiss(st, el.dataset.mfire)));
     on('[data-tier]', (el) => { w.setTier(Number(el.dataset.tier)); this.render(); });
     on('[data-mfloor]', (el) => { w.setMuganFloor(Number(el.dataset.mfloor)); this.render(); });
+    on('[data-walk]', (el) => { const [x, z] = el.dataset.walk.split(',').map(Number); this.close(); w.walkTo(x, z); }); // v0.51 마을 지도에서 걸어가기
+    on('[data-mapmode]', (el) => { this.mapMode = el.dataset.mapmode; audio.play('click'); this.render(); });
     on('[data-travel]', (el) => { this.portalAt = null; this.mapZoom = null; this.close(); w.travel(el.dataset.travel); });
     on('[data-mzoom]', (el) => { const Z = [1, 1.6, 2.4, 3.2], i = Math.max(0, Math.min(Z.length - 1, Z.indexOf(this.mapZoom || 1) + Number(el.dataset.mzoom))); this.mapZoom = Z[i]; this.mapCenter = true; audio.play('click'); this.render(); });
     on('[data-camp]', (el) => { const [z, what] = el.dataset.camp.split('|'); const r = w.buildCamp(z, what); if (!r.ok && r.why) w.ui.toast(r.why); w.ui.dirty(); this.render(); });
