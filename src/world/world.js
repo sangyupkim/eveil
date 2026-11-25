@@ -2115,6 +2115,17 @@ export class World {
       if (rank >= 1) this.fx.decal(0, x, z, 1.2 + rank * 0.6, color, 0.6);
     } else if (dr.amount > 60) look = 'coins100';
     if (beam && !expires) setTimeout(() => sfx('rare'), 250);
+    // v0.51 전설 · 신화는 떨어질 때 크게: 별 폭발 · 빛기둥 · 마법진 · 불꽃 알갱이 · 화면 흔들림 · 소리
+    if (rank >= 4 && !expires) {
+      const myth = rank >= 5;
+      this.fx.play('b_star_explosion', x, z, { scale: myth ? 1.2 : 0.9, tint: color, alpha: 0.85 });
+      this.fx.pillar(x, z, color, myth ? 2.6 : 2, 10, myth ? 2.2 : 1.6);
+      this.fx.ground('runes', x, z, { scale: myth ? 1.6 : 1.3, dur: 1.8, tint: color });
+      if (myth) { this.fx.play('thunderstrike', x, z, { scale: 1.3, tint: color }); setTimeout(() => this.fx.pillar(x, z, color, 1.6, 10, 1.8), 400); }
+      this.fx.burst(x, 1.2, z, color, myth ? 34 : 20, 6, 0.45);
+      this.fx.shake(myth ? 0.5 : 0.3);
+      setTimeout(() => sfx('awaken'), 150);
+    }
     const def = DATA.loot[look] || DATA.loot.coins25;
     if (def) image(animImage(def, 'power'));
     const css = '#' + new THREE.Color(color).getHexString();
@@ -2129,6 +2140,10 @@ export class World {
       // 바닥 빛: 도형 대신 빛무리 그림 (좋은 것일수록 크게)
       if (rank >= 1 || beam) drawPowerFrame(ctx, st, 'sparkle', x, z, { scale: 0.45 + rank * 0.12, tint: color, t: this.time + g.gid, alpha: Math.min(1, pulse * 1.3) });
       if (beam) drawPowerFrame(ctx, st, 'immunity', x, z, { scale: 0.6 + rank * 0.1, tint: color, t: this.time * 0.6 + g.gid, alpha: pulse * 0.8 }); // 좋은 것: 빛 소용돌이
+      if (rank >= 4) { // v0.51 전설 · 신화: 바닥 마법진이 돌고 빛 알갱이가 높이 오른다
+        drawPowerFrame(ctx, st, 'runes', x, z, { scale: 0.8 + (rank - 4) * 0.25, tint: color, t: this.time * 0.8 + g.gid, alpha: Math.min(1, pulse * 1.2) });
+        if (Math.random() < 0.18 + (rank - 4) * 0.12) this.fx.add.add({ x: x + (Math.random() - 0.5) * 0.6, y: 0.3, z: z + (Math.random() - 0.5) * 0.4, vy: 3 + Math.random() * 2, color, size: 0.45, size1: 0.05, life: 1.2, cell: 'spark' });
+      }
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;
       if (!def) return;

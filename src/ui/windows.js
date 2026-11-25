@@ -1750,9 +1750,9 @@ export class Windows {
     const salvReport = (rs) => {
       const ok = rs.filter((r) => r?.ok); if (!ok.length) return;
       const ore = ok.reduce((a, r) => a + (r.ore || 0), 0), mats = {}; for (const r of ok) mats[r.mat] = (mats[r.mat] || 0) + (r.matN || 0);
-      const shards = ok.filter((r) => r.shard).map((r) => r.shard);
-      const html = `<div class="kv tight" style="margin:6px 0"><span>분해한 장비</span><b>${ok.length}개</b><span>강화석</span><b>${ore.toLocaleString()}</b>${Object.entries(mats).map(([k, n]) => `<span>${esc(MATERIALS[k]?.name || k)}</span><b>${n.toLocaleString()}</b>`).join('')}</div>`
-        + (shards.length ? `<div class="note" style="margin-top:6px">능력치 파편 ${shards.length}개</div>` + shards.map((x) => `<div class="aff" style="color:#c58cff">${esc(affixText(x.shard))}</div>`).join('') : '');
+      const shards = ok.filter((r) => r.shard).map((r) => r.shard), SH = 8; // 파편 줄은 8개까지 (한꺼번에 분해하면 수백 개일 수 있다)
+      const html = `<div class="kv tight" style="margin:6px 0"><span>분해한 장비</span><b>${ok.length.toLocaleString()}개</b><span>강화석</span><b>${ore.toLocaleString()}</b>${Object.entries(mats).map(([k, n]) => `<span>${esc(MATERIALS[k]?.name || k)}</span><b>${n.toLocaleString()}</b>`).join('')}</div>`
+        + (shards.length ? `<div class="note" style="margin-top:6px">능력치 파편 ${shards.length}개</div>` + shards.slice(0, SH).map((x) => `<div class="aff" style="color:#c58cff">${esc(affixText(x.shard))}</div>`).join('') + (shards.length > SH ? `<div class="note">외 ${shards.length - SH}개</div>` : '') : '');
       this.popup('분해 결과', html, false);
     };
     const townDone = (r, okMsg) => { if (!r?.ok) { if (r?.why) w.ui.toast(r.why); audio.play('error'); } else { if (okMsg) w.ui.toast(okMsg, '#ffd84a'); w.refreshTown(); w.ui.dirty(); } this.render(); };
@@ -1794,9 +1794,9 @@ export class Windows {
       if (!opts.some((o) => !o.off)) { w.ui.toast('분해할 장비가 없습니다'); audio.play('error'); return; }
       audio.play('click');
       const pick = await gamePick('등급별 분해', opts, '분해', '가방 · 창고 · 용병이 든 물건에서 고른 등급 장비를 모두 분해합니다'); if (!pick?.length) return;
-      const r = salvageEverywhere(st, pick); audio.play('coin'); w.ui.toast(`${r.n.toLocaleString()}개 분해 · 강화석 +${r.ore.toLocaleString()}${r.shards ? ` · 파편 ${r.shards}` : ''}`, '#c8c0b0'); w.ui.dirty(); townDone({ ok: true }); });
+      const r = salvageEverywhere(st, pick); audio.play('coin'); w.ui.dirty(); townDone({ ok: true }); salvReport(r.rs); }); // v0.51 한꺼번에 분해도 결과 팝업
     ask('[data-salvevery]', (el) => { const r0 = el.dataset.salvevery, c = salvageCount(st, r0); return ['분해', `${RARITY[r0].name} 장비 ${(c.bag + c.vault + c.held).toLocaleString()}개를 분해합니다\n가방 ${c.bag} · 창고 ${c.vault} · 용병 ${c.held}`, '분해']; }, (el) => {
-      const r = salvageEverywhere(st, [el.dataset.salvevery]); audio.play('coin'); w.ui.toast(`${r.n.toLocaleString()}개 분해 · 강화석 +${r.ore.toLocaleString()}${r.shards ? ` · 파편 ${r.shards}` : ''}`, '#c8c0b0'); w.ui.dirty(); this.render(); });
+      const r = salvageEverywhere(st, [el.dataset.salvevery]); audio.play('coin'); w.ui.dirty(); this.render(); salvReport(r.rs); });
     on('[data-stab]', (el) => { const [k, v] = el.dataset.stab.split('|'); (this.bTab ||= {})[k] = v; audio.play('click'); this.render(); });
     on('[data-labsel]', (el) => { this.labSel = el.dataset.labsel; audio.play('click'); this.render(); });
     on('[data-innsel]', (el) => { this.innSel = el.dataset.innsel; audio.play('click'); this.render(); });

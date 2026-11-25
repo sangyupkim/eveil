@@ -320,8 +320,8 @@ export function salvageCount(st, r) {
   return { bag: st.inv.filter(ok).length, vault: vault().items.filter(ok).length, held: townOf(st).mercs.reduce((a, m) => a + (m.held || []).filter(ok).length, 0) };
 }
 export function salvageEverywhere(st, rarities) {
-  const want = new Set(rarities), ok = (x) => salvageable(x) && want.has(x.rarity), tot = { n: 0, ore: 0, mats: 0, shards: 0 };
-  const take = (it) => { const r = salvageItem(st, it); tot.n++; tot.ore += r.ore; tot.mats += r.matN; if (r.shard) tot.shards++; };
+  const want = new Set(rarities), ok = (x) => salvageable(x) && want.has(x.rarity), tot = { n: 0, ore: 0, mats: 0, shards: 0, rs: [] };
+  const take = (it) => { const r = salvageItem(st, it); tot.rs.push({ ok: true, ...r }); tot.n++; tot.ore += r.ore; tot.mats += r.matN; if (r.shard) tot.shards++; };
   for (const it of st.inv.filter(ok)) { st.inv.splice(st.inv.indexOf(it), 1); take(it); }
   const V = vault().items, vs = V.filter(ok); if (vs.length) { for (const it of vs) { V.splice(V.indexOf(it), 1); take(it); } vaultSave(); }
   for (const m of townOf(st).mercs) if (m.held?.length) { const keep = []; for (const it of m.held) (ok(it) ? take(it) : keep.push(it)); m.held = keep.length ? keep : null; }
