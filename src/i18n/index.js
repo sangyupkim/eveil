@@ -132,7 +132,7 @@ export async function initLang() {
   document.documentElement.lang = LANG;
   if (LANG !== 'en') return;
   D = (await import('./en.js')).default;
-  const terms = Object.keys(D).filter((k) => !k.includes('{}') && HANGUL.test(k) && k.length <= 24 && k.trim() === k).sort((a, b) => b.length - a.length);
+  const terms = Object.keys(D).filter((k) => !k.includes('{}') && HANGUL.test(k) && (k.length >= 2 || D[k].length > 1) && k.length <= 24 && k.trim() === k).sort((a, b) => b.length - a.length);
   // 낱말 경계에서만: 앞이 한글이 아니고, 뒤가 한글이 아니거나 조사(의 · 을 · 를 …)로 끝날 때 (「최신」 속 「신」을 바꾸지 않게)
   const H = '\\uac00-\\ud7a3';
   if (terms.length) termRe = new RegExp(`(?<![${H}])(?:${terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?=$|[^${H}]|(?:에게|에서|으로|까지|부터|보다|처럼|한테|의|을|를|이|가|은|는|에|로|와|과|도|만)(?:[^${H}]|$))`, 'g');

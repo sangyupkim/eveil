@@ -3847,4 +3847,5 @@ export default {"새끼 개미귀신":"Antlion Hatchling",
 "아이템 레벨 {}":"Item Level {}",
 "하루 {}":"{} per day",
 "속도 {}":"Speed {}",
-"수 증가":"more count"};
+"수 증가":"more count",
+"각성 {}회":"Awakened {} times"};
