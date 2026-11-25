@@ -199,3 +199,5 @@ body.touch #targetFrame .tname { font-size: calc(var(--u) * 0.9); }
 body.touch #targetFrame .thp span { font-size: calc(var(--u) * 0.7); }
 /* v0.51 전체 화면 단추는 미니맵 아래 (위 가운데의 몬스터 체력창과 겹치던 것) */
 #btnFull { position: static; transform: none; display: block; margin-top: 6px; left: auto; top: auto; }
+/* v0.51 휴대폰 둥근 스킬 칸: 아래 줄(세트 · 귀환 · 자동 · 물약)과 붙어 보이던 것 → 전체를 조금 위로 */
+body.touch:not(.qgrid) #quick { bottom: calc(var(--u) * 3.1 + env(safe-area-inset-bottom)); }
