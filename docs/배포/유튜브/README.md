@@ -16,5 +16,9 @@
 5. **GitHub Secrets** — 저장소 Settings → Secrets and variables → Actions → New repository secret: `YT_CLIENT_ID` · `YT_CLIENT_SECRET` · `YT_REFRESH_TOKEN`.
 6. **API 감사 신청** — 심사 전 프로젝트로 올린 영상은 비공개로 잠긴다. 「YouTube API Services - Audit and Quota Extension Form」을 낸다 (사용 목적: 본인 채널에 자기 게임 홍보 쇼츠를 올리는 내부 도구).
 
+## 지금 상태 (2026-11-25)
+- 1~5단계 끝. 쇼츠 1편(`01_no_classes`)을 비공개로 올렸고, 스튜디오에서 공개로 바꾸는 것도 됐다 (잠기지 않음).
+- 다음 편은 `"privacy": "public"`으로 올려 본다. 공개로 올라가지 않거나 나중에 잠기면 6단계(감사 신청)를 한다.
+
 ## 한도
 기본 할당량 하루 10,000 단위, 영상 한 개 올리기 ≈ 1,600 단위 → 하루 6개까지.
