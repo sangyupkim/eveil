@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # promo/shorts/<이름>/ 안의 video.mp4 + meta.json 을 유튜브에 올린다. 올린 폴더에는 done.json(영상 id)을 남긴다.
 # 환경 변수 YT_CLIENT_ID · YT_CLIENT_SECRET · YT_REFRESH_TOKEN (GitHub Secrets). 인자로 폴더 이름을 주면 그것만.
-# meta.json: { "title", "description", "tags": [], "privacy": "public|unlisted|private", "comment": "고정할 댓글(선택)" }
-import os, sys, json, glob, urllib.parse, urllib.request
+# meta.json: { "title", "description", "tags": [], "privacy": "public|unlisted|private", "comment": "고정할 댓글(선택)", "date": "YYYY-MM-DD(선택, 이날(UTC)부터 올린다)" }
+import os, sys, json, glob, datetime, urllib.parse, urllib.request
 
 def token():
     body = urllib.parse.urlencode({'client_id': os.environ['YT_CLIENT_ID'], 'client_secret': os.environ['YT_CLIENT_SECRET'],
@@ -41,7 +41,8 @@ def upload(folder, tk):
 
 names = sys.argv[1:]
 todo = [f'promo/shorts/{n}' for n in names] if names else sorted(
-    d for d in glob.glob('promo/shorts/*') if os.path.exists(f'{d}/meta.json') and not os.path.exists(f'{d}/done.json'))
+    d for d in glob.glob('promo/shorts/*') if os.path.exists(f'{d}/meta.json') and not os.path.exists(f'{d}/done.json')
+    and json.load(open(f'{d}/meta.json', encoding='utf-8')).get('date', '') <= datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d'))[:1]  # 하루 한 편
 if not todo: print('올릴 영상이 없습니다'); sys.exit(0)
 tk = token()
 for d in todo: upload(d, tk)

@@ -1,10 +1,13 @@
 # 유튜브 자동 업로드. promo/shorts/<이름>/ 에 video.mp4 + meta.json 을 올리면 아직 안 올린 것(done.json 없음)을 올린다.
+# meta.json 에 date(YYYY-MM-DD)가 있으면 그날부터. 매일 15:20 UTC(미국 오전 · 한국 자정)에 날짜가 된 것 한 편을 올린다.
 # 저장소 Secrets: YT_CLIENT_ID · YT_CLIENT_SECRET · YT_REFRESH_TOKEN (docs/배포/유튜브/README.md)
 name: 유튜브 올리기
 on:
   workflow_dispatch:
     inputs:
       name: { description: '폴더 이름 (비우면 안 올린 것 전부)', required: false, default: '' }
+  schedule:
+    - cron: '20 15 * * *'
   push:
     branches: [claude/gallant-dijkstra-ym1oy6]
     paths: ['promo/shorts/*/meta.json']
@@ -15,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: { ref: claude/gallant-dijkstra-ym1oy6 }  # 예약 실행은 기본 브랜치에서 돌므로 작업 브랜치를 받아 기록도 거기에
       - name: 올리기
         env:
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
