@@ -435,7 +435,7 @@ boot().catch((e) => {
 }
 
 // 설치 버전: 서비스 워커 + 설치 요청 (크롬 · 안드로이드). 아이폰은 공유 → 홈 화면에 추가
-if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.__ITCH) navigator.serviceWorker.register('sw.js').catch(() => {});
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); window.__install = e; document.body.classList.add('canInstall'); });
 window.addEventListener('appinstalled', () => { window.__install = null; document.body.classList.remove('canInstall'); });
 document.getElementById('btnInstall')?.addEventListener('click', async () => { const p = window.__install; if (!p) return; p.prompt(); await p.userChoice.catch(() => {}); window.__install = null; document.body.classList.remove('canInstall'); });

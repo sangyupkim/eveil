@@ -1,5 +1,6 @@
 // Flare 그림 불러오기 · 동작 프레임 고르기 · 그리기 (그림은 필요할 때만 받는다)
 import { GAME_VERSION } from '../data/patchnotes.js';
+import { PACKS_ON, packedBlob } from './packs.js';
 const ROOT = 'assets/flare/';
 // v0.44.14 버전마다 새 주소: 설치본(sw.js)이 예전 그림을 먼저 내주면 새로 더한 아이콘 · 몬스터가 빈칸으로 보였다
 const VQ = '?v=' + GAME_VERSION;
@@ -12,14 +13,18 @@ export function image(path) {
     im.decoding = 'async';
     const rec = { im, p: null, ok: false };
     // 받은 뒤 미리 풀어 둔다 (ImageBitmap) — 처음 그릴 때 멈추지 않고, 휴대폰이 다시 풀지 않게
-    rec.p = new Promise((res) => { im.onload = () => res(im); im.onerror = () => { console.warn('그림 없음', path); res(null); }; })
+    let done;
+    rec.p = new Promise((res) => { done = res; im.onload = () => res(im); im.onerror = () => { console.warn('그림 없음', path); res(null); }; })
       .then(async (x) => {
         if (!x) return null;
-        try { if (window.createImageBitmap) rec.im = await createImageBitmap(x); } catch { /* 그대로 Image */ }
+        if (x !== im) rec.im = x; // 묶음에서 바로 푼 그림
+        else { try { if (window.createImageBitmap) rec.im = await createImageBitmap(x); } catch { /* 그대로 Image */ } }
         rec.ok = true;
         return rec.im;
       });
-    im.src = ROOT + path + VQ;
+    // v0.50.6 itch 묶음판: 묶음(팩)에 든 그림은 거기서 꺼내 바로 푼다 (없으면 주소로)
+    if (PACKS_ON) packedBlob(ROOT + path).then((b) => (b ? createImageBitmap(b) : Promise.reject())).then(done, () => { im.src = ROOT + path + VQ; });
+    else im.src = ROOT + path + VQ;
     imgs.set(path, rec);
   }
   return imgs.get(path);

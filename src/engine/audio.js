@@ -1,4 +1,5 @@
 // 소리: Flare(CC-BY-SA 3.0) 효과음 · 배경음악 (assets/sound). 효과음은 Web Audio로, 음악은 <audio>로 흘린다
+import { fetchBytes } from '../engine2d/packs.js';
 const ROOT = 'assets/sound/';
 
 // 게임 소리 이름 → 파일 (여럿이면 무작위). '@'는 몬스터 무리 소리 (play(name, k, 무리))
@@ -69,7 +70,7 @@ export class Audio {
 
   load(file) {
     if (!this.buffers.has(file)) {
-      this.buffers.set(file, fetch(ROOT + file + '.ogg').then((r) => r.arrayBuffer()).then((b) => this.ctx.decodeAudioData(b)).then((buf) => {
+      this.buffers.set(file, fetchBytes(ROOT + file + '.ogg').then((b) => this.ctx.decodeAudioData(b)).then((buf) => {
         // Flare 효과음 앞의 무음(0.07~0.45초)을 건너뛸 자리를 찾아 둔다 → 행동과 소리가 같이 난다
         const d = buf.getChannelData(0);
         let i = 0;

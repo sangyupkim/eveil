@@ -1,0 +1,5 @@
+/* v0.50.6 itch용: 글자 범위별로 잘린 조각(190여 개)을 글꼴마다 하나로 합친 판 (tools/merge_fonts.py). 글자는 모두 그대로 */
+@font-face { font-family: 'Cinzel'; font-style: normal; font-display: swap; font-weight: 700; src: url(./cinzel-700.woff2) format('woff2'); }
+@font-face { font-family: 'Cinzel'; font-style: normal; font-display: swap; font-weight: 900; src: url(./cinzel-900.woff2) format('woff2'); }
+@font-face { font-family: 'Gowun Dodum'; font-style: normal; font-display: swap; font-weight: 400; src: url(./gowun-dodum-400.woff2) format('woff2'); }
+@font-face { font-family: 'Nanum Myeongjo'; font-style: normal; font-display: swap; font-weight: 800; src: url(./nanum-myeongjo-800.woff2) format('woff2'); }
