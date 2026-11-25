@@ -39,6 +39,7 @@ export function tr(s) {
   let v = cache.get(s);
   if (v !== undefined) return v;
   v = tr0(s);
+  if (v.includes('\u2060')) v = v.replace(/\u2060/g, '');
   if (cache.size > 20000) cache.clear();
   cache.set(s, v);
   return v;
@@ -48,9 +49,12 @@ const termOne = new Map();
 function tr0(s) {
   let r = look(s);
   if (r != null) return r;
-  const m = s.match(/^(\s*)([\s\S]*?)(\s*)$/);
-  if (m[1] || m[3]) return m[1] + tr(m[2]) + m[3]; // 앞뒤 빈칸은 떼고
+  const m = s.match(/^([\s·]*)([\s\S]*?)([\s·:]*)$/); // 앞뒤 빈칸 · 가운뎃점은 떼고
+  if ((m[1] || m[3]) && m[2]) return m[1] + tr(m[2]) + m[3];
+  const sym = s.match(/^([◆◇•★☆▶▷■□●○※▲▼]+\s*)([\s\S]+)$/); if (sym) return sym[1] + tr(sym[2]); // 앞 기호도
   if (s.includes('\u200b')) return s.split('\u200b').map(tr).join(''); // 일부러 나눈 자리
+  // 「 · 」로 이은 글은 조각마다 먼저 (이름을 바꾸다 숫자와 섞이지 않게)
+  if (s.includes(' · ')) { const a = s.split(' · '), parts = a.map(tr); if (parts.every((p) => !HANGUL.test(p))) return parts.join(' · '); }
   // 이름을 긴 것부터 하나씩 영어로 바꾸며 다시 찾는다 (틀 속 낱말까지 한꺼번에 바꾸면 틀이 깨지므로)
   let s2 = s;
   if (termRe) {
@@ -58,9 +62,9 @@ function tr0(s) {
     const found = [...new Set([...s.matchAll(termRe)].map((x) => x[0]))].sort((a, b) => b.length - a.length);
     for (const t of found) {
       let re = termOne.get(t); if (!re) termOne.set(t, (re = BOUND(t)));
-      re.lastIndex = 0; const one = s.replace(re, D[t]); // 이 이름 하나만 바꾼 것
+      re.lastIndex = 0; const one = s.replace(re, '\u2060' + D[t] + '\u2060'); // 이 이름 하나만 바꾼 것
       r = look(one); if (r != null) return r;
-      re.lastIndex = 0; s2 = s2.replace(re, D[t]); // 지금까지 모두 바꾼 것
+      re.lastIndex = 0; s2 = s2.replace(re, '\u2060' + D[t] + '\u2060'); // 지금까지 모두 바꾼 것
       if (!HANGUL.test(s2)) return s2;
       r = look(s2); if (r != null) return r;
     }
