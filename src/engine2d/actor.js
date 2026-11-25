@@ -68,7 +68,8 @@ export class Actor {
     if (!this.spec.hero) return;
     this.layers = { ...BASE_CLOTHES, head: this.spec.head, ...layers };
     this.tints = tints;
-    for (const l of Object.values(this.layers)) { const d = this.def[l]; if (d) image(animImage(d, 'stance')); }
+    // v0.51 평타 · 스킬 동작 그림도 미리 받는다 (처음 휘두를 때 무기 · 옷 겹이 안 그려지던 것)
+    for (const l of Object.values(this.layers)) { const d = this.def[l]; if (d) for (const n of ['stance', 'run', 'swing', 'cast', 'shoot', 'hit']) if (d.anims?.[n]) image(animImage(d, n)); }
   }
 
   // 동작 정의 (주인공은 몸통 겹 기준)
@@ -100,6 +101,13 @@ export class Actor {
     const d = this.play(name, { once: true, speed, force: true });
     this.lock = d * lockScale;
     return d;
+  }
+
+  // 한 번 하는 동작(평타 등)이 아직 끝나지 않았나 — 서 있을 때 idle이 덮어쓰지 않게
+  busy() {
+    if (!this.once || !this.current) return false;
+    const a = this.anim(this.current);
+    return !!a && this.t * 1000 < a.dur;
   }
 
   face(x, z) {

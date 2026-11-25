@@ -506,7 +506,7 @@ export class World {
     const g = this.dead ? null : this.ground.filter((x) => !x.deathDrop && dist2(x, P) < 9 && (!this.auto || this.autoWants(x)) && !(x.kind === 'item' && st.inv.length >= bagSize(st) && !BASES[x.item.base]?.stack)).sort((a, b) => dist2(a, pet.pos) - dist2(b, pet.pos))[0];
     if (g) { goal = g; if (dist2(pet.pos, g) < 0.8) this.pickup(g); }
     const d = dist2(pet.pos, goal);
-    if (d > 0.4) { this.stepToward(pet.pos, goal, Math.min(14, 5 + d) * dt); pet.face(goal.x, goal.z); pet.play('run', { speed: 1.4 }); } else pet.play('idle');
+    if (d > 0.4) { this.stepToward(pet.pos, goal, Math.min(14, 5 + d) * dt); pet.face(goal.x, goal.z); pet.play('run', { speed: 1.4 }); } else if (pet.lock <= 0 && !pet.busy()) pet.play('idle'); // v0.51 공격 동작을 idle이 덮지 않게
     if (d > 25) pet.pos.set(P.x - 1, 0, P.z + 1);
     const t = this.target;
     if (t && !t.dead && this.petT <= 0 && dist2(t.pos, pet.pos) < 36) { this.petT = 2.5; const wd = (this.d.dmg[0] + this.d.dmg[1]) / 2; pet.act?.('attack', 1); this.hitMonster(t, wd * 0.15, { src: 'perk' }); }
@@ -3558,7 +3558,7 @@ export class World {
     this.lastPos = { x: P.pos.x, z: P.pos.z };
     // Flare 달리기 한 바퀴(0.53초)에 약 2.4칸 나아가는 걸음 — 이동 속도에 맞춰 재생
     if (moving) { this.stepT = (this.stepT || 0) - dt; if (this.stepT <= 0) { this.stepT = 0.33; sfx('step', 0.35); } }
-    if (P.lock <= 0) P.play(moving ? 'run' : 'idle', { speed: moving ? speed / 7 : 1 });
+    if (P.lock <= 0 && (moving || !P.busy())) P.play(moving ? 'run' : 'idle', { speed: moving ? speed / 7 : 1 }); // v0.51 평타 동작이 바로 idle로 덮이지 않게
 
     // 줍기
     // 자동 사냥 중에는 설정한 것만 밟아서 줍는다 (지나가며 줍기 · 펫도 같은 규칙)
