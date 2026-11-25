@@ -29,11 +29,14 @@ def upload(folder, tk):
         res = json.load(call(urllib.request.Request(loc, data=f.read(), method='PUT',
             headers={'Authorization': f'Bearer {tk}', 'Content-Type': 'video/mp4'})))
     out = {'id': res['id'], 'url': f"https://youtube.com/shorts/{res['id']}", 'privacy': res['status']['privacyStatus']}
-    if m.get('comment'):  # 고정 댓글용 첫 댓글 (고정은 API로 안 되어 스튜디오에서 한 번 누른다)
-        call(urllib.request.Request('https://www.googleapis.com/youtube/v3/commentThreads?part=snippet', method='POST',
-            data=json.dumps({'snippet': {'videoId': res['id'], 'topLevelComment': {'snippet': {'textOriginal': m['comment']}}}}).encode(),
-            headers={'Authorization': f'Bearer {tk}', 'Content-Type': 'application/json'}))
-    json.dump(out, open(f'{folder}/done.json', 'w'), ensure_ascii=False, indent=1)
+    json.dump(out, open(f'{folder}/done.json', 'w'), ensure_ascii=False, indent=1)  # 댓글이 실패해도 다시 올리지 않게 먼저 남긴다
+    if m.get('comment') and out['privacy'] == 'public':  # 비공개 영상에는 댓글을 달 수 없다. 고정은 스튜디오에서
+        try:
+            urllib.request.urlopen(urllib.request.Request('https://www.googleapis.com/youtube/v3/commentThreads?part=snippet', method='POST',
+                data=json.dumps({'snippet': {'videoId': res['id'], 'topLevelComment': {'snippet': {'textOriginal': m['comment']}}}}).encode(),
+                headers={'Authorization': f'Bearer {tk}', 'Content-Type': 'application/json'}))
+        except urllib.error.HTTPError as e:
+            print(f'댓글 실패 (영상은 올라감) {e.code}: {e.read().decode()[:300]}')
     print(f'올림: {folder} → {out["url"]} ({out["privacy"]})')
 
 names = sys.argv[1:]
