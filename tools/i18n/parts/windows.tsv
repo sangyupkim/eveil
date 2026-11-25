@@ -1,0 +1,928 @@
+0	Melee weapons (Sword · Axe · Mace · Dagger · Tower Shield)
+1	· until Awakening {} {} {}
+2	Sage Era
+3	Training Arts
+4	Bag · Gear
+5	Skills
+6	Stats · Traits
+7	Codex · Log
+8	Notices · Patches
+9	Ranking
+10	Log
+11	Boss Damage
+12	Item Find
+13	Mastery Gain
+14	Gold Find
+15	Materials
+16	Gems
+17	Skillbooks
+18	Potions · Scrolls
+19	Shards
+20	Gear
+21	Equipped
+22	Trace Exchange
+23	Mythic Trace {}
+24	Mythic Trace {} · Owned {}
+25	{}
+26	Craft Dungeon Keys
+27	Workshop Lv.{}
+28	{} · Zone materials {}
+29	Craft
+30	Available near the Guard Captain or a building
+31	The vault is available from the town merchant
+32	Visit the merchant to use this
+33	Expedition
+34	Map
+35	Stats
+36	Codex
+37	Settings
+38	An error occurred while opening the window · {}
+39	Selected Item
+40	{} Skillbook · {} ·
+41	Hybrid effect · {}
+42	{} · Cooldown {}s
+43	Awakening {} · {} path
+44	Weapon: {}
+45	Known skill — absorb for {} mastery
+46	{}Stat Shard{} ·
+47	Gem {}
+48	Pet {}
+49	Once used, the pet follows you and picks up items
+50	Gear enhancement · refining · shards
+51	Building upgrades
+52	Material {}
+53	Use one at a zone's dungeon entrance to enter
+54	Scroll {} min
+55	Consumable {}
+56	Bow only
+57	{} · Item Level {}
+58	Magic Attack
+59	Physical Attack
+60	{} · Speed {}
+61	Main Stat {}
+62	Defense {}
+63	Block Chance {}%
+64	Quality
+65	Excellent {}
+66	Hybrid only · {}
+67	Engraving · {}
+68	Sockets {}
+69	{} Set ({})
+70	Required Awakening {}
+71	Sell Price {}
+72	Keep only the highest value
+73	Use All {}
+74	Absorb One
+75	Learn
+76	Use
+77	Read
+78	Summon
+79	Unfold
+80	Equip
+81	Turn Off Auto-use
+82	Auto-use
+83	HP Slot
+84	MP Slot
+85	Remove from {}
+86	Put in {}
+87	{} · {}
+88	Sell
+89	Sell All
+90	Discard
+91	Unequip
+92	Unlock
+93	Lock
+94	All at Once
+95	{}
+96	Supplies
+97	Collect loot from {} returned mercenaries
+98	On Expedition
+99	No zones liberated
+100	· Shelter {}
+101	Zone
+102	Shelter Lv.{} · {}
+103	min
+104	Duration
+105	Mercenaries
+106	{} · HP {}
+107	Fatigue {}
+108	· Inn
+109	Vigor +{}%
+110	Death {}
+111	No resting mercenaries
+112	{} · Safety +{}% · Power +{}%
+113	No potions · elixirs
+114	Mercenaries {} · Items {} · Safety +{}% · Power +{}%
+115	Send Expedition
+116	Repeat
+117	Repeat Expedition
+118	Stop
+119	Herb Exchange
+120	Spare herbs {}
+121	Craft Enhancement Stones
+122	Essence Exchange
+123	×{}
+124	Crafting
+125	Done
+126	· {}s
+127	· Fine herbs +{}%
+128	Base {} · Mercenaries +{}
+129	Master's Share
+130	Greater Enhancement Stone +{}%
+131	Production
+132	{} per hour
+133	Stored
+134	Collect
+135	Growing Herbs
+136	Enhancement Stones Owned
+137	Lodging · Lv.{}
+138	Hire Limit
+139	Now
+140	Rested Vigor
+141	Power +{}h
+142	Daily Wage
+143	Mercenary HP
+144	Fatigue
+145	Expedition
+146	Laboratory Lv.{}
+147	Researching
+148	· Greater Enhancement Stone {}
+149	· Fine herbs {}
+150	Next
+151	Hire
+152	My Mercenaries
+153	Rest
+154	New Mercenaries
+155	in {} min
+156	Grade Chances
+157	Visiting Mercenaries
+158	HP {}
+159	Beds
+160	Recovery {}
+161	Tired Mercenaries
+162	{} expedition · {} min
+163	Returned
+164	Resting at the inn
+165	Resting from fatigue
+166	Working at {}
+167	Resting
+168	Status
+169	Loot
+170	Dismiss
+171	Items
+172	Overview
+173	Incoming Items
+174	Incoming Gear
+175	Take
+176	Salvage
+177	Incoming
+178	Take · Salvage (into stones · materials on arrival) · Discard
+179	Gems · Stat Shards
+180	All
+181	Dungeon Keys · Map Fragments
+182	Potions
+183	Clear Stored Items
+184	Excludes locked · named legendary · equipped
+185	{} Gear
+186	Bag {} · Vault {} · Mercenaries {}
+187	Bag · Vault {} slots
+188	Relics
+189	Censer
+190	{}d {}h
+191	{}h {}m
+192	Placed Relics
+193	Remove
+194	Owned Relics
+195	{}d
+196	Place
+197	Accelerant
+198	Upgrading to Lv.{} · {} min
+199	Lv.{}{}
+200	Inherit
+201	Refine
+202	Tune-up
+203	Craft
+204	Exchange
+205	All to Bag
+206	All to Vault
+207	Storage
+208	Convert Zone Materials
+209	{} → higher zone {}
+210	Defense
+211	Cap
+212	Throne Whetstone {}%
+213	Refining Whetstone {}%
+214	Protection Scroll {} · Spirit {}
+215	Success Chance
+216	Artisan's Spirit
+217	Gear to Melt
+218	Select
+219	Enhancement Inheritance
+220	Inheritance Blessing Stone {}%
+221	Levels Carried Over
+222	Receiving Gear Now
+223	No gear
+224	Mythic Roll
+225	Reroll
+226	Extract Shard
+227	No affixes
+228	Engraving Stone · {}
+229	Extract Engraving
+230	Engraving {}
+231	Polish
+232	Expand · Tickets {}
+233	Max
+234	Excellent Slots
+235	Affixes
+236	Gem Sockets
+237	Add Socket
+238	{} · Lock {}
+239	Affixes to Lock
+240	No shards
+241	Affix to Apply
+242	Refine · {} · Enhancement Stones {}
+243	Level
+244	Combat Power
+245	Endless Hell
+246	Floor {}
+247	{} Ranking
+248	Loading
+249	No records
+250	{}00M
+251	{}0K
+252	#{}
+253	Outside #{}
+254	My Record
+255	Name
+256	Rank
+257	Defense
+258	Map Analysis
+259	Unknown Fragments
+260	Rumors
+261	Analyzing {} fragments
+262	{} fragments
+263	{} fragments · {}
+264	Analyze {}
+265	Analyze
+266	+{} Upgrade
+267	Max Level
+268	Found
+269	Somewhere in that zone
+270	Unknown yet
+271	Working Mercenaries
+272	Myriad-Year
+273	Let Rest
+274	Resting Mercenaries {}
+275	Other Buildings {}
+276	Bring Over
+277	Assign Work
+278	Salvage All at Once
+279	Locked
+280	Lock up to {}
+281	No gear with affixes
+282	{} Stat Shard
+283	{} Affixes to Keep
+284	Lock
+285	Two-handed
+286	Compare with Ring {}
+287	Damage
+288	Attack Speed
+289	Crit %
+290	Dodge %
+291	Block %
+292	Spell Multiplier
+293	Movement Speed
+294	Without
+295	With
+296	No change
+297	{} Stat Changes
+298	Sort Shards
+299	Sort
+300	Select All
+301	No item selected
+302	· {}
+303	To Bag{}
+304	To Vault{}
+305	Deselect
+306	{} selected
+307	Sell {} for {}
+308	Multiple
+309	Common·Magic
+310	Stat Shards {} · {} kinds
+311	· Ring {}
+312	Equipped{}
+313	Melee
+314	Set {}
+315	No skills learned
+316	Tier {}
+317	Rank {}
+318	No skill selected
+319	Weapon Damage {}
+320	Basic attack {} · approx. {}
+321	Power
+322	Next Rank
+323	Effect
+324	{} (Greatscepter)
+325	Cooldown
+326	Melee Weapon
+327	Range
+328	Area
+329	Width
+330	Count
+331	Chain
+332	Wave
+333	Hits
+334	Duration
+335	Slow
+336	Echo
+337	Stronger Binding
+338	Slow · Bind
+339	Extra Effect
+340	More Area · Count
+341	Echo · Finisher
+342	Add
+343	Remove
+344	Requirements not met
+345	Tier {} {} · Rank {}
+346	Variants
+347	Learned Skills
+348	Unlocks after defeating the Throne of Doom boss on Peaceful
+349	This Week's Expedition
+350	Rules
+351	Grade {}
+352	Boss HP · Attack
+353	Time Limit
+354	{} min · no revives
+355	Rewards
+356	Expedition Emblems {} · Lord's Chest
+357	This Week's Rewards
+358	Challenge
+359	Grade
+360	This Week's Ranking · Grade {}
+361	{} · Trait {}%
+362	Basic Attack Damage
+363	{}/s
+364	Critical
+365	Dodge
+366	Block
+367	Shield Multiplier
+368	Item Find
+369	Reselect {}
+370	{}Awakening {} times · {}
+371	Accumulated Traits {}
+372	Title Codex {}
+373	Detailed Stats
+374	Growth
+375	Sword attacks · Physical Attack
+376	Bow attacks · Critical · Attack Speed
+377	Staff attacks · Spells
+378	{} recovery (outside town · potions)
+379	Getting hit · blocking · clutch kills
+380	No quests available
+381	New Feature
+382	Claim Reward
+383	Report to Guard Captain Hagen
+384	In Progress
+385	Objective
+386	· Enhancement Stones {}
+387	· Dungeon Key{}
+388	Claimed
+389	Report to the Guard Captain
+390	Daily Requests{}
+391	Weekly Requests
+392	· All hunting grounds drop rate · EXP −{}% · Subjugation rewards +{}%
+393	· Penalty in {}h
+394	To the Battlefield
+395	Guard Captain Hagen
+396	Gathered {}h ago{}
+397	Next horde in about {}h
+398	Conquered Lands
+399	Achievements
+400	HP · MP
+401	Your character: title · name · HP. Blinks when HP is low
+402	Quests: current quest and daily requests. Tap to open the quest window, tap the arrow to collapse
+403	Log: zone info · loot · completion notices. Tap to open the log window
+404	Minimap
+405	Menu: Bag · Skills · Stats · Quests · Ranking · Settings
+406	{} skill slots. On phones, choose circle or square layout in Settings
+407	Attack Button
+408	Joystick: appears only while touched
+409	Buttons
+410	Recall: return to town
+411	Auto-hunt: hunts only inside the zone where you turned it on, seeking the nearest monster and avoiding obstacles. Rewards are slightly lower. Choose what to pick up in Settings
+412	Attack. Near people · buildings · portals · the vault it changes to that name
+413	Skills. Set the slots in the Skills window
+414	Minimap Legend
+415	Red dot: monster · Orange dot: elite · named · Gold diamond: boss · Sky-blue ring: portal · Green triangle: dungeon entrance · Yellow outline: town
+416	Talking to {}
+417	Guard Captain Hagen: quest reports · daily request rewards · building construction
+418	Get close and the attack button changes to their name. Tap to talk. Merchant Orten runs the shop, Jeweler Lien sockets · combines gems, and Sage Era handles the codex · shard grinding · combining · drawing
+419	Using Buildings
+420	Built Buildings
+421	In front of a building the button changes to its name. Tap it to open the building window. Choose a function with the tabs at the top
+422	Portals in town · discovered camps
+423	Stand on a portal and press the button to choose a destination. Monsters do not spawn near portals
+424	Shared vault chest next to the merchant
+425	Press the button in front of the chest to open the vault
+426	Vault: shared by all characters on the same account. {} slots, expanded by the research "Large Vault"
+427	Tap items to select or deselect. Select several and use the middle button to move them all at once
+428	Stackable items · identical skillbooks · identical shards gather in one slot
+429	Selected item: info · stat changes · use · sell. With nothing selected, equipped gear is shown
+430	Bag: enhancement stones · zone materials also come in as items. They can be used for enhancement · buildings even from the vault
+431	Sort · sell all at once
+432	Gold · Enhancement Stones
+433	Window Tabs
+434	Identical skillbooks stack in one slot. [Absorb One] uses one book, [Use All] uses the whole stack to raise mastery at once. For an unknown skill, one book teaches it and the rest are absorbed
+435	Stat shards with the same affix also gather in one slot. Choose which value to use when refining
+436	Learned skills. Rank rises with use. There is no rank cap, but it slows down from {}
+437	Power · next rank · {} · cooldown · area
+438	Variants: choose one each at rank {}
+439	{} quick slots: tap a slot to place the skill. A skill already slotted swaps places
+440	Superior and higher skills depend on your weapon. One-handed weapons (+ shield · orb · grimoire) use single-target · dash · spear skills, two-handed weapons (greatsword · staff · greatscepter · tower shield) use swing · area skills. Basic · intermediate · buff skills work with any weapon
+441	Skills you can't use with your current weapon appear dimmed in the quick slots. With a greatscepter, two-handed Spirit spells cost {}× mana but gain power and area
+442	Stats · Awakening
+443	Stats grow with your actions: swinging blades raises Strength, casting spells raises Intelligence, taking hits raises Vitality
+444	Detailed stats. Each Awakening lets you choose a title and trait that fit your style. Higher tiers unlock new traits such as critical · sprint · wave · chain · mark · shield
+445	Equipped arts: Awakening {} {} slot · Awakening {} {} slots · Awakening {} {} slots
+446	Arts by Path
+447	Unlocked by performing set actions (melee crits · ranged crits · hitting many enemies, etc.) a set number of times while hunting manually. Auto-hunt does not count
+448	Arts mixing two stats require having earned a title containing both stats
+449	Quests · Requests · Achievements
+450	Main quests and achievements
+451	Claim daily request rewards: only in front of Guard Captain Hagen
+452	{} daily requests · weekly requests
+453	Completing achievements grants gold and achievement titles
+454	Monster codex by zone
+455	Monster Info
+456	The more monsters you defeat, the more info unlocks, and you gain bonuses such as damage based on kill count
+457	Level · Combat Power Ranking
+458	My record · Combat Power (Attack {} Defense)
+459	Only characters logged in and saved to the server appear in the rankings
+460	Logs such as completion notices · loot · zone changes. Tapping the log on the left of the screen also opens it
+461	Other adventurers' messages appear in the chat box at the bottom left. Log in and set a nickname, then press [Chat] ({}: {}) to speak
+462	The side button collapses the chat box. Messages received while collapsed are shown as a count. Move it with {} layout editing in Settings
+463	Up to {} characters at a time. Up to three messages per {} seconds, and you can't repeat the same message in a row. Continued spam mutes you for a while, and profanity is filtered
+464	Building Construction
+465	Plots and Buildings
+466	Upgrade Level
+467	Gold · materials · Awakening · time required per level
+468	Function tabs: Enhance · Refine · Salvage · Mercenaries
+469	Enhance: the level stays the same on failure, and Artisan's Spirit builds up with each failure. Higher-level gear has lower success rates and needs more enhancement stones
+470	Refine: choose gear and a stat shard to replace one affix with the shard's affix. At Smithy Lv.{} you can lock {} affixes
+471	Salvage: pick a grade and salvage all at once with [Salvage by Grade]. Results appear in a result window
+472	Socket · Combine tabs
+473	Sockets and gems of the selected gear. Removing a gem costs gold
+474	Equipped gear · Bag
+475	Combine: {} identical gems make one gem of the next grade. You can also combine by grade all at once
+476	Mine · Herb Field
+477	Production and stored amount
+478	Growing herbs (mine: owned enhancement stones)
+479	Products don't go into your bag automatically. Enter the building and use [Collect]
+480	Production stops when storage is full. Collect when you see the "full" log
+481	Function tabs: Craft · Exchange · Mercenaries
+482	In Production
+483	Collect finished items yourself with [To Bag] · [To Vault]
+484	Crafting takes time. Up to five can be queued
+485	The Craft tab also makes Greater Enhancement Stones · Uncharted Maps ({} Uncharted Land Fragments)
+486	Exchange tab: trade {} spare herbs for {} other herb, or convert essences to another grade
+487	Expedition Hall · Mercenaries
+488	Destination
+489	Duration. Mercenaries working in buildings can't be sent
+490	Inn · Lodging
+491	Hire visiting mercenaries. They change every hour
+492	Higher Lodging levels let you keep more mercenaries. Tired mercenaries rest at the inn to recover HP
+493	Mercenary gear: use [Gear] in the mercenary list to equip items from your bag · vault
+494	Research Progress
+495	Analyze unknown map fragments and upgrade rumor maps in the "Map" tab
+496	Placed relics: {} slots depending on altar level
+497	Relics come from Uncharted Lands. Placed relics grant effects like EXP · damage · production for a period. Higher grades are stronger and last longer
+498	For Sale
+499	Bag: items can be sold
+500	Destinations
+501	Map. Only places you've visited are revealed
+502	Dungeon Map
+503	Tier
+504	A zone's dungeon opens after defeating its boss (the minimap entrance turns green). The button turns into "Dungeon" at the entrance. Enter with keys from daily requests · occasional boss drops
+505	Defeating the boss at the deepest point unlocks the next tier. Monster level rises by {} per tier, so tier {} is higher than the next zone
+506	Empowered keys · Extreme keys open harder dungeons
+507	After clearing, the attack button turns into Exit. Pick up the loot and press it to leave
+508	Rumors · Upgrades
+509	Analyzing unknown map fragments from hunting · expeditions in the Laboratory "Map" tab yields Uncharted Land Fragments or rumors. Rumors appear in zones up to two below your highest boss-cleared zone
+510	Wander a rumored zone and a hidden dungeon entrance appears. It's stronger than the zone; clear it to pick one of three treasure chests for gear. Upgrading the map at the Laboratory makes it stronger with better rewards, and mythic gear drops from +{}
+511	Uncharted Lands
+512	Turn {} Uncharted Land Fragments into an Uncharted Map at the Workshop. Unfold the map outside a dungeon to enter the Uncharted Land of one of your boss-cleared zones
+513	Clearing it grants relics and gold. With the "Open Uncharted Path" you can re-enter the same place within {} hours
+514	Flooded Zones
+515	Once you've cleared bosses in {} or more zones, every evening at {} o'clock monsters flood a zone you haven't hunted in a while (up to {} zones)
+516	Flooded zones can't be reached by portal; you must walk. Entering traps you in a barrier, and defeating all flood monsters and the flood boss purifies it
+517	Flood monsters give no EXP · loot; purifying grants gold · gear · greater enhancement stones · unknown map fragments. The first purification of each zone per week also grants essence
+518	The more flooded zones, the lower town production and the riskier expeditions become
+519	Dungeon Mutations
+520	Mutations
+521	Clear Results
+522	Dungeons · hidden dungeons gain mutations such as Collapsing · Frozen · Burning. After entering, review the mutations and press [Start] to let monsters move
+523	More mutations raise gear level · legendary chance · gold · gems. Extreme dungeons and upgraded hidden dungeons have more mutations. After clearing, time taken · damage dealt · rewards appear in a result window
+524	Empowered Monsters
+525	World Tier
+526	The higher the World Tier and the harder the dungeon, the more often monsters appear with abilities like Fire-Enhanced · Cold-Enhanced · Vampiric · Teleport · Binding · Curse · Pack. Abilities are shown in [ ] next to their name
+527	More abilities mean more HP and more EXP · loot
+528	Colored areas are about to be hit. It explodes when it fills from the center
+529	If you circle at range, they use ranged attacks such as leaps · snipes
+530	Each boss has unique attacks
+531	Settings · Display
+532	Screen Zoom
+533	Phone skill layout: circle · square
+534	Move {} positions
+535	Settings · Auto-hunt
+536	Auto-hunt pickups: gear grade · potions · gems · materials · shards, and skillbooks per grade
+537	Shortcuts to Bag · Skills · Stats · Quests
+538	Auto-potion · auto potion purchase · auto-sell grade · whether to fight field bosses while auto-hunting are set here
+539	Other
+540	When you die you sometimes drop one piece of gear on the spot. You can go back and pick it up; if you restart or update without picking it up, it returns to your vault
+541	World Tiers: Peaceful → Nightmare → Hell → Chaos. There are {} zones (danger {}); the next tier unlocks by defeating the boss of the last zone, the Throne of Doom, and clearing its dungeon up to tier {} (Nightmare {} · Hell {}). Chaos unlocks after Awakening {}. Each tier makes monsters much stronger and bosses use patterns more often
+542	Stat shards: {}% when swapping gear · {}% in place of boss gear · when salvaging Magic {}% · Rare {}% · Heroic {}% · Legendary {}%. Trade one for a gear affix at the Smithy
+543	Even the same gear rolls a different quality ({}%) and affix values each time
+544	· Awakening {}
+545	· Gear {}
+546	Veteran
+547	{} · {} per day
+548	Patch Notes
+549	Mailbox
+550	You must log in to receive mail
+551	· Items {}
+552	No mail
+553	Claim All
+554	Could not claim
+555	{} letters · +{}
+556	Received {} mail items into the vault
+557	Lv.{}
+558	Equip
+559	Wearing · Lv.{}
+560	Unequip
+561	Wearing Lv.{}
+562	No gear equipped
+563	Equipped on {}
+564	Gear returned to your bag
+565	Received {}
+566	{} complete
+567	{} more lines
+568	Tap an item for details
+569	Completion Notices
+570	Press a key…
+571	Hotkeys
+572	Destination
+573	Available
+574	Build
+575	Camp Facilities
+576	Trade
+577	Campfire
+578	Recover quickly at camp
+579	Mercenary Shelter
+580	Expeditions to this zone: {}
+581	Discovered camps {}
+582	Portal Destinations
+583	Discovered Portals
+584	You are here
+585	Requires that hybrid title
+586	Empty Slot
+587	From Awakening {}
+588	{} Arts
+589	Path
+590	Dust
+591	Draw
+592	Usable grades {}
+593	Release
+594	Up to {}
+595	Keep highest value
+596	Result
+597	Selected
+598	Usable Grades
+599	Grind · Dust +{}
+600	Combine{}
+601	Research: Shard Alchemy
+602	World {}
+603	Shard Alchemy Lv.{}
+604	Locked · {}
+605	Dust {}
+606	{} kinds
+607	Draw {} Shard
+608	Possible Affixes
+609	Awakening too low
+610	· Boss
+611	· Named
+612	{}
+613	After defeating {}
+614	Resists {}
+615	Weak to {}
+616	· Damage dealt +{}%
+617	Kills
+618	Spell
+619	Ranged
+620	Best
+621	Damage +{1}% at {0} kills
+622	Danger
+623	Attack
+624	Attack Type
+625	Physical
+626	Codex Bonus
+627	Monster Codex
+628	Empty Plot
+629	{} flooded zones
+630	What to build
+631	Built
+632	Fine herbs {}
+633	Cost by Level
+634	Up to Lv.{}
+635	{} · Awakening {}
+636	Under construction
+637	Upgrading to Lv.{}
+638	Construction Accelerant {} · halves remaining time
+639	Upgrade {}
+640	Recover potions even on death
+641	Death -{}% · Loot +{}%
+642	Production {}%
+643	Working Mercenaries {}
+644	No production without working mercenaries
+645	Resting Mercenaries
+646	Transcendent Enhancement
+647	Enhancement cap +{}
+648	{} · level kept on failure · Artisan's Spirit builds up on failure and guarantees success at {}%
+649	+{} · Artisan's Spirit {})
+650	Salvage by Grade
+651	Enhancement Stones {}
+652	Researching: {} min left
+653	Laboratory Lv.{} · {}
+654	{} · materials {} min
+655	Beds {} · Recovery {}
+656	Changes in {} min · Hired {}
+657	Unpaid mercenaries {}
+658	Mercenaries {} · Resting {}
+659	No equipped gear with sockets
+660	Equipped Gear
+661	Sockets
+662	Remove · {}
+663	You have no gems
+664	Gem to Socket
+665	Socket
+666	Combine
+667	Owned Gems
+668	Combine by Grade
+669	Required
+670	Highest grade
+671	Merchant Orten
+672	Buy
+673	Deliveries
+674	Sell {}
+675	Damage {}
+676	· Block {}%
+677	Today's Deliveries
+678	Owned {}
+679	Owned Herbs
+680	Focus Crops
+681	{} · selected herbs make up half
+682	Fertilizer
+683	Herb production +{1}% for {0}h
+684	Time Left
+685	Greater Enhancement Stones {}
+686	Mutant Herbs
+687	{} · {}% on harvest
+688	Distill
+689	Fine herbs → Essence
+690	Fine Herbs
+691	Empty Censer
+692	Burning
+693	Not enough herbs
+694	{} · {} per hour
+695	Turn Off
+696	Incense
+697	In censer #{}
+698	Burning
+699	Light
+700	{} per hour · owned {}
+701	Title "{}"
+702	Owned
+703	Once per lord
+704	(chests combined)
+705	This week {}
+706	You must defeat {}
+707	Already owned
+708	Sold out this week
+709	Not enough Expedition Emblems
+710	Shown next to your name
+711	Price
+712	Expedition Emblems {}
+713	Owned Emblems
+714	Buy
+715	Turn On
+716	Link Account
+717	Endless Hell Floor
+718	Best Floor {}
+719	Materials · Shards
+720	{} Skillbooks
+721	Off
+722	Installed
+723	Install
+724	Share → Add to Home Screen
+725	Browser menu → Install app
+726	· Failed
+727	· Saved
+728	Not logged in
+729	Continue
+730	To Main Screen
+731	Change
+732	Character Art
+733	Language
+734	Music
+735	Sound Effects
+736	Darkness · Lighting
+737	{} Overall Size
+738	Joystick Size
+739	Button Size
+740	Button Opacity
+741	Auto-hunt Skill Set
+742	By situation (Boss {} · Buff {})
+743	Current set only
+744	Phone Skill Layout
+745	Circle
+746	Square
+747	{} Position
+748	Edit Layout
+749	Target Lock
+750	Floating Joystick
+751	Screen Shake
+752	Potions (Manual Hunting)
+753	Auto Potion
+754	Auto-hunt Field Bosses
+755	Fight
+756	Avoid
+757	Auto-hunt Pickups
+758	Auto-buy Potions
+759	Auto-sell Grade
+760	Hotkeys ({})
+761	Set Hotkeys
+762	Fullscreen
+763	Toggle
+764	Install as App
+765	Patch Notes {}
+766	Save Now
+767	Delete Character
+768	Play Time
+769	{} times
+770	Auto-hunt Efficiency
+771	Drops {}% · EXP {}%
+772	Autosave
+773	Art
+774	Linked to account {}
+775	Drops it on the ground
+776	{} ·
+777	Sold {}: +{}
+778	Cannot change
+779	Delivery · {}
+780	Expedition Shop
+781	Buy {} for {} Expedition Emblems
+782	Construction time halved
+783	{} will be destroyed
+784	+{} Inherited
+785	Melted Gear
+786	Quality Polishing
+787	Rerolls quality (keeps the old value if lower)
+788	Quality {}%
+789	Quality {}% — kept at {}%
+790	Mythic Affix Reroll
+791	Rerolls this mythic affix
+792	Roll
+793	Excellent Slot Expansion
+794	Adds one Excellent slot
+795	Expand
+796	Excellent Slots {}
+797	Affix Reroll
+798	Changes this affix into another affix
+799	Gear Shard Extraction
+800	Extracts this affix as a shard. The gear is destroyed
+801	Shard: {}
+802	Adds another gem socket
+803	Socket
+804	Added a socket
+805	Apply Engraving
+806	Engrave
+807	Engraving applied
+808	Engraves an Engraving Stone onto this gear
+809	Removes the engraving and turns it into an Engraving Stone
+810	Extract
+811	Obtained an Engraving Stone
+812	Buy {}
+813	You need {} free bag slots to claim the reward
+814	Reward: {}
+815	Quest complete: {}
+816	Saved {} positions
+817	Salvaged Gear
+818	{} Stat Shards
+819	Salvage Results
+820	Build {}
+821	Built {}
+822	Upgrade Building
+823	Upgrades to the next level
+824	Level increased
+825	Herbs: {}
+826	· Greater {}
+827	· Supreme {}
+828	Collected {}{}
+829	+{} Enhancement Success
+830	Enhancement Failed
+831	Cannot craft
+832	Crafted {}
+833	Obtained {}
+834	Crafted {}
+835	Hire this mercenary
+836	Mercenary hired
+837	Mercenary Awakening
+838	Awaken this mercenary
+839	The mercenary has awakened
+840	Dismiss Mercenary
+841	Dismiss this mercenary. This cannot be undone
+842	This cannot be undone
+843	No gear to salvage
+844	Salvages all gear of the chosen grade in your bag · vault · mercenary loot
+845	· Shards {}
+846	Salvaged {} · Enhancement Stones +{}
+847	Salvage {} {} gear\nBag {} · Vault {} · Mercenaries {}
+848	Salvage {} {} gear
+849	Upgrade Map
+850	{}\nThe entrance location will be reset
+851	The entrance location will be reset
+852	Map Upgrade +{}
+853	No shards to clear
+854	Discards all selected stat shards from your bag · vault
+855	Discarded {} shards
+856	Keeps only the highest value and discards {}
+857	Discarded the other {}
+858	Sold {}: +{}
+859	Sell {} selected items from the vault
+860	Bulk Sell
+861	Sells all Common · Magic gear in the vault
+862	Craft {}
+863	×{} · {}%
+864	No gems to combine
+865	You may lose gems on failure
+866	Success
+867	Failure
+868	×{} · lost {}
+869	Common Gear
+870	Magic Gear
+871	Rare Gear
+872	Heroic Gear
+873	Legendary Gear
+874	Mythic Gear
+875	Discards all {} in your bag · vault. This cannot be undone
+876	Discarded {}
+877	Use Shard
+878	The affix will change\nIf the Excellent line changes, Excellent is lost (the slot remains)
+879	The affix will change
+880	If the Excellent line changes, Excellent is lost (the slot remains)
+881	Use
+882	Refine Success
+883	Put into the vault
+884	Moved to your bag
+885	{} slots {}
+886	Moved {} · {}
+887	Start this research
+888	Start
+889	Research started
+890	Combine Gems
+891	{} · Gold {} · Success {}%\nYou may lose gems on failure
+892	{} · Gold {} · Success {}%
+893	Combine Success
+894	Combine Failed
+895	Lost {}
+896	Socket Gem
+897	Socket into {}
+898	Remove Gem
+899	Gold {}
+900	Skill Variant
+901	Once chosen, it cannot be changed
+902	Reselect Trait
+903	Pay gold to reselect your trait
+904	Locked
+905	Unlocked
+906	Sell {} selected items
+907	Sells all Common · Magic gear in your bag
+908	Sold {} gear: +{}
+909	Crafted {}!
+910	Grind Shards
+911	Grinds {} shards into dust
+912	Grind
+913	Dust +{}
+914	{} → {} · best {}
+915	Put {} in your bag
+916	Put {} in {}
+917	{} mercenaries left on an expedition
+918	{} did not return…
+919	Loot {} and more
+920	Shelter Lv.{}
+921	Mercenaries set out to hunt
+922	Mercenary {} did not return…
+923	· {} gear
+924	Loot: {} · Enhancement Stones {} · Materials {}
+925	Saved
+926	Really delete this character? This cannot be undone
+927	Requires: {}

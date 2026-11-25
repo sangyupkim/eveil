@@ -1,0 +1,136 @@
+0	Counter Slash
+1	Quickly slashes back.
+2	Shield Shove
+3	Shoves ahead, hitting and slowing enemies.
+4	Execute
+5	Smashes down on one foe with all your strength.
+6	Leaps up and slams down on an enemy.
+7	Combo Slash
+8	Slashes around you without pause.
+9	A single long-range shot that pierces hard.
+10	Buckshot
+11	Scatters arrows at nearby enemies.
+12	Trap Arrow
+13	Roots and slows enemies hit.
+14	Covers the sky with arrows.
+15	Ricochet Shot
+16	A widely curving arrow that pierces enemies in a line.
+17	Fire Pillar
+18	A pillar of fire erupts beneath an enemy.
+19	Flame Burst
+20	Flames burst around your body.
+21	Sea of Fire
+22	Lays a sea of fire that burns the ground for a long time.
+23	Ember Scatter
+24	Scatters embers in a short range.
+25	An ice spear pierces in a straight line.
+26	Frost Ring
+27	Freezes and slows your surroundings.
+28	Ice Orb
+29	Launches an orb that bursts and freezes the area.
+30	Ice Armor
+31	Wraps you in ice to raise defense.
+32	Chill
+33	Freezes the area ahead with cold wind.
+34	Spark
+35	A small bolt jumps between two enemies.
+36	Lightning Strike
+37	Lightning strikes from the sky.
+38	Static Field
+39	Electricity flows around you.
+40	Thunderstorm
+41	A thundercloud strikes a wide area.
+42	Wrath of the Storm God
+43	Lightning sweeps the whole pack.
+44	Light of Protection
+45	Surrounds you with a small shield.
+46	Chastise
+47	Strikes with an arrow of light.
+48	Purifying Ground
+49	Blesses the ground beneath you, burning nearby enemies.
+50	Sanctuary
+51	Surrounds you with a thick barrier of light.
+52	Focus
+53	Calms your mind to raise critical chance.
+54	Taunting Roar
+55	Roars to pull in nearby enemies and briefly reduce damage taken.
+56	Endure
+57	Grits your teeth and holds on.
+58	Thorn Armor
+59	Returns part of the damage taken to the attacker.
+60	Patience Burst
+61	Stores damage taken for {} seconds, then releases it around you.
+62	Shield Charge
+63	Charges at an enemy with your shield raised. Stronger with higher defense.
+64	Earth Roll
+65	Rolls the ground to shake the area.
+66	Fighting Spirit
+67	Grits your teeth to briefly reduce damage taken.
+68	Roll
+69	Rolls backward to gain distance and briefly raise dodge.
+70	Ice Prison
+71	Freezes nearby enemies, briefly immobilizing them.
+72	Smokescreen
+73	Hides in smoke, briefly raising dodge greatly.
+74	Apply Poison
+75	Coats your weapon in poison to raise damage.
+76	Shadow Step
+77	Slips beside an enemy like a shadow.
+78	Dagger Fan
+79	Scatters daggers around you.
+80	Flame Slash
+81	Slashes with a burning blade.
+82	Frost Blade
+83	Cleaves ahead with a freezing blade.
+84	Lightning Spin
+85	Spins wrapped in lightning.
+86	Holy Strike
+87	Smashes down charged with light.
+88	Wave of Judgment
+89	Sweeps ahead with a wave of light.
+90	Steel Charge
+91	Rams with your body and slashes.
+92	Earthquake Smash
+93	Splits the ground to shake the area.
+94	Sword Dance
+95	Slashes quickly as if dancing.
+96	Elemental Arrow
+97	An arrow imbued with flame.
+98	Frost Arrow Rain
+99	Pours freezing arrows.
+100	Starlight Arrow
+101	A single shot threaded through the stars.
+102	Soul Arrow
+103	Soul-infused arrows chase several enemies.
+104	Wind Shot
+105	Arrows pour down riding the wind.
+106	Wild Strike
+107	Fires as heavily as you've endured.
+108	Mana Shield
+109	Hardens mana into a protective shield.
+110	Releases the power of Spirit around you.
+111	Battle Incantation
+112	Heats your body with a spell to raise damage.
+113	Adamant Body
+114	Hardens body and mind to wrap you in a large shield.
+115	Raging Gale
+116	Storms in like the wind.
+117	Hunter's Mark
+118	Targets your prey to raise critical hits.
+119	Bashes with your shield. Stronger the more Max {} you've added from gear (also uses a little {}).
+120	Bulwark Shock
+121	Pushes ahead with a sturdy body. Stronger with higher defense.
+122	Steel Quake
+123	Smashes the ground to shake the area. Stronger the more Max {} you've added from gear (also uses {}).
+124	Giant's Blow
+125	Smashes down with all your weight. Stronger with higher defense.
+126	Mana Shield
+127	Blocks damage with {1} instead of {0} (uses less {2} as rank rises).
+128	Arcane Rush
+129	Fires a mass of mana. Stronger the more Max {} you've added from gear.
+130	Mana Burst
+131	Bursts mana from your body. Stronger the more Max {} you've added from gear.
+132	Overload
+133	Unleashes overflowing mana in a line.
+134	Arcane Storm
+135	Calls down a rain of mana four times.

@@ -1,0 +1,36 @@
+0	Frenzied
+1	Moves · attacks faster
+2	Stoneskin
+3	Physical resistance +{}%
+4	Mana Armor
+5	Magic resistance +{}%
+6	Explosive
+7	Explodes around itself shortly after death
+8	Splitting
+9	Splits in two on death
+10	Reflect
+11	Returns part of the damage taken
+12	Shielded
+13	Gains a shield once when HP drops below half
+14	Fire-Enhanced
+15	Burns for {}s on hit
+16	Cold-Enhanced
+17	Slows for {}s on hit
+18	Electrified
+19	Lightning sometimes strikes back when hit
+20	Vampiric
+21	Heals for {}% of damage dealt
+22	Mana Burn
+23	Drains mana on hit
+24	Mighty
+25	Attack +{}%
+26	Giant
+27	HP +{}% · larger body
+28	Teleporting
+29	Teleports to you when you move away
+30	Binding
+31	Sometimes roots briefly
+32	Cursed
+33	On hit: damage taken +{1}% for {0}s
+34	Pack
+35	Leads minions

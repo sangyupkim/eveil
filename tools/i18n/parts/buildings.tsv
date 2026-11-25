@@ -1,0 +1,103 @@
+0	North Plot
+1	Northeast Plot
+2	East Plot
+3	Southeast Plot
+4	Southwest Plot
+5	West Plot
+6	Northwest Plot
+7	South Plot
+8	Northwest Altar Plot
+9	Smithy
+10	Gear enhancement
+11	Mine
+12	Produces enhancement stones
+13	Herb Field
+14	Grows herbs
+15	Workshop
+16	Makes potions · scrolls from herbs
+17	Laboratory
+18	Permanent upgrades for gold · time
+19	Lodging
+20	Where mercenaries stay
+21	Expedition Hall
+22	Sends mercenaries to zones
+23	Relic Altar
+24	Place relics for buffs
+25	Inn
+26	Mercenaries visit every hour
+27	Short Hunt
+28	Half-day Hunt
+29	Long Expedition
+30	Camp Subjugation
+31	Deep Expedition
+32	Rewards +{}% · Power +{}% · Death -{}% · Items +{}% · Materials +{}% · HP cost -{}%
+33	None
+34	Potion Refining
+35	Potion recovery +{}%
+36	Gathering Know-how
+37	Material drop chance +{}%
+38	Haggling
+39	Gold gain +{}%
+40	Large Backpack
+41	Bag +{} slots
+42	Large Vault
+43	Vault {} slots
+44	Expedition Maps
+45	Expedition time -{}%
+46	Herbalism
+47	Herb production +{}%
+48	Mercenary Training
+49	Expedition mercenary power +{}%
+50	Treasure Sense
+51	Item find +{}%
+52	Artisan's Hands
+53	Enhancement chance +{}
+54	Battlefield Wisdom
+55	EXP +{}%
+56	Shard Appraisal
+57	Stat shard drop chance +{}%
+58	Mine Expansion
+59	Mine production +{}%
+60	Skilled Process
+61	Crafting time -{}%
+62	Essence Condensation
+63	Essence drop chance +{}%
+64	Vein Detection
+65	Mine higher-grade stone chance +{}
+66	Censer Alchemy
+67	{} altar censers · herb use -{}%
+68	Large Storehouse
+69	Mine · Herb Field storage +{}%
+70	Away Management
+71	Mine · Herb Field production while offline +{}%
+72	Transcendent Alchemy
+73	Transcendent Enhancement gold -{}%
+74	Artisan's Memory
+75	Artisan's Spirit +{}%
+76	Essence Circulation
+77	Essence upgrade materials {}
+78	Horde Preparedness
+79	Horde Subjugation rewards +{}%
+80	Alchemical Engineering
+81	Chance of extra potions · elixirs · rations +{}%
+82	Shard Alchemy
+83	Peaceful
+84	Nightmare
+85	Hell
+86	Chaos
+87	Endless
+88	Sage shard draws up to {} grade
+89	Crafted Goods Storage
+90	Workshop storage {} items
+91	Elite Mercenaries
+92	Expedition death chance -{}%
+93	Bran
+94	Selma
+95	Oden
+96	Ira
+97	Kale
+98	Dor
+99	Mira
+100	Hass
+101	Yuna
+102	Bark

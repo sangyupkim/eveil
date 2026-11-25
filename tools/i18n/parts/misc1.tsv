@@ -1,0 +1,187 @@
+0	Incense of Plenty
+1	Incense of Vigor
+2	Mercenary HP cost -{}% · rest recovery +{}%
+3	Incense of Focus
+4	Research · crafting · construction time -{}%
+5	Incense of Prosperity
+6	Expedition rewards +{}%
+7	Strength skill damage · physical attack · heavy gear
+8	Dexterity skill damage · attack speed · critical
+9	Intelligence skill damage · magic attack · cooldown reduction
+10	Max {} · recovery · shield
+11	Max {} · recovery · defense
+12	Normal
+13	Elite
+14	Named
+15	Boss
+16	Ant Shell
+17	Rotten Heartwood
+18	Bone Dust
+19	Rusted Crest
+20	Swamp Moss
+21	Frost Crystal
+22	Ancient Fragment
+23	Ember Core
+24	Field Pioneer
+25	Rotting Woods Hunter
+26	Gravekeeper
+27	Citadel Guard
+28	Swamp Wraith
+29	Frost Lord
+30	Ancient Guardian
+31	Flame Rift Conqueror
+32	Fortress Breaker
+33	Web Tracker
+34	Wraith Hunter
+35	Guardian of the Gate
+36	Normal
+37	Empowered
+38	Extreme
+39	Hardened
+40	Production -{}%
+41	Expedition death +{}%
+42	Visiting mercenaries -{}
+43	Expedition rewards -{}%
+44	Crafting time +{}%
+45	Monsters
+46	Monster Tiers
+47	Drops
+48	Chapters (Zones)
+49	Basics · Spawn Time
+50	All
+51	Items
+52	Horn of Plenty
+53	Mine · Herb Field production +{}%
+54	Charm of Protection
+55	Sage's Scroll
+56	Character
+57	Lucky Coin
+58	War Banner
+59	Giant's Shield Fragment
+60	Wind Feather
+61	Scholar's Candlestick
+62	Research time -{}%
+63	Purifying Holy Water
+64	Flood penalties -{}%
+65	Essence Crystal
+66	Both
+67	Traveler's Lantern
+68	Inn mercenary grade +{} step
+69	Golden Chalice
+70	Gold +{}% (hunting · expeditions)
+71	Boss Skill
+72	Hunting Skill
+73	Support Skill
+74	Smashes down on one target with all your strength
+75	Dashes at the target and slashes
+76	Pierces the target precisely
+77	Fires one big shot at the target
+78	Bounces from the target to nearby enemies
+79	No art
+80	{1} monsters in {0}
+81	{} elites · named · bosses
+82	{} named · bosses
+83	Clear {} Dungeon
+84	Clear dungeons {} times
+85	Collect from Mine · Herb Field {} times
+86	Finish {} items at the Workshop
+87	Craft enhancement stones · keys · essences {} times
+88	Attempt gear enhancement {} times
+89	{} expedition mercenaries return
+90	Item can't be equipped
+91	Stat requirements not met
+92	Hybrid gear: both stat requirements not met
+93	A quiver requires a bow
+94	Requires Awakening {}
+95	No item
+96	Bag is full
+97	Unknown item:
+98	Excellent
+99	{}Stat Shard: {}
+100	Skillbook: {}
+101	Clear a Hidden Dungeon
+102	Hire a Mercenary
+103	Send an Expedition
+104	Start Research
+105	No Laboratory
+106	Already analyzing
+107	No unknown map fragments
+108	No rumors
+109	Already at max level
+110	Not enough gold
+111	Not enough materials
+112	{} Hidden Dungeon{}
+113	This affix can't appear on this slot
+114	This affix can't appear on this weapon
+115	Same affix as a locked one
+116	All affixes are locked
+117	Excellent slots are full
+118	No shards
+119	Upgrade the Smithy to lock more
+120	{} grade can't be used yet
+121	Not enough enhancement stones
+122	Endless Floor {}
+123	Choose shards
+124	Choose three of the same affix
+125	Requires three of the same grade
+126	This grade can't be drawn yet
+127	Requires the Laboratory research "Shard Alchemy"
+128	Not enough dust
+129	Raise your Awakening to get this grade
+130	Loading the vault
+131	Can't take out another character's mythic gear
+132	한국어
+133	Leave
+134	Merchant
+135	Guard Captain
+136	Jeweler
+137	Camp Merchant
+138	Wandering Merchant
+139	Portal
+140	Dungeon
+141	Vault
+142	Throne Gate
+143	Building
+144	Attack
+145	Connecting to the chat server
+146	Reconnecting to the chat server. Please send again shortly
+147	Set a nickname to chat
+148	Link an account to chat (Menu → Settings)
+149	ID: lowercase letters · numbers · _ ({} characters)
+150	Password must be at least {} characters
+151	That ID is already taken
+152	Wrong ID or password
+153	Please try again shortly
+154	Please log in again
+155	Can't reach the server
+156	Server saves aren't open yet
+157	That nickname is already in use
+158	Nickname: Korean · English · numbers ({} characters)
+159	Contains words that aren't allowed
+160	That nickname can't be used
+161	Nicknames can't be numbers only
+162	Failed
+163	Cancel
+164	Auto-hunting
+165	Show Screen
+166	Hide Screen
+167	{} Dungeon
+168	{}h
+169	Awakening
+170	EXP
+171	Kills
+172	Gold
+173	Time
+174	{} min
+175	{}s
+176	Please wait before sending ({})
+177	You can't send the same message twice in a row
+178	Muted for {} for spamming
+179	Chat banned ({} left)
+180	Chat banned
+181	Log in and set a nickname to speak
+182	Send
+183	Chat
+184	Online {}
+185	Drag to move
+186	Reset

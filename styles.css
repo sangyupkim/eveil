@@ -911,3 +911,8 @@ body.ui-edit #qsets { display: none; }
 .skRole.wNeed { background: rgba(200, 180, 140, .15); color: #d8c8a0; }
 .skRole.wNeed.bad { background: rgba(230, 80, 60, .22); color: #ff8a7a; }
 .kv > span { white-space: nowrap; } /* v0.49.73 이름 칸이 글자마다 세로로 쪼개지지 않게 */
+
+/* v0.50.6 언어 고르기 (첫 화면 위 오른쪽) */
+.langPick { position: fixed; top: 10px; right: 12px; display: flex; gap: 6px; z-index: 30; }
+.langPick .btn { min-height: 0; padding: 2px 10px; font-size: calc(var(--u) * 0.72); opacity: 0.75; }
+.langPick .btn.on { opacity: 1; color: var(--brass-hi); border-color: var(--brass-hi); }

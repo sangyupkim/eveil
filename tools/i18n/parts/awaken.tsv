@@ -1,0 +1,452 @@
+0	Overlord's Flash
+1	A single massive slash.
+2	Earth Shatter
+3	Swings while shattering the ground around you.
+4	Skyfall Strike
+5	Smashes forward as if the sky were falling.
+6	Descent of the War God
+7	Whirls three times.
+8	Overlord's Cleave
+9	A finishing blow on one target.
+10	Barrage Storm
+11	Fires six shots in a row.
+12	Piercing Star
+13	Pierces every enemy in a line.
+14	Sky Arrow Rain
+15	Pours down a rain of arrows six times.
+16	Divine Archer's Strike
+17	Draws the bowstring to the limit and fires a single line.
+18	Thousand Arrows
+19	Scatters twelve arrows.
+20	Elemental Release
+21	Unleashes the elements from your body.
+22	Shooting Star
+23	Drops a burning star.
+24	Elemental Storm
+25	Calls down a rain of elements five times.
+26	Chains of Judgment
+27	Lightning links seven enemies.
+28	Primordial Flame
+29	Burns your surroundings with primordial fire.
+30	Arcane Lance
+31	Hurls mana like a spear.
+32	Releases gathered mana all at once.
+33	Mana Tide
+34	Sweeps a line with a wave of mana.
+35	Arcane Ascension
+36	Greatly increases damage dealt for {} seconds.
+37	Great Star Tide
+38	Calls down a rain of mana five times.
+39	Ironwall Smash
+40	Rams forward with a hardened body.
+41	Earthen Shield
+42	Sweeps and pushes forward with your shield.
+43	Indomitable Tremor
+44	Shakes the ground around you.
+45	Undying Will
+46	Greatly increases defense for {} seconds.
+47	Doom Strike
+48	A strike that splits the world.
+49	Star-Piercing Arrow
+50	Pierces a line to the end of the sky.
+51	Genesis Flame
+52	Drops the fire of creation from the sky.
+53	Infinite Mana
+54	Releases all stored mana.
+55	Undying Earth
+56	Shakes the earth three times.
+57	Overlord's Charge
+58	Dashes in like lightning and cuts down.
+59	Heaven and Earth Collapse
+60	Whirls four times, crumbling everything around you.
+61	Meteor Arrow Rain
+62	Pours down meteor-like arrows eight times.
+63	Ten Thousand Arrows
+64	Scatters sixteen arrows at once.
+65	Doom Thunderstorm
+66	Lightning links ten enemies.
+67	Absolute Domain
+68	Freezes and shatters your surroundings.
+69	Star Lance
+70	Pierces a line with a lance of mana.
+71	Holy Barrier
+72	Titan's Hammer
+73	Smashes one target like a titan.
+74	Unbreakable Bastion
+75	Blade Dance Storm
+76	Sweeps three times with a dance of blades.
+77	Magic Blade Flash
+78	Cleaves forward with a mana-charged blade.
+79	Holy Sword Judgment
+80	Judges the area ahead with a blade of light.
+81	Iron-Blood Charge
+82	Rams forward with a body like steel.
+83	Constellation Arrow
+84	A single shot charged with the power of the stars.
+85	Ten soul-seeking arrows.
+86	Wild Trap
+87	Pours trap arrows six times to bind enemies.
+88	Truth Burst
+89	Drops a star of truth.
+90	Arcane Bombardment
+91	Pours mana shells six times.
+92	Adamant Wave
+93	Emits a shockwave from a hardened body.
+94	Rampart Collapse
+95	Smashes down as if toppling a castle wall.
+96	Awakening {}
+97	Before Awakening
+98	Requires Awakening {}
+99	Skill not suited to your Awakening {} path
+100	Low Grade
+101	Mid Grade
+102	High Grade
+103	Trainee's
+104	Fighting
+105	Furious
+106	Thunderous
+107	Overlord's
+108	Doom
+109	Slash
+110	Spinning Slash
+111	Earth Splitter
+112	Charging Slash
+113	Heavy Blow
+114	Blade Whirlwind
+115	Rapid Fire
+116	Piercing Shot
+117	Arrow Rain
+118	Scatter Shot
+119	Snipe
+120	Arrow Downpour
+121	Fireball
+122	Elemental Burst
+123	Falling Star
+124	Chain Lightning
+125	Elemental Rain
+126	Ice Spear
+127	Arcane Arrow
+128	Mana Wave
+129	Mana Beam
+130	Starlight Rain
+131	Soul Spear
+132	Mind Blast
+133	Shield Bash
+134	Charging Bulwark
+135	Earth Tremor
+136	Giant's Slam
+137	Earth Whirlwind
+138	Ironwall Impact
+139	Downward Slash
+140	Shattering Slash
+141	Thunder Slash
+142	Overlord Slash
+143	Annihilation Slash
+144	Final Flash
+145	Whirling Slash
+146	Cyclone Slash
+147	Lightning Cyclone
+148	Overlord Cyclone
+149	Skyrender Cyclone
+150	Doom Whirlwind
+151	Ground Splitter
+152	Earth Cleaver
+153	Thunder Spirit Splitter
+154	Mountain Splitter
+155	Heaven and Earth Splitter
+156	World Splitter
+157	Dash Slash
+158	Gale Charge
+159	Flash Charge
+160	Overlord Charge
+161	Meteor Charge
+162	Final Rush
+163	Skull Splitter
+164	Crushing Blow
+165	Thunderclap Blow
+166	Lord's Blow
+167	Heavenbreaker Blow
+168	Godslayer Blow
+169	Blade Dance
+170	Blade Wind
+171	Thunderstorm Blade Dance
+172	Legion Cutter
+173	Ruinous Blade Dance
+174	Final Sword Dance
+175	Triple Shot
+176	Quick Shot
+177	Storm Quick Shot
+178	Lord's Quick Shot
+179	Nebula Quick Shot
+180	Doom Quick Shot
+181	Piercing Arrow
+182	Lightning Pierce
+183	Overlord's Arrow
+184	Celestial Arrow
+185	Final Arrow
+186	Arrow Shower
+187	Arrow Deluge
+188	Thunderstorm Arrow Rain
+189	Legion Arrow Rain
+190	Meteor Shower
+191	Ruinous Arrow Rain
+192	Scatter
+193	Spread Shot
+194	Flash Scatter
+195	Thousand-Branch Arrow
+196	Starcluster Arrow
+197	Sky-Filling Arrows
+198	Vital Snipe
+199	Throat Snipe
+200	Thunder Snipe
+201	Kingseeker Arrow
+202	Thousand-Mile Snipe
+203	Godslayer Snipe
+204	Sprinkle
+205	Downpour Shot
+206	Storm Arrow Rain
+207	Sky Cover
+208	Arrow Rain of Judgment
+209	Doom Rainfall
+210	Ember Shot
+211	Flame Bullet
+212	Searing Shot
+213	Hellfire Shot
+214	Sun Shot
+215	Genesis Fireball
+216	Flame Burst
+217	Elemental Rupture
+218	Thunderfire Burst
+219	Hellfire Burst
+220	Solar Burst
+221	Primordial Burst
+222	Falling Rock
+223	Flame Meteor
+224	Burning Star
+225	Hellfire Meteor
+226	Skyfall Meteor
+227	Doom Star
+228	Static Shock
+229	Lightning Chain
+230	Thunder Dragon Chain
+231	Thunder Chain
+232	Divine Thunder Chain
+233	Final Lightning
+234	Ember Rain
+235	Rain of Elements
+236	Lightning Rain
+237	Hellfire Rain
+238	Meteor Storm
+239	Doom Storm
+240	Ice Needle
+241	Ice Lance
+242	Frozen Lance
+243	Frigid Lance
+244	Absolute Ice Lance
+245	Eternal Ice Lance
+246	Mana Orb
+247	Magic Missile
+248	Arcane Javelin
+249	Sage's Spear
+250	Constellation Spear
+251	Spear of Truth
+252	Mana Ripple
+253	Arcane Surge Wave
+254	Sage's Wave
+255	Constellation Wave
+256	Infinite Wave
+257	Mana Stream
+258	Arcane Beam
+259	Sage's Beam
+260	Starlight Beam
+261	Beam of Truth
+262	Firefly Rain
+263	Starlight Shower
+264	Arcane Meteor
+265	Sage's Starfall
+266	Constellation Rain
+267	Infinite Starfall
+268	Soul Orb
+269	Spirit Spear
+270	Soul Projection
+271	Sage's Soul
+272	Constellation Soul
+273	Eternal Soul
+274	Mind Echo
+275	Mind Rupture
+276	Will Burst
+277	Sage's Awakening
+278	Constellation Awakening
+279	Infinite Enlightenment
+280	Shield Strike
+281	Shield Swipe
+282	Ironwall Slam
+283	Bastion Smash
+284	Unbreakable Smash
+285	Undying Smash
+286	Shove
+287	Bulwark Push
+288	Shock Bulwark
+289	Bastion Breakthrough
+290	Unbreakable Breakthrough
+291	Undying Breakthrough
+292	Stomp
+293	Ground Rumble
+294	Quake Rumble
+295	Bastion Tremor
+296	Unbreakable Tremor
+297	Undying Earthquake
+298	Slam
+299	Giant's Hammering
+300	Rock Breaker
+301	Bastion Breaker
+302	Mountain Breaker
+303	World Breaker
+304	Dust Whirl
+305	Sand Whirl
+306	Rock Whirl
+307	Bastion Whirl
+308	Unbreakable Whirl
+309	Undying Whirl
+310	Body Slam
+311	Shoulder Charge
+312	Steel Impact
+313	Bastion Impact
+314	Unbreakable Impact
+315	Undying Impact
+316	twice
+317	Slams one target with the power of a sturdy body.
+318	Gathers power into your weapon and slashes one target hard.
+319	Shakes the ground, rattling nearby enemies{}.
+320	Swings your weapon around, sweeping nearby enemies{}.
+321	Pushes the enemies ahead back with your shield raised.
+322	Cleaves a wide fan in front of you.
+323	Dashes to an enemy in the blink of an eye and slashes.
+324	Fires {} arrows in a row at nearby enemies.
+325	Pierces every enemy lined up in a row.
+326	Pours arrows on the chosen spot {} times.
+327	Drops starlight on the chosen spot {} times.
+328	Pours elements on the chosen spot {} times.
+329	Launches gathered mana at one target.
+330	Throws an ice spear that pierces and slows enemies.
+331	Throws a fireball that burns enemies hit.
+332	Releases stored mana around your body.
+333	Releases the elements around your body at once.
+334	Drops a burning stone from the sky.
+335	Lightning links {} enemies in turn.
+336	Stronger with higher Max {}.
+337	Uses a little {}.
+338	Awakening {} skill.
+339	{} basic skill.
+340	Twin Blade Frenzy
+341	Gale Combo
+342	Thousand Blade Frenzy
+343	Blade Dance Annihilation
+344	Mana Slash
+345	Elemental Blade Strike
+346	Magic Blade Blast
+347	Magic Blade Skyfall
+348	Holy Light Slash
+349	Strike of Judgment
+350	Holy Sword Brand
+351	Heavenly Judgment
+352	Iron-Blood Smash
+353	Charge Crush
+354	Iron-Blood Tremor
+355	Steel Storm
+356	Elemental Pierce
+357	Nebula Arrow Rain
+358	Starcluster Snipe
+359	Soul Tracker
+360	Spirit Arrow
+361	Soul Arrow Rain
+362	Soul Pierce
+363	Beast Shot
+364	Trap Shot
+365	Wilderness Arrow Rain
+366	Wild Downpour
+367	Orb of Truth
+368	Fall of Truth
+369	Sage's Chain
+370	Mana Barrier Burst
+371	Arcane Shell
+372	Arcane Barrage
+373	Arcane Starfall
+374	Adamant Long Strike
+375	Adamant Tremor
+376	Adamant Wave Crash
+377	Adamant Tsunami
+378	{} hybrid technique. {}
+379	Arcane Blade Dance
+380	Dance of the Arcane Blade God
+381	Holy Sword Pilgrimage
+382	Holy Sword Priest's Judgment
+383	Battlefield Supremacy
+384	Strike of the Battle God
+385	Divine Magic Blade
+386	Flash of the Divine Blade God
+387	Mana Armor Charge
+388	Bombardment of the Mana Armor Avatar
+389	Bastion Knight's Strike
+390	Bastion Guardian's Brand
+391	Star Sage's Shot
+392	Descent of the Star Avatar
+393	Elemental Hunt
+394	Arrow Rain of the Elemental Huntress
+395	Earth Guardian's Shot
+396	Downpour of the Earth Avatar
+397	Grand Magic Ward
+398	Judgment of the Grand Magic Guardian
+399	{} three-path technique. {}
+400	Stab
+401	Blade Spin
+402	Ambush
+403	Rapid Stabs
+404	Shadow Ambush
+405	Viper Stab
+406	Blade Storm
+407	Assassinate
+408	Heart Piercer
+409	Shadow Blade Dance
+410	Flash Assassination
+411	Blood Moon Stab
+412	Ten Thousand Blade Whirl
+413	Shadow Execution
+414	Final Blow
+415	Infinite Blades
+416	Eternal Shadow
+417	Stabs deep into one target's vital spot with a dagger.
+418	Spins your dagger to cut nearby enemies.
+419	Slips behind an enemy in the blink of an eye and slashes.
+420	Spins your dagger twice to cut nearby enemies.
+421	(Melee weapon)
+422	Bladewind Charge
+423	Twin Blade Whirl
+424	Sword Saint's Flash
+425	Hellflame Spin
+426	Lightning Charge
+427	Elemental Magic Blade
+428	Holy Light Spin
+429	Charge of Judgment
+430	Holy Sword Descent
+431	Iron-Blood Cleave
+432	Titan Smash
+433	Iron-Blood Whirl
+434	Elemental Arrow Rain
+435	Mana Quick Shot
+436	Constellation Pierce
+437	Spirit Pierce
+438	Soul Shower
+439	Soul Quick Shot
+440	Beast Pierce
+441	Trap Arrow Rain
+442	Wild Barrage
+443	Chain of Truth
+444	Sage's Rain
+445	Truth Explosion
+446	Arcane Chain
+447	Arcane Explosion
+448	Arcane Spear
+449	Adamant Whirl
+450	Adamant Strike
+451	Adamant Impact

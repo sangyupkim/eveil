@@ -89,7 +89,7 @@ export function perkChoices(key, tier, owned = []) { // owned: 이미 가진 칭
   const parts = key.split('+'), pool = [];
   const pairs = parts.length === 1 ? [[parts[0], parts[0]]] : parts.flatMap((a) => parts.filter((b) => b !== a).map((b) => [a, b]));
   const mk = parts.length >= 3 ? 1.1 : parts.length === 2 ? 1.07 : 1; // v0.44.40 혼합 갈래 특성 +7% · 세 갈래 +10%
-  for (const [a, b] of pairs) for (const t of trigsOf(a)) for (const e of effsOf(b, tier)) { const v = Math.round(e.v * TIER_K[tier] * mk); pool.push({ trig: t.id, p: t.p, eff: e.id, v, text: `${t.text} ${e.text(v)}` }); }
+  for (const [a, b] of pairs) for (const t of trigsOf(a)) for (const e of effsOf(b, tier)) { const v = Math.round(e.v * TIER_K[tier] * mk); pool.push({ trig: t.id, p: t.p, eff: e.id, v, text: `${t.text}\u200b ${e.text(v)}` }); /* \u200b: 영문판이 조건 · 효과를 따로 번역하도록 (보이지 않음) */ }
   // 갈래 · 단계로 정해지는 순서로 섞어 셋
   let h = [...key].reduce((x, c) => (x * 31 + c.charCodeAt(0)) >>> 0, 7 + tier * 101);
   // 섞은 순서에서 효과 · 발동이 서로 다른 것 셋 (모자라면 발동만 겹쳐도, 그래도 모자라면 아무거나)

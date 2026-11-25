@@ -1,0 +1,163 @@
+0	Basic
+1	Intermediate
+2	Superior
+3	Ancient
+4	Power Strike
+5	P
+6	Smashes hard with your weapon for heavy damage.
+7	Fire Arrow
+8	F
+9	Launches a small fireball.
+10	Aimed Shot
+11	A
+12	Steadies your breath and fires precisely for heavy damage.
+13	W
+14	Spins to slash all enemies around you.
+15	Fireball
+16	F
+17	Throws a fireball that explodes on contact.
+18	M
+19	Fires arrows at several enemies at once.
+20	Iron Skin
+21	I
+22	Hardens your skin like steel to raise defense.
+23	C
+24	Smashes the ground, cleaving all enemies in a fan ahead.
+25	L
+26	Launches lightning that jumps between enemies.
+27	Holy Shield
+28	S
+29	Surrounds you with a shield that absorbs damage.
+30	Meteor Fall
+31	M
+32	Drops a meteor from the sky, burning a wide area.
+33	Blood Frenzy
+34	B
+35	Enters a frenzy, greatly raising attack speed and damage.
+36	Sword of Judgment
+37	J
+38	Swings a sword of light to judge your surroundings.
+39	Absolute Zero
+40	Z
+41	Freezes your surroundings for massive damage and slows enemies.
+42	D
+43	Dashes at an enemy in an instant and slashes.
+44	Battle Cry
+45	B
+46	Lets out a war cry to raise damage dealt.
+47	S
+48	Spins three times in a row, sweeping your surroundings.
+49	Piercing Arrow
+50	Pierces all enemies in a straight line.
+51	R
+52	Rains arrows from the sky, hitting a wide area several times.
+53	Hawk Eye
+54	H
+55	Narrows your eyes to raise critical chance.
+56	Storm Volley
+57	S
+58	Scatters nine arrows at once.
+59	Phantom Arrow
+60	P
+61	A giant arrow of light pierces everything in its path.
+62	F
+63	Hits with an ice arrow and slows the target.
+64	Flame Wave
+65	W
+66	Breathes flames in a fan ahead.
+67	Blizzard
+68	B
+69	Summons a blizzard that freezes a wide area and keeps wearing it down.
+70	Swordsmanship
+71	Archery
+72	Fire
+73	Lightning
+74	Holy
+75	Guardian
+76	Finesse
+77	Hybrid
+78	Arcane
+79	Vital Stab
+80	Stabs deep into a vital spot with a dagger.
+81	Shadow Flurry
+82	Spins like a shadow and slashes around you.
+83	Thousand Blades
+84	Whirls blades twice to tear through your surroundings.
+85	{} (melee weapon)
+86	Flame Lance
+87	A burning lance pierces in a straight line.
+88	Frost Shard
+89	Launches a sharp shard of ice that freezes the target.
+90	Fireball Drop
+91	Drops a small fireball that burns the area.
+92	Frost Storm
+93	Calls down rain of ice four times.
+94	Lightning Lance
+95	Extends lightning like a lance to pierce a line.
+96	Elemental Sphere
+97	Launches and detonates a sphere of three elements.
+98	Doom Meteor
+99	Drops a single gigantic meteor.
+100	Eternal Blizzard
+101	Pours an endless blizzard eight times.
+102	Whirlwind Slash
+103	Spins twice, cutting widely around you.
+104	Cleaving Strike
+105	Cuts down as if to split the target in two in one stroke.
+106	Thousand Sword Charge
+107	Rushes to the enemy as if splitting the sky and slashes.
+108	Ruinous Cleave
+109	Splits the ground ahead entirely.
+110	Skyrender Flash
+111	A single flash that could cut even the sky.
+112	Shield Slam
+113	Smashes enemies with your shield. Stronger with higher defense.
+114	Ironwall Charge
+115	Crashes into enemies with an ironwall body. Stronger with higher defense.
+116	Bastion Charge
+117	Rams in like an advancing fortress. Stronger with higher defense.
+118	Launches gathered mana like an arrow at one target. Stronger with higher Max {}.
+119	Lance of Light
+120	Pierces a line with a lance of light. Stronger with higher Max {}.
+121	Mana Tempest
+122	Calls down a mana tempest five times.
+123	Infinite Beam
+124	Pours endless mana in a line.
+125	One-handed Weapon
+126	Two-handed Weapon
+127	Drops an ice prison on the chosen spot, binding nearby enemies.
+128	Frost Corridor
+129	Blows a long icy wind ahead, freezing enemies in a line.
+130	Lightning Fan
+131	Unleashes lightning in a wide fan ahead.
+132	Flame Brand
+133	Drives a pillar of fire into the chosen spot, burning a wide area.
+134	Freezes a wide area at the chosen spot for massive damage.
+135	Pours primordial fire in a giant fan ahead.
+136	Collapses a glacier in a long line, freezing and shattering everything in it.
+137	Darts into the target in an instant and strikes.
+138	Sweeps a wide fan in front of you.
+139	Pierces a long line ahead.
+140	Strikes down on the chosen spot, hitting the area around it.
+141	Bursts power around your body.
+142	Pours down on the chosen spot several times.
+143	Bounces between enemies, linking them.
+144	Scatters several shots at nearby enemies.
+145	Blasts out in a fan ahead.
+146	Counter-slashes twice quickly.
+147	Briefly roots enemies hit.
+148	Slashes around you three times without pause.
+149	Scatters arrows in a close fan.
+150	A thundercloud strikes a wide area, briefly stunning enemies hit with electricity.
+151	Lays a sea of fire that burns the ground for a long time (seven times).
+152	Lightning strikes from the sky, briefly stunning enemies hit with electricity.
+153	Doom Thunderbolt Arrow
+154	Legion Cleave
+155	Strikes the ground, sending a long shockwave forward. (melee weapon)
+156	Leap of Ruin
+157	Leaps high and slams the chosen spot, shattering the area. (melee weapon)
+158	Rolls the ground, sending a long tremor forward. (melee weapon)
+159	Unbreakable Drop
+160	Leaps down with all your weight, crushing the area around the chosen spot. (melee weapon)
+161	Pours mana in a wide fan ahead.
+162	Sends a giant river of mana flowing far ahead.

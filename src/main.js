@@ -10,6 +10,7 @@ import { HUD } from './ui/hud.js';
 import { Windows, toggleFullscreen, setupFullscreenUi, showNotes, closable } from './ui/windows.js';
 import { GAME_VERSION } from './data/patchnotes.js';
 import { checkUpdate } from './update.js';
+import { initLang, setLang, LANG } from './i18n/index.js';
 import { syncVault, vault, vaultSave } from './game/vault.js';
 import { capAll } from './game/items.js';
 import { moveRetiredSkills, linkQuick } from './game/skills.js';
@@ -51,6 +52,9 @@ function fixSave(s) {
 }
 
 async function boot() {
+  // v0.50.6 언어: 처음 그리기 전에 (영어면 번역표를 받고 화면 · 캔버스 글자를 번역한다)
+  await initLang();
+  document.querySelectorAll('[data-setlang]').forEach((b) => { b.classList.toggle('on', b.dataset.setlang === LANG); b.onclick = () => { if (b.dataset.setlang === LANG) return; setLang(b.dataset.setlang); location.reload(); }; });
   // 브라우저는 첫 입력 뒤에야 소리를 낼 수 있다
   const unlock = () => audio.unlock();
   window.addEventListener('pointerdown', unlock, true);

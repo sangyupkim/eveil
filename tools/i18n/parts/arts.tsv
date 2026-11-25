@@ -1,0 +1,111 @@
+0	Shatter
+1	Melee Crits
+2	Melee skill crits stun enemies for {}s (except bosses)
+3	Brink
+4	Kills at {}% or lower
+5	At {}% or lower, Strength skill damage +{}%
+6	Earth Resonance
+7	Hit {}+ enemies at once
+8	Area · fan skill range +{}%
+9	Sniper
+10	Ranged Crits
+11	Damage +{1}% to enemies more than {0} tiles away
+12	Shadow Foot
+13	Kills within {}s after Roll · Smokescreen
+14	First skill after a roll is a guaranteed crit
+15	Arrow Storm
+16	Kills with multi-shot arrow skills
+17	Multi-shot arrow skills +{} arrows
+18	Elemental Resonance
+19	Cast spells of different elements in a row
+20	When the element changes, that spell +{}%
+21	Heart of Ice
+22	Kill rooted or slowed enemies
+23	Root · slow duration +{}%
+24	Chain Explosion
+25	Kills with spells
+26	Enemies killed by spells explode for {}% of that damage around them
+27	Mana Cycle
+28	Use {}
+29	Using a skill refunds {1}% of the {0} spent
+30	Shield Artisan
+31	Damage blocked by shields
+32	Shield +{}%
+33	Mana Overdrive
+34	Skills at {}% or lower
+35	At {}% or lower, Spirit skills +{}%
+36	Tempered Body
+37	Damage taken
+38	Damage taken -{}%
+39	Retribution
+40	Hits with Patience Burst · Thorn Armor
+41	Patience Burst cap +{}%, Thorn Armor reflect +{}
+42	Provoker
+43	Kills while taunting
+44	Damage reduction while taunting +{}
+45	Vital Points
+46	Dagger Crits
+47	With a dagger, critical damage +{}%
+48	Bladewind
+49	{}: Bleed
+50	Inflict Bleed
+51	Bleed damage +{}%
+52	Sword Dance
+53	Combo Bursts
+54	Combo stacks up to {}
+55	Elemental Blade
+56	Kill weakened enemies
+57	Melee basic attacks deal extra damage equal to {}% of Magic Attack
+58	Spellblade Resonance
+59	Magic Attack +{1}% for {0}s after a combo burst
+60	Brand
+61	Gain hybrid shields
+62	Hybrid effect shields +{}%
+63	Judgment
+64	Kills while shielded
+65	While shielded, Strength skills +{}%
+66	Iron Blood
+67	Kill stunned · rooted enemies
+68	Stun duration +{}s
+69	Vanguard
+70	Use dash skills
+71	Dash skill cooldown -{}%
+72	Frost Arrow
+73	Kill slowed or rooted enemies
+74	Critical chance +{} vs. slowed enemies
+75	Constellation
+76	Arrow skills +{1} arrows for {0}s after a combo burst
+77	Soul Mark
+78	Weaken damage bonus +{}
+79	Soul Hunt
+80	Ranged kills
+81	Kills restore Max {} {}s)
+82	Hunter's Trap
+83	Kill rooted enemies
+84	Root +{}s, damage +{}% vs. rooted enemies
+85	Wild
+86	Kills within {}s after being hit
+87	When hit, attack speed +{1}% for {0}s
+88	Truth
+89	{}: Mana Burn
+90	Inflict Mana Burn
+91	Mana Burn spreads to one nearby enemy
+92	Sage
+93	On combo burst, {1}% of Max {0}
+94	Burn
+95	{}: Burn
+96	Inflict Burn
+97	Burn damage +{}%
+98	Arcane Barrier
+99	Damage taken while casting
+100	Casting a spell reduces damage taken by {1}% for {0}s
+101	Adamant
+102	When a shield breaks, deals {}% weapon damage around you
+103	Unbreakable
+104	Shield duration +{}s
+105	Strength
+106	Dexterity
+107	Intelligence
+108	Spirit
+109	Vitality
+110	Dagger

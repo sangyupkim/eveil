@@ -1,0 +1,126 @@
+0	Warrior
+1	Berserker
+2	Warlord
+3	Overlord
+4	Transcendent Overlord
+5	Marksman
+6	Wind Archer God
+7	Divine Archer
+8	Avatar of the Heavenly Bow
+9	Mage
+10	Elementalist
+11	Archmage
+12	Arcane King
+13	Arcane God
+14	Acolyte
+15	Prophet
+16	Sage
+17	Grand Saint
+18	Avatar of the Saint
+19	Sentinel
+20	Guardian
+21	Indomitable Rampart
+22	Immortal
+23	Undying Body
+24	Swordsman
+25	Blade Dancer
+26	Sword Saint
+27	Sword God
+28	Avatar of the Sword
+29	Spellblade
+30	Spellblade Knight
+31	Spellblade Saint
+32	Spellblade Emperor
+33	Spellblade God
+34	Crusader
+35	Paladin
+36	Paladin Commander
+37	Holy Sword King
+38	Avatar of the Holy Sword
+39	Fighter
+40	Iron Cavalier
+41	Iron-Blood Lord
+42	Iron-Blood Emperor
+43	Iron-Blood Divine General
+44	Arcane Archer
+45	Elemental Archer
+46	Starlight Archer
+47	Constellation Archer
+48	Ruler of the Constellations
+49	Wind Tracker
+50	Soul Hunter
+51	God of the Soul Hunt
+52	Scout
+53	Ranger
+54	King of the Wilds
+55	Lord of the Wild
+56	Avatar of the Wild
+57	Scholar
+58	Grand Sage
+59	Sage King
+60	Sage of Truth
+61	Battle Mage
+62	Spell Knight
+63	Arcane General
+64	Arcane Grand Marshal
+65	Arcane War God
+66	Monk
+67	Guardian Monk
+68	Adamant Holy God
+69	Arcane Blade Dancer
+70	Arcane Blade God
+71	Holy Sword Pilgrim
+72	Holy Sword Priest
+73	Conqueror of the Battlefield
+74	God of the Battlefield
+75	Divine Spellblade
+76	Divine Spellblade God
+77	Mana Armor Chariot
+78	Mana Armor War God
+79	Bastion Knight
+80	Guardian God of the Bastion
+81	Star Sage
+82	Star Avatar
+83	Elemental Hunter
+84	Elemental Huntress God
+85	Guardian of the Earth
+86	Avatar of the Earth
+87	Grand Magic Guardian
+88	Grand Magic Guardian God
+89	On melee hit:
+90	On kill:
+91	On arrow hit:
+92	On critical hit:
+93	On dodge:
+94	On attack spell:
+95	On support spell:
+96	On spell cast:
+97	When hit:
+98	On block:
+99	Damage +{1}% for {0}s
+100	Shockwave for {}% weapon damage around you
+101	Attack speed +{1}% for {0}s
+102	Arrow at the nearest enemy for {}% weapon damage
+103	Elemental burst for {}% damage
+104	Slows nearby enemies for {}s
+105	Restore {}
+106	Damage taken -{1}% for {0}s
+107	Counterattack the nearest enemy for {}% weapon damage
+108	Critical chance +{1}% for {0}s
+109	Movement speed +{1}% for {0}s
+110	Wave for {}% damage to nearby enemies
+111	Lightning for {}% damage to the three nearest enemies
+112	Nearby enemies take +{1}% damage for {0}s
+113	Shield of up to {1}% for {0}s
+114	Wanderer
+115	On critical hit: shockwave for {}% weapon damage around you
+116	On arrow hit: {}% chance to fire one more shot
+117	On kill: attack speed +{1}% for {0}s
+118	When hit: {}% chance to counterattack for {}% weapon damage
+119	On block: elemental burst for {}% damage
+120	On spell cast: {}% chance to slow nearby enemies for {}s
+121	On dodge: damage +{1}% for {0}s
+122	On support spell: restore {}
+123	On kill: damage taken -{1}% for {0}s
+124	On spell cast: {}% chance of a shockwave for {}% weapon damage
+125	On arrow hit: {}% chance to slow nearby enemies for {}s

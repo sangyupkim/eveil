@@ -1,0 +1,28 @@
+0	Collapsing Dungeon
+1	You must defeat the master within {} min
+2	Frozen Dungeon
+3	Movement speed -{}% · monsters take {}% less cold damage
+4	Burning Dungeon
+5	Burns for {1}% max HP every {0}s · monsters take {2}% less fire damage
+6	Stormy Dungeon
+7	Lightning sometimes strikes beneath you · monsters take {}% less lightning damage
+8	Frenzied Dungeon
+9	Monsters move · attack faster
+10	Splitting Dungeon
+11	Monsters split in two on death
+12	Explosive Dungeon
+13	Monsters explode around themselves shortly after death
+14	Hardened Dungeon
+15	Monster physical resistance +{}%
+16	Mana-Infused Dungeon
+17	Monster magic resistance +{}%
+18	Elite Dungeon
+19	Elite monsters ×{}
+20	Dark Dungeon
+21	Vision is dark
+22	Wounding Dungeon
+23	All HP recovery -{}%
+24	Mana-Drained Dungeon
+25	Mana recovery -{}%
+26	Time-Warped Dungeon
+27	Skill cooldown +{}%

@@ -1,0 +1,40 @@
+0	Spectral
+1	Undead
+2	Hard Body
+3	Mana
+4	Demonkin
+5	Soft Body
+6	Dragonkin
+7	Elemental
+8	Bleed
+9	Deals an extra {1}% of damage dealt over {0}s
+10	Elemental Wound
+11	Damage taken +{1}% for {0}s
+12	Shield equal to {}% of damage dealt
+13	Stun
+14	Cannot move for {}s
+15	Chill
+16	Slowed for {}s
+17	Mark
+18	Trap
+19	Mana Burn
+20	Adamant Shield
+21	Blade Dancer's
+22	Spellblade's
+23	Paladin's
+24	Iron-Blood Lord's
+25	Arcane Archer's
+26	Soul Hunter's
+27	Wild Lord's
+28	Arcane General's
+29	Adamant Monk's
+30	On melee hit: {}% chance of Bladewind ({}% weapon damage)
+31	On melee hit: {}% chance of an elemental burst for {}% damage
+32	On melee hit: {}% chance for damage taken -{2}% for {1}s
+33	When hit: {}% chance of a shockwave for {}% weapon damage around you
+34	On arrow hit: {}% chance of an elemental burst for {}% damage
+35	On arrow hit: {}% chance to restore {}
+36	When hit: {}% chance to fire an arrow at the nearest enemy for {}% weapon damage
+37	On spell cast: {}% chance of a shockwave for {}% weapon damage around you
+38	When hit: {}% chance of an elemental burst for {}% damage
+39	On support spell: damage taken -{1}% for {0}s

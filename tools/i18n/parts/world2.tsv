@@ -1,0 +1,211 @@
+0	The town kept working during the {} you were away
+1	Achievement: {})
+2	Weekly
+3	Daily
+4	{} request complete: {}
+5	{} request rewards — {}
+6	Camp discovered! You can travel here by portal
+7	Flooded zones can't be reached by portal
+8	Hidden treasure chest!
+9	· Rumors {}
+10	Map analysis complete · Uncharted Land Fragments {}
+11	Rumor of a hidden dungeon somewhere in {}
+12	You sense a hidden dungeon somewhere in {}
+13	Hidden dungeon found · {}
+14	{} Minion
+15	The dungeon collapsed
+16	Rewards: Gear Level +{} · Legendary {} · Gold · Gems +{}%
+17	Start Dungeon
+18	Monsters {} · HP {} · Attack {}
+19	You can enter only once (you may re-enter after leaving; it disappears once cleared)
+20	Enter
+21	The wandering merchant left
+22	A wandering merchant appeared
+23	Raid repelled!
+24	The raiders retreated
+25	Raid on {}! Hold them off within {} seconds
+26	You must defeat {} to open the dungeon
+27	{} Dungeon Tier {}
+28	Difficulty
+29	You need a zone with its boss defeated
+30	Relic Guardian
+31	Hidden Master of {}
+32	{} Dungeon Boss
+33	Uncharted Land — a relic awaits at the end
+34	{} — find the hidden master in the deepest part
+35	{} Dungeon Tier {} · {} — find the boss in the deepest part
+36	Subjugation paused — the horde remains
+37	Throne Expedition Failed
+38	A horde has gathered at {} — Guard Captain Hagen
+39	A horde has gathered: {} (start the subjugation with Guard Captain Hagen)
+40	Horde Subjugation · {} — hold back the incoming horde
+41	Horde Wave {}
+42	War Banners {}
+43	Horde Captain
+44	{} Horde Captain
+45	The Horde Captain has appeared!
+46	War Banner {} — the horde weakens
+47	War Banner
+48	Destroy the three war banners
+49	Subjugation complete — {} becomes conquered land for {} days
+50	Essence {} materials
+51	Throne Expedition · Grade {}
+52	Expedition · {}
+53	#{} · {}
+54	East
+55	Expedition Lord · {}
+56	Boss #{}
+57	Expedition Lord
+58	Preparation · Next {}
+59	Choose a blessing
+60	Preparation {}
+61	Boss {}
+62	Battlefield {}
+63	Throne Expedition {}
+64	Time's up — expedition failed
+65	The twin kings revive each other — hit them in turn
+66	The Mirror Lord copied "{}"
+67	The Lord of Time rewinds time — press the attack
+68	Rewind interrupted
+69	Time has been rewound
+70	Chains! Break them with a support skill
+71	The Titan of Doom has fallen!
+72	Earth Collapse!
+73	Stagger — deal heavy damage within {}s!
+74	You've received all expedition rewards this week
+75	Expedition Emblems +{}
+76	Throne Expedition {} complete · {}
+77	You need an account · nickname to appear in the ranking
+78	Leave Dungeon
+79	There are {} unpicked items nearby. Leave anyway?
+80	Leave?
+81	Endless Hell has opened — endless floors
+82	World tier {} has opened
+83	Relic "{})
+84	Mythic Trace +{})
+85	The dungeon was too easy, so no Mythic Trace dropped
+86	Mythic gear!
+87	Dungeon Tier {} · {} cleared!
+88	{} Dungeon Tier {} · {} cleared
+89	{}m {}s
+90	Time Taken
+91	Damage Dealt
+92	DPS
+93	Gear Picked Up {}
+94	Off-hand Gear
+95	{} cleared
+96	Hidden dungeon cleared! Choose a treasure chest
+97	Treasure Chest
+98	Choose one to receive gear for that slot
+99	Title: {}
+100	Jeweler Lien
+101	World {} — all monsters grow stronger
+102	Elite {}
+103	Golden
+104	{} brands you!
+105	Blocked
+106	{} mastery up! Rank {}
+107	{} defeated!
+108	{} fastest record {}s!
+109	Chain {}
+110	Legendary gear!
+111	Endless Hell floor {} unlocked
+112	Not enough karma · {}
+113	Obtained a dungeon key
+114	+{} Enhancement Stones
+115	Enhancement Stones +{}
+116	{} liberated! You can send mercenaries from the inn
+117	{} Gold
+118	Obtained: {}
+119	Skillbook obtained! Learn it from your bag — {}
+120	{} → Vault
+121	{} → Bag
+122	Recovered lost gear: {}
+123	Recovered {} lost gear into the vault
+124	You fell while auto-hunting, so auto-hunt stopped
+125	No enemies nearby
+126	Received a dungeon key
+127	Rumor: {}
+128	Monsters have flooded {}
+129	Flooded · {}
+130	Flooded · {} · Monsters left {}
+131	Flooded
+132	Flooded {}
+133	First purification this week · Essence {}
+134	{} purified
+135	The flood was purified · Gold · Gear · Greater Enhancement Stones · Unknown Map Fragment
+136	{} Flood Purified
+137	Mastered the Training Art "{}"
+138	(Auto)
+139	· {} min
+140	No health potions
+141	No mana potions
+142	Mana
+143	Out of {} potions, auto-hunt stopped
+144	Returning to town…
+145	Recall Canceled
+146	Auto-sell: {} gear +{}
+147	Skill Set {}
+148	This dungeon
+149	Auto-hunt: {}
+150	Requires a melee weapon (Sword · Axe · Mace · Dagger · Tower Shield)
+151	Requires a bow
+152	One-handed Sword · Axe
+153	Greatsword · Greataxe
+154	Mace · Hammer
+155	or
+156	{} required
+157	Skill not learned
+158	On cooldown
+159	Not enough {}
+160	No target
+161	Chains broken
+162	Combo {}
+163	Combo Burst +{}%
+164	Out of potions, returning to town
+165	Auto-buy: {}
+166	Bag full, returning to town
+167	Auto-hunt: setting out again from town
+168	The barrier is lifted
+169	Sealing Barrier!
+170	Ambush!
+171	· {} unpaid and resting
+172	Mercenary wages {}
+173	Construction Complete
+174	Research Complete
+175	Loot Held by Mercenaries
+176	Salvaged {} gear
+177	Received {} gear
+178	Bag · vault full; mercenaries are holding the loot
+179	· {} potions recovered
+180	{} did not return{}
+181	Salvaged on arrival {} · Enhancement Stones +{}
+182	No space, so mercenaries hold {}
+183	Unknown Map Fragment {}
+184	{} other gear
+185	Zone Materials
+186	Expedition Returned · {}
+187	Workshop storage is full · take items out to keep crafting
+188	Repeat expedition departed: {}
+189	{} is full · collect to resume storing
+190	Arrived at Dawn Outpost
+191	Blocked by the flood barrier
+192	{} Horde Subjugation
+193	Usable outside dungeons
+194	The path has closed
+195	Can be unfolded outside dungeons
+196	Choose a Superior Skillbook · Tier {}
+197	Choose one
+198	· Learned
+199	Packed when sending an expedition
+200	Used in the window of a building under construction
+201	Used for Smithy enhancement
+202	Used where it applies
+203	Used at the Smithy
+204	{} joins you! It picks up items and fights alongside you
+205	(+{} books absorbed)
+206	Learned a new skill: {}
+207	({} books)
+208	Absorbed {} mastery{}
+209	Not enough stats ({})
+210	Got {} from the removed gear

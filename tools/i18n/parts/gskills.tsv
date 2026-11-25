@@ -1,0 +1,67 @@
+0	Unknown skill
+1	Skill already learned
+2	Stat requirements not met
+3	Cooldown -{}%
+4	Area +{}% · Count +{}
+5	Slows enemies hit for {}s
+6	Once more after {}s · {}% power
+7	Duration +{}%
+8	Damage +{}% · Cooldown -{}%
+9	Sparks
+10	Wildfire
+11	Soot
+12	Embers
+13	Ember Saving
+14	Undying Flame
+15	Flame Overdrive
+16	Bitter Cold
+17	Frost Spikes
+18	Frostbite
+19	Ice Echo
+20	Cold Breath
+21	Eternal Snow
+22	Freeze Overdrive
+23	Thunderbolt
+24	Flash
+25	Paralysis
+26	Recoiling Lightning
+27	Static
+28	Calm Before the Storm
+29	Thunder Overdrive
+30	Prayer
+31	Radiance
+32	Binding Light
+33	Hymn
+34	Temperance
+35	Oath
+36	Holy War
+37	Piercing Wound
+38	Rain of Arrows
+39	Leg Shot
+40	Second String
+41	Arrow Saving
+42	Hunter's Fury
+43	Ironwall Stance
+44	Formation
+45	Crush
+46	Counter
+47	Brace
+48	Indomitable
+49	Guardian's Fury
+50	Poison
+51	Afterimage
+52	Trickery
+53	Ambush
+54	Assassination
+55	Agility
+56	Sweep
+57	Hamstring
+58	Combo
+59	Catch Breath
+60	Stronger with more Max Mana (up to {}× above the Awakening baseline) · uses {}× mana
+61	Stronger with more Max HP (up to {}× above the Awakening baseline)
+62	Stronger with higher defense (up to {}×)
+63	Enemies hit are slowed for {}s
+64	Roots enemies hit for {}s (except bosses)
+65	Bursts once more at {}% power
+66	Lasts {}s

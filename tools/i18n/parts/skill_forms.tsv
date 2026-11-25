@@ -1,0 +1,67 @@
+0	Cross Slash
+1	Slashes the target twice in a {} shape. Also hits nearby enemies a little
+2	Rising Slash
+3	Launches the target up, then slams it into the ground. Briefly roots
+4	Stabs forward four times quickly
+5	Shadow Chain
+6	Teleports between nearby enemies, slashing each in turn
+7	Piercing Rush
+8	Passes through the target, slashing every enemy in the path
+9	Leaping Slam
+10	Leaps up and slams down on the chosen spot
+11	Spinning Throw
+12	Throws your weapon forward and catches it on return. Hits on the way out · back
+13	Ground Fissure
+14	Bursts up through the ground in a line, one after another
+15	Rising Wall
+16	Pours down ahead in a long horizontal wall
+17	Ripple
+18	Three rings of waves spread around you in turn
+19	Ring of Pillars
+20	Pillars rise one after another around you
+21	Vortex
+22	Pulls nearby enemies to the center, then detonates
+23	Blazing Rush
+24	Charges forward, burning the path twice
+25	Sword Wave
+26	Sends a large sword wave forward, cutting enemies in its path
+27	Thorn Prison
+28	Encircles the chosen spot, trapping and rooting enemies
+29	Triple Roll
+30	Rolls the ground three times, shaking an ever-wider area
+31	Splitting Shot
+32	Splits into five behind the target on hit
+33	Fan Shot
+34	Fires in a spread fan ahead
+35	Homing Shots
+36	Shots fired into the sky chase nearby enemies one by one
+37	Bouncing Shot
+38	Flies bouncing between enemies
+39	Delayed Mark
+40	Marks the ground under nearby enemies and detonates them all after a moment
+41	Lays traps under nearby enemies and detonates them all after a moment
+42	Spiral Barrage
+43	Pours out in a spiral around you
+44	Orbiting Orbs
+45	Three orbs circle you, hitting enemies they touch
+46	Placed Pillar
+47	Raises a pillar at the chosen spot that hits the area several times
+48	Falling Procession
+49	Strikes down in a line ahead, one after another
+50	Cross Burst
+51	Bursts out in four directions from the chosen spot
+52	Implosion
+53	Pulls the area into the center, then explodes
+54	Constellation Fall
+55	Falls on five points in turn, then the center bursts
+56	Whirlwind
+57	A whirlwind moves forward, hitting enemies it touches several times
+58	Sweeping Beam
+59	Sweeps a beam from left to right
+60	Rolling Wave
+61	A wide wave rolls forward, hitting enemies
+62	Encircling Fall
+63	Falls from the outer edge of the chosen spot inward
+64	. Enemies hit are slowed
+65	. Roots enemies hit
+66	. Once more after a moment

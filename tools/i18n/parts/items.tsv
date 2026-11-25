@@ -1,0 +1,414 @@
+0	Weapon
+1	Off-hand
+2	Helm
+3	Armor
+4	Gloves
+5	Boots
+6	Belt
+7	Amulet
+8	Ring
+9	Unarmed
+10	Sword
+11	Bow
+12	Staff
+13	Mace
+14	Scepter
+15	Wand
+16	Greatscepter
+17	Tower Shield
+18	Enhancement Stone
+19	Greater Enhancement Stone
+20	Supreme Enhancement Stone
+21	Faded Essence
+22	Condensed Essence
+23	Abyssal Essence
+24	Chaos Essence
+25	Stat Shard
+26	Worn Sword
+27	Longsword
+28	Broadsword
+29	Greatsword
+30	Claymore
+31	Worn Dagger
+32	Stiletto
+33	Kris
+34	Shadow Dagger
+35	Frost Dagger
+36	Void Fang
+37	Dragon Fang
+38	Golden Sword
+39	Worn Bow
+40	Shortbow
+41	Longbow
+42	Gilded Bow
+43	Magebow
+44	Apprentice Staff
+45	Oak Staff
+46	Bone Staff
+47	Sage's Staff
+48	Round Shield
+49	Kite Shield
+50	Gilded Shield
+51	Leather Cap
+52	Wizard Hat
+53	Iron Helm
+54	Sage's Hat
+55	Knight Helm
+56	Gilded Helm
+57	Cloth Robe
+58	Leather Armor
+59	Chainmail
+60	Plate Armor
+61	Arcane Robe
+62	Blackiron Armor
+63	Leather Gloves
+64	Steel Gauntlets
+65	Leather Boots
+66	War Boots
+67	Leather Belt
+68	Thick Belt
+69	Battle Axe
+70	Greataxe
+71	Frostblade
+72	Rune Greatsword
+73	Dragonslayer Axe
+74	Flameblade
+75	Hunter's Bow
+76	Frost Bow
+77	Wind Bow
+78	Dragonbone Bow
+79	Ember Staff
+80	Frost Staff
+81	Storm Staff
+82	Archmage Staff
+83	Tower Shield
+84	Dragonscale Shield
+85	Hardened Leather Armor
+86	Scout Armor
+87	Frost Robe
+88	Frost Plate
+89	Shadow Leather
+90	Flame Robe
+91	Dragonscale Plate
+92	Hunter's Cap
+93	Frost Helm
+94	Archmage Hat
+95	Dragonscale Helm
+96	Hunter's Gloves
+97	Frost Gauntlets
+98	Dragonscale Gauntlets
+99	Hunter's Boots
+100	Frost Boots
+101	Dragonscale Boots
+102	Warden's Belt
+103	Dragonhide Belt
+104	Ancient Amulet
+105	Rune Ring
+106	Cloth Wraps
+107	Chain Gloves
+108	Wizard Sleeves
+109	Shadow Gloves
+110	Flame Sleeves
+111	Cloth Shoes
+112	Chain Boots
+113	Wizard Shoes
+114	Shadow Boots
+115	Flame Shoes
+116	Cloth Sash
+117	Chain Belt
+118	Rune Sash
+119	Leather Hood
+120	Chain Coif
+121	Plate Helm
+122	Shadow Hood
+123	Flame Hood
+124	Bone Amulet
+125	Jade Amulet
+126	Sun Amulet
+127	Star Amulet
+128	Copper Ring
+129	Silver Ring
+130	Jade Ring
+131	Sapphire Ring
+132	Ruby Ring
+133	Dungeon Key
+134	Unknown Map Fragment
+135	Uncharted Land Fragment
+136	Open Uncharted Path
+137	Uncharted Map
+138	Mythic Trace
+139	Expedition Emblem
+140	Throne Whetstone
+141	+{1}% chance to succeed one Transcendent Enhancement (+{0}~)
+142	Affix Reroll Ticket
+143	Rerolls one affix line on a piece of gear
+144	Socket Ticket
+145	Adds one gem socket to gear (max {})
+146	Engraving Extraction Ticket
+147	Removes the engraving from mythic gear as an Engraving Stone
+148	Gear Shard Extraction Ticket
+149	Extracts one affix line as a shard (the gear is destroyed)
+150	Lord's Engraving
+151	Engraves an expedition lord's mark on mythic gear
+152	Engraving Stone
+153	An engraving that can be applied to mythic gear
+154	Lord's Gear Chest
+155	Gear for your weapon and path (Mythic · Legendary · Heroic)
+156	Lord's Shard Chest
+157	{} good stat shards
+158	Inheritance Ticket
+159	One per enhancement inheritance at the Smithy (carries over {}% of the level)
+160	Inheritance Blessing Stone
+161	Carries over {}% when used with an Inheritance Ticket
+162	Quality Polishing Ticket
+163	Rerolls the base damage · defense quality of gear (keeps the old value if lower)
+164	Mythic Affix Reroll Ticket
+165	Rerolls one mythic-only affix line
+166	Excellent Slot Expansion Ticket
+167	Adds an Excellent slot to gear (max {})
+168	Superior Skillbook Selector
+169	Choose one superior skillbook of your current tier
+170	Empowered Dungeon Key
+171	Extreme Dungeon Key
+172	Puppy
+173	Kitten
+174	Health Potion
+175	Mana Potion
+176	Large Health Potion
+177	Large Mana Potion
+178	Strong Health Potion
+179	Strong Mana Potion
+180	Fine Health Potion
+181	Fine Mana Potion
+182	Supreme Health Potion
+183	Supreme Mana Potion
+184	World Tree Health Potion
+185	World Tree Mana Potion
+186	Myriad-Year Health Potion
+187	Myriad-Year Mana Potion
+188	Millennial Health Potion
+189	Millennial Mana Potion
+190	Eternal Health Potion
+191	Eternal Mana Potion
+192	Primordial Health Potion
+193	Primordial Mana Potion
+194	Genesis Health Potion
+195	Genesis Mana Potion
+196	Concentrated Scroll of Fury
+197	Concentrated Scroll of Haste
+198	Concentrated Scroll of Hawk Eye
+199	Concentrated Scroll of Steelskin
+200	Concentrated Scroll of Windwalk
+201	Concentrated Scroll of Fortune
+202	Mercenary Rations
+203	When packed for an expedition: stamina use -{}% · death -{}% (per mercenary: {} for a short hunt ~ {} for a deep expedition)
+204	Construction Accelerant
+205	Halves the remaining time of a building under construction
+206	Refining Whetstone
+207	+{1}% chance to succeed one +{0} enhancement
+208	Protection Scroll
+209	Doubles Artisan's Spirit gained when Transcendent Enhancement (+{}~) fails
+210	Scroll of Strength
+211	Scroll of Adamant
+212	Scroll of Rampage
+213	Scroll of Galestep
+214	Scroll of Storms
+215	Scroll of Eagle Eye
+216	Scroll of Great Fortune
+217	Scroll of Dexterity
+218	Scroll of Intelligence
+219	Scroll of Spirit
+220	Scroll of Vitality
+221	Scroll of Steelskin
+222	Scroll of Fury
+223	Scroll of Haste
+224	Scroll of Windwalk
+225	Scroll of Hawk Eye
+226	Scroll of Fortune
+227	Worn Club
+228	Oak Cudgel
+229	Flail
+230	War Hammer
+231	Spiked Mace
+232	Knight's Hatchet
+233	Dragonbone Mace
+234	Apprentice Scepter
+235	Oak Scepter
+236	Moonlight Scepter
+237	Sage's Scepter
+238	Rune Scepter
+239	Constellation Scepter
+240	Void Scepter
+241	Glass Orb
+242	Moonlight Orb
+243	Rune Orb
+244	Void Orb
+245	Apprentice Grimoire
+246	Rune Grimoire
+247	Storm Grimoire
+248	Arcane Grimoire
+249	Flame Grimoire
+250	Abyssal Grimoire
+251	Magic
+252	Rare
+253	Heroic
+254	Legendary
+255	Mythic
+256	Strength +{}
+257	Dexterity +{}
+258	Intelligence +{}
+259	Spirit +{}
+260	Vitality +{}
+261	Max {}
+262	Defense +{}%
+263	Damage +{}%
+264	Spell Damage +{}%
+265	Magic Attack +{}
+266	Physical Attack +{}
+267	Attack Speed +{}%
+268	Critical Chance +{}%
+269	{} Regen per second +{}
+270	Movement Speed +{}%
+271	Life Steal {}%
+272	Skill Mastery Gain +{}%
+273	Gold Find +{}%
+274	All Stats +{}
+275	Final Damage +{}%
+276	Damage to Bosses · Named +{}%
+277	Cooldown -{}%
+278	Giant's
+279	Nimble
+280	Sage's
+281	Serene
+282	Sturdy
+283	Vital
+284	Mana-Infused
+285	Hardened
+286	Brutal
+287	Burning
+288	Arcane
+289	Heavy
+290	Swift
+291	Keen
+292	Regenerating
+293	Welling
+294	Windborne
+295	Vampiric
+296	Novice's
+297	Greedy
+298	Lucky
+299	Ancient
+300	Endbringer's
+301	Kingslayer's
+302	Timeless
+303	Unbreakable
+304	Doom-Heralding
+305	Primordial God's
+306	Star-Devouring
+307	Heart of the World Tree
+308	Abyss Walker's
+309	Chaos-Tamed
+310	Godslayer's
+311	Crown of Eternity
+312	Sleeping King's
+313	Revenant's
+314	Frost Lord's
+315	Fallen Paladin's
+316	Blood Oath
+317	Shadow Legion's
+318	Forgotten God's
+319	Close and Heavy
+320	Far and Precise
+321	Burn with Spells
+322	Endure the Blows
+323	Guard with Mana, Strike with Mana
+324	Blackiron
+325	Bluesilver
+326	Steel
+327	Mithril
+328	Rune
+329	Dragonscale
+330	Stigmata
+331	Void
+332	Celestial
+333	Primordial
+334	Eternal
+335	Divine
+336	Transcendent
+337	Abyssal
+338	Primeval
+339	Twilight
+340	Annihilation
+341	Dawn
+342	Heaven's Will
+343	Elder
+344	Infinite
+345	Final
+346	Immortal
+347	Genesis
+348	Godthrone
+349	Aurora
+350	Divine Wrath
+351	Ruin
+352	Netherworld
+353	Boundless
+354	Heavenly
+355	Absolute
+356	Ultimate
+357	Gladiator's
+358	Warrior's
+359	Hero's
+360	Conqueror's
+361	Hunter
+362	Tracker
+363	Hawk's
+364	Apprentice Mage
+365	Mage's
+366	Archmage's
+367	Novice
+368	Pilgrim
+369	Saint's
+370	Guardian's
+371	Ironwall
+372	Crown
+373	Hood
+374	Hat
+375	Armor
+376	Robe
+377	Leathers
+378	Vestment
+379	Gauntlets
+380	Sleeves
+381	Wraps
+382	Boots
+383	Shoes
+384	Sash
+385	Quiver
+386	Grimoire
+387	Shield
+388	Cuirass
+389	Gauntlets
+390	Warboots
+391	Girdle
+392	Orb
+393	Apprentice Wand
+394	Oak Wand
+395	Oak Greatscepter
+396	Moonlight Greatscepter
+397	Sage's Greatscepter
+398	Rune Greatscepter
+399	Constellation Greatscepter
+400	Void Greatscepter
+401	Wooden Tower Shield
+402	Iron Tower Shield
+403	Steel Tower Shield
+404	Spiked Tower Shield
+405	Knight's Tower Shield
+406	Dragonscale Tower Shield
+407	Axe
+408	Plate
+409	Mighty
+410	Deft
+411	Clever
+412	Spirited
+413	Hale

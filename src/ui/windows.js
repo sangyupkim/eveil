@@ -63,6 +63,7 @@ import { RESEARCH_MAX, SHELTER } from '../data/buildings.js';
 import { herbIcon, homeIcon, uiIcon } from './icons.js';
 import { vault, vaultSize, vaultPut, vaultTake, vaultAdd, vaultSave, vaultReady } from '../game/vault.js';
 import { GAME_VERSION, PATCH_NOTES } from '../data/patchnotes.js';
+import { LANG, LANGS, setLang } from '../i18n/index.js';
 import { KEY_ACTIONS, keyMap, keyName } from '../data/keys.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
 import { dailyOf, weeklyOf, dailyText, dailyReward } from '../game/daily.js';
@@ -71,7 +72,7 @@ const pentagon = (stats) => {
   const mx = Math.max(...STATS.map((k) => stats[k])) || 1, pt = (i, r) => { const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5; return `${(50 + Math.cos(a) * r).toFixed(1)},${(50 + Math.sin(a) * r).toFixed(1)}`; };
   const grid = [1, 0.66, 0.33].map((k) => `<polygon points="${STATS.map((_, i) => pt(i, 40 * k)).join(' ')}" fill="none" stroke="rgba(217,182,106,.25)"/>`).join('');
   const shape = `<polygon points="${STATS.map((k, i) => pt(i, 40 * Math.max(0.08, stats[k] / mx))).join(' ')}" fill="rgba(255,200,90,.35)" stroke="#e8c36a" stroke-width="1.2"/>`;
-  const labels = STATS.map((k, i) => { const [x, y] = pt(i, 48).split(','); return `<text x="${x}" y="${y}" fill="${STAT_COLORS[k]}" font-size="8" text-anchor="middle" dominant-baseline="middle">${STAT_NAMES[k]}</text>`; }).join('');
+  const labels = STATS.map((k, i) => { const [x, y] = pt(i, 48).split(','); return `<text x="${x}" y="${y}" fill="${STAT_COLORS[k]}" font-size="8" text-anchor="middle" dominant-baseline="middle">${LANG === 'en' ? k.toUpperCase() : STAT_NAMES[k]}</text>`; }).join(''); // 영문판은 짧게 (STR · DEX …)
   return `<svg class="penta" viewBox="0 0 100 100">${grid}${shape}${labels}</svg>`;
 };
 // 패치 노트 창 (새 버전이면 처음 한 번 저절로)
@@ -852,7 +853,7 @@ export class Windows {
       if (e.slow) kv.push(['느리게', `${e.slow}초`]);
       if (e.root) kv.push(['속박', `${(+e.root).toFixed(1)}초`]);
       if (e.echo) kv.push(['메아리', `${Math.round(e.echo * 100)}%`]);
-      kv.push(['숙련', `${Math.floor(s.exp).toLocaleString()} / ${need.toLocaleString()}`]);
+      kv.push(['숙련도', `${Math.floor(s.exp).toLocaleString()} / ${need.toLocaleString()}`]);
       const U30 = { boss: '출혈', util: '속박 강화', hunt: '느리게 · 속박' }[sk.role] || '추가 효과';
       const unl = sk.chasu ? `<div class="skUnl">${[[30, U30], [80, '범위 · 수 증가'], [150, '메아리 · 마무리']].map(([r, t]) => `<span class="${s.rank >= r ? 'on' : ''}">${r} ${t}</span>`).join('')}</div>` : '';
       const V = variantsOf(id), inSet = st.quick.indexOf(id);
@@ -1504,6 +1505,7 @@ export class Windows {
         ${cloud.id ? '' : `<div class="setRow"><span>계정 연동</span><div class="opts"><input id="lnkId" style="width:7.5em" maxlength="20" placeholder="아이디" autocomplete="username" autocapitalize="off" /><input id="lnkPw" style="width:7.5em" type="password" maxlength="64" placeholder="비밀번호" autocomplete="new-password" /><button class="btn gold" data-link="register">가입</button><button class="btn" data-link="login">로그인</button><span class="note" id="lnkMsg"></span></div></div>`}
         <div class="setRow"><span>닉네임</span><div class="opts"><b>${esc(st.nick || '없음')}</b><button class="btn" data-nick="1">바꾸기</button></div></div>
         <div class="setRow"><span>캐릭터 그림</span><div class="opts faceOpts">${FACES.map(([k]) => `<button class="faceBtn${(st.look?.face || FACES[0][0]) === k ? ' on' : ''}" data-face="${k}"><img src="${faceClose({ face: k })}" alt="" /></button>`).join('')}</div></div>
+        <div class="setRow"><span>언어</span><div class="opts" data-noi18n>${LANGS.map(([k, n]) => `<button class="btn${LANG === k ? ' on' : ''}" data-setlang2="${k}">${n}</button>`).join('')}</div></div>
         <div class="setRow"><span>배경음</span><div class="opts">${vol('music')}</div></div>
         <div class="setRow"><span>효과음</span><div class="opts">${vol('sfx')}</div></div>
         <div class="setRow"><span>어둠 · 조명</span><div class="opts">${onoff('shadows', set.shadows)}</div></div>
@@ -1929,6 +1931,7 @@ export class Windows {
     this.el.querySelector('[data-dexzs]')?.addEventListener('change', (e) => { this.dexZone = e.target.value; this.dexMon = null; audio.play('click'); this.render(); });
     on('[data-relon]', (el) => { const R = st.relics, r = R.bag[+el.dataset.relon], al = Object.values(townOf(st).plots).find((x) => x.type === 'altar'); if (!r || !al || R.on.length >= altarSlots(al.lv)) return; R.bag.splice(+el.dataset.relon, 1); R.on.push({ ...r, until: Date.now() + RELIC_GRADES[r.g].days * 86400e3 * altarDur(al.lv) }); w.d = derive(st, w.buffValues()); audio.play('click'); w.ui.dirty(); this.render(); });
     on('[data-reloff]', (el) => { const R = st.relics; R.on.splice(+el.dataset.reloff, 1); w.d = derive(st, w.buffValues()); audio.play('click'); w.ui.dirty(); this.render(); });
+    on('[data-setlang2]', (el) => { if (el.dataset.setlang2 === LANG) return; setLang(el.dataset.setlang2); location.reload(); }); // v0.50.6 언어
     on('[data-face]', (el) => { if (el.dataset.face === st.look?.face) return; w.changeLook(el.dataset.face); audio.play('click'); this.render(); }); // v0.49.47
     on('[data-artl]', (el) => { this.artLine = el.dataset.artl; audio.play('click'); this.render(); });
     on('[data-arteq]', (el) => { const A = (st.arts ||= { prog: {}, open: {}, equip: [] }), id = el.dataset.arteq; A.equip ||= []; if (A.equip.includes(id)) A.equip = A.equip.filter((x) => x !== id); else if (A.equip.length < artSlots(st) && A.open[id] && artUsable(st, ART[id])) A.equip.push(id); audio.play('click'); w.ui.dirty(); this.render(); });
