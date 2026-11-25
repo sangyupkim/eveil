@@ -193,5 +193,9 @@ body.touch.qgrid #quick .slot .nm { display: block; }
 /* v0.51 PC: 스킬 칸을 조금 올려 이름이 경험치 막대에 겹치지 않게, 세트 단추(1 · 2 · 3)는 스킬 칸 바로 위 가운데에 가로로 */
 body:not(.touch) #quick { bottom: calc(var(--u) * 2.6 + env(safe-area-inset-bottom)); }
 body:not(.touch) #qsets { left: 50%; transform: translateX(-50%); bottom: calc(var(--u) * 7.2 + env(safe-area-inset-bottom)); flex-direction: row; gap: 4px; }
-/* v0.51 휴대폰: 몬스터 체력창을 위 단추줄 아래로 내려 다른 UI와 겹치지 않게 */
-body.touch #targetFrame { top: calc(var(--u) * 5.8 + env(safe-area-inset-top)); width: calc(var(--u) * 22); }
+/* v0.51 휴대폰: 몬스터 체력창은 원래 자리(위 가운데)에 작게 */
+body.touch #targetFrame { width: calc(var(--u) * 17); }
+body.touch #targetFrame .tname { font-size: calc(var(--u) * 0.9); }
+body.touch #targetFrame .thp span { font-size: calc(var(--u) * 0.7); }
+/* v0.51 전체 화면 단추는 미니맵 아래 (위 가운데의 몬스터 체력창과 겹치던 것) */
+#btnFull { position: static; transform: none; display: block; margin-top: 6px; left: auto; top: auto; }
