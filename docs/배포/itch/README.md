@@ -27,10 +27,10 @@ itch 페이지는 API로 고칠 수 없어서 아래를 직접 붙여 넣는다.
 ## 3. Cover image · Screenshots · Trailer
 - **Cover image** (630 × 500): `cover_630x500_1.png` ~ `_4.png` 중 하나 (1 전사 · 2 엘프 궁수 · 3 마법사 · 4 방패 전사). 추천은 **3(마법사)** — 작은 썸네일에서도 색이 또렷하다.
 - **Screenshots** (영문 화면, 1920 × 1080): `screen_1_boss` → `2_horde` → `3_swamp` → `4_town` → `5_skills` → `6_smithy` 순서로.
-- **Gameplay video or trailer**: 유튜브 주소만 받는다. `docs/배포/영상/trailer_1080p.mp4`를 유튜브에 올린 뒤 주소를 넣는다 (자막이 한국어라, 영어권용이면 나중에 영문 자막판을 만들 것).
+- **Gameplay video or trailer**: 유튜브 주소만 받는다. 영어권용 **`docs/배포/영상/trailer_en_1080p.mp4`**(17초, 영문 화면 · 자막, 빠른 템포)를 유튜브에 올린 뒤 주소를 넣는다. 한국어판은 `trailer_1080p.mp4`.
 
 ## 4. Theme (Edit theme — 게임 페이지 꾸미기)
-- **Banner image**: `banner_1920x480_1.jpg` ~ `_4.jpg` 중 하나 (표지와 다른 캐릭터를 고르면 좋다, 예: 표지 3 마법사 + 배너 4 방패 전사).
+- **Banner image**: `banner_1920x480_1.jpg` ~ `_4.jpg` 중 하나 (왼쪽에 É 로고가 들어 있다) (표지와 다른 캐릭터를 고르면 좋다, 예: 표지 3 마법사 + 배너 4 방패 전사).
 - Layout: 가운데 정렬 · 넓은 폭(Wide).
 - 색 (사이트 그림과 맞춘 어두운 금빛):
   - Background `#0e0b08` · Background 2 `#1a140d`
