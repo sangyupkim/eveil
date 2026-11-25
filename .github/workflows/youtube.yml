@@ -1,0 +1,30 @@
+# 유튜브 자동 업로드. promo/shorts/<이름>/ 에 video.mp4 + meta.json 을 올리면 아직 안 올린 것(done.json 없음)을 올린다.
+# 저장소 Secrets: YT_CLIENT_ID · YT_CLIENT_SECRET · YT_REFRESH_TOKEN (docs/배포/유튜브/README.md)
+name: 유튜브 올리기
+on:
+  workflow_dispatch:
+    inputs:
+      name: { description: '폴더 이름 (비우면 안 올린 것 전부)', required: false, default: '' }
+  push:
+    branches: [claude/gallant-dijkstra-ym1oy6]
+    paths: ['promo/shorts/*/meta.json']
+concurrency: youtube
+permissions: { contents: write }
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 올리기
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+        run: |
+          test -n "$YT_REFRESH_TOKEN" || { echo "YT_REFRESH_TOKEN이 없습니다"; exit 1; }
+          python3 tools/youtube/upload.py ${{ inputs.name }}
+      - name: 올린 기록 남기기
+        run: |
+          git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
+          git add promo/shorts/*/done.json 2>/dev/null || true
+          git diff --cached --quiet || { git commit -m "유튜브 올린 기록 [skip ci]"; git push; }
