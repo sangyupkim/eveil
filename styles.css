@@ -891,6 +891,11 @@ body.ui-edit #qsets { display: none; }
 .skUnl span.on { background: rgba(255, 211, 106, .2); color: #ffd36a; }
 .skVar { flex-wrap: wrap; align-items: center; gap: 4px; margin: 2px 0; }
 .skVar .btn { padding: 2px 8px; font-size: .8em; }
+/* v0.52.3 변형 단추: 이름 + 효과 두 줄 */
+.skVar .varBtn { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.15; padding: 3px 10px; min-width: 8.5em; }
+.skVar .varBtn b { font-weight: 700; }
+.skVar .varBtn small { font-size: .82em; color: #cdbf9f; white-space: nowrap; }
+.skVar .varBtn.on small { color: var(--brass-hi); }
 /* v0.50 초월 강화 숫자 */
 .plusG { color: #ffd84a !important; text-shadow: 0 0 4px rgba(255, 200, 60, .6); }
 .plusRg { color: #ff9a4a !important; text-shadow: 0 0 5px rgba(255, 80, 40, .7); }

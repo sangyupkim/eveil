@@ -45,11 +45,13 @@ export function addSkillExp(st, id, amount) {
 // 이미 아는 스킬의 책은 숙련 EXP로 흡수
 export const bookAbsorbExp = (id) => 25 * SKILLS[id].tier;
 
-// ── 스킬 변형: 랭크 25 · 50에서 하나씩 고른다 (s.mod = { 25: key, 50: key }) ──
+// ── 스킬 변형: 랭크 25 · 50 · 100에서 하나씩 고른다 (s.mod = { 25: key, 50: key, 100: key }). v0.52.3 금화로 바꿀 수 있다 ──
 // 효과 종류. 스킬마다 종류 풀에서 네 개를 골라 25 · 50에 둘씩 내놓고, 이름은 스킬 속성에 맞춘다
 const MECH = {
   power: '피해 +40%', quick: '재사용 -35%', wide: '범위 +40% · 수 +2', chill: '맞은 적 3초 느리게',
   echo: '0.6초 뒤 한 번 더 · 위력 60%', frugal: 'MP -45%', long: '지속 +60%', fierce: '피해 +25% · 재사용 -15%',
+  // v0.52.3 랭크 100 변형 (더 센 것)
+  u_power: '피해 +60%', u_storm: '피해 +30% · 범위 +30% · 수 +1', u_haste: '재사용 -40% · MP -30%', u_long: '지속 +100% · 재사용 -20%',
 };
 const POOL = {
   melee: ['power', 'echo', 'chill', 'quick', 'frugal', 'fierce'], bolt: ['wide', 'echo', 'power', 'chill', 'quick', 'frugal'],
@@ -72,6 +74,17 @@ const NAMES = {
   trick: { power: '급소', quick: '그림자 걸음', wide: '연막', chill: '독', echo: '잔상', frugal: '잔꾀', long: '잠복', fierce: '암살' },
   none: { power: '일격', quick: '날렵함', wide: '휩쓸기', chill: '발목 베기', echo: '연격', frugal: '숨 고르기', long: '버티기', fierce: '광포' },
 };
+// v0.52.3 랭크 100 변형 이름
+const NAMES100 = {
+  fire: { u_power: '겁화', u_storm: '불의 폭풍', u_haste: '화염 가속', u_long: '영겁의 불' },
+  frost: { u_power: '절대 냉기', u_storm: '설풍', u_haste: '얼음 가속', u_long: '영구 동토' },
+  lightning: { u_power: '천뢰', u_storm: '뇌신의 폭풍', u_haste: '섬광 가속', u_long: '끝없는 폭풍' },
+  holy: { u_power: '신벌', u_storm: '천상의 빛', u_haste: '은총의 가속', u_long: '영원한 서약' },
+  bow: { u_power: '필살의 화살', u_storm: '화살 폭풍', u_haste: '연사 가속', u_long: '불멸의 매' },
+  guard: { u_power: '산을 가르는 일격', u_storm: '철의 진형', u_haste: '반사 신경', u_long: '난공불락' },
+  trick: { u_power: '즉사', u_storm: '그림자 폭풍', u_haste: '잔영 가속', u_long: '영원한 잠복' },
+  none: { u_power: '극의', u_storm: '대폭풍', u_haste: '신속', u_long: '영원' },
+};
 const hash = (str) => { let h = 7; for (const c of str) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
 // 스킬 하나의 변형 후보: { 25: [{key,name,text}, …2], 50: [… 2] }
 export function variantsOf(id) {
@@ -80,10 +93,13 @@ export function variantsOf(id) {
   const pick = [];
   while (pick.length < 4 && pool.length) { pick.push(pool.splice(h % pool.length, 1)[0]); h = Math.floor(h / 7) + 13; }
   const nm = NAMES[ELEM(sk)];
-  const mk = (k) => ({ key: k, name: `${sk.name}: ${nm[k]}`, text: MECH[k] });
-  return { 25: pick.slice(0, 2).map(mk), 50: pick.slice(2, 4).map(mk) };
+  const mk = (k) => ({ key: k, name: `${sk.name}: ${nm[k] || NAMES100[ELEM(sk)][k]}`, text: MECH[k] });
+  const u = sk.type === 'buff' ? ['u_long', 'u_haste'] : (h % 3 === 0 ? ['u_power', 'u_haste'] : h % 3 === 1 ? ['u_power', 'u_storm'] : ['u_storm', 'u_haste']);
+  return { 25: pick.slice(0, 2).map(mk), 50: pick.slice(2, 4).map(mk), 100: u.map(mk) };
 }
-export const VARIANT_RANKS = [25, 50];
+export const VARIANT_RANKS = [25, 50, 100];
+// v0.52.3 변형 바꾸기 금화: 높은 차수 · 높은 랭크 변형일수록 비싸다 (1차 25랭크 8천 · 5차 100랭크 80만)
+export const variantCost = (id, r) => { const sk = SKILLS[id], c = sk.chasu || Math.max(1, Math.min(5, (sk.tier || 1) - 1)); return Math.round(8000 * c * c * (r / 25)); };
 export const modsOf = (s) => Object.values(s?.mod || {});
 // 랭크 효과: 10까지는 랭크마다 가득, 그 뒤는 절반씩
 const eff = (rank) => Math.min(rank, 10) - 1 + 0.5 * Math.max(0, rank - 10);
@@ -103,15 +119,16 @@ export const rankMul = (rank) => 1 + 0.5 * (Math.min(Math.max(rank, 1), 150) - 1
 export function skillValues(id, rank, vars = []) {
   const sk = SKILLS[id];
   const p = vars.includes('power'), q = vars.includes('quick'), f = vars.includes('fierce'), fr = vars.includes('frugal');
-  const raw = (sk.power + (sk.perRank || 0) * eff(rank)) * (p ? 1.4 : 1) * (f ? 1.25 : 1);
+  const up = vars.includes('u_power'), us = vars.includes('u_storm'), uh = vars.includes('u_haste'), ul = vars.includes('u_long');
+  const raw = (sk.power + (sk.perRank || 0) * eff(rank)) * (p ? 1.4 : 1) * (f ? 1.25 : 1) * (up ? 1.6 : 1) * (us ? 1.3 : 1);
   return {
     // 주문(지능 공격 스킬)은 「평타 피해 × 계수」: 무기가 좋아지면 함께 커지고, 큰 위력 · 랭크는 0.6제곱으로 눌러 지나치게 세지지 않는다
     // 공격 스킬은 모두 같은 식 (0.34.3~): 평타 × 계수. 주문은 위력을 0.6제곱으로 누르고, 검 · 활은 무기 배율(1.8 = 주문 위력 28급)을
     // 같은 계수로 맞춘다. 재사용 3초 미만은 감쇠. 여러 번 내리는 주문은 한 번당 계수를 (횟수 × 0.5)로 나눈다 (검 · 활 연타 스킬은 원래 한 번당 위력이 작게 짜여 있어 나누지 않는다)
     // 자원 스킬(scale: hp · armor · mp)도 검 · 활과 같은 계수 (자원 보너스 1~2배는 싸울 때 곱한다)
     power: (sk.type === 'buff' ? raw : isSpell(sk) ? spellCoef(raw, sk.cd) / multiDiv(sk) : weaponCoef(raw, sk.cd) * (isMelee(sk) ? MELEE_K : 1)) * (sk.chasu && sk.type !== 'buff' ? rankMul(rank) : 1), // v0.50 정리된 스킬: 랭크는 곱으로 (150랭크 ×1.5)
-    mp: Math.round(sk.mp * (1 + 0.05 * Math.min(rank - 1, 9) + 0.01 * Math.max(0, rank - 10)) * (fr ? 0.55 : 1)),
-    cd: sk.cd * (sk.chasu ? 1 : 1 - 0.02 * Math.min(rank - 1, 15)) * (q ? 0.65 : 1) * (f ? 0.85 : 1), // v0.50 정리된 스킬은 랭크로 쿨이 줄지 않는다 (차수 곡선을 지키려고)
+    mp: Math.round(sk.mp * (1 + 0.05 * Math.min(rank - 1, 9) + 0.01 * Math.max(0, rank - 10)) * (fr ? 0.55 : 1) * (uh ? 0.7 : 1)),
+    cd: sk.cd * (sk.chasu ? 1 : 1 - 0.02 * Math.min(rank - 1, 15)) * (q ? 0.65 : 1) * (f ? 0.85 : 1) * (uh ? 0.6 : 1) * (ul ? 0.8 : 1), // v0.50 정리된 스킬은 랭크로 쿨이 줄지 않는다 (차수 곡선을 지키려고)
   };
 }
 // 변형을 반영한 스킬 정의 (범위 · 수 · 느리게 · 지속 · 메아리)
@@ -131,6 +148,8 @@ export function skillEff(id, vars = [], rank = 1) {
     for (const k of ['count', 'jumps']) if (o[k]) o[k] += 2;
     if (o.waves) o.waves += 1;
   }
+  if (vars.includes('u_storm')) { for (const k of ['radius', 'width']) if (o[k]) o[k] *= 1.3; for (const k of ['count', 'jumps']) if (o[k]) o[k] += 1; } // v0.52.3
+  if (vars.includes('u_long') && o.duration) o.duration *= 2;
   if (vars.includes('chill')) o.slow = Math.max(o.slow || 0, 3);
   if (vars.includes('long') && o.duration) o.duration *= 1.6;
   if (vars.includes('echo')) o.echo = 0.6;
@@ -174,9 +193,9 @@ const gearLv = (st) => { const L = Object.values(st?.equip || {}).filter(Boolean
 export const mpRefAt = (aw, st = null) => (100 + 12.8 * Math.min(500, Math.max(0, aw || 0))) * muganK(gearLv(st));
 export function mpCost(st, id, v) {
   const sk = SKILLS[id]; if (!sk) return 0;
-  const ref = mpRefAt(st?.awakenings || 0, st), fr = modsOf(st?.skills?.[id]).includes('frugal');
+  const ref = mpRefAt(st?.awakenings || 0, st), md = modsOf(st?.skills?.[id]), fr = md.includes('frugal'), uh = md.includes('u_haste');
   const c = Math.min(ref * 0.25, ref * 0.0075 * (v?.cd || sk.cd || 1)) * (sk.scale === 'mp' ? 1.5 : 1);
-  return Math.max(1, Math.round(c * (fr ? 0.55 : 1)));
+  return Math.max(1, Math.round(c * (fr ? 0.55 : 1) * (uh ? 0.7 : 1)));
 }
 // v0.49.81 스킬 특성 설명 (스킬 창 · 스킬북): 자원 비례 · 걸리는 효과 · 메아리
 export function skillTraits(sk) {

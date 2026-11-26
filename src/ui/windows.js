@@ -43,7 +43,7 @@ import { takeOne, countOf, needAwaken } from '../game/inventory.js';
 import { uiSettings, applyUi, editUi } from './layout.js';
 
 import { TITLE_AT, titleKey, titleName, UNIQUES, perkChoices } from '../data/titles.js';
-import { variantsOf, VARIANT_RANKS, modsOf, skillEff, mpCost, skillTraits } from '../game/skills.js';
+import { variantsOf, VARIANT_RANKS, variantCost, modsOf, skillEff, mpCost, skillTraits } from '../game/skills.js';
 import { SCHOOL_NAMES } from '../data/skills.js';
 import { awakenOk, skillGrade, QUALITY, gradeName } from '../data/awaken_skills.js';
 import { ROLE_NAMES } from '../data/skill_roster.js';
@@ -869,9 +869,10 @@ export class Windows {
       const U30 = { boss: '출혈', util: '속박 강화', hunt: '느리게 · 속박' }[sk.role] || '추가 효과';
       const unl = sk.chasu ? `<div class="skUnl">${[[30, U30], [80, '범위 · 수 증가'], [150, '메아리 · 마무리']].map(([r, t]) => `<span class="${s.rank >= r ? 'on' : ''}">${r} ${t}</span>`).join('')}</div>` : '';
       const V = variantsOf(id), inSet = st.quick.indexOf(id);
+      // v0.52.3 변형: 이름 아래 효과를 바로 보이고, 고른 뒤에도 금화로 바꿀 수 있다 (25 · 50 · 100)
       const vars = VARIANT_RANKS.map((r) => `<div class="btns skVar"><span class="note">${r}</span>${V[r].map((x) => {
-        const on = s.mod?.[r] === x.key, can = s.rank >= r && !s.mod?.[r];
-        return `<button class="btn${on ? ' on' : ''}" data-var="${r}|${x.key}" ${can ? '' : 'disabled'} title="${x.text}">${x.name.split(': ')[1]}</button>`; }).join('')}</div>`).join('');
+        const on = s.mod?.[r] === x.key, can = s.rank >= r && !on;
+        return `<button class="btn varBtn${on ? ' on' : ''}" data-var="${r}|${x.key}" ${can ? '' : 'disabled'}><b>${x.name.split(': ')[1]}</b><small>${x.text}</small></button>`; }).join('')}${s.rank < r ? `<span class="note">랭크 ${r}</span>` : s.mod?.[r] ? `<span class="note">바꾸기 ${variantCost(id, r).toLocaleString()} G</span>` : ''}</div>`).join('');
       det = `<div class="row" style="border:0">${sicon(id)}<div class="grow"><div class="nm" style="color:${QUALITY[sk.q || 2].color}">${sk.name}</div>
           <div class="sub">${cOf(sk)}차 ${roleTag(sk)}${QUALITY[sk.q || 2].name} · 랭크 ${s.rank}</div></div>
           <div class="btns">${this.skAssign ? '<button class="btn on" data-skassign>취소</button>' : `<button class="btn gold" data-skassign>넣기</button>`}${inSet >= 0 ? '<button class="btn" data-qs="-1">빼기</button>' : ''}</div></div>
@@ -1007,7 +1008,7 @@ export class Windows {
       ['공용 창고', 'vaultspot', ['상인 옆 공용 창고 상자', '상자 앞에서 버튼을 누르면 창고가 열립니다']],
       ['창고', 'vault', ['가방', '창고: 같은 계정의 캐릭터끼리 함께 씁니다. 100칸, 연구 「큰 창고」로 늘어납니다'], ['아이템을 누를 때마다 고르거나 풉니다. 여러 개를 골라 가운데 버튼으로 한꺼번에 옮깁니다', '쌓이는 물건 · 같은 스킬북 · 같은 옵션 파편은 한 칸에 모입니다']],
       ['가방 · 장비', 'inv', ['고른 아이템: 정보 · 능력치 변화 · 쓰기 · 팔기. 고르지 않으면 착용 장비가 보입니다', '가방: 강화석 · 지역 재료도 아이템으로 들어옵니다. 창고에 넣어도 강화 · 건물에 쓰입니다', '정렬 · 한꺼번에 팔기', '금화 · 강화석', '창 탭'], ['같은 스킬북은 한 칸에 겹칩니다. [하나 흡수]는 한 권, [모두 사용]은 겹친 책을 모두 써서 숙련도를 한 번에 올립니다. 모르는 스킬이면 한 권으로 배우고 나머지를 흡수합니다', '같은 옵션의 능력치 파편도 한 칸에 모입니다. 제련할 때 그중 쓸 값을 고릅니다']],
-      ['스킬', 'skills', ['배운 스킬. 쓸수록 랭크가 오릅니다. 랭크 제한은 없고 50부터 느려집니다', '위력 · 다음 랭크 · MP · 재사용 · 범위', '변형: 랭크 25 · 50에서 하나씩 고릅니다', '퀵슬롯 8칸: 칸을 누르면 넣습니다. 이미 있는 스킬은 자리가 바뀝니다'], ['상급 이상 스킬은 무기에 따라 나뉩니다. 한손 무기(+ 방패 · 보주 · 마도서)는 단일 · 돌진 · 창 같은 스킬, 양손 무기(대검 · 지팡이 · 대홀 · 대방패)는 휘두르기 · 광역 스킬을 씁니다. 하급 · 중급 · 버프 스킬은 어떤 무기로든 씁니다', '지금 무기로 못 쓰는 스킬은 퀵슬롯에서 어둡게 보입니다. 대홀을 들면 양손 정신 주문이 마나를 1.5배 쓰는 대신 위력과 범위가 커집니다']],
+      ['스킬', 'skills', ['배운 스킬. 쓸수록 랭크가 오릅니다. 랭크 제한은 없고 50부터 느려집니다', '위력 · 다음 랭크 · MP · 재사용 · 범위', '변형: 랭크 25 · 50 · 100에서 하나씩 고릅니다 (금화로 바꿀 수 있습니다)', '퀵슬롯 8칸: 칸을 누르면 넣습니다. 이미 있는 스킬은 자리가 바뀝니다'], ['상급 이상 스킬은 무기에 따라 나뉩니다. 한손 무기(+ 방패 · 보주 · 마도서)는 단일 · 돌진 · 창 같은 스킬, 양손 무기(대검 · 지팡이 · 대홀 · 대방패)는 휘두르기 · 광역 스킬을 씁니다. 하급 · 중급 · 버프 스킬은 어떤 무기로든 씁니다', '지금 무기로 못 쓰는 스킬은 퀵슬롯에서 어둡게 보입니다. 대홀을 들면 양손 정신 주문이 마나를 1.5배 쓰는 대신 위력과 범위가 커집니다']],
       ['능력 · 각성', 'char', ['능력치: 행동에 따라 오릅니다. 칼을 휘두르면 힘, 주문을 쓰면 지능, 맞으면 체력', '세부 능력치. 각성마다 성향에 맞는 칭호와 특성을 고릅니다. 단계가 오를수록 치명 · 질주 · 파동 · 연쇄 · 표식 · 보호막 같은 새 특성이 열립니다']],
       ['수련 비전', 'arts', ['장착한 비전: 1차 각성 1칸 · 3차 2칸 · 5차 3칸', '갈래별 비전'], ['직접 사냥하며 정해진 행동(근접 치명타 · 원거리 치명타 · 여럿 맞히기 등)을 정한 횟수만큼 하면 열립니다. 자동 사냥은 세지 않습니다', '두 스탯이 섞인 비전은 그 두 스탯이 든 칭호를 받은 적이 있어야 장착합니다']],
       ['퀘스트 · 의뢰 · 업적', 'quest', ['메인 퀘스트와 업적', '오늘의 의뢰 보상 받기: 경비대장 하겐 앞에서만', '오늘의 의뢰 3개 · 이번 주 의뢰'], ['업적을 이루면 금화와 업적 칭호를 받습니다']],
@@ -1919,7 +1920,7 @@ export class Windows {
     });
     ask('[data-gput]', (el) => { const i = el.dataset.gput.lastIndexOf('|'), it = gearAt(st, el.dataset.gput.slice(0, i)), g = el.dataset.gput.slice(i + 1); return it ? ['보석 끼우기', `${itemName(it)}에 끼웁니다`, '끼우기', itemHtml({ base: g }, gemSub(g))] : null; }, (el) => { const i = el.dataset.gput.lastIndexOf('|'), key = el.dataset.gput.slice(0, i), id = el.dataset.gput.slice(i + 1), it = gemItem(key); if (!it || it.gems.length >= it.sockets || resCount(st, id) < 1) return; resTake(st, id, 1); it.gems.push(id); if (key.startsWith('v:')) vaultSave(); audio.play('rankup'); w.refreshGear(); w.ui.dirty(); this.render(); });
     ask('[data-gpull]', (el) => { const i = el.dataset.gpull.lastIndexOf('|'), it = gearAt(st, el.dataset.gpull.slice(0, i)), g = it?.gems[Number(el.dataset.gpull.slice(i + 1))]; return g ? ['보석 빼기', `금화 ${pullCost(g).toLocaleString()} G`, '빼기', itemHtml({ base: g }, gemSub(g))] : null; }, (el) => { const i = el.dataset.gpull.lastIndexOf('|'), key = el.dataset.gpull.slice(0, i), k = Number(el.dataset.gpull.slice(i + 1)), it = gemItem(key), g = it?.gems[k]; if (!g) return; const c = pullCost(g); if (st.gold < c) { w.ui.toast('금화가 모자랍니다'); return; } st.gold -= c; it.gems.splice(k, 1); if (key.startsWith('v:')) vaultSave(); addItem(st, makeItem(g, { qty: 1 }, st)); audio.play('click'); w.refreshGear(); w.ui.dirty(); this.render(); });
-    ask('[data-var]', () => ['스킬 변형', '한 번 고르면 바꿀 수 없습니다', '고르기'], (el) => { const s = st.skills[this.skillSel]; if (!s) return; const [r, k] = el.dataset.var.split('|'); if (s.rank < +r || s.mod?.[r]) return; (s.mod ||= {})[r] = k; audio.play('rankup'); w.ui.dirty(); this.render(); });
+    ask('[data-var]', (el) => { const s = st.skills[this.skillSel], [r] = el.dataset.var.split('|'); return s?.mod?.[r] ? ['변형 바꾸기', `금화 ${variantCost(this.skillSel, +r).toLocaleString()} G`, '바꾸기'] : ['스킬 변형', '나중에 금화로 바꿀 수 있습니다', '고르기']; }, (el) => { const s = st.skills[this.skillSel]; if (!s) return; const [r, k] = el.dataset.var.split('|'); if (s.rank < +r || s.mod?.[r] === k) return; if (s.mod?.[r]) { const c = variantCost(this.skillSel, +r); if (st.gold < c) { w.ui.toast('금화가 모자랍니다'); audio.play('error'); return; } st.gold -= c; } (s.mod ||= {})[r] = k; audio.play('rankup'); w.ui.dirty(); this.render(); });
     ask('[data-repick]', () => ['특성 다시 고르기', '금화를 내고 특성을 다시 고릅니다', '고르기'], (el) => {
       const t = st.titles[Number(el.dataset.repick)], cost = repickCost(t);
       if (st.gold < cost) return;
