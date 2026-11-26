@@ -58,8 +58,8 @@ export function itemIcon(it) {
   if (it.base === 'dungeon_key2') return iconUrl(1006, '#5aa8ff'); // 강화 열쇠: 푸른 테두리
   if (it.base === 'dungeon_key3') return iconUrl(1007, '#ff4a6a'); // 극한 열쇠: 붉은 테두리
   if (it.base === 'ore') return oreIcon();
-  if (it.base === 'ore2') return iconUrl(71, '#5aa8ff', 'grayscale(1) sepia(1) hue-rotate(170deg) saturate(2.4) brightness(0.8)'); // 상급: 푸른 돌
-  if (it.base === 'ore3') return iconUrl(71, '#c070ff', 'grayscale(1) sepia(1) hue-rotate(230deg) saturate(2.6) brightness(0.8)'); // 최상급: 보랏빛 돌
+  if (it.base === 'ore2') return iconUrl(4044, '#5aa8ff'); // 상급: 푸른 결정 광석 (v0.51.3 광석 그림)
+  if (it.base === 'ore3') return iconUrl(4045, '#c070ff'); // 최상급: 보랏빛 결정 광석
   if (/^ess\d$/.test(it.base)) return iconUrl(1010, ESS_COLOR[BASES[it.base].grade]); // 정수: 마력 구슬 그림 + 단계 색 테두리
   if (BASES[it.base]?.type === 'raid') return iconUrl(BASES[it.base].icon, '#ffc85a'); // v0.50 원정 물건: 금빛 테두리
   if (BASES[it.base]?.type === 'mat') return iconUrl(BASES[it.base].icon, '#9ad06a');
@@ -83,7 +83,7 @@ export const duelIcon = () => iconUrl(1043);
 export const swordIcon = () => iconUrl(1043);
 export const townIcon = () => iconUrl(103);
 // 강화석: 금강석(보석)과 헷갈리지 않게 잿빛 돌 + 주황 테두리
-export const oreIcon = () => iconUrl(71, '#e0903a', 'grayscale(1) sepia(.6) brightness(.62) contrast(1.3)');
+export const oreIcon = () => iconUrl(4043, '#e0903a'); // v0.51.3 강화석: 광석 그림
 
 // 펫 아이콘: 펫 그림(서 있는 모습, 오른쪽 아래 방향)을 칸에 맞춰 찍는다
 export function petIcon(kind) {
