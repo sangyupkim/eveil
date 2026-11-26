@@ -86,7 +86,7 @@ export class HUD {
 
   zone(z) {
     { const o = z?.id ? this.world.tierOffset : 0, mg = z?.id && this.world.wt >= 5 ? `무간 ${this.world.mfloor}층 · ` : ''; // v0.49.75 세계 단계 보정을 더한 위험도 (예전엔 평온 값이 보였다)
-      txt($('.zoneName'), z ? mg + z.name + (z.levels ? `  ·  위험도 ${z.levels[0] + o}~${z.levels[1] + o}` : '') : '황야'); }
+      txt($('.zoneName'), z ? mg + z.name : '황야'); const rk = $('.zoneRisk'); txt(rk, z?.levels ? `위험도 ${z.levels[0] + o}~${z.levels[1] + o}` : ''); if (rk) rk.hidden = !z?.levels; } // v0.51.4 위험도는 지도 띠 둘째 줄
     { const fl = z?.id && this.world.st.flood?.list?.some((f) => f.zone === z.id); if (fl) txt($('.zoneName'), '범람지 · ' + $('.zoneName').textContent); $('.zoneName').style.color = fl ? '#ff6a5a' : ''; } // v0.44.44
     let info = '안전 지역 · 상점 이용 가능';
     const off = z?.id ? this.world.tierOffset : 0;
@@ -249,9 +249,6 @@ export class HUD {
 
     if (this.isDirty) {
       this.isDirty = false;
-      txt($('#gold'), st.gold.toLocaleString());
-      txt($('#oreN'), townOf(st).ore.toLocaleString());
-      if (!$('#oreIco').src) $('#oreIco').src = oreIcon();
       txt($('#awakeBadge'), `각성 ${st.awakenings}`);
       txt($('#bagCnt'), `${st.inv.length}/${bagSize(st)}`);
       // 물약 칸: 가방에서 정해 둔 물약이면 그 그림 · 개수

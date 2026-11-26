@@ -3852,4 +3852,5 @@ export default {"새끼 개미귀신":"Antlion Hatchling",
 "{}. 첫 화면 오른쪽 위와 설정에서 한국어 · {}를 고를 수 있습니다.":"{}. Choose 한국어 · {} at the top right of the title screen or in Settings.",
 "자리를 비운 {}분 동안 마을이 일했습니다":"The town kept working during the {} min you were away",
 "자리를 비운 {}시간 동안 마을이 일했습니다":"The town kept working during the {} h you were away",
-"외 {}개":"+{} more"};
+"외 {}개":"+{} more",
+"위험도 {}":"Danger {}"};

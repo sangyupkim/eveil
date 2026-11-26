@@ -203,6 +203,10 @@ export class Windows {
     const list = this.talk ? TAB_ORDER.filter((k) => this.talk.includes(k) || k === this.talkFirst) : TAB_ORDER.filter((k) => !NPC_ONLY.includes(k) && (!['guide', 'news'].includes(k) || k === this.kind)); // 공지 · 가이드북은 설정 창에서 연다
     tabs.style.visibility = list.length < 2 ? 'hidden' : '';
     tabs.innerHTML = list.map((k) => `<button class="tab txt${k === this.kind ? ' on' : ''}" data-tab="${k}"><span>${TAB_TXT[k]}</span></button>`).join('');
+    // v0.51.4 지갑: 골드 · 강화석은 쓰는 창(상점 · 마을 건물)의 제목 줄 오른쪽에만
+    { let wl = $('.wallet', this.el); if (!wl) { wl = document.createElement('span'); wl.className = 'wallet'; $('.fs-head', this.el).insertBefore(wl, $('.close', this.el)); }
+      const on = this.kind === 'shop' || this.kind === 'town', st0 = this.w.st; wl.hidden = !on;
+      if (on) wl.innerHTML = `<b>${st0.gold.toLocaleString()} G</b><img src="${oreIcon()}" alt="" title="강화석" /><b>${townOf(st0).ore.toLocaleString()}</b>`; }
     tabs.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => this.show(b.dataset.tab); });
     const on = tabs.querySelector('.tab.on'); if (on) { const l = on.offsetLeft - tabs.offsetLeft; if (l < tabs.scrollLeft || l + on.offsetWidth > tabs.scrollLeft + tabs.clientWidth) tabs.scrollLeft = l - 8; }
     const body = $('.body', this.el);
@@ -466,7 +470,7 @@ export class Windows {
   // 건물 탭 화면: 맨 위 탭 줄 + 두 쪽 [왼쪽, 오른쪽]
   tabView(b, key, tabs, pages) {
     const st = this.w.st, cur = this.bTab?.[key] && tabs.some((x) => x[0] === this.bTab[key]) ? this.bTab[key] : tabs[0][0];
-    const head = `<div class="stabs">${tabs.map(([k, n]) => `<button class="tab txt${k === cur ? ' on' : ''}" data-stab="${key}|${k}"><span>${n}</span></button>`).join('')}${b === null ? '' : `<span class="stabInfo">${typeof b === 'string' ? b : `${BUILDINGS[b.type].name} ${b.lv}단계${b.bld ? ` · <span style="color:#ffd84a">${b.bld.to}단계로 올리는 중 ${Math.max(1, Math.ceil((b.bld.until - Date.now()) / 60000))}분</span>${countOf(st, 'build_rush') ? ' <button class="btn" data-rush="1">촉진제</button>' : ''}` : ''}`} · <span class="goldTxt">${st.gold.toLocaleString()} G</span></span>`}</div>`; // null = 오른쪽 위 정보 없음 (랭킹)
+    const head = `<div class="stabs">${tabs.map(([k, n]) => `<button class="tab txt${k === cur ? ' on' : ''}" data-stab="${key}|${k}"><span>${n}</span></button>`).join('')}${b === null ? '' : `<span class="stabInfo">${typeof b === 'string' ? b : `${BUILDINGS[b.type].name} ${b.lv}단계${b.bld ? ` · <span style="color:#ffd84a">${b.bld.to}단계로 올리는 중 ${Math.max(1, Math.ceil((b.bld.until - Date.now()) / 60000))}분</span>${countOf(st, 'build_rush') ? ' <button class="btn" data-rush="1">촉진제</button>' : ''}` : ''}`}</span>`}</div>`; // null = 오른쪽 위 정보 (v0.51.4 골드는 창 제목 줄 지갑에) 없음 (랭킹)
     const pg = pages(cur);
     if (typeof pg === 'string') return `<div class="smithWrap">${head}${pg}</div>`; // v0.49.83 탭 하나가 통째로 (현자 도감)
     const [L, R] = pg;

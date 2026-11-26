@@ -37,13 +37,8 @@
           <div id="buffs"></div>
         </div>
       </div>
-      <div class="pills">
-        <div class="pill zone"><b class="dot"></b><span class="zoneName"></span></div>
-        <div class="pill gold"><span id="gold">0</span> G</div>
-        <div class="pill ore" title="강화석"><img id="oreIco" alt="" /><span id="oreN">0</span></div>
-      </div>
-      <!-- v0.49.7 미니맵은 체력바 밑 (누르면 지도) -->
-      <div id="mapWrap"><canvas id="minimap" width="200" height="200"></canvas></div>
+      <!-- v0.49.7 미니맵은 체력바 밑 (누르면 지도) · v0.51.4 지역 이름은 지도 테두리 안 아래 띠 (골드 · 강화석은 상점 · 건물 창에서만) -->
+      <div id="mapWrap"><canvas id="minimap" width="200" height="200"></canvas><div class="mapZone"><div class="zl"><b class="dot"></b><span class="zoneName"></span></div><small class="zoneRisk"></small></div></div>
       <button id="btnFull" class="btn" hidden>전체 화면</button>
     </div>
 
