@@ -68,7 +68,7 @@ import { GAME_VERSION, PATCH_NOTES } from '../data/patchnotes.js';
 import { LANG, LANGS, setLang } from '../i18n/index.js';
 import { KEY_ACTIONS, keyMap, keyName } from '../data/keys.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
-import { dailyOf, weeklyOf, dailyText, dailyReward } from '../game/daily.js';
+import { dailyOf, weeklyOf, dailyText, dailyReward, rewardName } from '../game/daily.js';
 // 스탯 오각형: 내가 어느 쪽으로 컸나
 const pentagon = (stats) => {
   const mx = Math.max(...STATS.map((k) => stats[k])) || 1, pt = (i, r) => { const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5; return `${(50 + Math.cos(a) * r).toFixed(1)},${(50 + Math.sin(a) * r).toFixed(1)}`; };
@@ -967,8 +967,9 @@ export class Windows {
     }
     const dl = dailyOf(st), wl = weeklyOf(st);
     const atGuard = this.townMode === 'build', claimable = [...dl.list, ...wl.list].some((x) => x.done && !x.got);
-    const qline = (x) => { const r = dailyReward(x, st); return `<div class="row qrow${x.done ? ' fin' : ''}"><div class="grow">${dailyText(x)}<div class="note">${r.gold.toLocaleString()}G${r.ore ? ` · 강화석 ${r.ore}` : ''}${r.key ? ` · 던전 열쇠${r.key > 1 ? ' ' + r.key : ''}` : ''}${r.ess ? ` · ${BASES[r.ess.id].name} ${r.ess.n}` : ''}</div></div><span class="note">${x.got ? '받음' : x.done ? '완료' : `${x.have} / ${x.need}`}</span></div>`; };
-    let list = `<h3>오늘의 의뢰${claimable ? `<button class="btn gold" data-daily="1" style="margin-left:auto" ${atGuard ? '' : 'disabled'}>${atGuard ? '보상 받기' : '경비대장에게 보고'}</button>` : ''}</h3>` + dl.list.map(qline).join('') + '<h3>이번 주 의뢰</h3>' + wl.list.map(qline).join('');
+    const boxLine = (d, nm) => `<div class="row qrow${d.boxGot ? ' fin' : ''}"><div class="grow"><b class="goldTxt">${nm}</b><div class="note">모두 받으면 · 금화와 무작위 물건</div></div><span class="note">${d.boxGot ? '받음' : `${d.list.filter((x) => x.got).length} / ${d.list.length}`}</span></div>`; // v0.52.2
+    const qline = (x) => { const r = dailyReward(x, st); return `<div class="row qrow${x.done ? ' fin' : ''}"><div class="grow">${dailyText(x)}<div class="note">${r.gold.toLocaleString()}G · ${r.items.map(rewardName).join(' · ')}</div></div><span class="note">${x.got ? '받음' : x.done ? '완료' : `${x.have} / ${x.need}`}</span></div>`; };
+    let list = `<h3>오늘의 의뢰${claimable ? `<button class="btn gold" data-daily="1" style="margin-left:auto" ${atGuard ? '' : 'disabled'}>${atGuard ? '보상 받기' : '경비대장에게 보고'}</button>` : ''}</h3>` + dl.list.map(qline).join('') + boxLine(dl, '오늘의 상자') + '<h3>이번 주 의뢰</h3>' + wl.list.map(qline).join('') + boxLine(wl, '주간 상자');
     for (const z of ZONES) {
       list += `<h3>${z.name}</h3>`;
       for (const x of QUESTS.filter((y) => y.zone === z.id)) {

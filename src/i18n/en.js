@@ -3866,4 +3866,11 @@ export default {"새끼 개미귀신":"Antlion Hatchling",
 "{}. 메뉴 단추와 스킬 아이콘 여럿이 새 그림으로 바뀌었고, 골드 · 강화석은 상점 · 건물 · 보석상 창에서 보입니다.":"{}. The menu buttons and many skill icons have new art, and gold · enhancement stones are now shown in shop, building and jeweler windows.",
 "{}. 파견에서도 보석을 가져옵니다. 오래 걸리는 파견일수록 많이 가져오고, 지옥 이상에서 보내면 태초 보석입니다.":"{}. Expeditions now bring back gems. Longer expeditions bring more, and expeditions sent in Hell or above bring Primordial gems.",
 "{}. 강화 · 극한 던전에서 처음 넘는 단계마다 태초 보석을 받습니다.":"{}. Clearing a new stage of an Empowered or Extreme dungeon for the first time rewards Primordial gems.",
-"첫 돌파 보상: 태초 보석 {}개":"First clear reward: {} Primordial gems"};
+"첫 돌파 보상: 태초 보석 {}개":"First clear reward: {} Primordial gems",
+"{}. 오늘 · 이번 주 의뢰 보상이 커졌습니다. 금화가 늘고, 내 수준에 맞는 열쇠 · 보석 · 정수 · 신화의 흔적 같은 물건을 하나씩 줍니다.":"{}. Daily and weekly request rewards are bigger: more gold, plus an item that fits your level such as keys, gems, essences or Myth Traces.",
+"{}. 의뢰를 모두 받으면 「오늘의 상자」 · 「주간 상자」가 열려 무작위 물건을 더 줍니다.":"{}. Claim every request to open the Daily Chest or Weekly Chest for extra random items.",
+"모두 받으면 · 금화와 무작위 물건":"Claim all · gold and random items",
+"오늘의 상자":"Daily Chest",
+"주간 상자":"Weekly Chest",
+"열림!":"opened!",
+"의뢰 보상 {}개":"{} request rewards"};

@@ -1,8 +1,10 @@
 // 오늘의 의뢰 (하루) · 이번 주 의뢰 (월요일마다). 날짜로 정해지고, 내 각성 · 지은 건물에 맞춰 고른다 (v0.44.27)
 // kind: kill(그 지역 몬스터) · elite(정예 이상) · boss(네임드 · 보스) · dungeon(그 지역 던전) · dungeonAny(아무 던전)
 //       harvest(광산 · 약초밭 거두기) · brew(제작소 물건 완성) · make(강화석 · 열쇠 · 정수 제작) · enhance(강화 시도) · expedition(파견 귀환)
-import { ZONES } from '../data/world.js';
+import { ZONES, TIER_STEP } from '../data/world.js';
 import { seeded } from './rng.js';
+import { gemId, gemGradeFor, GEMS } from '../data/legends.js';
+import { BASES } from '../data/items.js';
 
 export const dayKey = (now = Date.now()) => new Date(now + 9 * 3600e3).toISOString().slice(0, 10); // 한국 시간 날짜
 // 주: 한국 시간 월요일 0시부터
@@ -77,13 +79,38 @@ export function dailyText(q) {
     expedition: () => `파견 용병 ${q.need}명 귀환`,
   }[q.kind] || (() => q.kind))();
 }
-// 보상: 금화 + 강화석 + 던전 열쇠. 이번 주 의뢰는 크게 (금화 ×6 · 강화석 ×4 · 열쇠 2 · 정수)
+// 세계 단계만큼 더하는 레벨 (world.tierOffset과 같은 셈 — 마을 · 의뢰에서 쓴다)
+export const worldOffset = (st) => { const wt = Math.min(5, Math.max(1, st.worldTier || 1)), fl = Math.max(1, Math.min(st.muganMax || 1, st.mugan || 1)); return wt >= 5 ? 380 + 10 * fl : [0, TIER_STEP, TIER_STEP * 2, 380][wt - 1]; };
+// v0.52.2 의뢰 보상 레벨: 내 각성에 맞는 가장 깊은 지역 + 세계 단계
+export const rewardLevel = (st) => { const fz = fitZones(st); return fz[fz.length - 1].levels[1] + worldOffset(st); };
+// 그 레벨에 필요한 물건 (장비 말고): [id, 개수, 무게]
+function rewardPool(st, L, box = false) {
+  const aw = st.awakenings || 0, g = Math.min(5, 1 + Math.floor(aw / 100)), GK = Object.keys(GEMS);
+  const P = [['dungeon_key', 2, 3], ['gem', 1, 3], ['ore2', 3 + Math.floor(L / 60), 2], ['odd_map', 1, 1]];
+  if (L >= 60) P.push(['dungeon_key2', 1, 2]);
+  if (L >= 150) P.push(['dungeon_key3', 1, 1.5]);
+  if (g >= 2) P.push(['ess' + g, 2, 2]);
+  if (L >= 240) P.push(['myth_mark', 1, 1.5]);
+  if (box) P.push(['gem', 2, 2], ['t_socket', 1, L >= 240 ? 0.8 : 0.3]);
+  return { P, gem: (rng) => gemId(GK[Math.floor(rng() * GK.length)], gemGradeFor(L, rng)) };
+}
+function pickReward(st, L, rng, box = false) {
+  const { P, gem } = rewardPool(st, L, box), tot = P.reduce((a, x) => a + x[2], 0);
+  let r = rng() * tot; for (const [id, n, w] of P) { if ((r -= w) <= 0) return id === 'gem' ? { id: gem(rng), n } : { id, n }; }
+  return { id: 'dungeon_key', n: 2 };
+}
+// 의뢰 하나 보상: 금화 + 그 레벨에 필요한 물건 (하루 1개 · 한 주 3개). 의뢰마다 정해져 있어 미리 보인다
 export const dailyReward = (q, st) => {
-  const lv = Math.max(1, Math.round((st.awakenings || 0) / 2));
-  if (!q.weekly) return { gold: 200 + lv * 40, ore: q.kind === 'elite' ? 0 : 3 + Math.floor(lv / 4), key: 1 };
-  const g = Math.min(5, 1 + Math.floor((st.awakenings || 0) / 100));
-  return { gold: (200 + lv * 40) * 6, ore: (3 + Math.floor(lv / 4)) * 4, key: 2, ess: g >= 2 ? { id: 'ess' + g, n: 3 } : null };
+  const L = rewardLevel(st), rng = seeded([...(q.weekly ? 'w' : 'd') + q.kind + (q.zone || '') + (st.daily?.day || '') + (st.weekly?.wk || '')].reduce((a, c) => (Math.imul(a, 31) + c.charCodeAt(0)) >>> 0, 3)); rng(); rng(); // 32비트 안에서 섞기 (긴 글은 소수 자릿수가 넘쳐 의뢰마다 같은 보상이 나왔다)
+  const items = Array.from({ length: q.weekly ? 3 : 1 }, () => pickReward(st, L, rng));
+  return { gold: Math.round(L * (q.weekly ? 600 : 120)), items };
 };
+// 다 깨면 상자: 무작위로 더 (오늘 3개 · 이번 주 6개, 구멍 뚫기권도 나올 수 있다)
+export const boxReward = (st, weekly, rng = Math.random) => {
+  const L = rewardLevel(st);
+  return { gold: Math.round(L * (weekly ? 1500 : 250)), items: Array.from({ length: weekly ? 6 : 3 }, () => pickReward(st, L, rng, true)) };
+};
+export const rewardName = (x) => `${BASES[x.id]?.name || x.id}${x.n > 1 ? ' ×' + x.n : ''}`;
 
 // 진행: 끝난 의뢰를 돌려준다 (오늘 · 이번 주 둘 다)
 export function dailyProgress(st, ev, n = 1) {

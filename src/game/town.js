@@ -11,12 +11,9 @@ import { makeItem, rollBase } from './items.js';
 import { MATERIALS, MAT_DROP, SETS, SET_SLOTS, craftCost, upgradeMats, upgradeNeed, HIGH_HERBS } from '../data/crafting.js';
 import { BASES } from '../data/items.js';
 import { vault, vaultAdd, vaultSave, vaultSize } from './vault.js';
-import { lifeProgress } from './daily.js';
+import { lifeProgress, worldOffset } from './daily.js';
 import { GEMS, gemId, gemGradeFor } from '../data/legends.js';
-import { TIER_STEP } from '../data/world.js';
 const GEM_KINDS = Object.keys(GEMS);
-// 세계 단계만큼 더하는 레벨 (world.tierOffset과 같은 셈 — 마을 쪽에서 쓰려고)
-export const worldOffset = (st) => { const wt = Math.min(5, Math.max(1, st.worldTier || 1)), fl = Math.max(1, Math.min(st.muganMax || 1, st.mugan || 1)); return wt >= 5 ? 380 + 10 * fl : [0, TIER_STEP, TIER_STEP * 2, 380][wt - 1]; };
 import { shardFrom, rollShard, mergeShard } from './shards.js';
 
 export function townOf(st, now = Date.now()) {

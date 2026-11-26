@@ -37,7 +37,7 @@ import { RAID, RAID_GRADES, BLESS, BLESS_IDS, RAID_SPOT, raidWeek, raidOf, raidO
 import { salvageItem, dropMats, liberateAdd, dropEss, resAdd, resCount, claim as claimMerc, lootRoomFull, brewCollect, collect as collectPlot, repeatTick, autoBrewTick } from '../game/town.js';
 import { vaultAdd } from '../game/vault.js';
 import { itemIcon, iconUrl, coinIcon, oreIcon, herbIcon, townIcon, bookIcon } from '../ui/icons.js';
-import { dailyProgress, dailyReward, dailyText, dayKey, dailyOf, weeklyOf, weekKey } from '../game/daily.js';
+import { dailyProgress, dailyReward, dailyText, dayKey, dailyOf, weeklyOf, weekKey, boxReward, rewardName } from '../game/daily.js';
 import { MATERIALS } from '../data/crafting.js';
 import { addItem, takeOne, countOf, equip as equipItem, unequip as unequipItem } from '../game/inventory.js';
 import { itemName, itemColor, isBook, makeItem, makeBook, rollBase, itemValue } from '../game/items.js';
@@ -417,15 +417,21 @@ export class World {
     for (const q of list) { this.ui.toast(`${q.weekly ? '이번 주' : '오늘의'} 의뢰 완료: ${dailyText(q)}`, '#ffd84a'); sfx('coin'); }
   }
   claimDaily() {
-    const st = this.st; let n = 0, g = 0;
+    // v0.52.2 의뢰 보상: 금화 + 그 레벨에 필요한 물건, 오늘 · 이번 주 의뢰를 다 받으면 상자 (무작위로 더)
+    const st = this.st; let n = 0, g = 0; const got = {}, boxes = [];
+    const give = (x) => { resAdd(st, x.id, x.n); got[x.id] = (got[x.id] || 0) + x.n; };
     for (const q of [...dailyOf(st).list, ...weeklyOf(st).list]) {
       if (!q.done || q.got) continue;
-      const r = dailyReward(q, st);
-      if (r.key && !addItem(st, makeItem('dungeon_key', { qty: r.key }, st))) { this.ui.toast('가방이 가득 찼습니다'); break; }
-      st.gold += r.gold; g += r.gold; if (r.ore) townOf(st).ore += r.ore; if (r.ess) resAdd(st, r.ess.id, r.ess.n);
+      const r = dailyReward(q, st); st.gold += r.gold; g += r.gold; r.items.forEach(give);
       q.got = true; n++; (st.rec ||= {}).daily = (st.rec.daily || 0) + 1;
     }
-    if (n) { this.ui.toast(`의뢰 보상 ${n}개 — ${g.toLocaleString()}G`, '#ffd84a'); sfx('coin'); this.ui.dirty(); }
+    for (const [d, wk] of [[dailyOf(st), false], [weeklyOf(st), true]]) if (!d.boxGot && d.list.length && d.list.every((q) => q.got)) {
+      d.boxGot = true; const b = boxReward(st, wk); st.gold += b.gold; g += b.gold; b.items.forEach(give); boxes.push(wk ? '주간 상자' : '오늘의 상자');
+    }
+    if (!n && !boxes.length) return 0;
+    const rows = Object.entries(got).map(([id, q]) => `<div class="ntcRow"><img src="${itemIcon({ base: id, qty: q })}" alt="" /><span>${rewardName({ id, n: q })}</span></div>`).join('');
+    globalThis.__game?.windows?.popup?.(boxes.length ? boxes.join(' · ') + ' 열림!' : `의뢰 보상 ${n}개`, `<div class="ntcRows"><div class="ntcRow"><img src="${coinIcon()}" alt="" /><span style="color:#ffd84a">금화 ${g.toLocaleString()}</span></div>${rows}</div>`, false);
+    sfx(boxes.length ? 'awaken' : 'coin'); this.ui.dirty();
     return n;
   }
 
