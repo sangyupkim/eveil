@@ -55,6 +55,7 @@ export function itemIcon(it) {
   if (BASES[it.base]?.type === 'pet') return petIcon(BASES[it.base].pet);
   if (ELIXIRS[it.base]) return iconUrl(ITEM_LOOK[it.base]?.icon ?? 84, ELIXIRS[it.base].color);
   if (it.base === 'myth_mark') return iconUrl(1011, '#ff4a8a'); // 신화의 흔적: 분홍 테두리
+  { const g = BASES[it.base]; if (g?.type === 'gem' && g.grade >= 10) return iconUrl(ITEM_LOOK[it.base]?.icon ?? 1000, '#ff7ad0', 'saturate(1.5) brightness(1.2)'); } // v0.51.7 무한 보석: 분홍 테두리 · 밝게
   if (it.base === 'dungeon_key2') return iconUrl(1006, '#5aa8ff'); // 강화 열쇠: 푸른 테두리
   if (it.base === 'dungeon_key3') return iconUrl(1007, '#ff4a6a'); // 극한 열쇠: 붉은 테두리
   if (it.base === 'ore') return oreIcon();

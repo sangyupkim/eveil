@@ -54,7 +54,7 @@ import { MUTS as MUTS_ } from '../data/mutators.js';
 const NEED_NAMES = { melee: '근접 무기 (검 · 도끼 · 둔기 · 단검 · 대방패)', bow: '활' }; // v0.50 스킬이 쓰는 무기
 // v0.50 초월 강화 숫자 색: +21 금색 · +50 붉은 금 · +100 무지개
 const plusCls = (n) => n >= 100 ? ' plusRb' : n >= 50 ? ' plusRg' : n > 20 ? ' plusG' : '';
-import { GEMS, GEM_GRADES, gemId } from '../data/legends.js';
+import { GEMS, GEM_GRADES, gemId, gemGradeName } from '../data/legends.js';
 import { fuseMany, fuseCount, greatCount, greatSlots, applyShard, canApply, lockMax, shardCost, shardVals, shardGrade, gradeName as sgName, gradeColor, useGrade, pullGrade, pullResearch, pullCost as sgCost, pullPool, dustOf, grindShard, fuseShard, pullShard } from '../game/shards.js';
 import { HERBS, HERB_IDS, GROW_IDS, herbsAt, RECIPES, ELIXIRS } from '../data/potions.js';
 import { RARITY_IDS, junkCount, discardJunk } from '../game/town.js';
@@ -100,9 +100,14 @@ const TITLES = { sage: '현자 에라', raid: '왕좌 원정', arts: '수련 비
 // 진행 게이지 (시작 ~ 끝 시각). 예전 저장은 시작 시각이 없어 dur로 어림
 const gauge = (from, until, dur = 3600000, color = '#7ad0ff') => { const f = from || until - dur, k = Math.max(0, Math.min(1, (Date.now() - f) / Math.max(1, until - f))); return `<div class="mini" style="margin-top:3px"><i style="width:${(k * 100).toFixed(1)}%;background:linear-gradient(#bfe8ff,${color})"></i></div>`; };
 // 보석 합치기 · 빼기 값
-const mergeCost = (k) => 200 * (k + 1) ** 2;
-// 합치기 성공률: 조각난 · 흐린 100%, 그 위로 한 등급마다 -10% (최소 35%)
-const mergeChance = (k) => (k < 2 ? 1 : Math.max(0.35, 1 - 0.1 * (k - 1)));
+// v0.51.7 태초 이상(무한 보석 만들기)은 금화 10배
+const mergeCost = (k) => 200 * (k + 1) ** 2 * (k >= 9 ? 10 : 1);
+// 합치기 성공률: 조각난 · 흐린 100%, 그 위로 한 등급마다 -10% (최소 35%) + 장인의 기운 (v0.51.7: 실패할 때마다 그 보석 +10%, 성공하면 0)
+const mergeBase = (k) => (k < 2 ? 1 : Math.max(0.35, 1 - 0.1 * (k - 1)));
+const gemJang = (st, base) => st.gemJang?.[base] || 0;
+const mergeChance = (k, st = null, base = null) => Math.min(1, mergeBase(k) + (st && base ? gemJang(st, base) : 0));
+// 합치기 한 번: 성공 → 3개 써서 위 등급 하나, 실패 → 1개만 잃고 장인의 기운 +10%
+const mergeOnce = (st, base) => { const b = BASES[base]; if (Math.random() < mergeChance(b.grade, st, base)) { resTake(st, base, 3); if (st.gemJang) delete st.gemJang[base]; return gemId(b.gem, b.grade + 1); } resTake(st, base, 1); (st.gemJang ||= {})[base] = +(gemJang(st, base) + 0.1).toFixed(2); return null; };
 // v0.49.11 제련에 쓸 파편 목록: 가방 · 창고 묶음을 값마다 [열쇠 'uid|번호', 파편 {id, v}]
 // v0.49.89 파편 칸 이름: 옵션 이름만 (긴 이름은 줄여서)
 const SHARD_SHORT = { bossDmg: '보스 피해', magicFind: '아이템 발견', skillExp: '숙련 획득', hpRegen: 'HP 회복', mpRegen: 'MP 회복', goldFind: '골드 획득' };
@@ -205,7 +210,7 @@ export class Windows {
     tabs.innerHTML = list.map((k) => `<button class="tab txt${k === this.kind ? ' on' : ''}" data-tab="${k}"><span>${TAB_TXT[k]}</span></button>`).join('');
     // v0.51.4 지갑: 골드 · 강화석은 쓰는 창(상점 · 마을 건물)의 제목 줄 오른쪽에만
     { let wl = $('.wallet', this.el); if (!wl) { wl = document.createElement('span'); wl.className = 'wallet'; $('.fs-head', this.el).insertBefore(wl, $('.close', this.el)); }
-      const on = this.kind === 'shop' || this.kind === 'town', st0 = this.w.st; wl.hidden = !on;
+      const on = this.kind === 'shop' || this.kind === 'town' || this.kind === 'gems', st0 = this.w.st; wl.hidden = !on;
       if (on) wl.innerHTML = `<b>${st0.gold.toLocaleString()} G</b><img src="${oreIcon()}" alt="" title="강화석" /><b>${townOf(st0).ore.toLocaleString()}</b>`; }
     tabs.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => this.show(b.dataset.tab); });
     const on = tabs.querySelector('.tab.on'); if (on) { const l = on.offsetLeft - tabs.offsetLeft; if (l < tabs.scrollLeft || l + on.offsetWidth > tabs.scrollLeft + tabs.clientWidth) tabs.scrollLeft = l - 8; }
@@ -1431,9 +1436,9 @@ export class Windows {
       const R = `<h3>가진 보석 <span class="cnt">${have.length}</span><button class="btn gold" data-gmergeall="1" style="margin-left:auto">등급별 합치기</button></h3><div class="grid fGrid">${have.map((x) => `<div class="cell${x.base === this.gemMerge ? ' sel' : ''}" data-gmsel="${x.base}" title="${esc(BASES[x.base].name)}">${ico(x)}<span class="q">${x.qty}</span></div>`).join('') || '<div class="note">없음</div>'}</div>`;
       const x = have.find((y) => y.base === this.gemMerge);
       if (!x) return ['<h3>합치기</h3><div class="forgeSlot empty"></div>', R];
-      const b = BASES[x.base], up = b.grade + 1 < GEM_GRADES.length, cost = mergeCost(b.grade), ch = mergeChance(b.grade), nx = up ? gemId(b.gem, b.grade + 1) : null;
+      const b = BASES[x.base], up = b.grade + 1 < GEM_GRADES.length, cost = mergeCost(b.grade), ch = mergeChance(b.grade, st, x.base), jg = gemJang(st, x.base), nx = up ? gemId(b.gem, b.grade + 1) : null;
       let L = `<div class="forgeTop"><div class="cell forgeSlot">${ico(x)}</div><div><div class="nm">${b.name}</div><div class="note">${STAT_NAMES[GEMS[b.gem].stat]} +${GEM_GRADES[b.grade].v} · ${x.qty}개</div></div></div>`;
-      if (up) L += `<div class="kv tight"><span>결과</span><b>${BASES[nx]?.name || ''} <em>${STAT_NAMES[GEMS[b.gem].stat]} +${GEM_GRADES[b.grade + 1].v}</em></b><span>필요</span><b style="${x.qty < 3 ? 'color:#ff7060' : ''}">3개 <small class="note">/ ${x.qty}</small></b><span>금화</span><b style="${st.gold < cost ? 'color:#ff7060' : ''}">${cost.toLocaleString()} G</b><span>성공 확률</span><b>${Math.round(ch * 100)}%</b></div><div class="btns forgeGo"><button class="btn gold big" data-gmerge="${x.base}" ${x.qty < 3 || st.gold < cost ? 'disabled' : ''}>합치기</button></div>`;
+      if (up) L += `<div class="kv tight"><span>결과</span><b>${BASES[nx]?.name || ''} <em>${STAT_NAMES[GEMS[b.gem].stat]} +${GEM_GRADES[b.grade + 1].v}</em></b><span>필요</span><b style="${x.qty < 3 ? 'color:#ff7060' : ''}">3개 <small class="note">/ ${x.qty}</small></b><span>금화</span><b style="${st.gold < cost ? 'color:#ff7060' : ''}">${cost.toLocaleString()} G</b><span>성공 확률</span><b class="${jg ? 'goldTxt' : ''}">${Math.round(ch * 100)}%</b>${jg ? `<span>장인의 기운</span><b>+${Math.round(jg * 100)}%</b>` : ''}</div><div class="btns forgeGo"><button class="btn gold big" data-gmerge="${x.base}" ${x.qty < 3 || st.gold < cost ? 'disabled' : ''}>합치기</button></div>`;
       else L += '<div class="note">최고 등급</div>';
       return [L, R];
     });
@@ -1843,15 +1848,15 @@ export class Windows {
       const have = [...new Set([...st.inv, ...vault().items].filter((x) => BASES[x?.base]?.type === 'gem').map((x) => x.base))].map((base) => ({ base, qty: resCount(st, base) }));
       // v0.45.5 합칠 등급을 고른다 (등급마다 합칠 횟수 · 금화 · 성공 확률)
       { const per = GEM_GRADES.map((G, k) => { if (k + 1 >= GEM_GRADES.length) return null; let n = 0; for (const x of have) if (BASES[x.base].grade === k) n += Math.floor(x.qty / 3); return n; });
-        const opts = per.map((n, k) => (n == null ? null : { key: k, label: `${GEM_GRADES[k + 1].pre || "보통"} 만들기`, sub: `${n}번 · ${Math.round(mergeChance(k) * 100)}%`, on: n > 0, off: !n })).filter(Boolean);
+        const opts = per.map((n, k) => (n == null || (k >= 9 && !n) ? null : { key: k, label: `${gemGradeName(k + 1)} 만들기`, sub: `${n}번 · ${Math.round(mergeBase(k) * 100)}%`, on: n > 0 && k < 9, off: !n })).filter(Boolean); // v0.51.7 무한 등급은 가진 것만 · 기본 선택은 태초까지
         if (!opts.some((o) => !o.off)) { w.ui.toast('합칠 보석이 없습니다'); audio.play('error'); return; }
         audio.play('click');
-        const pick = await gamePick('등급별 합치기', opts, '합치기', '실패하면 보석을 잃을 수 있습니다'); if (!pick?.length) return;
+        const pick = await gamePick('등급별 합치기', opts, '합치기', '실패하면 보석 하나를 잃고, 그 보석의 다음 확률이 오릅니다'); if (!pick?.length) return;
         for (let i = have.length - 1; i >= 0; i--) if (!pick.includes(BASES[have[i].base].grade)) have.splice(i, 1); }
       let ok = 0, fail = 0, lost = 0, gold = 0; const made = {};
       for (const x of have) { const b = BASES[x.base]; if (b.grade + 1 >= GEM_GRADES.length) continue; const cost = mergeCost(b.grade), nid = gemId(b.gem, b.grade + 1);
         for (let k = Math.floor(x.qty / 3); k > 0; k--) { if (st.gold < cost || resCount(st, x.base) < 3) break; st.gold -= cost; gold += cost;
-          if (Math.random() < mergeChance(b.grade)) { resTake(st, x.base, 3); resAdd(st, nid, 1); made[nid] = (made[nid] || 0) + 1; ok++; } else { const l = Math.floor(Math.random() * 3); resTake(st, x.base, l); lost += l; fail++; } } }
+          if (mergeOnce(st, x.base)) { resAdd(st, nid, 1); made[nid] = (made[nid] || 0) + 1; ok++; } else { lost += 1; fail++; } } }
       if (!ok && !fail) { w.ui.toast('합칠 보석이 없습니다'); audio.play('error'); return; }
       audio.play('rankup');
       this.popup('등급별 합치기', `<div class="kv"><span>성공</span><b>${ok}번</b><span>실패</span><b>${fail}번 · ${lost}개 잃음</b><span>금화</span><b>${gold.toLocaleString()} G</b></div>` + Object.entries(made).map(([id, n]) => `<div class="aff" style="color:#c0b0ff">${BASES[id].name} +${n}</div>`).join(''));
@@ -1903,11 +1908,12 @@ export class Windows {
     on('[data-school]', (el) => { this.skillSchool = el.dataset.school; this.skillSel = null; audio.play('click'); this.render(); });
     on('[data-gsel]', (el) => { this.gemSel = el.dataset.gsel; audio.play('click'); this.render(); });
     const gemItem = (key) => gearAt(st, key);
-    ask('[data-gmerge]', (el) => { const b = BASES[el.dataset.gmerge]; return ['보석 합치기', `${b.name} 3개 · 금화 ${mergeCost(b.grade).toLocaleString()} G · 성공 ${Math.round(mergeChance(b.grade) * 100)}%\n실패하면 보석을 잃을 수 있습니다`, '합치기', itemHtml({ base: el.dataset.gmerge })]; }, (el) => {
+    ask('[data-gmerge]', (el) => { const b = BASES[el.dataset.gmerge]; return ['보석 합치기', `${b.name} 3개 · 금화 ${mergeCost(b.grade).toLocaleString()} G · 성공 ${Math.round(mergeChance(b.grade, st, el.dataset.gmerge) * 100)}%`, '합치기', itemHtml({ base: el.dataset.gmerge })]; }, (el) => {
       const id = el.dataset.gmerge, b = BASES[id], cost = mergeCost(b.grade); if (resCount(st, id) < 3 || st.gold < cost) return;
       st.gold -= cost;
-      if (Math.random() < mergeChance(b.grade)) { resTake(st, id, 3); const nid = gemId(b.gem, b.grade + 1); addItem(st, makeItem(nid, { qty: 1 }, st)); audio.play('rankup'); this.popup('합치기 성공', `<div class="aff" style="color:#c0b0ff">${BASES[nid].name}</div>`); }
-      else { const lost = Math.floor(Math.random() * 3); resTake(st, id, lost); audio.play('error'); this.popup('합치기 실패', `<div class="aff">${b.name} ${lost}개를 잃었습니다</div>`); } // 실패: 0~2개가 사라진다
+      const nid = mergeOnce(st, id);
+      if (nid) { addItem(st, makeItem(nid, { qty: 1 }, st)); audio.play('rankup'); this.popup('합치기 성공', `<div class="aff" style="color:#c0b0ff">${BASES[nid].name}</div>`); }
+      else { audio.play('error'); this.popup('합치기 실패', `<div class="aff">${b.name} 1개를 잃었습니다</div><div class="note">장인의 기운 +${Math.round(gemJang(st, id) * 100)}%</div>`); } // v0.51.7 실패: 1개만 사라지고 다음 확률이 오른다
       w.ui.dirty(); this.render();
     });
     ask('[data-gput]', (el) => { const i = el.dataset.gput.lastIndexOf('|'), it = gearAt(st, el.dataset.gput.slice(0, i)), g = el.dataset.gput.slice(i + 1); return it ? ['보석 끼우기', `${itemName(it)}에 끼웁니다`, '끼우기', itemHtml({ base: g }, gemSub(g))] : null; }, (el) => { const i = el.dataset.gput.lastIndexOf('|'), key = el.dataset.gput.slice(0, i), id = el.dataset.gput.slice(i + 1), it = gemItem(key); if (!it || it.gems.length >= it.sockets || resCount(st, id) < 1) return; resTake(st, id, 1); it.gems.push(id); if (key.startsWith('v:')) vaultSave(); audio.play('rankup'); w.refreshGear(); w.ui.dirty(); this.render(); });

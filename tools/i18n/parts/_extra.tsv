@@ -42,3 +42,13 @@
 자리를 비운 {}시간 동안 마을이 일했습니다	The town kept working during the {} h you were away
 외 {}개	+{} more
 위험도 {}	Danger {}
+무한의	Infinite
+실패하면 보석 하나를 잃고, 그 보석의 다음 확률이 오릅니다	On failure you lose one gem, and that gem's next chance goes up
+실패하면 보석 하나를 잃습니다	On failure you lose one gem
+
+보석을 끝없이 키울 수 있습니다.	Gems can now be upgraded endlessly.
+{}. 태초 다음 등급 「무한의」 보석이 생겼습니다. 무한의 보석부터는 +{} … 끝없이 합칠 수 있고, 한 단계마다 능력치가 {}씩 오릅니다.	{}. A new grade above Primordial: \"Infinite\" gems. From Infinite on, you can keep merging to +{} … forever, and each step adds {} to the stat.
+{}. 보석 합치기에 실패하면 보석을 하나만 잃고, 그 보석의 다음 성공 확률이 올라갑니다 (장인의 기운).	{}. A failed gem merge now loses only one gem, and that gem's next success chance goes up (Artisan's Spirit).
+{}. 지옥 · 혼돈 · 무간처럼 깊은 사냥터에서는 보석이 두 배로 떨어집니다.	{}. Deep hunting grounds such as Hell, Chaos and Mugan drop twice as many gems.
+{}. 태초 이상 보석을 합칠 때는 금화가 더 듭니다.	{}. Merging Primordial gems and above costs more gold.
+{}. 메뉴 단추와 스킬 아이콘 여럿이 새 그림으로 바뀌었고, 골드 · 강화석은 상점 · 건물 · 보석상 창에서 보입니다.	{}. The menu buttons and many skill icons have new art, and gold · enhancement stones are now shown in shop, building and jeweler windows.

@@ -148,7 +148,7 @@ export const BASES = {
   jade_ring: { name: '비취 반지', slot: 'ring', minLvl: 14 },
   sapphire_ring: { name: '청옥 반지', slot: 'ring', minLvl: 22 },
   ruby_ring: { name: '홍옥 반지', slot: 'ring', minLvl: 30 },
-  ...Object.fromEntries(Object.entries(GEMS).flatMap(([g, x]) => GEM_GRADES.map((gr, k) => [gemId(g, k), { name: `${gr.pre ? gr.pre + ' ' : ''}${x.name}`, type: 'gem', gem: g, grade: k, stack: true, price: 250 * (k + 1) ** 2, shop: false }]))),
+  ...Object.fromEntries(Object.entries(GEMS).flatMap(([g, x]) => GEM_GRADES.map((gr, k) => [gemId(g, k), { name: `${gr.pre ? gr.pre + ' ' : ''}${x.name}${gr.suf ? ' ' + gr.suf : ''}`, type: 'gem', gem: g, grade: k, stack: true, price: 250 * (k + 1) ** 2, shop: false }]))),
   dungeon_key: { name: '던전 열쇠', type: 'key', price: 1500, stack: true },
   odd_map: { name: '알 수 없는 지도 조각', type: 'mat', price: 0, stack: true, icon: 2300 }, // v0.46 연구소에서 분석 → 미지의 땅 조각 · 소문
   map_piece: { name: '미지의 땅 조각', type: 'mat', price: 0, stack: true, icon: 2322 }, // v0.44.47 미지의 땅

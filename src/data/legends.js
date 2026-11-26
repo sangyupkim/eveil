@@ -28,8 +28,12 @@ export const GEMS = {
 // 보석 5단계: 상점은 조각난 것만, 그 위는 몬스터 · 상자에서만
 export const GEM_GRADES = [{ pre: '조각난', v: 2, lvl: 1 }, { pre: '흐린', v: 3, lvl: 12 }, { pre: '', v: 5, lvl: 25 }, { pre: '빛나는', v: 7, lvl: 40 }, { pre: '완벽한', v: 10, lvl: 55 },
   { pre: '찬란한', v: 14, lvl: 75 }, { pre: '고대의', v: 19, lvl: 100 }, { pre: '신성한', v: 25, lvl: 125 }, { pre: '영원의', v: 32, lvl: 150 }, { pre: '태초의', v: 40, lvl: 175 }];
-// 몬스터 레벨에 맞는 등급 (가끔 한 단계 위)
-export const gemGradeFor = (lv, rng = Math.random) => { let k = 0; GEM_GRADES.forEach((g, i) => { if (lv >= g.lvl) k = i; }); return Math.min(GEM_GRADES.length - 1, k + (rng() < 0.1 ? 1 : 0)); };
+// v0.51.7 무한 보석: 태초 다음은 「무한의」(+48), 그 위는 「무한의 ○○ +1, +2 …」 한 단계마다 +8. 떨어지는 것은 태초까지 (위로는 합치기로만)
+export const GEM_TOP_DROP = 9, GEM_INF = 10;
+for (let n = 0; n <= 40; n++) GEM_GRADES.push({ pre: '무한의', suf: n ? `+${n}` : '', v: 48 + 8 * n, lvl: Infinity });
+export const gemGradeName = (k) => { const g = GEM_GRADES[k]; return g ? [g.pre || '보통', g.suf].filter(Boolean).join(' ') : ''; };
+// 몬스터 레벨에 맞는 등급 (가끔 한 단계 위, 태초까지)
+export const gemGradeFor = (lv, rng = Math.random) => { let k = 0; GEM_GRADES.forEach((g, i) => { if (lv >= g.lvl) k = i; }); return Math.min(GEM_TOP_DROP, k + (rng() < 0.1 ? 1 : 0)); };
 export const gemId = (g, k) => `gem_${g}_${k}`;
 // 등급(구멍 수): 희귀 0~1 · 영웅 1~2 · 전설 2
 export const socketRoll = (rarity, rng) => (rarity === 'rare' ? (rng() < 0.35 ? 1 : 0) : rarity === 'hero' ? 1 + (rng() < 0.4 ? 1 : 0) : rarity === 'legend' ? 2 : rarity === 'myth' ? 3 : 0);

@@ -6,7 +6,7 @@ import { SLOTS } from '../data/items.js';
 import { R, randInt, chance, weighted, pick } from './rng.js';
 import { rollShard, SHARD } from './shards.js';
 import { makeItem, makeBook, rollBase, rollRarity, isStack, makeNamed, namedOf } from './items.js';
-import { NAMED_CHANCE, GEM_DROP, GEMS, GEM_GRADES, gemId, gemGradeFor } from '../data/legends.js';
+import { NAMED_CHANCE, GEM_DROP, GEMS, GEM_GRADES, GEM_TOP_DROP, gemId, gemGradeFor } from '../data/legends.js';
 
 // 각성 등급 1 · 2 · 3 · 4가 정해진 스킬북이 나오기 시작하는 몬스터 레벨
 const AWAKEN_LV = [20, 60, 150, 300, 420]; // v0.42 전직 단계와 같게
@@ -51,7 +51,9 @@ export function rollLoot(mon, opt = {}, st = null, rng = R) {
   const zid = mon.sp?.zone?.id, nc = mon.dungeon ? (mon.tier === 'boss' ? NAMED_CHANCE.dungeon : 0) : NAMED_CHANCE[mon.tier] || 0;
   if (zid && nc && chance(nc * dropMult, rng)) { const pool = namedOf(zid); if (pool.length) out.push({ kind: 'item', item: makeNamed(pick(pool, rng), st, mon.level) }); }
   // 보석: 깊은 곳일수록 높은 등급
-  if (chance((GEM_DROP[mon.tier] || 0) * dropMult, rng)) {
+  // v0.51.7 태초가 떨어지는 깊은 곳(몬스터 레벨 175~: 지옥 · 혼돈 · 무간)은 보석이 두 배로 (무한 보석 재료)
+  const gemK = mon.level >= GEM_GRADES[GEM_TOP_DROP].lvl ? 2 : 1;
+  if (chance((GEM_DROP[mon.tier] || 0) * dropMult * gemK, rng)) {
     const k = gemGradeFor(mon.level, rng);
     out.push({ kind: 'item', item: makeItem(gemId(pick(Object.keys(GEMS), rng), k), { qty: 1 }, st) });
   }
