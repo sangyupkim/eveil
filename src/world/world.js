@@ -7,7 +7,7 @@ import { tierCurveK } from '../data/tiercurve.js';
 import { awakenOk } from '../data/awaken_skills.js';
 import { DUNGEON_X, entranceOf, MAX_STAGE, stageMods, dungeonLevel, layout as dungeonLayout, cellPos, N, DUNGEON_DIFFS } from '../data/dungeons.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
-import { gemGradeFor } from '../data/legends.js';
+import { gemGradeFor, gemId, GEM_GRADES, GEM_TOP_DROP } from '../data/legends.js';
 export const TIER_NAMES = ['평온', '악몽', '지옥', '혼돈', '무간지옥']; // v0.42 혼돈 = 각성 380 ~ 500 · v0.49.75 무간지옥 = 끝없는 층 (data/mugan.js)
 import { TITLE_AT, titleKey, titleName, perkChoices, UNIQUES } from '../data/titles.js';
 // 게임 월드: 플레이어 조작 · 몬스터 AI · 전투 · 스킬 · 드랍 · 사망 · 자동 사냥
@@ -1169,6 +1169,14 @@ export class World {
     { const q = dg.stage >= 7 ? 3 : dg.stage >= 4 ? (Math.random() < 0.5 ? 3 : 2) : 2, bk = rollBook({ level: lv, tier: 'boss', sp: { zone: zn } }, st, Math.random, q); if (bk) this.dropGround({ kind: 'item', item: bk }, m.pos.x - 1.2, m.pos.z + 1); }
     this.dropGround({ kind: 'gold', amount: Math.round(lv * 60 * (1 + dg.stage * 0.2) * D.loot * MB.gold) }, m.pos.x, m.pos.z - 1);
     if (dg.diff > 1) { const e = dropEss(st, lv, 'boss', D.loot); if (e) this.ui.log(`${BASES[e.id].name} +${e.n}`, '#c8b0ff'); }
+    // v0.52.1 태초 보석: 강화 · 극한 던전(레벨 175~)에서 처음 넘은 단계마다 1 + 단계/4 (극한 +1) — 무한 보석 재료
+    { const key = zn.id + '|' + (dg.diff || 1), F = (st.dgFirst ||= {}), prev = F[key] || 0;
+      if (dg.diff > 1 && dg.stage > prev && lv >= GEM_GRADES[GEM_TOP_DROP].lvl) {
+        const n = 1 + Math.floor(dg.stage / 4) + (dg.diff >= 3 ? 1 : 0), K = ['ruby', 'emerald', 'sapphire', 'amethyst', 'diamond'];
+        for (let k = 0; k < n; k++) this.dropGround({ kind: 'item', item: makeItem(gemId(K[Math.floor(Math.random() * K.length)], GEM_TOP_DROP), { qty: 1 }, st) }, m.pos.x - 1.5 + k * 0.6, m.pos.z + 2);
+        this.ui.log(`첫 돌파 보상: 태초 보석 ${n}개`, '#c0b0ff');
+      }
+      F[key] = Math.max(prev, dg.stage); }
     if (myth) { this.fx.shake(0.6); this.fx.pillar(m.pos.x, m.pos.z, 0xff4a8a, 3, 8, 2.5); sfx('rare'); this.ui.toast('신화 장비!', '#ff4a8a'); (st.rec ||= {}).myths = (st.rec.myths || 0) + myth; }
     this.ui.toast(`던전 ${dg.stage}단계 · ${D.name} 돌파!`, '#ffd84a');
     sfx('awaken');

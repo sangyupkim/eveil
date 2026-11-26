@@ -12,6 +12,11 @@ import { MATERIALS, MAT_DROP, SETS, SET_SLOTS, craftCost, upgradeMats, upgradeNe
 import { BASES } from '../data/items.js';
 import { vault, vaultAdd, vaultSave, vaultSize } from './vault.js';
 import { lifeProgress } from './daily.js';
+import { GEMS, gemId, gemGradeFor } from '../data/legends.js';
+import { TIER_STEP } from '../data/world.js';
+const GEM_KINDS = Object.keys(GEMS);
+// 세계 단계만큼 더하는 레벨 (world.tierOffset과 같은 셈 — 마을 쪽에서 쓰려고)
+export const worldOffset = (st) => { const wt = Math.min(5, Math.max(1, st.worldTier || 1)), fl = Math.max(1, Math.min(st.muganMax || 1, st.mugan || 1)); return wt >= 5 ? 380 + 10 * fl : [0, TIER_STEP, TIER_STEP * 2, 380][wt - 1]; };
 import { shardFrom, rollShard, mergeShard } from './shards.js';
 
 export function townOf(st, now = Date.now()) {
@@ -602,6 +607,9 @@ export function claim(st, id, now = Date.now(), rng = Math.random, put = null) {
   }
   { const nSh = Math.min(4, Math.floor(rolls * 0.0004 + rng())); for (let k = 0; k < nSh; k++) out.items.push(rollShard(lvl, st, rng)); }
   { const nKey = Math.min(3, Math.floor(rolls * 0.0003 + rng())); if (nKey > 0) out.items.push(makeItem('dungeon_key', { qty: nKey }, st)); }
+  // v0.52.1 파견 보석: 긴 파견일수록 더 (짧은 사냥 5% … 깊은 원정 5~6개), 등급은 세계 단계까지 더한 레벨로 (지옥 이상이면 태초)
+  { const nG = Math.floor(ex.mult * 0.05 * lootK + rng()), gl2 = lvl + worldOffset(st);
+    for (let k = 0; k < nG; k++) out.items.push(makeItem(gemId(GEM_KINDS[Math.floor(rng() * GEM_KINDS.length)], gemGradeFor(gl2, rng)), { qty: 1 }, st)); out.gems = nG; }
   out.mats = Math.round(ex.mult * 3 * eff * (1 + SHELTER.mats * sh));
   t.mats[zn.id] = (t.mats[zn.id] || 0) + out.mats;
   st.gold += out.gold;
