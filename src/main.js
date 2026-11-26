@@ -68,7 +68,7 @@ globalThis.__stage = stage;
   // 관리 페이지에서 고친 밸런스를 게임 표에 덮는다 (몬스터 · 드랍 · 챕터 · 설정 · 아이템)
   try { const { applyOverrides } = await import('./data/overrides.js'); const n = applyOverrides(await Promise.race([cloud.balance(), new Promise((r) => setTimeout(() => r(null), 5000))])); /* v0.44.18 서버가 늦어도 5초 뒤 넘어간다 */ if (n) console.info(`밸런스 덮어쓰기 ${n}칸`); } catch (e) { console.warn('밸런스 덮어쓰기 실패', e); }
   bar(0.3);
-  const first = [...DATA.tiles.grassland.imgs, 'icons.webp', 'icons2.webp', 'icons3.webp', 'icons4.webp',
+  const first = [...DATA.tiles.grassland.imgs, 'icons.webp', 'icons2.webp', 'icons3.webp', 'icons4.webp', 'icons5.webp',
     ...['cloth_shirt', 'cloth_pants', 'cloth_sandals', 'default_hands'].flatMap((l) => ['m', 'f'].map((sx) => `avatar/${sx}/${l}.webp`)), 'avatar/m/head_short.webp', 'avatar/f/head_long.webp'];
   let n = 0;
   // v0.44.18 그림 하나가 안 와도 멈추지 않게: 하나당 최대 10초, 전체 최대 20초 (빠진 그림은 쓸 때 다시 받는다)

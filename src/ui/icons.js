@@ -13,10 +13,10 @@ export const herbIcon = (id) => iconUrl(HERB_ICON[id]?.[0] ?? 2013, HERBS[id].co
 const SHEET = 'icons.webp', S = 64;
 export const ESS_COLOR = { 2: '#8ab0ff', 3: '#c58cff', 4: '#ff9a4a', 5: '#ff4a6a' };
 const cache = new Map();
-export const iconsReady = () => Promise.all([image(SHEET).p, image('icons2.webp').p, image('icons3.webp').p, image('icons4.webp').p, image(ENCHANT_SHEET).p]); // 넷째 (2000번부터, v0.49.24) · 둘째 묶음 (256번부터, v0.41) · 셋째 (1000번부터, v0.44.8)
+export const iconsReady = () => Promise.all([image(SHEET).p, image('icons2.webp').p, image('icons3.webp').p, image('icons4.webp').p, image('icons5.webp').p, image(ENCHANT_SHEET).p]); // 다섯째 (4000번부터, v0.51.2 새 스킬 그림) // 넷째 (2000번부터, v0.49.24) · 둘째 묶음 (256번부터, v0.41) · 셋째 (1000번부터, v0.44.8)
 // 번호 → [묶음 그림, 그 안 번호]
 const ENCHANT_SHEET = '../drive/enchant_icons.webp'; // v0.50.1 마법이 깃든 장비 (3000번부터)
-const sheetOf = (i) => (i >= 3000 ? [ENCHANT_SHEET, i - 3000] : i >= 2000 ? ['icons4.webp', i - 2000] : i >= 1000 ? ['icons3.webp', i - 1000] : i >= 256 ? ['icons2.webp', i - 256] : [SHEET, i]);
+const sheetOf = (i) => (i >= 4000 ? ['icons5.webp', i - 4000] : i >= 3000 ? [ENCHANT_SHEET, i - 3000] : i >= 2000 ? ['icons4.webp', i - 2000] : i >= 1000 ? ['icons3.webp', i - 1000] : i >= 256 ? ['icons2.webp', i - 256] : [SHEET, i]);
 
 // 아이콘 번호 → 그림 주소 (frame: 테두리 색, 없으면 테두리 없음)
 export function iconUrl(index, frame = null, filter = '') {
@@ -164,4 +164,6 @@ export function monPortrait(type, onReady) {
 }
 // v0.49.26 UI 단추 아이콘은 모두 같은 금빛 문양 (HUD 단추 · 설정 바로가기 · 상호작용 단추). 아이템 · 스킬에는 쓰지 않는다
 export const UI_GLYPH = { menu: 15, inv: 30, skills: 28, char: 29, quest: 16, rank: 14, shop: 42, home: 19, auto: 46, sword: 1, vault: 30, build: 44, talk: 17 };
-export const uiIcon = (k) => glyphIcon(UI_GLYPH[k]);
+// v0.51.2 메뉴 단추 · 공격 단추는 금빛 새김 아이콘 그림 (Fantasy RPG UI HUD Kit에서 잘라 assets/ui/hud). 나머지는 문양
+const UI_IMG = new Set(['menu', 'inv', 'skills', 'char', 'quest', 'rank', 'shop', 'sword']);
+export const uiIcon = (k) => (UI_IMG.has(k) ? `assets/ui/hud/${k}.webp` : glyphIcon(UI_GLYPH[k]));

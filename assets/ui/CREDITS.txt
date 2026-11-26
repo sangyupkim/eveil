@@ -1,0 +1,8 @@
+v0.51.2 새로 쓴 무료 에셋 (사용자가 모아 드라이브 「에베이에셋」에 올린 묶음)
+
+assets/ui/hud/*.webp — Fantasy_RPG_UI_HUD_Kit (UI_Sheet_2: 톱니 · 주머니 · 두루마리 · 물약 · 쌍검 · 투구 · 책 · 왕관을 잘라 냄)
+  묶음 안에 라이선스 글이 없음 — 출처 페이지의 조건을 확인해 둘 것
+assets/flare/icons5.webp (스킬 그림, 4000번부터)
+  - FrostMage_Free (Craftpix 무료 묶음, https://craftpix.net/file-licenses/)
+  - ability_icon_set_free (_Blizzard · _Heal · _Immortal_Flame · _Mana_Drain)
+  - spell set (fire bolt lvl1~3 · revive · combine power)
