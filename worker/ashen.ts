@@ -208,8 +208,10 @@ export async function ashen(db: DB, d: Record<string, unknown>, ip: string, admi
           to = byNick.k.split('/')[0];
         }
       }
-      await db.prepare('INSERT INTO ash_mail (uid, title, body, gold, at) VALUES (?, ?, ?, ?, ?)').bind(to, title, body, gold, now).run();
-      return { ok: true, to };
+      // v0.52.6 관리 우편에 아이템 (복구 등): [{ base, rarity, ilvl, … }] 최대 20개, 받으면 창고로 (클라이언트가 새 번호를 붙인다)
+      const items = Array.isArray(d.items) ? (d.items as unknown[]).filter((x) => x && typeof x === 'object' && typeof (x as { base?: unknown }).base === 'string').slice(0, 20) : [];
+      await db.prepare('INSERT INTO ash_mail (uid, title, body, gold, at, items) VALUES (?, ?, ?, ?, ?, ?)').bind(to, title, body, gold, now, items.length ? JSON.stringify(items) : null).run();
+      return { ok: true, to, items: items.length };
     }
     if (type === 'ash_admin_mails') {
       const r = await db.prepare('SELECT m.id, m.uid, m.title, m.gold, m.at, (SELECT COUNT(*) FROM ash_mail_got g WHERE g.mid = m.id) AS got FROM ash_mail m ORDER BY m.id DESC LIMIT 50').all();

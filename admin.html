@@ -60,6 +60,7 @@
       <label>제목</label><input id="m-title" maxlength="40" />
       <label>내용</label><textarea id="m-body" rows="3" maxlength="500"></textarea>
       <label>금화</label><input id="m-gold" type="number" min="0" value="0" />
+      <label>아이템 (JSON 배열, 비워 두면 없음) — 복구할 장비 등. 예: [{"base":"rune_blade","rarity":"hero","ilvl":24}]</label><textarea id="m-items" rows="4" placeholder='[{"base":"...","rarity":"hero","ilvl":24,"affixes":[]}]'></textarea>
       <div class="bar" style="margin-top:8px"><button id="m-send" class="pri">보내기</button></div>
     </div>
     <div class="card"><b>보낸 우편</b> <button id="m-reload">새로 고침</button><div class="list" id="m-list"></div></div>
@@ -147,9 +148,12 @@
       const to = $('m-to').value.trim(), gold = Number($('m-gold').value) || 0;
       if (!to || !$('m-title').value.trim()) { status('받는 사람과 제목을 적어 주세요', true); return; }
       if (to === '*' && !confirm(`모든 계정에 ${gold.toLocaleString()} G를 보낼까요?`)) return;
-      const r = await admin({ type: 'ash_admin_mail', to, title: $('m-title').value, body: $('m-body').value, gold });
-      status(r.ok ? `보냈습니다 → ${r.to === '*' ? '모두' : r.to}` : ERR[r.error] || '보내지 못했습니다', !r.ok);
-      if (r.ok) { $('m-title').value = ''; $('m-body').value = ''; loadMails(); }
+      let items = [];
+      if ($('m-items').value.trim()) { try { items = JSON.parse($('m-items').value); if (!Array.isArray(items)) items = [items]; } catch (e) { status('아이템 JSON이 잘못되었습니다', true); return; } }
+      if (items.length && to === '*' && !confirm(`모든 계정에 아이템 ${items.length}개를 보낼까요?`)) return;
+      const r = await admin({ type: 'ash_admin_mail', to, title: $('m-title').value, body: $('m-body').value, gold, items });
+      status(r.ok ? `보냈습니다 → ${r.to === '*' ? '모두' : r.to}${r.items ? ` · 아이템 ${r.items}개` : ''}` : ERR[r.error] || '보내지 못했습니다', !r.ok);
+      if (r.ok) { $('m-title').value = ''; $('m-body').value = ''; $('m-items').value = ''; loadMails(); }
     };
     $('m-reload').onclick = () => loadMails();
     async function loadMails() {
