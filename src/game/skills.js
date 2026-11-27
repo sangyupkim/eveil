@@ -99,7 +99,7 @@ export function variantsOf(id) {
 }
 export const VARIANT_RANKS = [25, 50, 100];
 // v0.52.3 변형 바꾸기 금화: 높은 차수 · 높은 랭크 변형일수록 비싸다. v0.52.4 랭크 100은 훨씬 비싸게 (×40 — 1차 32만 · 5차 800만, 고민하고 바꾸도록)
-const VAR_COST_K = { 25: 1, 50: 2, 100: 40 };
+const VAR_COST_K = { 25: 1, 50: 8, 100: 40 }; // v0.52.5 50도 올림 (×2 → ×8, 100과 차이가 너무 크지 않게)
 export const variantCost = (id, r) => { const sk = SKILLS[id], c = sk.chasu || Math.max(1, Math.min(5, (sk.tier || 1) - 1)); return Math.round(8000 * c * c * (VAR_COST_K[r] || r / 25)); };
 export const modsOf = (s) => Object.values(s?.mod || {});
 // 랭크 효과: 10까지는 랭크마다 가득, 그 뒤는 절반씩
