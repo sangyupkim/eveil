@@ -208,5 +208,6 @@ export const cloud = {
     if (r.ok) this.savedAt = now;
     if (r.error === 'auth') this.logout();
     if (r.error === 'moved') this.kick();
+    if (r.error === 'behind') this.onBehind?.(); // v0.52.7 서버에 더 진행된 저장이 있다 (이 기기 진행이 낡음)
   },
 };

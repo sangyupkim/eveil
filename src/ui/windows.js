@@ -1606,7 +1606,9 @@ export class Windows {
       audio.play('click'); msg.textContent = '…';
       const r = await cloud.sign(el.dataset.link, id, pw);
       if (!r.ok) { msg.textContent = cloudError(r.error); return; }
-      await cloud.claim(st.cid);
+      const cl = await cloud.claim(st.cid);
+      // v0.52.7 서버에 이 캐릭터의 더 진행된 저장이 있으면 덮지 않고 그것으로 다시 연다 (예전엔 이 기기의 낡은 진행이 서버를 덮었다)
+      if (cl?.ok && cl.data && window.__adoptRemote?.(cl.data)) { w.ui.toast(`계정 ${r.id}에 연동했습니다 — 서버의 더 진행된 저장으로 다시 엽니다`, '#ffd84a'); audio.play('rankup'); return; }
       if (st.nick) { const n = await cloud.nick(st.cid, st.nick); if (n.ok) st.nickOk = true; else window.__askNick?.(cloudError(n.error)); }
       else window.__askNick?.();
       this.save?.(true); window.__chatRe?.();

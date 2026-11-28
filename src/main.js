@@ -212,7 +212,8 @@ globalThis.__stage = stage;
       const c = await cloud.claim(st?.cid || sel);
       $('#btnPlay').disabled = false;
       const remote = c.ok && !fresh ? fixSave(c.data) : null;
-      if (remote && (!st || (remote.savedAt || 0) > (st.savedAt || 0))) { remote.cid ||= sel; st = remote; saveChar(st); }
+      // v0.52.7 어느 쪽이 더 진행됐나는 플레이 시간으로 (저장 시각만 보면 로그인 없이 잠깐 한 낡은 진행이 「더 새 것」이 되어 서버의 새 진행을 덮었다)
+      if (remote && (!st || newerSave(remote, st))) { remote.cid ||= sel; st = remote; saveChar(st); }
     }
     if (!st) { import('./ui/ask.js').then((m) => m.gameConfirm('저장을 불러오지 못했습니다', '', '확인', '', true)); return; }
     setLast(st.cid);
@@ -253,6 +254,9 @@ globalThis.__stage = stage;
 }
 
 // 공지 목록 창 (제목 화면 · 메뉴)
+// v0.52.7 두 저장 중 더 진행된 쪽: 플레이 시간이 1분 넘게 많으면 그쪽, 비슷하면 나중에 저장한 쪽
+export const newerSave = (a, b) => { const pa = a?.playTime || 0, pb = b?.playTime || 0; return Math.abs(pa - pb) > 60 ? pa > pb : (a?.savedAt || 0) > (b?.savedAt || 0); };
+
 export function showNotices(list) {
   document.getElementById('winAlert')?.remove();
   const esc = (t) => String(t).replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' })[c]);
@@ -372,6 +376,10 @@ function startGame(stage, st) {
     window.__tabCh.postMessage({ type: 'done', cid: st.cid });
     cloud.onMoved('tab');
   });
+  // v0.52.7 서버에 더 진행된 저장이 있어 거절됨: 이 기기 진행은 낡은 것 — 저장을 멈추고 서버 진행으로 다시 연다
+  cloud.onBehind = () => { if (window.__behind) return; window.__behind = 1; window.__noSave = true; try { const L = loadChar(st.cid); if (L) { L.savedAt = 0; L.playTime = 0; localStorage.setItem(keyOf(st.cid), JSON.stringify(L)); } } catch { /* 무시 */ } hud.toast('다른 기기에서 더 진행한 저장이 있어 그 진행으로 다시 엽니다', '#ffd84a'); setTimeout(() => location.reload(), 2500); };
+  // v0.52.7 계정 연동 때 서버 저장이 더 진행됐으면 그것으로 다시 연다 (windows.js)
+  window.__adoptRemote = (data) => { const R = fixSave(data); if (!R || !newerSave(R, st)) return false; R.cid ||= st.cid; window.__noSave = true; saveChar(R); setTimeout(() => location.reload(), 1500); return true; };
   cloud.onMoved = (why) => {
     const tab = why === 'tab';
     window.__noSave = true; window.__stop = true;

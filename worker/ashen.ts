@@ -61,6 +61,7 @@ function setup(db: DB): Promise<unknown> {
       db.prepare('CREATE TABLE IF NOT EXISTS ash_tokens (token_hash TEXT PRIMARY KEY, id TEXT NOT NULL, created INTEGER NOT NULL)'),
       db.prepare('CREATE TABLE IF NOT EXISTS ash_saves (id TEXT PRIMARY KEY, data TEXT NOT NULL, at INTEGER NOT NULL, received INTEGER NOT NULL, size INTEGER)'),
       db.prepare('CREATE TABLE IF NOT EXISTS ash_saves_prev (id TEXT PRIMARY KEY, data TEXT NOT NULL, at INTEGER NOT NULL)'),
+      db.prepare('CREATE TABLE IF NOT EXISTS ash_save_hist (id TEXT NOT NULL, data TEXT NOT NULL, at INTEGER NOT NULL, saved INTEGER NOT NULL)'), // v0.52.7 복구용: 한 시간에 하나씩 12개
       db.prepare('CREATE TABLE IF NOT EXISTS ash_errors (t INTEGER, ip TEXT, ver TEXT, msg TEXT, stack TEXT, ua TEXT)'),
       // 계정마다 지금 하는 기기 하나 (토큰 해시). 다른 토큰의 저장은 'moved'로 거절한다
       db.prepare('CREATE TABLE IF NOT EXISTS ash_active (id TEXT PRIMARY KEY, token_hash TEXT NOT NULL, at INTEGER NOT NULL)'),
@@ -305,6 +306,7 @@ export async function ashen(db: DB, d: Record<string, unknown>, ip: string, admi
     await db.batch([
       db.prepare('DELETE FROM ash_saves WHERE id = ?').bind(key),
       db.prepare('DELETE FROM ash_saves_prev WHERE id = ?').bind(key),
+      db.prepare('DELETE FROM ash_save_hist WHERE id = ?').bind(key),
       db.prepare('DELETE FROM ash_names WHERE k = ?').bind(key),
       db.prepare('DELETE FROM ash_rank WHERE id = ?').bind(key),
     ]);
@@ -361,6 +363,20 @@ export async function ashen(db: DB, d: Record<string, unknown>, ip: string, admi
       let inV = 0; try { inV = vnum(JSON.parse(data).gver); } catch { /* 깨진 저장은 아래에서 */ }
       const cur = await db.prepare("SELECT json_extract(data, '$.gver') AS v FROM ash_saves WHERE id = ?").bind(key).first<{ v: string | null }>();
       if (cur?.v && vnum(cur.v) > inV) return { ok: false, error: 'old' };
+    }
+    // v0.52.7 뒤로 가는 저장 막기: 들어온 저장의 플레이 시간이 서버 저장보다 10분 넘게 적으면 거절 (예전 기기 · 로그인 안 하고 하던 낡은 진행이 새 진행을 덮던 것 — 「백섭」)
+    if (!d.force) {
+      let inPt = 0; try { inPt = Number(JSON.parse(data).playTime) || 0; } catch { /* 아래에서 */ }
+      const cur = await db.prepare("SELECT json_extract(data, '$.playTime') AS pt FROM ash_saves WHERE id = ?").bind(key).first<{ pt: number | null }>();
+      if (cur?.pt && inPt + 600 < Number(cur.pt)) return { ok: false, error: 'behind' };
+    }
+    // v0.52.7 저장 기록: 한 시간에 하나씩 12개 (복구용)
+    {
+      const lh = await db.prepare('SELECT MAX(saved) AS s FROM ash_save_hist WHERE id = ?').bind(key).first<{ s: number | null }>();
+      if (!lh?.s || Date.now() - lh.s > 3600e3) {
+        await db.prepare('INSERT INTO ash_save_hist (id, data, at, saved) SELECT id, data, at, ? FROM ash_saves WHERE id = ?').bind(Date.now(), key).run();
+        await db.prepare('DELETE FROM ash_save_hist WHERE id = ? AND saved NOT IN (SELECT saved FROM ash_save_hist WHERE id = ? ORDER BY saved DESC LIMIT 12)').bind(key, key).run();
+      }
     }
     // 덮어쓰기 전 저장을 하나 남긴다 (한 시간 넘게 지난 것만 — 잦은 저장마다 덮지 않게)
     await db.prepare('INSERT INTO ash_saves_prev (id, data, at) SELECT id, data, at FROM ash_saves WHERE id = ? AND at < ? ON CONFLICT(id) DO UPDATE SET data = excluded.data, at = excluded.at')
